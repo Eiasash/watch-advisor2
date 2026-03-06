@@ -7,7 +7,6 @@ const TYPE_HINTS = {
   shoes:  ["shoe", "boot", "sneaker", "loafer", "derby"],
   jacket: ["jacket", "coat", "blazer", "bomber", "cardigan"],
 };
-
 const COLOR_HINTS = {
   black: ["black", "noir", "ebony"],
   white: ["white", "ivory", "cream", "ecru"],
@@ -22,36 +21,28 @@ const COLOR_HINTS = {
 
 function guessType(filename) {
   const lower = filename.toLowerCase();
-  for (const [type, kws] of Object.entries(TYPE_HINTS)) {
+  for (const [type, kws] of Object.entries(TYPE_HINTS))
     if (kws.some(k => lower.includes(k))) return type;
-  }
   return "shirt";
 }
-
 function guessColor(filename) {
   const lower = filename.toLowerCase();
-  for (const [color, kws] of Object.entries(COLOR_HINTS)) {
+  for (const [color, kws] of Object.entries(COLOR_HINTS))
     if (kws.some(k => lower.includes(k))) return color;
-  }
   return "grey";
 }
 
-/**
- * Import a single file. Always resolves — never hangs.
- * Returns a garment object on success, throws on hard failure.
- */
 export async function runPhotoImport(file) {
-  console.log("[import] file received:", file.name, file.type, file.size);
+  console.log("[import] START:", file.name, file.type, file.size + "b");
 
   const id = `g_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-  console.log("[import] thumbnail+hash started:", file.name);
+  console.log("[import] processImage START:", file.name);
   const { thumbnail, hash } = await processImage(file);
-  console.log("[import] thumbnail+hash done:", file.name, "thumb:", !!thumbnail, "hash:", hash?.length);
+  console.log("[import] processImage DONE:", file.name, "thumb:", !!thumbnail, "hash:", hash?.length);
 
-  console.log("[import] queuing original cache:", id);
+  // Queue background cache — do NOT await
   enqueueOriginalCache(id, file);
-  console.log("[import] original cache queued:", id);
 
   const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim();
 
@@ -66,6 +57,6 @@ export async function runPhotoImport(file) {
     photoUrl: URL.createObjectURL(file),
   };
 
-  console.log("[import] garment object created:", garment.id, garment.name);
+  console.log("[import] garment ready:", garment.id, garment.name, garment.type, garment.color);
   return garment;
 }
