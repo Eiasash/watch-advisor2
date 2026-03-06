@@ -1,38 +1,8 @@
 import { processImage } from "../../services/imagePipeline.js";
 import { enqueueOriginalCache } from "../../services/photoQueue.js";
+import { classify } from "./classifier.js";
 
-const TYPE_HINTS = {
-  shirt:  ["shirt", "top", "tee", "polo", "oxford", "knit", "sweater", "hoodie", "sweat", "flannel", "blouse"],
-  pants:  ["pant", "trouser", "chino", "jeans", "jean", "jogger", "bottom", "slack"],
-  shoes:  ["shoe", "boot", "sneaker", "loafer", "derby"],
-  jacket: ["jacket", "coat", "blazer", "bomber", "cardigan"],
-};
-const COLOR_HINTS = {
-  black: ["black", "noir", "ebony"],
-  white: ["white", "ivory", "cream", "ecru"],
-  navy:  ["navy", "midnight"],
-  grey:  ["grey", "gray", "slate", "charcoal", "melange"],
-  brown: ["brown", "chocolate", "cognac", "tan", "camel", "khaki"],
-  beige: ["beige", "stone", "sand", "oat"],
-  green: ["green", "olive", "army", "sage"],
-  blue:  ["blue", "cobalt", "denim", "indigo"],
-  red:   ["red", "burgundy", "brick", "rust"],
-};
-
-function guessType(filename) {
-  const lower = filename.toLowerCase();
-  for (const [type, kws] of Object.entries(TYPE_HINTS))
-    if (kws.some(k => lower.includes(k))) return type;
-  return "shirt";
-}
-function guessColor(filename) {
-  const lower = filename.toLowerCase();
-  for (const [color, kws] of Object.entries(COLOR_HINTS))
-    if (kws.some(k => lower.includes(k))) return color;
-  return "grey";
-}
-
-export async function runPhotoImport(file) {
+export async function runPhotoImport(file, existingGarments = []) {
   console.log("[import] START:", file.name, file.type, file.size + "b");
 
   const id = `g_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -40,6 +10,9 @@ export async function runPhotoImport(file) {
   console.log("[import] processImage START:", file.name);
   const { thumbnail, hash } = await processImage(file);
   console.log("[import] processImage DONE:", file.name, "thumb:", !!thumbnail, "hash:", hash?.length);
+
+  const tags = classify(file.name, thumbnail, hash, existingGarments);
+  console.log("[import] classified:", tags);
 
   // Queue background cache — do NOT await
   enqueueOriginalCache(id, file);
@@ -49,14 +22,17 @@ export async function runPhotoImport(file) {
   const garment = {
     id,
     name: baseName || "Imported Garment",
-    type: guessType(file.name),
-    color: guessColor(file.name),
-    formality: 5,
+    type:       tags.type,
+    color:      tags.color,
+    formality:  tags.formality,
+    photoType:  tags.photoType,
+    needsReview: tags.needsReview,
+    ...(tags.duplicateOf ? { duplicateOf: tags.duplicateOf } : {}),
     hash: hash ?? "",
     thumbnail: thumbnail ?? null,
     photoUrl: URL.createObjectURL(file),
   };
 
-  console.log("[import] garment ready:", garment.id, garment.name, garment.type, garment.color);
+  console.log("[import] garment ready:", garment.id, garment.type, garment.color, "review:", garment.needsReview);
   return garment;
 }
