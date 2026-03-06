@@ -2,22 +2,22 @@ import { processImage } from "../../services/imagePipeline.js";
 import { enqueueOriginalCache } from "../../services/photoQueue.js";
 
 const TYPE_HINTS = {
-  shirt: ["shirt", "top", "tee", "polo", "oxford", "knit", "sweater", "hoodie", "sweat", "flannel", "blouse"],
-  pants: ["pant", "trouser", "chino", "jeans", "jean", "jogger", "bottom", "slack"],
-  shoes: ["shoe", "boot", "sneaker", "loafer", "oxford", "derby"],
-  jacket: ["jacket", "coat", "blazer", "bomber", "over", "cardigan"],
+  shirt:  ["shirt", "top", "tee", "polo", "oxford", "knit", "sweater", "hoodie", "sweat", "flannel", "blouse"],
+  pants:  ["pant", "trouser", "chino", "jeans", "jean", "jogger", "bottom", "slack"],
+  shoes:  ["shoe", "boot", "sneaker", "loafer", "derby"],
+  jacket: ["jacket", "coat", "blazer", "bomber", "cardigan"],
 };
 
 const COLOR_HINTS = {
-  black:  ["black", "noir", "ebony"],
-  white:  ["white", "ivory", "cream", "ecru"],
-  navy:   ["navy", "midnight"],
-  grey:   ["grey", "gray", "slate", "charcoal", "melange"],
-  brown:  ["brown", "chocolate", "cognac", "tan", "camel", "khaki"],
-  beige:  ["beige", "stone", "sand", "oat"],
-  green:  ["green", "olive", "army", "sage"],
-  blue:   ["blue", "cobalt", "denim", "indigo"],
-  red:    ["red", "burgundy", "brick", "rust"],
+  black: ["black", "noir", "ebony"],
+  white: ["white", "ivory", "cream", "ecru"],
+  navy:  ["navy", "midnight"],
+  grey:  ["grey", "gray", "slate", "charcoal", "melange"],
+  brown: ["brown", "chocolate", "cognac", "tan", "camel", "khaki"],
+  beige: ["beige", "stone", "sand", "oat"],
+  green: ["green", "olive", "army", "sage"],
+  blue:  ["blue", "cobalt", "denim", "indigo"],
+  red:   ["red", "burgundy", "brick", "rust"],
 };
 
 function guessType(filename) {
@@ -36,25 +36,36 @@ function guessColor(filename) {
   return "grey";
 }
 
+/**
+ * Import a single file. Always resolves — never hangs.
+ * Returns a garment object on success, throws on hard failure.
+ */
 export async function runPhotoImport(file) {
+  console.log("[import] file received:", file.name, file.type, file.size);
+
   const id = `g_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-  // Non-blocking: thumbnail + hash in worker/canvas
+  console.log("[import] thumbnail+hash started:", file.name);
   const { thumbnail, hash } = await processImage(file);
+  console.log("[import] thumbnail+hash done:", file.name, "thumb:", !!thumbnail, "hash:", hash?.length);
 
-  // Queue original caching in background
+  console.log("[import] queuing original cache:", id);
   enqueueOriginalCache(id, file);
+  console.log("[import] original cache queued:", id);
 
-  const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+  const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim();
 
-  return {
+  const garment = {
     id,
     name: baseName || "Imported Garment",
     type: guessType(file.name),
     color: guessColor(file.name),
     formality: 5,
-    hash,
-    thumbnail,
+    hash: hash ?? "",
+    thumbnail: thumbnail ?? null,
     photoUrl: URL.createObjectURL(file),
   };
+
+  console.log("[import] garment object created:", garment.id, garment.name);
+  return garment;
 }

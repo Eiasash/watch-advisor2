@@ -1,40 +1,36 @@
 /**
  * Web Worker: thumbnail generation + perceptual hash.
- * Receives: { type: "process", file: File }
- * Posts back: { type: "result", thumbnail: string, hash: string }
- *           | { type: "error", message: string }
+ * Receives: { type: "process", id: number, file: File }
+ * Posts:    { type: "result",  id: number, thumbnail: string, hash: string }
+ *         | { type: "error",   id: number, message: string }
  */
 self.onmessage = async (e) => {
   if (e.data.type !== "process") return;
+  const { id, file } = e.data;
   try {
-    const { file } = e.data;
-
-    // Thumbnail
     const bitmap = await createImageBitmap(file);
+
+    // Thumbnail 240×240 WebP
     const tc = new OffscreenCanvas(240, 240);
-    const tctx = tc.getContext("2d");
-    tctx.drawImage(bitmap, 0, 0, 240, 240);
+    tc.getContext("2d").drawImage(bitmap, 0, 0, 240, 240);
     const blob = await tc.convertToBlob({ type: "image/webp", quality: 0.82 });
     const thumbnail = await blobToDataURL(blob);
 
-    // Perceptual hash (dHash 8x8)
+    // dHash 8×8
     const hc = new OffscreenCanvas(9, 8);
-    const hctx = hc.getContext("2d");
-    hctx.drawImage(bitmap, 0, 0, 9, 8);
-    const data = hctx.getImageData(0, 0, 9, 8).data;
+    hc.getContext("2d").drawImage(bitmap, 0, 0, 9, 8);
+    const data = hc.getContext("2d").getImageData(0, 0, 9, 8).data;
     let hash = "";
     for (let y = 0; y < 8; y++) {
       for (let x = 0; x < 8; x++) {
-        const left  = data[(y * 9 + x) * 4];
-        const right = data[(y * 9 + x + 1) * 4];
-        hash += left > right ? "1" : "0";
+        hash += data[(y * 9 + x) * 4] > data[(y * 9 + x + 1) * 4] ? "1" : "0";
       }
     }
 
     bitmap.close();
-    self.postMessage({ type: "result", thumbnail, hash });
+    self.postMessage({ type: "result", id, thumbnail, hash });
   } catch (err) {
-    self.postMessage({ type: "error", message: err.message });
+    self.postMessage({ type: "error", id, message: err?.message ?? String(err) });
   }
 };
 
