@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import { FixedSizeGrid } from "react-window";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 
@@ -8,7 +8,8 @@ const CELL_HEIGHT  = 280;
 const GRID_WIDTH   = COLUMN_COUNT * CELL_WIDTH;
 const GRID_HEIGHT  = 560;
 
-const TYPE_ICONS   = { shirt: "👔", pants: "👖", shoes: "👟", jacket: "🧥" };
+const TYPE_ICONS   = { shirt: "👔", pants: "👖", shoes: "👟", jacket: "🧥", sweater: "🧶" };
+const GARMENT_TYPES = ["shirt", "pants", "shoes", "jacket", "sweater"];
 const COLOR_SWATCHES = {
   black: "#1a1a1a", white: "#f5f5f0", grey: "#8a8a8a", navy: "#1e2f5e",
   blue: "#2d5fa0", brown: "#6b3a2a", tan: "#c4a882", beige: "#d4c4a8",
@@ -53,11 +54,11 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
             alt={item.name}
             loading="lazy"
             decoding="async"
-            style={{ width: "100%", height: 148, objectFit: "cover", display: "block", flexShrink: 0 }}
+            style={{ width: "100%", height: 130, objectFit: "cover", display: "block", flexShrink: 0 }}
           />
         ) : (
           <div style={{
-            width: "100%", height: 148, display: "flex", alignItems: "center",
+            width: "100%", height: 130, display: "flex", alignItems: "center",
             justifyContent: "center", fontSize: 36, background: "#171a21", flexShrink: 0,
           }}>
             {isOutfitShot ? "🪞" : (TYPE_ICONS[item.type] ?? "👕")}
@@ -65,7 +66,7 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
         )}
 
         {/* Info area */}
-        <div style={{ padding: "8px 10px", flex: 1, minHeight: 0 }}>
+        <div style={{ padding: "6px 10px", flex: 1, minHeight: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.3, marginBottom: 3,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {item.name}
@@ -92,6 +93,24 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
             formality {item.formality ?? 5}/10
           </div>
 
+          {/* Inline type editor for review items */}
+          {needsReview && !isOutfitShot && (
+            <select
+              value={item.type}
+              onChange={(e) => data.onUpdateType(item.id, e.target.value)}
+              style={{
+                width: "100%", fontSize: 11, padding: "2px 4px",
+                background: "#171a21", color: "#e2e8f0",
+                border: "1px solid #854d0e", borderRadius: 4,
+                cursor: "pointer", marginBottom: 3,
+              }}
+            >
+              {GARMENT_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          )}
+
           {/* Badges */}
           <div style={{ lineHeight: 1 }}>
             {isOutfitShot  && <Badge label="outfit shot"  color="#92400e" bg="#451a03" />}
@@ -108,11 +127,20 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
 });
 
 export default function WardrobeGrid() {
-  const garments = useWardrobeStore(s => s.garments);
-  const items    = useMemo(() => garments.filter(Boolean), [garments]);
-  const rowCount = Math.max(1, Math.ceil(items.length / COLUMN_COUNT));
+  const garments      = useWardrobeStore(s => s.garments);
+  const updateGarment = useWardrobeStore(s => s.updateGarment);
 
+  // Filter out items excluded from wardrobe (outfit shots from isOutfitPhoto filter)
+  const items = useMemo(() =>
+    garments.filter(g => g && !g.excludeFromWardrobe),
+  [garments]);
+
+  const rowCount = Math.max(1, Math.ceil(items.length / COLUMN_COUNT));
   const reviewCount = useMemo(() => items.filter(g => g.needsReview).length, [items]);
+
+  const handleUpdateType = useCallback((id, newType) => {
+    updateGarment(id, { type: newType, needsReview: false });
+  }, [updateGarment]);
 
   return (
     <div style={{ padding: "16px 18px", borderRadius: 16, background: "#171a21", border: "1px solid #2b3140" }}>
@@ -145,7 +173,7 @@ export default function WardrobeGrid() {
           rowHeight={CELL_HEIGHT}
           width={GRID_WIDTH}
           height={Math.min(GRID_HEIGHT, rowCount * CELL_HEIGHT)}
-          itemData={{ items, columns: COLUMN_COUNT }}
+          itemData={{ items, columns: COLUMN_COUNT, onUpdateType: handleUpdateType }}
         >
           {Cell}
         </FixedSizeGrid>
