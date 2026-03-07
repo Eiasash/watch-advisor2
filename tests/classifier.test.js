@@ -1,17 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
- * Test strategy:
- *   classifyFromFilename / findPossibleDuplicate — pure functions, test real implementations.
- *   classify — mocked to call stubbable analyzeImageContent + extractDominantColor,
- *               then runs the exact same decision logic as the real classify so
- *               per-test zone injection produces realistic results.
+ * Mock strategy:
+ *
+ *   classifyFromFilename, findPossibleDuplicate, _applyDecision
+ *     → real implementations from actual module (pure, no DOM needed)
+ *
+ *   analyzeImageContent, extractDominantColor
+ *     → vi.fn() stubs — tests can inject results via mockResolvedValueOnce
+ *
+ *   classify
+ *     → thin async wrapper that:
+ *          calls the mocked analyzeImageContent + extractDominantColor
+ *          passes results to the real _applyDecision
+ *        This is the correct pattern: tests stay honest, no canvas needed,
+ *        image-signal injection works correctly.
  */
 
 vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
   const actual = await importOriginal();
 
-  const defaultZonesObj = () => ({
+  const defaultZones = () => ({
     total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
     flatLay: false,
     shoes:     { fires: false, reason: null },
@@ -21,75 +30,21 @@ vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
     likelyType: null,
   });
 
-  const analyzeStub = vi.fn().mockResolvedValue(defaultZonesObj());
+  const analyzeStub = vi.fn().mockResolvedValue(defaultZones());
   const colorStub   = vi.fn().mockResolvedValue(null);
 
   const classifyFn = async (filename, thumb, hash, existingGarments = []) => {
-    const fn  = actual.classifyFromFilename(filename);
-    const dup = actual.findPossibleDuplicate(hash, existingGarments) ?? undefined;
+    const fn          = actual.classifyFromFilename(filename);
+    const duplicateOf = actual.findPossibleDuplicate(hash, existingGarments) ?? undefined;
 
-    const [px, pixelColor] = await Promise.all([analyzeStub(thumb), colorStub(thumb)]);
+    // consume the stubbable image-signal functions
+    const [px, pixelColor] = await Promise.all([
+      analyzeStub(thumb),
+      colorStub(thumb),
+    ]);
 
-    let type, typeSource, photoType, needsReview, decisionReason;
-
-    if (fn.type != null && fn.confidence === "high") {
-      type = fn.type; typeSource = "filename-high";
-      photoType = fn.isSelfieFilename ? "outfit-shot" : "garment";
-      needsReview = fn.isSelfieFilename;
-      decisionReason = `filename-high ${fn.type}`;
-    } else if (fn.type != null && fn.confidence === "medium") {
-      if (px.shoes?.fires && fn.type !== "shoes") {
-        type = "shoes"; typeSource = "image-shoes-upgrade";
-        decisionReason = `image-shoes-upgrade`;
-      } else {
-        type = fn.type; typeSource = "filename-medium";
-        decisionReason = `filename-medium ${fn.type}`;
-      }
-      photoType = fn.isSelfieFilename ? "outfit-shot" : "garment";
-      needsReview = fn.isSelfieFilename;
-    } else {
-      if (fn.isSelfieFilename) {
-        type = "shirt"; typeSource = "selfie-filename";
-        photoType = "outfit-shot"; needsReview = true;
-        decisionReason = "selfie-filename";
-      } else if (px.shoes?.fires) {
-        type = "shoes"; typeSource = "image-shoes";
-        photoType = "garment"; needsReview = false;
-        decisionReason = px.shoes.reason;
-      } else if (px.shirt?.fires) {
-        type = "shirt"; typeSource = "image-shirt";
-        photoType = "garment"; needsReview = false;
-        decisionReason = px.shirt.reason;
-      } else if (px.flatLay) {
-        type = "shirt"; typeSource = "flat-lay";
-        photoType = "garment"; needsReview = false;
-        decisionReason = `flat-lay total=${px.total}`;
-      } else if (px.pants?.fires) {
-        type = "pants"; typeSource = "image-pants";
-        photoType = "garment"; needsReview = false;
-        decisionReason = px.pants.reason;
-      } else if (px.ambiguous?.fires) {
-        type = "shirt"; typeSource = "ambiguous";
-        photoType = "ambiguous"; needsReview = true;
-        decisionReason = px.ambiguous.reason;
-      } else {
-        const totallyBlind = !pixelColor;
-        type = "shirt"; typeSource = "blind";
-        photoType = "garment"; needsReview = totallyBlind;
-        decisionReason = totallyBlind ? "blind" : `low-pixel color=${pixelColor}`;
-      }
-    }
-
-    return {
-      type, color: fn.color ?? pixelColor ?? "grey",
-      formality: fn.formality ?? 5,
-      photoType, needsReview,
-      ...(dup ? { duplicateOf: dup } : {}),
-      _confidence: fn.confidence, _typeSource: typeSource,
-      _flatLay: px.flatLay ?? false,
-      _ambiguous: px.ambiguous?.fires ?? false,
-      _decisionReason: decisionReason,
-    };
+    // use the real pure decision helper — no divergence from production
+    return actual._applyDecision(fn, px, pixelColor, duplicateOf);
   };
 
   return {
@@ -100,8 +55,11 @@ vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
   };
 });
 
-import { classifyFromFilename, findPossibleDuplicate, classify } from
-  "../src/features/wardrobe/classifier.js";
+import {
+  classifyFromFilename,
+  findPossibleDuplicate,
+  classify,
+} from "../src/features/wardrobe/classifier.js";
 
 const dz = () => ({
   total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
@@ -126,28 +84,28 @@ describe("classifyFromFilename — shoes", () => {
    "loafer_cognac.jpg","loafers_tan.jpg","boots_brown.jpg","chelsea_boots.jpg",
    "brogue_tan.jpg","brogues_black.jpg","trainer_white.jpg","sneaker_navy.jpg",
    "dress_shoes.jpg"
-  ].forEach(f => it(`${f} → shoes`, () => expect(classifyFromFilename(f).type).toBe("shoes")));
+  ].forEach(f => it(f, () => expect(classifyFromFilename(f).type).toBe("shoes")));
 });
 
 describe("classifyFromFilename — pants", () => {
   ["pants_grey.jpg","trousers_navy.jpg","chinos_khaki.jpg","jeans_dark.jpg",
    "joggers_black.jpg","chino_stone.jpg","trouser_grey.jpg","slim_trousers.jpg"
-  ].forEach(f => it(`${f} → pants`, () => expect(classifyFromFilename(f).type).toBe("pants")));
+  ].forEach(f => it(f, () => expect(classifyFromFilename(f).type).toBe("pants")));
 });
 
 describe("classifyFromFilename — jacket", () => {
   ["jacket_grey.jpg","blazer_navy.jpg","coat_camel.jpg","bomber_olive.jpg",
    "cardigan_brown.jpg","overcoat_black.jpg","overshirt_olive.jpg"
-  ].forEach(f => it(`${f} → jacket`, () => expect(classifyFromFilename(f).type).toBe("jacket")));
+  ].forEach(f => it(f, () => expect(classifyFromFilename(f).type).toBe("jacket")));
 });
 
 describe("classifyFromFilename — shirt", () => {
   ["shirt_white.jpg","polo_navy.jpg","tee_black.jpg","knit_cream.jpg",
    "sweater_olive.jpg","hoodie_grey.jpg","flannel_plaid.jpg","crewneck_navy.jpg"
-  ].forEach(f => it(`${f} → shirt`, () => expect(classifyFromFilename(f).type).toBe("shirt")));
+  ].forEach(f => it(f, () => expect(classifyFromFilename(f).type).toBe("shirt")));
 });
 
-// ─── Color / formality ────────────────────────────────────────────────────────
+// ─── Color ────────────────────────────────────────────────────────────────────
 
 describe("classifyFromFilename — color", () => {
   [["shirt_navy.jpg","navy"],["shoes_black.jpg","black"],["jacket_olive.jpg","olive"],
@@ -156,47 +114,49 @@ describe("classifyFromFilename — color", () => {
   ].forEach(([f,c]) => it(`${f} → ${c}`, () => expect(classifyFromFilename(f).color).toBe(c)));
 });
 
+// ─── Formality ────────────────────────────────────────────────────────────────
+
 describe("classifyFromFilename — formality", () => {
   [["derby_black.jpg",8],["sneakers_white.jpg",3],["blazer_navy.jpg",8],
    ["hoodie_grey.jpg",3],["trousers_grey.jpg",7],["jeans_dark.jpg",4],
    ["overcoat_black.jpg",9],["loafers_tan.jpg",6],["chelsea_boots.jpg",7]
-  ].forEach(([f,v]) => it(`${f} formality=${v}`, () => expect(classifyFromFilename(f).formality).toBe(v)));
+  ].forEach(([f,v]) => it(`${f} formality=${v}`, () =>
+    expect(classifyFromFilename(f).formality).toBe(v)));
 });
 
 // ─── Selfie detection ─────────────────────────────────────────────────────────
 
-describe("classifyFromFilename — selfie strict", () => {
+describe("classifyFromFilename — isSelfieFilename", () => {
   [["mirror_selfie.jpg",true],["ootd_look.jpg",true],["fitcheck.jpg",true],
    ["fullbody.jpg",true],["IMG_1234.jpg",false],["DSC_0042.jpg",false],
    ["shirt_navy.jpg",false]
-  ].forEach(([f,exp]) =>
-    it(`${f} isSelfieFilename=${exp}`, () =>
-      expect(classifyFromFilename(f).isSelfieFilename).toBe(exp)));
+  ].forEach(([f,exp]) => it(`${f} → ${exp}`, () =>
+    expect(classifyFromFilename(f).isSelfieFilename).toBe(exp)));
 });
 
-// ─── mirror selfie / person photos must NOT become pants ─────────────────────
+// ─── classify — person photos must not become pants ───────────────────────────
 
-describe("classify — person photos must not become pants", () => {
-  it("mirror selfie filename → outfit-shot, review, not pants", async () => {
+describe("classify — person photos: not pants", () => {
+  it("mirror selfie filename → outfit-shot, needsReview, not pants", async () => {
     const r = await classify("mirror_selfie.jpg", null, "", []);
     expect(r.photoType).toBe("outfit-shot");
     expect(r.needsReview).toBe(true);
     expect(r.type).not.toBe("pants");
   });
 
-  it("ootd.jpg → outfit-shot, review, not pants", async () => {
+  it("ootd.jpg → outfit-shot, needsReview, not pants", async () => {
     const r = await classify("ootd.jpg", null, "", []);
     expect(r.photoType).toBe("outfit-shot");
     expect(r.needsReview).toBe(true);
     expect(r.type).not.toBe("pants");
   });
 
-  it("ambiguous image signal → photoType ambiguous, review, not pants", async () => {
+  it("ambiguous pixel signal → photoType ambiguous, needsReview, not pants", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 420,
       topF: 0.28, midF: 0.40, botF: 0.32, bilatBalance: 0.65,
-      ambiguous: { fires: true, reason: "no-shape-signal" },
+      ambiguous: { fires: true, reason: "no-shape-signal total=420" },
     });
     const r = await classify("IMG20260208053034.jpg", "data:image/jpeg;base64,x", "", []);
     expect(r.type).not.toBe("pants");
@@ -204,12 +164,12 @@ describe("classify — person photos must not become pants", () => {
     expect(r.photoType).toBe("ambiguous");
   });
 
-  it("seated outfit photo (ambiguous) → not pants", async () => {
+  it("seated outfit photo (ambiguous zones) → not pants, needsReview", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 380,
       topF: 0.25, midF: 0.42, botF: 0.33, bilatBalance: 0.70,
-      ambiguous: { fires: true, reason: "no-shape-signal" },
+      ambiguous: { fires: true, reason: "seated-no-shape" },
     });
     const r = await classify("IMG20260207201139.jpg", "data:image/jpeg;base64,x", "", []);
     expect(r.type).not.toBe("pants");
@@ -217,10 +177,10 @@ describe("classify — person photos must not become pants", () => {
   });
 });
 
-// ─── Shoes terminal ───────────────────────────────────────────────────────────
+// ─── classify — shoes terminal ────────────────────────────────────────────────
 
-describe("classify — shoes are terminal", () => {
-  it("shoe image signal → shoes, never pants", async () => {
+describe("classify — shoes terminal", () => {
+  it("shoe pixel signal → shoes, garment, no review", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 180,
@@ -232,11 +192,11 @@ describe("classify — shoes are terminal", () => {
     expect(r.type).toBe("shoes");
     expect(r.photoType).toBe("garment");
     expect(r.needsReview).toBe(false);
+    expect(r._typeSource).toBe("image-shoes");
   });
 
-  it("shoes cannot be overridden by pants signal", async () => {
+  it("shoes signal beats pants signal — shoes wins", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
-    // Both shoes and pants fire — shoes must win
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 200,
       topF: 0.10, midF: 0.35, botF: 0.55, bilatBalance: 0.80,
@@ -246,15 +206,17 @@ describe("classify — shoes are terminal", () => {
     });
     const r = await classify("IMG20260209233604.jpg", "data:image/jpeg;base64,x", "", []);
     expect(r.type).toBe("shoes");
+    expect(r._typeSource).toBe("image-shoes");
   });
 
   it("derby filename → shoes, no review", async () => {
     const r = await classify("derby_brown.jpg", null, "", []);
     expect(r.type).toBe("shoes");
     expect(r.needsReview).toBe(false);
+    expect(r._typeSource).toBe("filename-high");
   });
 
-  it("loafers filename → shoes, tan, no review", async () => {
+  it("loafers_tan → shoes, tan, no review", async () => {
     const r = await classify("loafers_tan.jpg", null, "", []);
     expect(r.type).toBe("shoes");
     expect(r.color).toBe("tan");
@@ -262,10 +224,10 @@ describe("classify — shoes are terminal", () => {
   });
 });
 
-// ─── Flat-lay garments ────────────────────────────────────────────────────────
+// ─── classify — flat-lay garments ────────────────────────────────────────────
 
 describe("classify — flat-lay → shirt, garment, no review", () => {
-  it("even zones + high total = flat-lay → shirt, no review", async () => {
+  it("high total + even zones → flat-lay → shirt, no review", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 700,
@@ -276,9 +238,23 @@ describe("classify — flat-lay → shirt, garment, no review", () => {
     expect(r.type).toBe("shirt");
     expect(r.photoType).toBe("garment");
     expect(r.needsReview).toBe(false);
+    expect(r._typeSource).toBe("flat-lay");
   });
 
-  it("flat-lay knit: not outfit-shot", async () => {
+  it("flat-lay must never become pants even with bot-heavy zones", async () => {
+    const m = await import("../src/features/wardrobe/classifier.js");
+    m.analyzeImageContent.mockResolvedValueOnce({
+      ...dz(), total: 620,
+      topF: 0.30, midF: 0.38, botF: 0.32, bilatBalance: 0.88,
+      flatLay: true,
+      pants: { fires: false, reason: null }, // flat-lay guard already blocks pants
+    });
+    const r = await classify("IMG_1234.jpg", "data:image/jpeg;base64,x", "", []);
+    expect(r.type).toBe("shirt");
+    expect(r.type).not.toBe("pants");
+  });
+
+  it("flat-lay is never outfit-shot", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 650,
@@ -287,28 +263,25 @@ describe("classify — flat-lay → shirt, garment, no review", () => {
     });
     const r = await classify("IMG20260221161335.jpg", "data:image/jpeg;base64,x", "", []);
     expect(r.photoType).toBe("garment");
-    expect(r.needsReview).toBe(false);
   });
 
-  it("flat-lay must NEVER become pants", async () => {
+  it("flat-lay with detected color → correct color, no review", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
-      ...dz(), total: 620,
-      topF: 0.30, midF: 0.38, botF: 0.32, bilatBalance: 0.88,
-      flatLay: true,
-      // Even if pants would fire without flatLay guard — flatLay takes priority
-      pants: { fires: false, reason: null },
+      ...dz(), total: 580, flatLay: true,
+      topF: 0.33, midF: 0.34, botF: 0.33, bilatBalance: 0.91,
     });
-    const r = await classify("IMG_1234.jpg", "data:image/jpeg;base64,x", "", []);
-    expect(r.type).not.toBe("pants");
-    expect(r.type).toBe("shirt");
+    m.extractDominantColor.mockResolvedValueOnce("olive");
+    const r = await classify("IMG20260221161617.jpg", "data:image/jpeg;base64,x", "", []);
+    expect(r.needsReview).toBe(false);
+    expect(r.color).toBe("olive");
   });
 });
 
-// ─── Hanger shirt ─────────────────────────────────────────────────────────────
+// ─── classify — hanger shirt ─────────────────────────────────────────────────
 
 describe("classify — hanger shirt", () => {
-  it("top-heavy hanger → shirt, garment, no review", async () => {
+  it("top-heavy hanger signal → shirt, garment, no review", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 280,
@@ -320,19 +293,20 @@ describe("classify — hanger shirt", () => {
     expect(r.type).toBe("shirt");
     expect(r.photoType).toBe("garment");
     expect(r.needsReview).toBe(false);
+    expect(r._typeSource).toBe("image-shirt");
   });
 
-  it("shirt filename → shirt, garment", async () => {
+  it("shirt filename → filename-high, shirt", async () => {
     const r = await classify("shirt_white_stripe.jpg", null, "", []);
     expect(r.type).toBe("shirt");
-    expect(r.photoType).toBe("garment");
+    expect(r._typeSource).toBe("filename-high");
   });
 });
 
-// ─── True pants (strict lower-body) ──────────────────────────────────────────
+// ─── classify — true pants (strict) ──────────────────────────────────────────
 
 describe("classify — true pants lower-body", () => {
-  it("strict pants heuristic → pants, garment, no review", async () => {
+  it("strict pants pixel signal → pants, garment, no review", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(), total: 350,
@@ -345,6 +319,7 @@ describe("classify — true pants lower-body", () => {
     expect(r.type).toBe("pants");
     expect(r.photoType).toBe("garment");
     expect(r.needsReview).toBe(false);
+    expect(r._typeSource).toBe("image-pants");
   });
 
   it("jeans filename → pants, blue, no review", async () => {
@@ -359,11 +334,26 @@ describe("classify — true pants lower-body", () => {
     expect(r.type).toBe("pants");
     expect(r.color).toBe("grey");
   });
+
+  it("topF=0.20 does NOT fire pants — falls to ambiguous", async () => {
+    const m = await import("../src/features/wardrobe/classifier.js");
+    m.analyzeImageContent.mockResolvedValueOnce({
+      ...dz(), total: 300,
+      topF: 0.20, midF: 0.42, botF: 0.38, bilatBalance: 0.75,
+      flatLay: false,
+      pants: { fires: false, reason: null },
+      ambiguous: { fires: true, reason: "topF too high for strict pants" },
+    });
+    const r = await classify("IMG20260208053034.jpg", "data:image/jpeg;base64,x", "", []);
+    expect(r.type).not.toBe("pants");
+    expect(r.needsReview).toBe(true);
+    expect(r._typeSource).toBe("ambiguous");
+  });
 });
 
-// ─── Ambiguous bucket ─────────────────────────────────────────────────────────
+// ─── classify — ambiguous bucket ─────────────────────────────────────────────
 
-describe("classify — ambiguous: review, not pants", () => {
+describe("classify — ambiguous bucket: review, not pants", () => {
   const injectAmbiguous = async (filename) => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
@@ -379,6 +369,7 @@ describe("classify — ambiguous: review, not pants", () => {
     expect(r.type).not.toBe("pants");
     expect(r.needsReview).toBe(true);
     expect(r.photoType).toBe("ambiguous");
+    expect(r._typeSource).toBe("ambiguous");
   });
 
   it("belt shot → ambiguous, review, not pants", async () => {
@@ -394,26 +385,7 @@ describe("classify — ambiguous: review, not pants", () => {
   });
 });
 
-// ─── pants topF guard — must be nearly empty top ─────────────────────────────
-
-describe("classify — pants requires topF < 0.18 (strict)", () => {
-  it("topF=0.20 (above threshold) → NOT pants, goes ambiguous", async () => {
-    const m = await import("../src/features/wardrobe/classifier.js");
-    // If pants.fires=false and ambiguous.fires=true, must not be pants
-    m.analyzeImageContent.mockResolvedValueOnce({
-      ...dz(), total: 300,
-      topF: 0.20, midF: 0.42, botF: 0.38, bilatBalance: 0.75,
-      flatLay: false,
-      pants: { fires: false, reason: null }, // strict guard prevented it
-      ambiguous: { fires: true, reason: "topF too high for pants" },
-    });
-    const r = await classify("IMG20260208053034.jpg", "data:image/jpeg;base64,x", "", []);
-    expect(r.type).not.toBe("pants");
-    expect(r.needsReview).toBe(true);
-  });
-});
-
-// ─── review suppression ───────────────────────────────────────────────────────
+// ─── classify — review suppression ───────────────────────────────────────────
 
 describe("classify — review suppression", () => {
   it("clear shoe filename → no review", async () => {
@@ -422,19 +394,24 @@ describe("classify — review suppression", () => {
   it("clear pants filename → no review", async () => {
     expect((await classify("chinos_tan.jpg", null, "", [])).needsReview).toBe(false);
   });
-  it("camera-roll no signals → review true (blind)", async () => {
+  it("camera-roll no signals → needsReview true (blind)", async () => {
     expect((await classify("IMG_1234.jpg", null, "", [])).needsReview).toBe(true);
   });
-  it("flat-lay with detected color → no review", async () => {
-    const m = await import("../src/features/wardrobe/classifier.js");
-    m.analyzeImageContent.mockResolvedValueOnce({
-      ...dz(), total: 580, flatLay: true,
-      topF: 0.33, midF: 0.34, botF: 0.33, bilatBalance: 0.91,
-    });
-    m.extractDominantColor.mockResolvedValueOnce("olive");
-    const r = await classify("IMG20260221161617.jpg", "data:image/jpeg;base64,x", "", []);
+});
+
+// ─── classify — camera-roll with garment keyword ─────────────────────────────
+
+describe("classify — camera-roll + keyword", () => {
+  it("IMG_1234_shoes → shoes, medium confidence", async () => {
+    const r = await classify("IMG_1234_shoes.jpg", null, "", []);
+    expect(r.type).toBe("shoes");
+    expect(r._typeSource).toBe("filename-medium");
     expect(r.needsReview).toBe(false);
-    expect(r.color).toBe("olive");
+  });
+  it("IMG_1234_pants → pants, medium confidence", async () => {
+    const r = await classify("IMG_1234_pants.jpg", null, "", []);
+    expect(r.type).toBe("pants");
+    expect(r._typeSource).toBe("filename-medium");
   });
 });
 
@@ -442,9 +419,9 @@ describe("classify — review suppression", () => {
 
 describe("findPossibleDuplicate", () => {
   const ex = [{ id:"g1", hash:"1".repeat(64) }, { id:"g2", hash:"0".repeat(64) }];
-  it("exact → g1",    () => expect(findPossibleDuplicate("1".repeat(64), ex)).toBe("g1"));
-  it("dist 3 → g1",   () => expect(findPossibleDuplicate("1".repeat(61)+"000", ex)).toBe("g1"));
-  it("dist>6 → null", () => expect(findPossibleDuplicate("1".repeat(32)+"0".repeat(32), ex)).toBeNull());
-  it("empty → null",  () => expect(findPossibleDuplicate("1".repeat(64), [])).toBeNull());
-  it("null → null",   () => expect(findPossibleDuplicate(null, ex)).toBeNull());
+  it("exact match → g1",  () => expect(findPossibleDuplicate("1".repeat(64), ex)).toBe("g1"));
+  it("dist 3 → g1",       () => expect(findPossibleDuplicate("1".repeat(61)+"000", ex)).toBe("g1"));
+  it("dist > 6 → null",   () => expect(findPossibleDuplicate("1".repeat(32)+"0".repeat(32), ex)).toBeNull());
+  it("empty list → null", () => expect(findPossibleDuplicate("1".repeat(64), [])).toBeNull());
+  it("null hash → null",  () => expect(findPossibleDuplicate(null, ex)).toBeNull());
 });

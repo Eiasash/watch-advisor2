@@ -378,6 +378,95 @@ export function findPossibleDuplicate(newHash, existingGarments, threshold = 6) 
   return null;
 }
 
+// ─── Pure decision helper (exported for tests) ────────────────────────────────
+
+/**
+ * Apply the full classification decision given pre-computed signals.
+ * Pure function — no async, no canvas, no side effects.
+ *
+ * @param {object} fn          — result of classifyFromFilename()
+ * @param {object} px          — result of analyzeImageContent()
+ * @param {string|null} pixelColor — result of extractDominantColor()
+ * @param {string|undefined} duplicateOf — result of findPossibleDuplicate()
+ * @returns classification result object
+ */
+export function _applyDecision(fn, px, pixelColor, duplicateOf) {
+  let type, typeSource, photoType, needsReview, decisionReason;
+
+  // ── 1. Filename high-confidence ───────────────────────────────────────────
+  if (fn.type != null && fn.confidence === "high") {
+    type           = fn.type;
+    typeSource     = "filename-high";
+    photoType      = fn.isSelfieFilename ? "outfit-shot" : "garment";
+    needsReview    = fn.isSelfieFilename;
+    decisionReason = `filename keyword → ${fn.type}`;
+  }
+
+  // ── 2. Filename medium ────────────────────────────────────────────────────
+  else if (fn.type != null && fn.confidence === "medium") {
+    if (px.shoes.fires && fn.type !== "shoes") {
+      type           = "shoes";
+      typeSource     = "image-shoes-upgrade";
+      decisionReason = `image shoes overrides medium filename; ${px.shoes.reason}`;
+    } else {
+      type           = fn.type;
+      typeSource     = "filename-medium";
+      decisionReason = `camera-roll filename keyword → ${fn.type}`;
+    }
+    photoType   = fn.isSelfieFilename ? "outfit-shot" : "garment";
+    needsReview = fn.isSelfieFilename;
+  }
+
+  // ── 3–9. Image-driven ────────────────────────────────────────────────────
+  else if (fn.isSelfieFilename) {
+    type = "shirt"; typeSource = "selfie-filename";
+    photoType = "outfit-shot"; needsReview = true;
+    decisionReason = "selfie/mirror/ootd filename keyword";
+  } else if (px.shoes.fires) {
+    type = "shoes"; typeSource = "image-shoes";
+    photoType = "garment"; needsReview = false;
+    decisionReason = px.shoes.reason;
+  } else if (px.shirt.fires) {
+    type = "shirt"; typeSource = "image-shirt";
+    photoType = "garment"; needsReview = false;
+    decisionReason = px.shirt.reason;
+  } else if (px.flatLay) {
+    type = "shirt"; typeSource = "flat-lay";
+    photoType = "garment"; needsReview = false;
+    decisionReason = `flat-lay total=${px.total}`;
+  } else if (px.pants.fires) {
+    type = "pants"; typeSource = "image-pants";
+    photoType = "garment"; needsReview = false;
+    decisionReason = px.pants.reason;
+  } else if (px.ambiguous.fires) {
+    type = "shirt"; typeSource = "ambiguous";
+    photoType = "ambiguous"; needsReview = true;
+    decisionReason = px.ambiguous.reason;
+  } else {
+    const totallyBlind = !pixelColor;
+    type = "shirt"; typeSource = "blind";
+    photoType = "garment"; needsReview = totallyBlind;
+    decisionReason = totallyBlind
+      ? "no-pixels no-color no-filename"
+      : `low-pixel color=${pixelColor}`;
+  }
+
+  const color = fn.color ?? pixelColor ?? "grey";
+
+  return {
+    type, color,
+    formality:    fn.formality,
+    photoType,
+    needsReview,
+    ...(duplicateOf != null ? { duplicateOf } : {}),
+    _confidence:     fn.confidence,
+    _typeSource:     typeSource,
+    _flatLay:        px.flatLay,
+    _ambiguous:      px.ambiguous.fires,
+    _decisionReason: decisionReason,
+  };
+}
+
 // ─── Master classify ──────────────────────────────────────────────────────────
 
 export async function classify(filename, thumbnailDataURL, hash, existingGarments = []) {
@@ -388,133 +477,21 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
     extractDominantColor(thumbnailDataURL),
   ]);
 
-  let type, typeSource, photoType, needsReview, decisionReason;
-
-  // ── 1. Filename high-confidence ───────────────────────────────────────────
-  if (fn.type != null && fn.confidence === "high") {
-    type          = fn.type;
-    typeSource    = "filename-high";
-    photoType     = fn.isSelfieFilename ? "outfit-shot" : "garment";
-    needsReview   = fn.isSelfieFilename;
-    decisionReason = `filename keyword → ${fn.type}`;
-  }
-
-  // ── 2. Filename medium ────────────────────────────────────────────────────
-  else if (fn.type != null && fn.confidence === "medium") {
-    // Shoes image signal can upgrade a non-shoes medium filename (e.g. "IMG_shoes")
-    if (px.shoes.fires && fn.type !== "shoes") {
-      type       = "shoes";
-      typeSource = "image-shoes-upgrade";
-      decisionReason = `image shoes overrides medium filename; ${px.shoes.reason}`;
-    } else {
-      type       = fn.type;
-      typeSource = "filename-medium";
-      decisionReason = `camera-roll filename keyword → ${fn.type}`;
-    }
-    photoType   = fn.isSelfieFilename ? "outfit-shot" : "garment";
-    needsReview = fn.isSelfieFilename;
-  }
-
-  // ── 3–8. Image-driven (no reliable filename keyword) ──────────────────────
-  else {
-    // 3. Selfie filename keyword → outfit-shot, review
-    if (fn.isSelfieFilename) {
-      type          = "shirt";
-      typeSource    = "selfie-filename";
-      photoType     = "outfit-shot";
-      needsReview   = true;
-      decisionReason = "selfie/mirror/ootd filename keyword";
-    }
-
-    // 4. Image: shoes (terminal)
-    else if (px.shoes.fires) {
-      type          = "shoes";
-      typeSource    = "image-shoes";
-      photoType     = "garment";
-      needsReview   = false;
-      decisionReason = px.shoes.reason;
-    }
-
-    // 5. Image: hanger/shirt
-    else if (px.shirt.fires) {
-      type          = "shirt";
-      typeSource    = "image-shirt";
-      photoType     = "garment";
-      needsReview   = false;
-      decisionReason = px.shirt.reason;
-    }
-
-    // 6. Flat-lay: positive garment signal, type unknown → shirt default
-    else if (px.flatLay) {
-      type          = "shirt";
-      typeSource    = "flat-lay";
-      photoType     = "garment";
-      needsReview   = false;
-      decisionReason = `flat-lay total=${px.total}`;
-    }
-
-    // 7. Image: pants (strict — only after flat-lay is excluded)
-    else if (px.pants.fires) {
-      type          = "pants";
-      typeSource    = "image-pants";
-      photoType     = "garment";
-      needsReview   = false;
-      decisionReason = px.pants.reason;
-    }
-
-    // 8. Ambiguous image → review
-    // This catches: person photos, seated selfies, accessory shots,
-    // stacked garments, watch/wrist closeups, anything without a clear shape signal.
-    // We do NOT guess the type — safer to review.
-    else if (px.ambiguous.fires) {
-      type          = "shirt";   // safe fallback displayed to user until they correct it
-      typeSource    = "ambiguous";
-      photoType     = "ambiguous";
-      needsReview   = true;
-      decisionReason = px.ambiguous.reason;
-    }
-
-    // 9. Blind (total < 20 — near-empty canvas after bg filter)
-    else {
-      const totallyBlind = !pixelColor;
-      type          = "shirt";
-      typeSource    = "blind";
-      photoType     = "garment";
-      needsReview   = totallyBlind;
-      decisionReason = totallyBlind
-        ? "no-pixels no-color no-filename"
-        : `low-pixel color=${pixelColor}`;
-    }
-  }
-
-  const color       = fn.color ?? pixelColor ?? "grey";
   const duplicateOf = findPossibleDuplicate(hash, existingGarments) ?? undefined;
-
-  const result = {
-    type, color,
-    formality:    fn.formality,
-    photoType,
-    needsReview,
-    ...(duplicateOf ? { duplicateOf } : {}),
-    _confidence:  fn.confidence,
-    _typeSource:  typeSource,
-    _flatLay:     px.flatLay,
-    _ambiguous:   px.ambiguous.fires,
-    _decisionReason: decisionReason,
-  };
+  const result = _applyDecision(fn, px, pixelColor, duplicateOf);
 
   console.log(
     "[classifier]", filename,
-    "→", type, color,
-    "| photo:", photoType,
-    "| review:", needsReview,
-    "| src:", typeSource,
+    "→", result.type, result.color,
+    "| photo:", result.photoType,
+    "| review:", result.needsReview,
+    "| src:", result._typeSource,
     "| pixColor:", pixelColor,
     "| imgType:", px.likelyType,
     "| flatLay:", px.flatLay,
     "| ambiguous:", px.ambiguous.fires,
-    "| reason:", decisionReason,
-    ...(duplicateOf ? ["| DUPE:", duplicateOf] : []),
+    "| reason:", result._decisionReason,
+    ...(result.duplicateOf ? ["| DUPE:", result.duplicateOf] : []),
   );
 
   return result;
