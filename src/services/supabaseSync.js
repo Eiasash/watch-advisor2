@@ -17,7 +17,18 @@ function setSyncState(patch) {
   emit();
 }
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
+const IS_PLACEHOLDER = !SUPABASE_URL
+  || SUPABASE_URL.includes("example.supabase.co")
+  || SUPABASE_URL.includes("your-project");
+
 export async function pullCloudState() {
+  if (IS_PLACEHOLDER) {
+    // No real Supabase config — stay local, no console noise
+    setSyncState({ status: "local-only" });
+    return { watches: WATCH_COLLECTION, garments: [], history: [] };
+  }
+
   setSyncState({ status: "pulling" });
   try {
     const [{ data: garments }, { data: history }] = await Promise.all([
@@ -27,7 +38,7 @@ export async function pullCloudState() {
 
     setSyncState({ status: "idle" });
     return {
-      watches: WATCH_COLLECTION,   // watches are always seeded, never from DB
+      watches: WATCH_COLLECTION,
       garments: garments ?? [],
       history: (history ?? []).map(row => ({
         id: row.id,
@@ -44,6 +55,7 @@ export async function pullCloudState() {
 }
 
 export async function pushGarment(garment) {
+  if (IS_PLACEHOLDER) return;
   setSyncState({ queued: syncState.queued + 1 });
   try {
     await supabase.from("garments").upsert({
@@ -64,6 +76,7 @@ export async function pushGarment(garment) {
 }
 
 export async function pushHistoryEntry(entry) {
+  if (IS_PLACEHOLDER) return;
   setSyncState({ queued: syncState.queued + 1 });
   try {
     await supabase.from("history").upsert({

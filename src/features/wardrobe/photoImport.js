@@ -11,28 +11,28 @@ export async function runPhotoImport(file, existingGarments = []) {
   const { thumbnail, hash } = await processImage(file);
   console.log("[import] processImage DONE:", file.name, "thumb:", !!thumbnail, "hash:", hash?.length);
 
-  const tags = classify(file.name, thumbnail, hash, existingGarments);
-  console.log("[import] classified:", tags);
+  // classify is now async — awaits image decode for pixel analysis
+  const tags = await classify(file.name, thumbnail, hash, existingGarments);
 
-  // Queue background cache — do NOT await
   enqueueOriginalCache(id, file);
 
   const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim();
 
   const garment = {
     id,
-    name: baseName || "Imported Garment",
+    name:       baseName || "Imported Garment",
     type:       tags.type,
     color:      tags.color,
     formality:  tags.formality,
     photoType:  tags.photoType,
     needsReview: tags.needsReview,
     ...(tags.duplicateOf ? { duplicateOf: tags.duplicateOf } : {}),
-    hash: hash ?? "",
-    thumbnail: thumbnail ?? null,
-    photoUrl: URL.createObjectURL(file),
+    hash:       hash ?? "",
+    thumbnail:  thumbnail ?? null,
+    photoUrl:   URL.createObjectURL(file),
   };
 
-  console.log("[import] garment ready:", garment.id, garment.type, garment.color, "review:", garment.needsReview);
+  console.log("[import] garment ready:", garment.id, garment.type, garment.color,
+    "formality:", garment.formality, "review:", garment.needsReview);
   return garment;
 }

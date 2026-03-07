@@ -95,8 +95,11 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
           {/* Badges */}
           <div style={{ lineHeight: 1 }}>
             {isOutfitShot  && <Badge label="outfit shot"  color="#92400e" bg="#451a03" />}
-            {needsReview   && !isOutfitShot && <Badge label="review"  color="#92400e" bg="#451a03" />}
+            {needsReview && !isOutfitShot && <Badge label="review" color="#92400e" bg="#451a03" />}
             {isDuplicate   && <Badge label="duplicate?"  color="#7c3aed" bg="#2e1065" />}
+            {needsReview && item._confidence && (
+              <Badge label={item._confidence} color="#6b7280" bg="#111827" />
+            )}
           </div>
         </div>
       </div>

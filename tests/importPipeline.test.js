@@ -9,6 +9,27 @@ vi.mock("../src/services/imagePipeline.js", () => ({
 vi.mock("../src/services/photoQueue.js", () => ({
   enqueueOriginalCache: vi.fn(),
 }));
+// Mock pixel-dependent classifier so tests don't hang on Image/canvas
+vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    // classify calls Image/canvas internally — replace with pure-sync version
+    classify: vi.fn(async (filename) => {
+      // Delegate to classifyFromFilename so type/color inference still works in tests
+      const fn = actual.classifyFromFilename(filename);
+      return {
+        type:        fn.type ?? "shirt",
+        color:       fn.color ?? "grey",
+        formality:   fn.formality ?? 5,
+        photoType:   fn.isSelfieFilename ? "outfit-shot" : "garment",
+        needsReview: fn.isSelfieFilename || fn.confidence === "low",
+        _confidence: fn.confidence,
+        _typeSource: "filename-test",
+      };
+    }),
+  };
+});
 
 import { processImage } from "../src/services/imagePipeline.js";
 import { enqueueOriginalCache } from "../src/services/photoQueue.js";
