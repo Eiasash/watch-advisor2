@@ -3,8 +3,13 @@
  * Takes a garment's thumbnail + current labels, asks Claude Vision if they're correct.
  * Returns: { ok, correctedType, correctedColor, correctedName, confidence, reason }
  *
- * POST body: { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId }
+ * POST body: { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash }
+ *
+ * Cache: Results are stored in Netlify Blobs keyed by garment hash.
+ * Same photo = instant cache hit, zero Claude API call.
  */
+
+import { cacheGet, cacheSet } from "./_blobCache.js";
 
 const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","accessory","watch","outfit-photo"];
 const VALID_COLORS = ["black","white","navy","blue","grey","brown","tan","beige","cream","ecru",
@@ -21,10 +26,24 @@ export async function handler(event) {
   }
 
   try {
-    const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId } = JSON.parse(event.body ?? "{}");
+    const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash } = JSON.parse(event.body ?? "{}");
 
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
+
+    // ── Cache check ──────────────────────────────────────────────────────────
+    // Key by garment hash (dHash of photo) — same image = same result forever.
+    const cacheKey = hash ? `verify:${hash}` : null;
+    if (cacheKey) {
+      const cached = await cacheGet(cacheKey);
+      if (cached) {
+        return {
+          statusCode: 200,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "X-Cache": "HIT" },
+          body: JSON.stringify({ garmentId, ...cached, _cached: true }),
+        };
+      }
+    }
 
     // Build image content block — prefer base64, fall back to URL
     let imageBlock;
@@ -85,9 +104,14 @@ Set ok=true if type AND color are both correct. Set ok=false if either is wrong.
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
+    // ── Cache write ──────────────────────────────────────────────────────────
+    if (cacheKey) {
+      cacheSet(cacheKey, parsed); // fire-and-forget, never awaited
+    }
+
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "X-Cache": "MISS" },
       body: JSON.stringify({ garmentId, ...parsed }),
     };
   } catch (err) {

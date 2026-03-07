@@ -259,6 +259,7 @@ async function verifyPhoto(garment) {
     currentType: garment.type ?? garment.category,
     currentColor: garment.color,
     currentName: garment.name,
+    hash: garment.hash ?? null, // used as blob cache key server-side
   };
   if (garment.thumbnail) body.imageBase64 = garment.thumbnail;
   else if (garment.photoUrl) body.imageUrl = garment.photoUrl;
