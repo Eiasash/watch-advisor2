@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { runClassifierPipeline } from "../classifier/pipeline.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
-import { pushGarment } from "../services/supabaseSync.js";
+import { pushGarment, uploadPhoto } from "../services/supabaseSync.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
@@ -113,7 +113,16 @@ export default function ImportPanel() {
 
       addGarment(finalItem);
       garmentsRef.current = [...garmentsRef.current, finalItem];
-      pushGarment(finalItem).catch(() => {}); // fire-and-forget cloud sync
+      // Push metadata to DB
+      pushGarment(finalItem).catch(() => {});
+      // Upload thumbnail to Supabase Storage (persistent cross-device photo)
+      if (finalItem.thumbnail) {
+        uploadPhoto(finalItem.id, finalItem.thumbnail, "thumbnail")
+          .then(url => {
+            if (url) pushGarment({ ...finalItem, photoUrl: url }).catch(() => {});
+          })
+          .catch(() => {});
+      }
       imported++;
       if (group.angles.length > 0) autoAngles += group.angles.length;
     }

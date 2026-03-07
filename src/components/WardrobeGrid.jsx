@@ -5,7 +5,7 @@ import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { setCachedState } from "../services/localCache.js";
-import { deleteGarment, pushGarment } from "../services/supabaseSync.js";
+import { deleteGarment, pushGarment, deleteStoragePhoto } from "../services/supabaseSync.js";
 import GarmentEditor from "./GarmentEditor.jsx";
 
 const CELL_HEIGHT = 272;
@@ -380,8 +380,11 @@ export default function WardrobeGrid() {
     batchDelete();
     const updated = garments.filter(g => !selectedIds.has(g.id));
     setCachedState({ watches, garments: updated, history }).catch(() => {});
-    // Delete from cloud
-    deletedIds.forEach(id => deleteGarment(id).catch(() => {}));
+    // Delete from cloud DB and Storage
+    deletedIds.forEach(id => {
+      deleteGarment(id).catch(() => {});
+      deleteStoragePhoto(id).catch(() => {});
+    });
   }
   function handleBatchSetType(t) {
     batchSetType(t);

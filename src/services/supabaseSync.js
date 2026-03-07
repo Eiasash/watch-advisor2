@@ -98,6 +98,66 @@ export async function pushGarment(garment) {
   }
 }
 
+/**
+ * Upload a photo file (or base64 data URL) to Supabase Storage.
+ * Returns the public URL of the uploaded file, or null on failure.
+ *
+ * @param {string} garmentId
+ * @param {File|string} source - File object or base64 data URL
+ * @param {"thumbnail"|"original"} kind
+ */
+export async function uploadPhoto(garmentId, source, kind = "thumbnail") {
+  if (IS_PLACEHOLDER) return null;
+  try {
+    let blob;
+    if (typeof source === "string" && source.startsWith("data:")) {
+      // Convert base64 data URL → Blob
+      const [header, data] = source.split(",");
+      const mime = header.match(/:(.*?);/)?.[1] ?? "image/jpeg";
+      const bytes = atob(data);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      blob = new Blob([arr], { type: mime });
+    } else if (source instanceof File || source instanceof Blob) {
+      blob = source;
+    } else {
+      return null;
+    }
+
+    const ext = blob.type.includes("png") ? "png" : "jpg";
+    const path = `garments/${garmentId}/${kind}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("photos")
+      .upload(path, blob, { upsert: true, contentType: blob.type });
+
+    if (error) {
+      console.warn("[supabaseSync] uploadPhoto error:", error.message);
+      return null;
+    }
+
+    const { data } = supabase.storage.from("photos").getPublicUrl(path);
+    return data?.publicUrl ?? null;
+  } catch (e) {
+    console.warn("[supabaseSync] uploadPhoto failed:", e.message);
+    return null;
+  }
+}
+
+export async function deleteStoragePhoto(garmentId) {
+  if (IS_PLACEHOLDER) return;
+  try {
+    await supabase.storage.from("photos").remove([
+      `garments/${garmentId}/thumbnail.jpg`,
+      `garments/${garmentId}/thumbnail.png`,
+      `garments/${garmentId}/original.jpg`,
+      `garments/${garmentId}/original.png`,
+    ]);
+  } catch (e) {
+    console.warn("[supabaseSync] deleteStoragePhoto failed:", e.message);
+  }
+}
+
 export async function deleteGarment(id) {
   if (IS_PLACEHOLDER) return;
   setSyncState({ queued: syncState.queued + 1 });
