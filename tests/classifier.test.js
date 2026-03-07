@@ -23,6 +23,7 @@ vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
   const defaultZones = () => ({
     total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
     flatLay: false,
+    personLike: false,
     shoes:     { fires: false, reason: null },
     shirt:     { fires: false, reason: null },
     pants:     { fires: false, reason: null },
@@ -428,6 +429,62 @@ describe("findPossibleDuplicate", () => {
   it("null hash → null",  () => expect(findPossibleDuplicate(null, ex)).toBeNull());
 });
 
+// ─── analyzeImageContent — real implementation smoke tests ───────────────────
+// Uses vi.importActual to bypass the mock and exercise the real function.
+// jsdom has no canvas renderer, so data: URL paths hit the try/catch and
+// return { ...none, _error }. Both outcomes must return a stable px shape.
+
+describe("analyzeImageContent — real implementation smoke", () => {
+  it("null input returns none shape immediately without touching DOM", async () => {
+    const { analyzeImageContent } = await vi.importActual(
+      "../src/features/wardrobe/classifier.js"
+    );
+    const px = await analyzeImageContent(null, "smoke.jpg");
+    expect(px.total).toBe(0);
+    expect(px.topF).toBe(0);
+    expect(px.flatLay).toBe(false);
+    expect(px.personLike).toBe(false);
+    expect(px.shoes).toEqual({ fires: false, reason: null });
+    expect(px.shirt).toEqual({ fires: false, reason: null });
+    expect(px.pants).toEqual({ fires: false, reason: null });
+    expect(px.ambiguous).toEqual({ fires: false, reason: null });
+    expect(px.likelyType).toBeNull();
+  });
+
+  it("1×1 PNG data URL — canvas path executes and returns stable shape without throwing", async () => {
+    // jsdom does not decode images — Image.onload/onerror never fire for data: URLs.
+    // Shim global.Image so loadImageFromDataURL settles via onerror, which lets
+    // the try/catch inside analyzeImageContent execute and return { ...none, _error }.
+    const OrigImage = global.Image;
+    global.Image = class {
+      constructor() {}
+      set src(_) { Promise.resolve().then(() => this.onerror?.(new Error("jsdom-no-decode"))); }
+    };
+    try {
+      const { analyzeImageContent } = await vi.importActual(
+        "../src/features/wardrobe/classifier.js"
+      );
+      // Genuine 1×1 PNG
+      const px = await analyzeImageContent(
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=",
+        "test.png"
+      );
+      // Shape contract must hold regardless of canvas outcome
+      expect(px).toHaveProperty("total");
+      expect(px).toHaveProperty("flatLay");
+      expect(px).toHaveProperty("personLike");
+      expect(px.shoes).toHaveProperty("fires");
+      expect(px.shirt).toHaveProperty("fires");
+      expect(px.pants).toHaveProperty("fires");
+      expect(px.ambiguous).toHaveProperty("fires");
+      expect(px.shoes.fires).toBe(false);
+      expect(px.pants.fires).toBe(false);
+    } finally {
+      global.Image = OrigImage;
+    }
+  });
+});
+
 // ─── _applyDecision direct unit tests ────────────────────────────────────────
 // Tests the pure decision helper directly — no mock wrappers, no classify overhead.
 // fn = classifyFromFilename result, px = analyzeImageContent result.
@@ -533,9 +590,9 @@ describe("_applyDecision — personLike blocks pants", () => {
     expect(r._typeSource).toBe("image-pants");
   });
 
-  it("skin-tone signal (hasSkin) → personLike=true → not pants", () => {
-    // Geometry-only now: personLike requires structural all-zones presence, not skin.
-    // A high-skin-ratio garment photo has low topNB → personLike stays false → pants can fire.
+  it("pants fires when personLike=false and strict thresholds met (geometry-only path)", () => {
+    // Geometry-only: personLike requires structural all-zones presence, not skin.
+    // A garment photo has low topNB → personLike stays false → pants can fire.
     const fn = classifyFromFilename("IMG_1234.jpg");
     const px = {
       ...blankPx(),

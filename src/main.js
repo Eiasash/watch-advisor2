@@ -1,7 +1,7 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import { StrictMode, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import App from "./app/AppShell.jsx";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  React.createElement(React.StrictMode, null, React.createElement(App))
+createRoot(document.getElementById("root")).render(
+  createElement(StrictMode, null, createElement(App))
 );

@@ -206,14 +206,15 @@ export async function extractDominantColor(thumbnailDataURL) {
  *   - everything else falls to flat-lay or ambiguous
  *
  * Pants rule is deliberately narrow:
- *   topF < 0.18   (top zone nearly empty — not just "low")
- *   midF+botF > 0.82
- *   total 90–550  (excludes tiny closeups AND massive flat-lays)
- *   not flatLay, not shoes, not shirt
+ *   topF < 0.15   (top zone nearly empty — not just "low")
+ *   topNB < 12    (absolute top pixel count; person head always exceeds this)
+ *   midF+botF > 0.85
+ *   total 90–500  (excludes tiny closeups AND massive flat-lays)
+ *   not flatLay, not shoes, not shirt, not personLike
  * This catches actual folded jeans / laid-flat trousers while rejecting
  * person legs, long knitwear, seated outfit shots, and partial body crops.
  */
-export async function analyzeImageContent(thumbnailDataURL) {
+export async function analyzeImageContent(thumbnailDataURL, filename = "") {
   const none = {
     total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
     flatLay: false,
@@ -336,7 +337,7 @@ export async function analyzeImageContent(thumbnailDataURL) {
     // needsReview=true in classify().
     const ambiguousFires = !shoesFires && !shirtFires && !pantsFires && !flatLay && total >= 20;
     const ambiguousReason = ambiguousFires
-      ? `${personLike ? "person-like " : ""}no-shape-signal topF=${topF.toFixed(2)} midF=${midF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}${hasSkin ? ` skin=${skinRatio.toFixed(3)}` : ""}`
+      ? `${personLike ? "person-like " : ""}no-shape-signal topF=${topF.toFixed(2)} midF=${midF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
       : null;
 
     // ── likelyType ────────────────────────────────────────────────────────────
@@ -348,6 +349,7 @@ export async function analyzeImageContent(thumbnailDataURL) {
 
     console.log(
       "[zones]",
+      filename,
       `top:${topF.toFixed(2)}(${topNB}) mid:${midF.toFixed(2)}(${midNB}) bot:${botF.toFixed(2)}(${botNB}) total:${total}`,
       `| bilat:${bilatBalance.toFixed(2)} flatLay:${flatLay} person:${personLike}`,
       `| →${likelyType ?? (flatLay ? "flat-lay" : ambiguousFires ? "ambiguous" : "null")}`,
@@ -486,7 +488,7 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
   const fn = classifyFromFilename(filename);
 
   const [px, pixelColor] = await Promise.all([
-    analyzeImageContent(thumbnailDataURL),
+    analyzeImageContent(thumbnailDataURL, filename),
     extractDominantColor(thumbnailDataURL),
   ]);
 
