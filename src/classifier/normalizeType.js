@@ -11,34 +11,46 @@ const TYPE_MAP = {
   brogue:"shoes", brogues:"shoes", oxford:"shoes", oxfords:"shoes",
   sandal:"shoes", sandals:"shoes", trainer:"shoes", trainers:"shoes",
   chelsea:"shoes", pump:"shoes", pumps:"shoes", heels:"shoes",
+  moccasin:"shoes", moccasins:"shoes", espadrille:"shoes", espadrilles:"shoes",
+  "driving-shoe":"shoes", "monk-strap":"shoes", slipper:"shoes", slippers:"shoes",
 
   // Pants
   jeans:"pants", jean:"pants", trousers:"pants", trouser:"pants",
   chinos:"pants", chino:"pants", slacks:"pants", slack:"pants",
   shorts:"pants", joggers:"pants", jogger:"pants",
+  cargos:"pants", cargo:"pants", corduroys:"pants", corduroy:"pants",
+  khakis:"pants", sweatpants:"pants",
 
   // Jacket / outerwear
   blazer:"jacket", coat:"jacket", overcoat:"jacket", bomber:"jacket",
   parka:"jacket", fleece:"jacket", peacoat:"jacket",
   windbreaker:"jacket", raincoat:"jacket",
+  vest:"jacket", gilet:"jacket", shacket:"jacket",
+  trench:"jacket", anorak:"jacket", duffle:"jacket",
 
   // Sweater / knitwear  (keep as sweater, not jacket)
   cardigan:"sweater", pullover:"sweater", hoodie:"sweater",
   sweatshirt:"sweater", crewneck:"sweater",
   knitwear:"sweater", knit:"sweater",
+  turtleneck:"sweater", "quarter-zip":"sweater",
+  "half-zip":"sweater",
 
   // Shirt / tops
   polo:"shirt", tee:"shirt", tshirt:"shirt", "t-shirt":"shirt",
   henley:"shirt", flannel:"shirt", overshirt:"jacket",
   blouse:"shirt", top:"shirt",
+  "button-down":"shirt", "dress-shirt":"shirt",
+  "camp-shirt":"shirt", hawaiian:"shirt", linen:"shirt",
 
   // Accessories
   belts:"belt",
   sunglass:"sunglasses", shades:"sunglasses", eyewear:"sunglasses",
-  cap:"hat", beanie:"hat",
-  scarves:"scarf", muffler:"scarf",
+  cap:"hat", beanie:"hat", fedora:"hat", bucket:"hat", beret:"hat",
+  scarves:"scarf", muffler:"scarf", shawl:"scarf",
   bags:"bag", backpack:"bag", tote:"bag", briefcase:"bag",
-  accessories:"accessory",
+  messenger:"bag", satchel:"bag",
+  accessories:"accessory", tie:"accessory", cufflinks:"accessory",
+  "pocket-square":"accessory", wallet:"accessory",
 };
 
 const ACCESSORY_TYPES = new Set([

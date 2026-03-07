@@ -13,12 +13,13 @@ const watch = { id: "snowflake", brand: "Grand Seiko", style: "sport-elegant" };
 const garments = [shirt, pants, shoes, jacket, sweater, belt, outfitPhoto];
 
 describe("generateOutfit", () => {
-  it("returns all four slots", () => {
-    const result = generateOutfit(watch, garments, { temperature: 5 });
+  it("returns all five slots", () => {
+    const result = generateOutfit(watch, garments, { tempC: 5 });
     expect(result).toHaveProperty("shirt");
     expect(result).toHaveProperty("pants");
     expect(result).toHaveProperty("shoes");
     expect(result).toHaveProperty("jacket");
+    expect(result).toHaveProperty("sweater");
   });
 
   it("fills shirt, pants, shoes from wardrobe", () => {
@@ -41,41 +42,39 @@ describe("generateOutfit", () => {
   it("excludes garments with excludeFromWardrobe flag", () => {
     const excluded = { ...shirt, excludeFromWardrobe: true };
     const result = generateOutfit(watch, [excluded, pants, shoes], null);
-    // sweater can fill shirt slot since shirts include sweaters
     expect(result.shirt).toBe(null);
   });
 
-  // ─── Weather-based jacket logic ──────────────────────────────────────────
-  it("temp < 10 → jacket", () => {
-    const result = generateOutfit(watch, garments, { temperature: 5 });
+  // ─── Weather-based jacket/sweater logic (uses tempC) ───────────────────
+  it("temp < 22 → jacket and sweater", () => {
+    const result = generateOutfit(watch, garments, { tempC: 5 });
     expect(result.jacket).not.toBeNull();
     expect(result.jacket.type).toBe("jacket");
+    expect(result.sweater).not.toBeNull();
+    expect(result.sweater.type).toBe("sweater");
   });
 
-  it("temp 10–15 → jacket", () => {
-    const result = generateOutfit(watch, garments, { temperature: 12 });
-    expect(result.jacket).not.toBeNull();
+  it("temp < 22 → sweater layer populated", () => {
+    const result = generateOutfit(watch, garments, { tempC: 12 });
+    expect(result.sweater).not.toBeNull();
   });
 
-  it("temp 16–20 → sweater preferred, jacket fallback", () => {
-    const result = generateOutfit(watch, garments, { temperature: 18 });
-    expect(result.jacket).not.toBeNull();
-    expect(result.jacket.type).toBe("sweater");
-  });
-
-  it("temp >= 21 → no jacket", () => {
-    const result = generateOutfit(watch, garments, { temperature: 25 });
+  it("temp >= 22 → no jacket, no sweater", () => {
+    const result = generateOutfit(watch, garments, { tempC: 25 });
     expect(result.jacket).toBeNull();
+    expect(result.sweater).toBeNull();
   });
 
-  it("null weather → no jacket", () => {
+  it("null weather → no jacket, no sweater", () => {
     const result = generateOutfit(watch, garments, null);
     expect(result.jacket).toBeNull();
+    expect(result.sweater).toBeNull();
   });
 
-  it("undefined weather → no jacket", () => {
+  it("undefined weather → no jacket, no sweater", () => {
     const result = generateOutfit(watch, garments, undefined);
     expect(result.jacket).toBeNull();
+    expect(result.sweater).toBeNull();
   });
 
   // ─── Edge cases ──────────────────────────────────────────────────────────
@@ -85,11 +84,18 @@ describe("generateOutfit", () => {
     expect(result.pants).toBeNull();
     expect(result.shoes).toBeNull();
     expect(result.jacket).toBeNull();
+    expect(result.sweater).toBeNull();
   });
 
-  it("falls back to jacket when no sweaters available (temp 16–20)", () => {
+  it("jacket only when no sweaters available (cold)", () => {
     const noSweater = [shirt, pants, shoes, jacket];
-    const result = generateOutfit(watch, noSweater, { temperature: 18 });
+    const result = generateOutfit(watch, noSweater, { tempC: 10 });
     expect(result.jacket.type).toBe("jacket");
+    expect(result.sweater).toBeNull();
+  });
+
+  it("shirts only in shirt slot (sweaters excluded)", () => {
+    const result = generateOutfit(watch, garments, null);
+    if (result.shirt) expect(result.shirt.type).toBe("shirt");
   });
 });

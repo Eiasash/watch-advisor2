@@ -25,7 +25,7 @@ import { useRejectStore } from "../stores/rejectStore.js";
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = []) {
-  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null };
+  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null };
 
   // Strip accessories, outfit photos and excluded items from outfit consideration
   const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
@@ -37,8 +37,8 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const type = category; // slot name matches category
     const candidates = wearable.filter(g => {
       const gType = g.type ?? g.category;
-      // shirt slot accepts sweater/knitwear that weren't normalized
-      if (type === "shirt") return gType === "shirt" || gType === "sweater";
+      // shirt slot: only actual shirts (sweaters go to sweater layer)
+      if (type === "shirt") return gType === "shirt";
       return gType === type;
     });
 
@@ -60,19 +60,33 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     outfit[slotName] = scored[0].garment;
   }
 
+  // Sweater layer — separate from shirt, added when cold
+  outfit.sweater = null;
+
+  // Sweater layer — pick best sweater when cold
+  {
+    const temp = weather?.tempC ?? 22;
+    if (temp < 22) {
+      const rejectState = useRejectStore.getState();
+      const sweaters = wearable.filter(g => (g.type ?? g.category) === "sweater");
+      if (sweaters.length) {
+        const scored = sweaters.map(g => {
+          let score = scoreGarment(watch, g, weather) + diversityBonus(g, history);
+          if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
+          return { garment: g, score };
+        });
+        scored.sort((a, b) => b.score - a.score);
+        outfit.sweater = scored[0].garment;
+      }
+    }
+  }
+
   // Weather-based jacket recommendation
   if (weather?.tempC != null && !outfit.jacket) {
     const temp = weather.tempC;
     if (temp < 22) {
       const jackets = wearable.filter(g => (g.type ?? g.category) === "jacket");
-      const sweaters = wearable.filter(g => (g.type ?? g.category) === "sweater");
-
-      let layer = null;
-      if (temp < 10) layer = jackets[0] ?? sweaters[0];
-      else if (temp < 16) layer = sweaters[0] ?? jackets[0];
-      else layer = sweaters[0] ?? jackets[0];
-
-      if (layer) outfit.jacket = layer;
+      if (jackets[0]) outfit.jacket = jackets[0];
     }
   }
 

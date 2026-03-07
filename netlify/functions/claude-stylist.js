@@ -132,6 +132,11 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
       }),
     });
 
+
+    if (!response.ok) {
+      const err = await response.text();
+      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
+    }
     const data = await response.json();
     const text = data?.content?.[0]?.text ?? "";
 

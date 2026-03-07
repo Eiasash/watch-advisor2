@@ -8,19 +8,21 @@ const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","access
 
 export function generateOutfit(watch, garments, weather) {
   const wearable = garments.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
-  const shirts   = wearable.filter(g => g.type === "shirt" || g.type === "sweater");
+  const shirts   = wearable.filter(g => g.type === "shirt");
   const pants    = wearable.filter(g => g.type === "pants");
   const shoes    = wearable.filter(g => g.type === "shoes");
   const jackets  = wearable.filter(g => g.type === "jacket");
   const sweaters = wearable.filter(g => g.type === "sweater");
 
   let jacket = null;
+  let sweater = null;
 
   if (weather) {
-    const temp = weather.temperature;
-    if (temp < 10) jacket = jackets[0] ?? null;
-    else if (temp < 16) jacket = jackets[0] ?? null;
-    else if (temp < 21) jacket = sweaters[0] ?? jackets[0] ?? null;
+    const temp = weather.tempC;
+    if (temp != null && temp < 22) {
+      jacket = jackets[0] ?? null;
+      sweater = sweaters[0] ?? null;
+    }
   }
 
   return {
@@ -28,5 +30,6 @@ export function generateOutfit(watch, garments, weather) {
     pants: pants[0] ?? null,
     shoes: shoes[0] ?? null,
     jacket,
+    sweater,
   };
 }

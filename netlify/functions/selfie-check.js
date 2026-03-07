@@ -18,7 +18,7 @@ const CORS = {
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
-  if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" };
+  if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
     const { image, watches = [], context = "smart-casual", confirmedWatchId } = JSON.parse(event.body ?? "{}");
@@ -97,6 +97,7 @@ Return ONLY valid JSON, no markdown:
       }),
     });
 
+    if (!res.ok) { const err = await res.text(); return { statusCode:502, headers:CORS, body:JSON.stringify({ error:`Claude API error: ${res.status}`, detail:err }) }; }
     const data  = await res.json();
     const raw   = data.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();

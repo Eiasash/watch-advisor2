@@ -60,15 +60,22 @@ export async function handler(event) {
       }),
     });
 
+    if (!response.ok) {
+      const err = await response.text();
+      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
+    }
+
     const data = await response.json();
 
     return {
       statusCode: 200,
+      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
       body: JSON.stringify(data),
     };
   } catch (err) {
     return {
       statusCode: 500,
+      headers: { "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({ error: err.message }),
     };
   }

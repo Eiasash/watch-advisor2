@@ -149,7 +149,7 @@ export default function TodayPanel() {
       outfitPhoto: extraImg ?? null,
       loggedAt: new Date().toISOString(),
     };
-    addEntry(entry, wornGarments);
+    addEntry(entry);
     // Style learning — record worn garments in preference profile
     try {
       const { usePrefStore } = await import("../stores/prefStore.js");

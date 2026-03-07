@@ -80,6 +80,28 @@ describe("normalizeType — classifier version", () => {
   it("raincoat → jacket", () => {
     expect(normalizeType("raincoat")).toBe("jacket");
   });
+
+  // New expanded types
+  it("moccasin → shoes", () => expect(normalizeType("moccasin")).toBe("shoes"));
+  it("espadrilles → shoes", () => expect(normalizeType("espadrilles")).toBe("shoes"));
+  it("cargos → pants", () => expect(normalizeType("cargos")).toBe("pants"));
+  it("corduroys → pants", () => expect(normalizeType("corduroys")).toBe("pants"));
+  it("sweatpants → pants", () => expect(normalizeType("sweatpants")).toBe("pants"));
+  it("vest → jacket", () => expect(normalizeType("vest")).toBe("jacket"));
+  it("gilet → jacket", () => expect(normalizeType("gilet")).toBe("jacket"));
+  it("trench → jacket", () => expect(normalizeType("trench")).toBe("jacket"));
+  it("turtleneck → sweater", () => expect(normalizeType("turtleneck")).toBe("sweater"));
+  it("quarter-zip → sweater", () => expect(normalizeType("quarter-zip")).toBe("sweater"));
+  it("half-zip → sweater", () => expect(normalizeType("half-zip")).toBe("sweater"));
+  it("button-down → shirt", () => expect(normalizeType("button-down")).toBe("shirt"));
+  it("hawaiian → shirt", () => expect(normalizeType("hawaiian")).toBe("shirt"));
+  it("linen → shirt", () => expect(normalizeType("linen")).toBe("shirt"));
+  it("fedora → hat", () => expect(normalizeType("fedora")).toBe("hat"));
+  it("beret → hat", () => expect(normalizeType("beret")).toBe("hat"));
+  it("shawl → scarf", () => expect(normalizeType("shawl")).toBe("scarf"));
+  it("messenger → bag", () => expect(normalizeType("messenger")).toBe("bag"));
+  it("tie → accessory", () => expect(normalizeType("tie")).toBe("accessory"));
+  it("wallet → accessory", () => expect(normalizeType("wallet")).toBe("accessory"));
 });
 
 // ─── normalizeType (feature version — now re-exports classifier) ────────────

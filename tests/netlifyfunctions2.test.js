@@ -42,6 +42,7 @@ describe("claude-stylist handler", () => {
   it("returns parsed JSON on valid response", async () => {
     const outfitJSON = '{"shirt":"Navy polo","pants":"Grey chinos","shoes":"Brown loafers","jacket":null,"strapShoeOk":true,"explanation":"Great match"}';
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: outfitJSON }] }),
     });
     const result = await handler({
@@ -58,6 +59,7 @@ describe("claude-stylist handler", () => {
 
   it("returns fallback when no JSON in response", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: "I cannot parse this." }] }),
     });
     const result = await handler({
@@ -68,6 +70,18 @@ describe("claude-stylist handler", () => {
     const body = JSON.parse(result.body);
     expect(body.shirt).toBeNull();
     expect(body.explanation).toContain("cannot parse");
+  });
+
+  it("returns 502 on Claude API error", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false, status: 429,
+      text: () => Promise.resolve("rate limited"),
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ garments: [], watch: { brand: "JLC" } }),
+    });
+    expect(result.statusCode).toBe(502);
   });
 
   it("returns 500 on fetch error", async () => {
@@ -81,6 +95,7 @@ describe("claude-stylist handler", () => {
 
   it("filters out accessory/belt types from garment list", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: '{"shirt":null,"pants":null,"shoes":null,"jacket":null,"strapShoeOk":true,"explanation":"ok"}' }] }),
     });
     await handler({
@@ -138,6 +153,7 @@ describe("detect-duplicate handler", () => {
 
   it("returns parsed duplicate result", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({
         content: [{ text: '{"isDuplicate":true,"confidence":"high","reason":"Same shoes"}' }],
       }),
@@ -152,6 +168,7 @@ describe("detect-duplicate handler", () => {
 
   it("returns fallback when AI response is not JSON", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: "unparseable" }] }),
     });
     const result = await handler({
@@ -207,6 +224,7 @@ describe("relabel-garment handler", () => {
 
   it("returns parsed relabel result on success", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({
         content: [{ text: '{"confirmed":true,"confidence":0.95,"reason":"Looks correct","corrections":{"type":null,"color":null,"name":null,"formality":null}}' }],
       }),
@@ -265,6 +283,7 @@ describe("occasion-planner handler", () => {
   it("returns outfit recommendations on success", async () => {
     const response = { occasion_tips: "Dress smart", outfits: [], avoid: "Jeans", power_move: "Pocket square" };
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: JSON.stringify(response) }] }),
     });
     const result = await handler({
@@ -306,6 +325,7 @@ describe("watch-rec handler", () => {
   it("returns watch recommendation on success", async () => {
     const response = { top_pick: "JLC Reverso", top_pick_why: "Dress watch", strap_rec: null, runner_up: "Datejust", runner_up_why: "Alt", avoid: null, color_logic: "Silver dial" };
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: JSON.stringify(response) }] }),
     });
     const result = await handler({
@@ -355,6 +375,7 @@ describe("watch-id handler", () => {
   it("returns watch identification on success", async () => {
     const response = { brand: "Rolex", model: "Submariner", confidence: 9 };
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: JSON.stringify(response) }] }),
     });
     const result = await handler({
@@ -404,6 +425,7 @@ describe("selfie-check handler", () => {
   it("returns outfit analysis on success", async () => {
     const response = { impact: 8, vision: "Sharp look", works: "Color coordination" };
     globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ content: [{ text: JSON.stringify(response) }] }),
     });
     const result = await handler({

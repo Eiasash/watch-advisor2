@@ -79,6 +79,11 @@ Respond ONLY with valid JSON, no markdown:
       }),
     });
 
+
+    if (!response.ok) {
+      const err = await response.text();
+      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
+    }
     const data = await response.json();
     const text = data.content?.[0]?.text ?? "{}";
     const cleaned = text.replace(/```json|```/g, "").trim();

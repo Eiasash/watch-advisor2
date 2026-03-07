@@ -24,14 +24,14 @@ import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 const TABS = [
-  { key:"today",    label:"👕 Today"    },
-  { key:"wardrobe", label:"👔 Wardrobe" },
-  { key:"rotation", label:"⌚ Rotation" },
-  { key:"stats",    label:"📊 Stats"    },
-  { key:"audit",    label:"🔍 Audit"    },
-  { key:"occasion", label:"✨ Plan"     },
-  { key:"selfie",   label:"📸 Check"   },
-  { key:"watchid",  label:"🔍 ID"      },
+  { key:"today",    label:"Today",    icon:"👕" },
+  { key:"wardrobe", label:"Wardrobe", icon:"👔" },
+  { key:"rotation", label:"Rotation", icon:"⌚" },
+  { key:"stats",    label:"Stats",    icon:"📊" },
+  { key:"audit",    label:"Audit",    icon:"🔍" },
+  { key:"occasion", label:"Plan",     icon:"✨" },
+  { key:"selfie",   label:"Check",    icon:"📸" },
+  { key:"watchid",  label:"ID",       icon:"🔍" },
 ];
 
 function AppContent() {
@@ -96,21 +96,30 @@ function AppContent() {
             @media (max-width:600px) {
               .wa-tab-bar {
                 position:fixed; bottom:0; left:0; right:0; z-index:200;
-                margin:0; padding:0; gap:0; overflow:hidden;
+                margin:0; padding:0; gap:0;
+                overflow-x:auto; overflow-y:hidden;
+                -webkit-overflow-scrolling:touch;
                 background:${isDark?"#171a21":"#fff"};
                 border-top:1px solid ${isDark?"#2b3140":"#d1d5db"};
                 padding-bottom: env(safe-area-inset-bottom, 0px);
+                scrollbar-width:none;
               }
+              .wa-tab-bar::-webkit-scrollbar { display:none; }
               .wa-tab-bar button {
-                flex:1; border-radius:0 !important; border:none !important;
+                flex:0 0 auto; min-width:56px;
+                border-radius:0 !important; border:none !important;
                 border-top:2px solid transparent !important;
-                padding:10px 4px 8px !important; font-size:11px !important;
-                flex-direction:column; display:flex; align-items:center; gap:2px;
+                padding:8px 6px 6px !important; font-size:10px !important;
+                flex-direction:column; display:flex; align-items:center; gap:1px;
+                white-space:nowrap;
               }
               .wa-tab-bar button.active {
                 border-top:2px solid #3b82f6 !important;
+                background:${isDark?"#1d4ed811":"#eff6ff"};
               }
-              .wa-bottom-pad { padding-bottom:64px; }
+              .wa-bottom-pad { padding-bottom:72px; }
+              .wa-tab-icon { font-size:16px; line-height:1; }
+              .wa-tab-label { font-size:10px; line-height:1.2; }
             }
           `}</style>
           <div className="wa-tab-bar">
@@ -123,7 +132,10 @@ function AppContent() {
                   background: tab === t.key ? "#1d4ed822" : "transparent",
                   color: tab === t.key ? "#3b82f6" : isDark ? "#8b93a7" : "#6b7280",
                   cursor:"pointer", whiteSpace:"nowrap",
-                }}>{t.label}</button>
+                }}>
+                <span className="wa-tab-icon">{t.icon}</span>
+                <span className="wa-tab-label">{t.label}</span>
+              </button>
             ))}
           </div>
 

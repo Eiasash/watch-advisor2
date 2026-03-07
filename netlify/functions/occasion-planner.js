@@ -7,7 +7,7 @@ const CORS = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode:204, headers:CORS };
-  if (event.httpMethod !== "POST") return { statusCode:405, body:"Method not allowed" };
+  if (event.httpMethod !== "POST") return { statusCode:405, headers:CORS, body:JSON.stringify({ error:"Method not allowed" }) };
   try {
     const { occasion="", garments=[], watches=[] } = JSON.parse(event.body ?? "{}");
     const apiKey = process.env.CLAUDE_API_KEY;
@@ -51,6 +51,7 @@ Create 2 complete outfit recommendations. Return ONLY valid JSON, no markdown:
       body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000,
         messages:[{role:"user",content:prompt}] }),
     });
+    if (!res.ok) { const err = await res.text(); return { statusCode:502, headers:CORS, body:JSON.stringify({ error:`Claude API error: ${res.status}`, detail:err }) }; }
     const data = await res.json();
     const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}");
     cacheSet(ck, parsed);

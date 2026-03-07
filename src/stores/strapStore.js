@@ -1,12 +1,18 @@
 import { create } from "zustand";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
 
+// Overrides applied on top of seed data (watchSeed.js is immutable)
+const STRAP_OVERRIDES = {
+  "pasha-black-alligator": { label: "Dark beige leather", color: "beige", type: "leather", useCase: "Clinic / dressy — black formal shoes" },
+};
+
 function buildInitialStraps() {
   const straps = {};
   for (const watch of WATCH_COLLECTION) {
     if (!watch.straps?.length) continue;
     for (const s of watch.straps) {
-      straps[s.id] = { ...s, watchId: watch.id, thumbnail: null, photoUrl: null, wristShot: null, custom: false };
+      const override = STRAP_OVERRIDES[s.id];
+      straps[s.id] = { ...s, ...override, watchId: watch.id, thumbnail: null, photoUrl: null, wristShot: null, custom: false };
     }
   }
   return straps;
