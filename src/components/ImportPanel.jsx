@@ -5,6 +5,7 @@ import { setCachedState } from "../services/localCache.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { useToast } from "./ToastProvider.jsx";
 
 export default function ImportPanel() {
   const [busy, setBusy]         = useState(false);
@@ -15,6 +16,7 @@ export default function ImportPanel() {
   const history     = useHistoryStore(s => s.entries);
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
+  const toast = useToast();
   const garmentsRef = useRef(garments);
   garmentsRef.current = garments;
 
@@ -51,7 +53,12 @@ export default function ImportPanel() {
     setCachedState({ watches, garments: latest, history }).catch(() => {});
 
     setBusy(false);
-    if (errors.length === 0) setProgress({ done: 0, total: 0, errors: [] });
+    if (errors.length === 0) {
+      setProgress({ done: 0, total: 0, errors: [] });
+      if (toast) toast.addToast(`Imported ${imported.length} garment${imported.length !== 1 ? "s" : ""}`, "success");
+    } else {
+      if (toast) toast.addToast(`Imported ${imported.length}, ${errors.length} failed`, "warning");
+    }
     e.target.value = "";
   }
 

@@ -201,7 +201,7 @@ export default function WatchDashboard() {
           <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Outfit built around this watch
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+          <div className="wa-outfit-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
             {["shirt", "pants", "shoes", "jacket"].map(slot => (
               <OutfitSlot key={slot} slot={slot} garment={outfit[slot]} isDark={isDark} />
             ))}
