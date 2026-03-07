@@ -3,6 +3,8 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { pushGarment } from "../services/supabaseSync.js";
+import { setCachedState } from "../services/localCache.js";
 
 async function runAudit(garments, watches, history) {
   const garmentsSummary = garments
@@ -274,6 +276,8 @@ async function verifyPhoto(garment) {
 export function PhotoVerifierPanel() {
   const garments   = useWardrobeStore(s => s.garments);
   const updateGarment = useWardrobeStore(s => s.updateGarment);
+  const watches    = useWatchStore(s => s.watches);
+  const history    = useHistoryStore(s => s.entries);
   const { mode }   = useThemeStore();
   const isDark     = mode === "dark";
 
@@ -315,8 +319,19 @@ export function PhotoVerifierPanel() {
     if (fix.correctedType  && fix.correctedType  !== (g.type ?? g.category)) patch.type = fix.correctedType;
     if (fix.correctedColor && fix.correctedColor !== g.color)                 patch.color = fix.correctedColor;
     if (fix.correctedName  && fix.correctedName  !== g.name)                  patch.name = fix.correctedName;
-    if (Object.keys(patch).length) updateGarment(garmentId, patch);
-    // mark as applied
+    if (!Object.keys(patch).length) {
+      setResults(r => ({ ...r, [garmentId]: { ...r[garmentId], _applied: true } }));
+      return;
+    }
+    // 1. Update Zustand state
+    updateGarment(garmentId, patch);
+    // 2. Persist to Supabase (fire-and-forget)
+    const updated = { ...g, ...patch, needsReview: false };
+    pushGarment(updated).catch(e => console.warn("[AuditPanel] pushGarment failed:", e.message));
+    // 3. Update local IndexedDB cache so reload doesn't revert
+    const updatedGarments = garments.map(x => x.id === garmentId ? updated : x);
+    setCachedState({ watches, garments: updatedGarments, history }).catch(() => {});
+    // 4. Mark as applied in results UI
     setResults(r => ({ ...r, [garmentId]: { ...r[garmentId], _applied: true } }));
   }
 
