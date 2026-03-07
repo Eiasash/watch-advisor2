@@ -140,6 +140,7 @@ export default function WatchDashboard() {
   const [compareWatch, setCompareWatch] = useState(null);
   const [watchRecLoading, setWatchRecLoading] = useState(false);
   const [watchRecResult, setWatchRecResult] = useState(null);
+  const [outfitLogged, setOutfitLogged] = useState(false);
 
   useEffect(() => {
     if (!activeWatch && watches.length > 0) {
@@ -306,6 +307,7 @@ export default function WatchDashboard() {
             onClick={() => {
               const garmentIds = ["shirt","sweater","pants","shoes","jacket"]
                 .map(s => outfit[s]?.id).filter(Boolean);
+              if (garmentIds.length === 0) return;
               const addEntry = useHistoryStore.getState().addEntry;
               addEntry({
                 id: `dash-${Date.now()}`,
@@ -315,14 +317,20 @@ export default function WatchDashboard() {
                 context: "smart-casual",
                 loggedAt: new Date().toISOString(),
               });
+              setOutfitLogged(true);
+              setTimeout(() => setOutfitLogged(false), 3000);
             }}
+            disabled={outfitLogged}
             style={{
               width: "100%", marginBottom: 12, padding: "10px 0", borderRadius: 8,
-              border: "none", background: "#22c55e", color: "#fff",
-              fontSize: 13, fontWeight: 700, cursor: "pointer",
+              border: "none",
+              background: outfitLogged ? "#166534" : "#22c55e",
+              color: "#fff",
+              fontSize: 13, fontWeight: 700, cursor: outfitLogged ? "default" : "pointer",
+              transition: "background 0.3s",
             }}
           >
-            Wear This Outfit
+            {outfitLogged ? "Logged! Check History tab" : "Wear This Outfit"}
           </button>
 
           <div style={{

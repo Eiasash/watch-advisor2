@@ -119,6 +119,16 @@ export default function AuditPanel() {
   const [error,    setError]    = useState(null);
   const [expanded, setExpanded] = useState(false);
 
+  // Restore cached audit result on mount
+  useEffect(() => {
+    getCachedState().then(cached => {
+      if (cached._auditResult && cached._auditResult.grade) {
+        setResult(cached._auditResult);
+        setExpanded(false);
+      }
+    }).catch(() => {});
+  }, []);
+
   async function handleAudit() {
     if (garments.length < 3) {
       setError("Import at least 3 garments first.");
@@ -130,6 +140,7 @@ export default function AuditPanel() {
       const res = await runAudit(garments.filter(g => !g.excludeFromWardrobe), watches, history);
       setResult(res);
       setExpanded(true);
+      setCachedState({ _auditResult: res }).catch(() => {});
     } catch (e) {
       setError(e.message || "Audit failed");
     }
