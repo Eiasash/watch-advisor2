@@ -83,18 +83,32 @@ export function strapShoeScore(watch, garment) {
   if ((garment.type ?? garment.category) !== "shoes") return 1.0; // only applies to shoes slot
 
   const strap = (watch.strap ?? "").toLowerCase();
-  const isLeather = strap.includes("leather") || strap.includes("alligator") || strap.includes("calfskin");
-  if (!isLeather) return 1.0; // bracelet/integrated — no restriction
+
+  // Bracelet / integrated — no restriction
+  if (strap === "bracelet" || strap === "integrated" || strap === "") return 1.0;
+
+  // NATO / canvas / rubber — prefer white sneakers, no hard black/brown rule
+  const isNatoCasual = strap.includes("nato") || strap.includes("canvas") || strap.includes("rubber");
+  if (isNatoCasual) {
+    const shoeColor = (garment.color ?? "").toLowerCase();
+    return ["white", "grey", "tan"].includes(shoeColor) ? 1.0 : 0.8; // soft preference only
+  }
+
+  // Leather / alligator / calfskin / suede — strict color match
+  const isLeather = strap.includes("leather") || strap.includes("alligator")
+    || strap.includes("calfskin") || strap.includes("suede");
+  if (!isLeather) return 1.0; // unknown strap type — no restriction
 
   const shoeColor = (garment.color ?? "").toLowerCase();
   const isBlackStrap = strap.includes("black");
-  const isBrownStrap = strap.includes("brown") || strap.includes("tan") || strap.includes("cognac") || strap.includes("alligator");
+  const isBrownStrap = strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
+    || strap.includes("cognac") || strap.includes("caramel") || strap.includes("alligator");
 
   if (isBlackStrap) return ["black"].includes(shoeColor) ? 1.0 : 0.0;
   if (isBrownStrap) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;
 
-  // Generic leather — prefer earth tones
-  return ["brown", "tan", "black", "cognac"].includes(shoeColor) ? 0.9 : 0.4;
+  // Non-standard leather color (teal, olive, navy, etc.) — soft preference for white sneakers
+  return ["white", "brown", "tan", "black"].includes(shoeColor) ? 0.85 : 0.5;
 }
 
 

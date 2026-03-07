@@ -51,19 +51,29 @@ export async function handler(event) {
       })
       .join("\n");
 
+    // watch.strap = active strap string enriched by WatchDashboard (e.g. "brown leather", "teal leather", "bracelet")
+    // watch._activeStrapLabel = human label (e.g. "Dark teal Buttero leather", "Steel bracelet")
+    const activeStrapLabel = watch?._activeStrapLabel ?? watch?.strap ?? "bracelet";
     const watchDesc = watch
-      ? `${watch.brand} ${watch.model} · ${watch.dial} dial · ${watch.style} style · formality ${watch.formality}/10 · strap: ${watch.strap ?? "bracelet"}`
+      ? `${watch.brand} ${watch.model} · ${watch.dial} dial · ${watch.style} style · formality ${watch.formality}/10 · active strap: ${activeStrapLabel}`
       : "No watch";
 
     const strapRule = (() => {
       const strap = (watch?.strap ?? "").toLowerCase();
-      if (strap.includes("leather") || strap.includes("alligator") || strap.includes("calfskin")) {
+      const isLeather = strap.includes("leather") || strap.includes("alligator")
+        || strap.includes("calfskin") || strap.includes("nato")
+        || strap.includes("canvas") || strap.includes("suede");
+      if (isLeather) {
         const strapColor = strap.includes("black") ? "black"
-          : strap.includes("brown") || strap.includes("tan") || strap.includes("cognac") ? "brown"
-          : "leather-toned";
-        return `STRAP-SHOE RULE (non-negotiable): leather strap detected. Shoes MUST be ${strapColor} leather. Flag any violation.`;
+          : (strap.includes("brown") || strap.includes("tan") || strap.includes("cognac")
+             || strap.includes("honey") || strap.includes("caramel")) ? "brown"
+          : null; // non-standard color
+        if (!strapColor) {
+          return "STRAP-SHOE RULE: non-standard strap color (" + activeStrapLabel + "). Prefer white sneakers. Avoid strict black/brown shoe enforcement.";
+        }
+        return "STRAP-SHOE RULE (non-negotiable): " + activeStrapLabel + " strap — shoes MUST be " + strapColor + " leather. Flag any violation.";
       }
-      return "Strap-shoe rule: bracelet or metal strap — shoe color is unrestricted.";
+      return "Strap-shoe rule: " + activeStrapLabel + " — bracelet/integrated, shoe color unrestricted.";
     })();
 
     const contextLabel = {

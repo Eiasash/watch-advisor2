@@ -36,12 +36,30 @@ function colorScore(watch, garment) {
 
 function strapScore(watch, garment) {
   const strap = (watch.strap ?? "").toLowerCase();
-  const isLeather = strap.includes("leather") || strap.includes("alligator") || strap.includes("calfskin");
-  if (!isLeather) return 0.75; // bracelet / integrated — no restriction
 
-  const earthTones = ["brown", "tan", "black", "cognac", "dark brown", "beige"];
+  if (strap === "bracelet" || strap === "integrated" || strap === "") return 0.75;
+
+  const isNatoCasual = strap.includes("nato") || strap.includes("canvas") || strap.includes("rubber");
+  if (isNatoCasual) {
+    if (garment.type === "shoes") {
+      return ["white", "grey", "tan"].includes(garment.color?.toLowerCase()) ? 1.0 : 0.7;
+    }
+    return 0.75;
+  }
+
+  const isLeather = strap.includes("leather") || strap.includes("alligator")
+    || strap.includes("calfskin") || strap.includes("suede");
+  if (!isLeather) return 0.75;
+
   if (garment.type === "shoes") {
-    return earthTones.includes(garment.color?.toLowerCase()) ? 1 : 0.2;
+    const shoeColor = (garment.color ?? "").toLowerCase();
+    const isBlack = strap.includes("black");
+    const isBrown = strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
+      || strap.includes("cognac") || strap.includes("caramel") || strap.includes("alligator");
+    if (isBlack) return shoeColor === "black" ? 1.0 : 0.1;
+    if (isBrown) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.1;
+    // Non-standard leather (teal, olive etc.)
+    return ["white", "brown", "tan"].includes(shoeColor) ? 0.85 : 0.5;
   }
   return 0.7;
 }
@@ -110,10 +128,15 @@ export function explainOutfit(watch, outfit, dayProfile = "smart-casual") {
   const shoesName = outfit.shoes?.name ?? null;
 
   const strapLower = (watch.strap ?? "").toLowerCase();
-  const isLeatherStrap = strapLower.includes("leather") || strapLower.includes("alligator") || strapLower.includes("calfskin");
+  const activeLabel = watch._activeStrapLabel ?? watch.strap ?? "bracelet";
+  const isLeatherStrap = strapLower.includes("leather") || strapLower.includes("alligator")
+    || strapLower.includes("calfskin") || strapLower.includes("suede");
+  const isNatoStrap = strapLower.includes("nato") || strapLower.includes("canvas") || strapLower.includes("rubber");
   const strapNote = isLeatherStrap
-    ? `Leather strap — confirm shoe color matches.`
-    : `Bracelet — shoe color is unrestricted.`;
+    ? `${activeLabel} — match shoe color accordingly.`
+    : isNatoStrap
+      ? `${activeLabel} — white sneakers preferred.`
+      : `${activeLabel} — shoe color unrestricted.`;
 
   const parts = [
     `${watch.brand} ${watch.model} anchors a ${contextLabel} look.`,

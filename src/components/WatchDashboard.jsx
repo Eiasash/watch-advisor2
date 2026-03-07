@@ -10,6 +10,7 @@ import { getAISuggestion } from "../aiStylist/claudeStylist.js";
 import WatchSelector from "../features/watch/WatchSelector.jsx";
 import WatchCompare from "./WatchCompare.jsx";
 import StrapPanel from "./StrapPanel.jsx";
+import { useStrapStore } from "../stores/strapStore.js";
 
 const DIAL_SWATCH = {
   "silver-white": "#e8e8e0",
@@ -127,6 +128,9 @@ export default function WatchDashboard() {
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
 
+  const strapStraps     = useStrapStore(s => s.straps);
+  const strapActiveMap  = useStrapStore(s => s.activeStrap);
+
   const [weather, setWeather] = useState(null);
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -146,26 +150,41 @@ export default function WatchDashboard() {
 
   const selectedWatch = activeWatch ?? watches[0] ?? null;
 
+  // Enrich watch with the ACTIVE strap — overrides static seed value
+  // All engine consumers (buildOutfit, generateOutfit, explainOutfitChoice, getAISuggestion)
+  // receive this enriched object, so strap-shoe logic is always accurate
+  const enrichedWatch = useMemo(() => {
+    if (!selectedWatch) return null;
+    const activeStrapId = strapActiveMap[selectedWatch.id];
+    const activeStrapObj = activeStrapId ? strapStraps[activeStrapId] : null;
+    if (!activeStrapObj) return selectedWatch;
+    // Build strap string the engine understands: "black leather", "brown leather", "bracelet" etc.
+    const strapStr = activeStrapObj.type === "bracelet" || activeStrapObj.type === "integrated"
+      ? activeStrapObj.type
+      : `${activeStrapObj.color} ${activeStrapObj.type}`; // e.g. "brown leather", "teal leather", "navy nato"
+    return { ...selectedWatch, strap: strapStr, _activeStrapLabel: activeStrapObj.label };
+  }, [selectedWatch, strapActiveMap, strapStraps]);
+
   const weatherObj = useMemo(() => ({ tempC: weather?.tempC ?? 22 }), [weather]);
 
   const outfit = useMemo(() => {
-    if (!selectedWatch) return {};
-    const newOutfit = buildOutfit(selectedWatch, garments, weatherObj, history);
+    if (!enrichedWatch) return {};
+    const newOutfit = buildOutfit(enrichedWatch, garments, weatherObj, history);
     const hasItems = Object.values(newOutfit).some(Boolean);
     if (hasItems) return newOutfit;
-    return generateOutfit(selectedWatch, garments, weatherObj, {}, history);
-  }, [selectedWatch, garments, weatherObj, history]); // buildOutfit/generateOutfit filter accessories internally
+    return generateOutfit(enrichedWatch, garments, weatherObj, {}, history);
+  }, [enrichedWatch, garments, weatherObj, history]); // buildOutfit/generateOutfit filter accessories internally
 
   const explanation = useMemo(() => {
-    if (!selectedWatch) return "";
-    return explainOutfitChoice(selectedWatch, outfit, weather);
-  }, [selectedWatch, outfit, weather]);
+    if (!enrichedWatch) return "";
+    return explainOutfitChoice(enrichedWatch, outfit, weather);
+  }, [enrichedWatch, outfit, weather]);
 
   const weatherText = formatWeatherText(weather);
   const layerRec = weather ? getLayerRecommendation(weather.tempC) : null;
 
   const handleAIStylist = useCallback(async () => {
-    if (!selectedWatch || garments.length === 0) return;
+    if (!enrichedWatch || garments.length === 0) return;
     setAiLoading(true);
     setAiSuggestion(null);
     try {
@@ -180,13 +199,13 @@ export default function WatchDashboard() {
         : baseCtx === "formal" ? "formal"
         : baseCtx === "casual" ? "casual"
         : "smart-casual";
-      const suggestion = await getAISuggestion(garments, selectedWatch, weather, outfit, contextProfile);
+      const suggestion = await getAISuggestion(garments, enrichedWatch, weather, outfit, contextProfile);
       setAiSuggestion(suggestion);
     } catch (err) {
       console.warn("[aiStylist] failed:", err.message);
     }
     setAiLoading(false);
-  }, [selectedWatch, garments, weather, outfit]);
+  }, [enrichedWatch, garments, weather, outfit]);
 
   return (
     <div style={{
