@@ -11,5 +11,16 @@ export const WATCH_COLLECTION = [
   { id:"gmt", brand:"Rolex", model:"GMT-Master II", ref:"116710LN", dial:"black", strap:"bracelet", formality:7, style:"sport", lug:20, size:40 },
   { id:"speedmaster", brand:"Omega", model:"Speedmaster Professional 3861", ref:"310.30.42.50.01.001", dial:"black", strap:"bracelet", formality:7, style:"sport", lug:20, size:42 },
   { id:"hanhart", brand:"Hanhart", model:"Pioneer Flyback", ref:"417 ES", dial:"white-teal", strap:"leather", formality:6, style:"pilot", size:39 },
-  { id:"laco", brand:"Laco", model:"Flieger Type B", ref:"Type B", dial:"black", strap:"leather", formality:5, style:"pilot", size:42 }
+  { id:"laco", brand:"Laco", model:"Flieger Type B", ref:"Type B", dial:"black", strap:"leather", formality:5, style:"pilot", size:42 },
+  // ── Replica pieces ──────────────────────────────────────────────────────────
+  { id:"iwc_perpetual", brand:"IWC", model:"Perpetual Calendar", ref:"rep", dial:"blue", strap:"leather", formality:8, style:"dress-sport", replica:true, size:42 },
+  { id:"iwc_ingenieur", brand:"IWC", model:"Ingenieur", ref:"rep", dial:"teal", strap:"integrated", formality:7, style:"sport-elegant", replica:true, size:40 },
+  { id:"vc_overseas", brand:"Vacheron Constantin", model:"Overseas Perpetual Calendar", ref:"rep", dial:"burgundy", strap:"integrated", formality:8, style:"sport-elegant", replica:true, size:41.5 },
+  { id:"santos_35", brand:"Cartier", model:"Santos 35mm", ref:"rep", dial:"white", strap:"bracelet", formality:8, style:"dress-sport", replica:true, size:35 },
+  { id:"alpine_eagle", brand:"Chopard", model:"Alpine Eagle", ref:"rep", dial:"red", strap:"bracelet", formality:7, style:"sport-elegant", replica:true, size:41 },
+  { id:"royal_oak", brand:"Audemars Piguet", model:"Royal Oak Chronograph", ref:"rep", dial:"green", strap:"integrated", formality:7, style:"sport-elegant", replica:true, size:41 },
+  { id:"gmt_meteorite", brand:"Rolex", model:"GMT-Master II Meteorite", ref:"rep", dial:"meteorite", strap:"bracelet", formality:7, style:"sport", replica:true, size:40 },
+  { id:"daydate", brand:"Rolex", model:"Day-Date", ref:"rep", dial:"turquoise", strap:"bracelet", formality:9, style:"dress", replica:true, size:36 },
+  { id:"op_grape", brand:"Rolex", model:"Oyster Perpetual", ref:"rep", dial:"purple", strap:"bracelet", formality:6, style:"sport-elegant", replica:true, size:36 },
+  { id:"breguet_tradition", brand:"Breguet", model:"Tradition", ref:"rep", dial:"black", strap:"leather", formality:8, style:"dress", replica:true, size:40 },
 ];
