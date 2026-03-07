@@ -11,6 +11,8 @@ import { useStrapStore }    from "../stores/strapStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
 
+import SelfiePanel from "./SelfiePanel.jsx";
+
 const TODAY_ISO = new Date().toISOString().split("T")[0];
 const CONTEXT_OPTIONS = [
   { key: "smart-casual",          label: "Smart Casual" },
@@ -148,6 +150,12 @@ export default function TodayPanel() {
       loggedAt: new Date().toISOString(),
     };
     addEntry(entry);
+    // Style learning — record what was worn
+    try {
+      const { useStyleLearnStore } = await import("../stores/styleLearnStore.js");
+      const wornG = garments.filter(g => selected.has(g.id));
+      useStyleLearnStore.getState().recordWear(wornG);
+    } catch(_) {}
     setLogged(true);
   }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImg, addEntry]);
 
@@ -200,6 +208,8 @@ export default function TodayPanel() {
             <div style={{ marginTop: 12, fontSize: 12, color: muted, fontStyle: "italic" }}>{todayEntry.notes}</div>
           )}
         </div>
+
+        <SelfiePanel context={todayEntry?.context ?? "smart-casual"} />
 
         <button onClick={() => setLogged(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 10,
           border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 13, cursor: "pointer" }}>

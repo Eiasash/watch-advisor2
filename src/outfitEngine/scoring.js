@@ -31,6 +31,7 @@ const DIAL_COLOR_MAP = {
  * Score how well a garment's color matches the watch dial.
  * Returns 0-1.
  */
+import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 export function colorMatchScore(watch, garment) {
   const compatible = DIAL_COLOR_MAP[watch.dial] ?? [];
   const gc = (garment.color ?? "").toLowerCase();
@@ -112,6 +113,20 @@ export function strapShoeScore(watch, garment) {
 }
 
 
+
+// Lazy style-learn multiplier — avoids top-level indexedDB import in test env
+let _slStore = null;
+function _styleLearnMult(garment) {
+  try {
+    if (!_slStore) {
+      // eslint-disable-next-line no-undef
+      const m = globalThis.__styleLearnStore__;
+      if (m) _slStore = m;
+    }
+    return _slStore ? _slStore.getState().preferenceMultiplier(garment) : 1.0;
+  } catch (_) { return 1.0; }
+}
+
 export function scoreGarment(watch, garment, weather = {}) {
   const cm = colorMatchScore(watch, garment);
   const fm = formalityMatchScore(watch, garment);
@@ -120,6 +135,9 @@ export function scoreGarment(watch, garment, weather = {}) {
   const ss = strapShoeScore(watch, garment); // 0.0 on strap-shoe mismatch for shoes
 
   const base = cm * 2 + fm * 3 + wc * 3 + wl;
+  // Style-learning bias: gentle multiplier from preference profile (0.85–1.15)
+  const prefMult = _styleLearnMult(garment);
   // For shoes: strap-shoe is a hard multiplier — a 0.0 effectively removes the shoe from contention
-  return (garment.type ?? garment.category) === "shoes" ? base * ss : base;
+  const scored = (garment.type ?? garment.category) === "shoes" ? base * ss : base;
+  return scored * prefMult;
 }

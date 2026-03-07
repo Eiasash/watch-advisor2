@@ -11,6 +11,7 @@
 
 import { STYLE_TO_SLOTS } from "./watchStyles.js";
 import { scoreGarment } from "./scoring.js";
+import { useRejectStore } from "../stores/rejectStore.js";
 
 /**
  * Generate the best outfit around a watch.
@@ -23,7 +24,7 @@ import { scoreGarment } from "./scoring.js";
  */
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
-export function buildOutfit(watch, wardrobe, weather = {}, history = []) {
+export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = []) {
   if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null };
 
   // Strip accessories, outfit photos and excluded items from outfit consideration

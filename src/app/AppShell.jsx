@@ -13,6 +13,7 @@ import AuditPanel, { PhotoVerifierPanel } from "../components/AuditPanel.jsx";
 import SyncBar        from "../components/SyncBar.jsx";
 import SettingsPanel  from "../components/SettingsPanel.jsx";
 import ScrollToTop    from "../components/ScrollToTop.jsx";
+import OccasionPanel  from "../components/OccasionPanel.jsx";
 import CommandPalette from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
@@ -24,6 +25,7 @@ const TABS = [
   { key:"rotation", label:"⌚ Rotation" },
   { key:"stats",    label:"📊 Stats"    },
   { key:"audit",    label:"🔍 Audit"    },
+  { key:"occasion",  label:"✨ Plan"    },
 ];
 
 function AppContent() {
@@ -144,11 +146,11 @@ function AppContent() {
           {/* Stats tab */}
           {tab === "stats" && <StatsPanel />}
 
-          {/* Stats tab */}
-          {tab === "stats" && <StatsPanel />}
-
           {/* Audit tab */}
           {tab === "audit" && <><AuditPanel /><PhotoVerifierPanel /></>}
+
+          {/* Occasion planner tab */}
+          {tab === "occasion" && <OccasionPanel />}
           </div>
         </>
       )}

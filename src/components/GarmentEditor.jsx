@@ -35,12 +35,13 @@ export default function GarmentEditor({ garment, onClose }) {
   const [formality,setFormality]= useState(garment.formality ?? 5);
   const [brand,    setBrand]    = useState(garment.brand ?? "");
   const [notes,    setNotes]    = useState(garment.notes ?? "");
+  const [price,    setPrice]    = useState(garment.price ?? "");
   const [angleIdx, setAngleIdx] = useState(0); // 0 = primary photo
 
   const angles = [garment.thumbnail].concat(garment.photoAngles ?? []).filter(Boolean);
 
   function handleSave() {
-    const updates = { name, type: category, color, formality, brand, notes, needsReview: false };
+    const updates = { name, type: category, color, formality, brand, notes, needsReview: false, price: price ? parseFloat(price) : undefined };
     updateGarment(garment.id, updates);
     const updated = garments.map(g => g.id === garment.id ? { ...g, ...updates } : g);
     setCachedState({ watches, garments: updated, history }).catch(() => {});
@@ -244,6 +245,8 @@ export default function GarmentEditor({ garment, onClose }) {
 
         {/* Notes */}
         <label style={{ display:"block", fontSize:12, fontWeight:600, color:sub, marginBottom:3 }}>Notes</label>
+        <input value={price} onChange={e => setPrice(e.target.value)} type="number" min="0" step="1" style={{ ...inp, marginBottom:10 }}
+          placeholder="Price paid ₪ (for cost-per-wear)" />
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           rows={2} style={{ ...inp, resize:"vertical", marginBottom:14 }}
           placeholder="Pairing notes, fit, condition…" />

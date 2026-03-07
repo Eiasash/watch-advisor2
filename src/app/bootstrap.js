@@ -17,6 +17,8 @@ export function useBootstrap() {
   const setWeekCtx      = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates  = useWardrobeStore(s => s.setOnCallDates);
   const hydrateStraps   = useStrapStore(s => s.hydrate);
+  const hydrateRejects  = useRejectStore(s => s.hydrate);
+  const hydrateStyle    = useStyleLearnStore(s => s.hydrate);
 
   useEffect(() => {
     const off = subscribeSyncState(state => setStatus(`Sync ${state.status}`));
@@ -41,6 +43,9 @@ export function useBootstrap() {
       if (Array.isArray(cached.weekCtx) && cached.weekCtx.length === 7) setWeekCtx(cached.weekCtx);
       if (Array.isArray(cached.onCallDates)) setOnCallDates(cached.onCallDates);
       if (cached.strapStore) hydrateStraps(cached.strapStore);
+      if (cached.rejectLog) hydrateRejects(cached.rejectLog);
+      if (cached.styleLearning) hydrateStyle(cached.styleLearning);
+      else hydrateStyle({}); // triggers decay even if fresh
 
       setReady(true);
       setStatus("Ready");

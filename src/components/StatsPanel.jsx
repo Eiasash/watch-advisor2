@@ -173,6 +173,42 @@ export default function StatsPanel() {
     formal:"Formal", casual:"Casual", shift:"On-Call" };
   const CONTEXT_EMOJIS = { "smart-casual":"👔", "hospital-smart-casual":"🏥", formal:"🎩", casual:"👕", shift:"🚨" };
 
+
+  // ── Wear streak ────────────────────────────────────────────────────────────
+  const { streak, last7, last30 } = useMemo(() => {
+    const allDates = entries.map(e => e.date).filter(Boolean);
+    const uniqueDates = [...new Set(allDates)].sort().reverse();
+    let s = 0;
+    const today = new Date();
+    for (let i = 0; i < 90; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dk = d.toISOString().split("T")[0];
+      if (uniqueDates.includes(dk)) s++;
+      else if (i === 0) continue; // allow missing today
+      else break;
+    }
+    const nowStr = today.toISOString().split("T")[0];
+    const weekAgo  = new Date(today); weekAgo.setDate(weekAgo.getDate()-7);  const wk = weekAgo.toISOString().split("T")[0];
+    const monthAgo = new Date(today); monthAgo.setDate(monthAgo.getDate()-30); const mo = monthAgo.toISOString().split("T")[0];
+    return {
+      streak: s,
+      last7:  allDates.filter(d => d >= wk).length,
+      last30: allDates.filter(d => d >= mo).length,
+    };
+  }, [entries]);
+
+  // ── Cost per wear ───────────────────────────────────────────────────────────
+  const cpwItems = useMemo(() => {
+    return garments
+      .filter(g => g.price > 0)
+      .map(g => {
+        const wears = Math.max(1, entries.filter(e => (e.garmentIds ?? []).includes(g.id)).length);
+        return { g, wears, cpw: Math.round(g.price / wears) };
+      })
+      .sort((a, b) => a.cpw - b.cpw);
+  }, [garments, entries]);
+
   const maxWatch   = Math.max(...watchFreq.map(x => x.n), 1);
   const maxColor   = Math.max(...colorFreq.map(x => x[1]), 1);
   const maxType    = Math.max(...typeFreq.map(x => x[1]), 1);
@@ -300,6 +336,46 @@ export default function StatsPanel() {
               ))}
             </Section>
           )}
+
+
+          {/* ── Streaks + CPW ─────────────────────────────────────────────── */}
+          <Section title="Habit & Value" isDark={isDark}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:16 }}>
+              {[
+                { label:"Day Streak", value:streak, icon:"🔥", color:"#f59e0b" },
+                { label:"This Week",  value:last7,  icon:"📅", color:"#3b82f6" },
+                { label:"This Month", value:last30, icon:"🗓️", color:"#10b981" },
+              ].map(({ label, value, icon, color }) => (
+                <div key={label} style={{ textAlign:"center", padding:"12px 4px",
+                                          background:isDark?"#0f131a":"#f3f4f6", borderRadius:10 }}>
+                  <div style={{ fontSize:22, marginBottom:2 }}>{icon}</div>
+                  <div style={{ fontSize:24, fontWeight:900, color }}>{value}</div>
+                  <div style={{ fontSize:10, color:muted, marginTop:2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            {cpwItems.length > 0 && (
+              <>
+                <div style={{ fontSize:11, fontWeight:700, color:muted, textTransform:"uppercase",
+                              letterSpacing:"0.06em", marginBottom:8 }}>Cost Per Wear</div>
+                {cpwItems.slice(0,8).map(({ g, cpw, wears }) => (
+                  <div key={g.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+                    {(g.thumbnail||g.photoUrl)
+                      ? <img src={g.thumbnail||g.photoUrl} style={{ width:28,height:36,objectFit:"cover",borderRadius:4,flexShrink:0 }} />
+                      : <div style={{ width:28,height:36,borderRadius:4,background:isDark?"#1a1f2b":"#e5e7eb",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>👕</div>}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{g.name}</div>
+                      <div style={{ fontSize:10, color:muted }}>{wears} wear{wears!==1?"s":""}</div>
+                    </div>
+                    <div style={{ fontSize:12, fontWeight:800,
+                                  color: cpw <= 5 ? "#10b981" : cpw <= 20 ? "#f59e0b" : "#ef4444" }}>
+                      ~₪{cpw}/w
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </Section>
 
           {/* Summary card */}
           <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 18 }}>

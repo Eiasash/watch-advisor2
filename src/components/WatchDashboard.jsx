@@ -11,6 +11,8 @@ import WatchSelector from "../features/watch/WatchSelector.jsx";
 import WatchCompare from "./WatchCompare.jsx";
 import StrapPanel from "./StrapPanel.jsx";
 import { useStrapStore } from "../stores/strapStore.js";
+import WatchIDPanel   from "./WatchIDPanel.jsx";
+import { useRejectStore } from "../stores/rejectStore.js";
 
 const DIAL_SWATCH = {
   "silver-white": "#e8e8e0",
@@ -371,6 +373,66 @@ export default function WatchDashboard() {
           )}
         </>
       )}
+
+      {/* AI Watch Rec — get watch suggestion for the current outfit */}
+      {selectedWatch && (
+        <div style={{ marginTop: 14 }}>
+          <button onClick={async () => {
+            if (watchRecLoading) return;
+            setWatchRecLoading(true);
+            setWatchRecResult(null);
+            try {
+              const outfit = {
+                layers: garments.filter(g => g.type === "shirt" || g.type === "sweater"),
+                bottom: garments.find(g => g.type === "pants" || g.type === "jeans"),
+                shoes:  garments.find(g => g.type === "shoes"),
+              };
+              const res = await fetch("/.netlify/functions/watch-rec", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ outfit, watches, context: "smart-casual" }),
+              });
+              const data = await res.json();
+              if (!data.error) setWatchRecResult(data);
+            } catch(e) {} finally { setWatchRecLoading(false); }
+          }}
+          disabled={watchRecLoading}
+          style={{ width:"100%", padding:"10px 16px", borderRadius:8,
+                   border:"1px solid #f59e0b", background:"transparent",
+                   color:"#f59e0b", fontSize:13, fontWeight:700,
+                   cursor:watchRecLoading?"wait":"pointer", marginBottom:8 }}>
+            {watchRecLoading ? "Finding best watch…" : "🤖 AI Watch Pick for Outfit"}
+          </button>
+          {watchRecResult && (
+            <div style={{ borderRadius:12, padding:14, background:isDark?"#0f131a":"#fffbeb",
+                          border:"1px solid #f59e0b44", marginBottom:8 }}>
+              <div style={{ fontSize:12, fontWeight:800, color:"#f59e0b", marginBottom:6 }}>
+                ⌚ {watchRecResult.top_pick}
+              </div>
+              <div style={{ fontSize:12, color:isDark?"#e2e8f0":"#1f2937", lineHeight:1.6, marginBottom:6 }}>
+                {watchRecResult.top_pick_why}
+              </div>
+              {watchRecResult.strap_rec && <div style={{ fontSize:11, color:isDark?"#6b7280":"#9ca3af" }}>🔗 {watchRecResult.strap_rec}</div>}
+              {watchRecResult.color_logic && <div style={{ fontSize:11, color:"#8b5cf6", marginTop:4 }}>🎨 {watchRecResult.color_logic}</div>}
+              {watchRecResult.runner_up && <div style={{ fontSize:11, color:isDark?"#6b7280":"#9ca3af", marginTop:4 }}>2nd: {watchRecResult.runner_up} — {watchRecResult.runner_up_why}</div>}
+            </div>
+          )}
+
+          {/* Reject current suggestion */}
+          <button onClick={() => {
+            if (!selectedWatch) return;
+            const garmentIds = garments.slice(0,8).map(g => g.id);
+            addRejection(selectedWatch.id, garmentIds, "smart-casual");
+          }}
+          style={{ fontSize:11, color:isDark?"#4b5563":"#9ca3af", background:"none", border:"none",
+                   cursor:"pointer", width:"100%", padding:"4px 0", textAlign:"center" }}>
+            ✕ Skip this suggestion
+          </button>
+        </div>
+      )}
+
+      {/* Watch ID from photo */}
+      <WatchIDPanel />
 
       {compareWatch && selectedWatch && (
         <WatchCompare
