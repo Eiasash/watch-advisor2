@@ -24,9 +24,9 @@ const IS_PLACEHOLDER = !SUPABASE_URL
 
 export async function pullCloudState() {
   if (IS_PLACEHOLDER) {
-    // No real Supabase config — stay local, no console noise
+    // No real Supabase config — stay local, never overwrite local data
     setSyncState({ status: "local-only" });
-    return { watches: WATCH_COLLECTION, garments: [], history: [] };
+    return { watches: WATCH_COLLECTION, garments: [], history: [], _localOnly: true };
   }
 
   setSyncState({ status: "pulling" });
@@ -42,8 +42,12 @@ export async function pullCloudState() {
       // Strip ephemeral blob URLs — thumbnails are the persistent display source
       garments: (garments ?? []).map(row => ({
         ...row,
-        photoUrl: row.photo_url?.startsWith?.("blob:") ? undefined : (row.photo_url ?? row.photoUrl),
-        thumbnail: row.thumbnail_url ?? row.thumbnail ?? null,
+        type:        row.category ?? row.type,        // schema uses 'category'
+        photoUrl:    row.photo_url?.startsWith?.("blob:") ? undefined : (row.photo_url ?? row.photoUrl),
+        thumbnail:   row.thumbnail_url ?? row.thumbnail ?? null,
+        photoType:   row.photo_type ?? row.photoType ?? null,
+        needsReview: row.needs_review ?? row.needsReview ?? false,
+        duplicateOf: row.duplicate_of ?? row.duplicateOf ?? undefined,
       })),
       history: (history ?? []).map(row => ({
         id: row.id,
@@ -66,12 +70,16 @@ export async function pushGarment(garment) {
     await supabase.from("garments").upsert({
       id:            garment.id,
       name:          garment.name,
-      type:          garment.type,
+      category:      garment.type ?? garment.category,
       color:         garment.color,
-      formality:     garment.formality,
-      hash:          garment.hash,
-      thumbnail_url: garment.thumbnail,
-      photo_url:     garment.photoUrl,
+      formality:     garment.formality ?? 5,
+      hash:          garment.hash ?? "",
+      thumbnail_url: garment.thumbnail ?? null,
+      photo_url:     typeof garment.photoUrl === "string" && !garment.photoUrl.startsWith("blob:")
+                       ? garment.photoUrl : null,
+      photo_type:    garment.photoType ?? null,
+      needs_review:  garment.needsReview ?? false,
+      duplicate_of:  garment.duplicateOf ?? null,
     }, { onConflict: "id" });
   } catch (e) {
     console.warn("[supabaseSync] pushGarment failed:", e.message);

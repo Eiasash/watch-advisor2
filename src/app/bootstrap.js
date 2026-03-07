@@ -46,18 +46,32 @@ export function useBootstrap() {
       setTimeout(async () => {
         try {
           const cloud = await pullCloudState();
+          if (cloud._localOnly) return; // IS_PLACEHOLDER — never wipe local data
+
           const w = cloud.watches?.length ? cloud.watches : WATCH_COLLECTION;
-          const g = (cloud.garments ?? []).map(g => ({
+          const cloudGarments = (cloud.garments ?? []).map(g => ({
             ...g,
             photoUrl: g.photoUrl?.startsWith("blob:") ? undefined : g.photoUrl,
           }));
           const h = cloud.history ?? [];
 
+          // Safety: never replace a non-empty local wardrobe with an empty cloud result.
+          // This prevents data wipe when garments haven't been synced to the cloud yet.
+          const localCount = (cached.garments ?? []).length;
+          if (cloudGarments.length === 0 && localCount > 0) {
+            // Cloud is empty but local has items — push local up to cloud instead
+            const { pushGarment } = await import("../services/supabaseSync.js");
+            for (const g of (cached.garments ?? [])) {
+              pushGarment(g).catch(() => {});
+            }
+            return;
+          }
+
           setWatches(w);
-          setGarments(g);
+          setGarments(cloudGarments);
           setHistory(h);
           // Preserve planner state from local (cloud doesn't sync these yet)
-          await setCachedState({ watches: w, garments: g, history: h });
+          await setCachedState({ watches: w, garments: cloudGarments, history: h });
         } catch (e) {
           console.warn("[bootstrap] cloud pull failed:", e.message);
         }

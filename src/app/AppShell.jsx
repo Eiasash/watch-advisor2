@@ -76,20 +76,47 @@ function AppContent() {
         <LoadingSkeleton />
       ) : (
         <>
-          {/* Tab bar */}
-          <div style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto", paddingBottom:2 }}>
+          {/* Tab bar — top on desktop, bottom on mobile */}
+          <style>{`
+            .wa-tab-bar {
+              display:flex; gap:6; margin-bottom:16px; overflow-x:auto; padding-bottom:2px;
+            }
+            @media (max-width:600px) {
+              .wa-tab-bar {
+                position:fixed; bottom:0; left:0; right:0; z-index:200;
+                margin:0; padding:0; gap:0; overflow:hidden;
+                background:${isDark?"#171a21":"#fff"};
+                border-top:1px solid ${isDark?"#2b3140":"#d1d5db"};
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+              }
+              .wa-tab-bar button {
+                flex:1; border-radius:0 !important; border:none !important;
+                border-top:2px solid transparent !important;
+                padding:10px 4px 8px !important; font-size:11px !important;
+                flex-direction:column; display:flex; align-items:center; gap:2px;
+              }
+              .wa-tab-bar button.active {
+                border-top:2px solid #3b82f6 !important;
+              }
+              .wa-bottom-pad { padding-bottom:64px; }
+            }
+          `}</style>
+          <div className="wa-tab-bar">
             {TABS.map(t => (
-              <button key={t.key} onClick={() => setTab(t.key)} style={{
-                padding:"8px 16px", borderRadius:10, fontSize:13, fontWeight:700,
-                border:`1px solid ${tab === t.key ? "#3b82f6" : border}`,
-                background: tab === t.key ? "#1d4ed822" : "transparent",
-                color: tab === t.key ? "#3b82f6" : isDark ? "#8b93a7" : "#6b7280",
-                cursor:"pointer", whiteSpace:"nowrap",
-              }}>{t.label}</button>
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={tab === t.key ? "active" : ""}
+                style={{
+                  padding:"8px 16px", borderRadius:10, fontSize:13, fontWeight:700,
+                  border:`1px solid ${tab === t.key ? "#3b82f6" : border}`,
+                  background: tab === t.key ? "#1d4ed822" : "transparent",
+                  color: tab === t.key ? "#3b82f6" : isDark ? "#8b93a7" : "#6b7280",
+                  cursor:"pointer", whiteSpace:"nowrap",
+                }}>{t.label}</button>
             ))}
           </div>
 
           {/* Wardrobe tab */}
+          <div className="wa-bottom-pad">
           {tab === "wardrobe" && (
             <>
               <WatchDashboard />
@@ -110,6 +137,7 @@ function AppContent() {
 
           {/* Audit tab */}
           {tab === "audit" && <AuditPanel />}
+          </div>
         </>
       )}
 

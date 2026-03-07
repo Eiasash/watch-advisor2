@@ -154,11 +154,22 @@ export default function WatchDashboard() {
       background: isDark ? "#171a21" : "#ffffff",
       border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
     }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
+      {/* Header — stacks on mobile */}
+      <style>{`
+        .wa-dash-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+        .wa-dash-controls { display:flex; align-items:center; gap:8px; }
+        .wa-compare-select { display:block; }
+        @media (max-width:600px) {
+          .wa-compare-select { display:none; }
+          .wa-dash-header { margin-bottom:12px; }
+        }
+      `}</style>
+      <div className="wa-dash-header">
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>Today&apos;s Watch</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="wa-dash-controls">
           {watches.length >= 2 && (
             <select
+              className="wa-compare-select"
               value=""
               onChange={e => {
                 const w = watches.find(w => w.id === e.target.value);
@@ -216,7 +227,11 @@ export default function WatchDashboard() {
           <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Outfit built around this watch
           </div>
-          <div className="wa-outfit-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 16 }}>
+          <style>{`
+            .wa-outfit-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:16px; }
+            @media (max-width:400px) { .wa-outfit-grid { grid-template-columns:1fr; } }
+          `}</style>
+          <div className="wa-outfit-grid">
             {["shirt", "pants", "shoes", "jacket"].map(slot => (
               <OutfitSlot key={slot} slot={slot} garment={outfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />
             ))}
@@ -231,20 +246,19 @@ export default function WatchDashboard() {
             {explanation}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <button
-              onClick={handleAIStylist}
-              disabled={aiLoading || garments.length === 0}
-              style={{
-                padding: "8px 16px", borderRadius: 8, border: "1px solid #3b82f6",
-                background: aiLoading ? "#1e3a5f" : (isDark ? "#0f131a" : "#f3f4f6"),
-                color: "#3b82f6",
-                fontSize: 13, fontWeight: 600, cursor: aiLoading ? "wait" : "pointer",
-              }}
-            >
-              {aiLoading ? "Asking Claude..." : "Ask AI Stylist"}
-            </button>
-          </div>
+          <button
+            onClick={handleAIStylist}
+            disabled={aiLoading || garments.length === 0}
+            style={{
+              width: "100%", marginBottom: 14,
+              padding: "10px 16px", borderRadius: 8, border: "1px solid #3b82f6",
+              background: aiLoading ? "#1e3a5f" : (isDark ? "#0f131a" : "#f3f4f6"),
+              color: "#3b82f6",
+              fontSize: 13, fontWeight: 600, cursor: aiLoading ? "wait" : "pointer",
+            }}
+          >
+            {aiLoading ? "Asking Claude..." : "Ask AI Stylist"}
+          </button>
 
           {aiSuggestion && (
             <div style={{

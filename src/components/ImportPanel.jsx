@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { runClassifierPipeline } from "../classifier/pipeline.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
+import { pushGarment, pushGarmentDelete } from "../services/supabaseSync.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
@@ -112,6 +113,7 @@ export default function ImportPanel() {
 
       addGarment(finalItem);
       garmentsRef.current = [...garmentsRef.current, finalItem];
+      pushGarment(finalItem).catch(() => {}); // fire-and-forget cloud sync
       imported++;
       if (group.angles.length > 0) autoAngles += group.angles.length;
     }
@@ -138,57 +140,51 @@ export default function ImportPanel() {
         Import Garments
       </h3>
 
-      {/* Gallery / File picker */}
-      <label style={{
-        display:"block", padding:"24px 16px", borderRadius:12,
-        border:`2px dashed ${isDark?"#2b3140":"#d1d5db"}`,
-        textAlign:"center", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1,
-        marginBottom:10,
-      }}>
-        <input
-          type="file" multiple accept="image/*"
-          disabled={busy} onChange={handleFiles}
-          style={{ display:"none" }}
-        />
-        <div style={{ fontSize:28, marginBottom:6 }}>🗂️</div>
-        <div style={{ fontSize:13, fontWeight:600, color:isDark?"#a1a9b8":"#4b5563" }}>
-          {busy ? `Importing ${progress.done}/${progress.total}…` : "Gallery — tap to select photos"}
-        </div>
-        {busy && (
-          <div style={{ marginTop:10, height:4, borderRadius:2, background:isDark?"#2b3140":"#d1d5db", overflow:"hidden" }}>
+      {/* Import buttons — side by side on mobile */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+        {/* Gallery */}
+        <label style={{
+          display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+          padding:"20px 12px", borderRadius:12, textAlign:"center",
+          border:`2px dashed ${isDark?"#2b3140":"#d1d5db"}`,
+          cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1,
+        }}>
+          <input type="file" multiple accept="image/*" disabled={busy} onChange={handleFiles} style={{ display:"none" }} />
+          <div style={{ fontSize:26, marginBottom:4 }}>🗂️</div>
+          <div style={{ fontSize:12, fontWeight:600, color:isDark?"#a1a9b8":"#4b5563" }}>Gallery</div>
+          <div style={{ fontSize:10, color:sub, marginTop:2 }}>Multi-select</div>
+        </label>
+        {/* Camera */}
+        <label style={{
+          display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+          padding:"20px 12px", borderRadius:12, textAlign:"center",
+          border:`1px solid ${isDark?"#2b3140":"#d1d5db"}`,
+          background: isDark ? "#0f131a" : "#f9fafb",
+          cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1,
+        }}>
+          <input type="file" accept="image/*" capture="environment" disabled={busy} onChange={handleFiles} style={{ display:"none" }} />
+          <div style={{ fontSize:26, marginBottom:4 }}>📷</div>
+          <div style={{ fontSize:12, fontWeight:600, color:isDark?"#a1a9b8":"#4b5563" }}>Camera</div>
+          <div style={{ fontSize:10, color:sub, marginTop:2 }}>Take photo</div>
+        </label>
+      </div>
+      {/* Progress bar */}
+      {busy && (
+        <div style={{ marginBottom:8 }}>
+          <div style={{ fontSize:12, color:sub, marginBottom:4, textAlign:"center" }}>Importing {progress.done}/{progress.total}…</div>
+          <div style={{ height:4, borderRadius:2, background:isDark?"#2b3140":"#d1d5db", overflow:"hidden" }}>
             <div style={{ height:"100%", borderRadius:2, background:"#3b82f6", width:pct+"%", transition:"width 0.15s" }} />
           </div>
-        )}
-        {!busy && <div style={{ fontSize:11, color:sub, marginTop:3 }}>Auto-classifies · deduplicates · groups angles</div>}
-      </label>
-
-      {/* Camera button (mobile) */}
-      <label style={{
-        display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-        padding:"10px 0", borderRadius:10, cursor: busy ? "not-allowed" : "pointer",
-        border:`1px solid ${isDark?"#2b3140":"#d1d5db"}`, opacity: busy ? 0.6 : 1,
-        fontSize:13, fontWeight:600, color:isDark?"#a1a9b8":"#4b5563",
-        background: isDark ? "#0f131a" : "#f9fafb",
-      }}>
-        <input
-          type="file" accept="image/*" capture="environment"
-          disabled={busy} onChange={handleFiles}
-          style={{ display:"none" }}
-        />
-        📷 Camera
-      </label>
-
-      {progress.errors.length > 0 && !busy && (
-        <div style={{ fontSize:12, color:"#ef4444", marginTop:8 }}>
-          Failed: {progress.errors.join(", ")}
         </div>
       )}
 
-      <div style={{ fontSize:11, color:sub, marginTop:10, lineHeight:1.6 }}>
-        Name files for best tagging:
-        <br /><span style={{ color:isDark?"#6b7280":"#9ca3af" }}>shirt_navy.jpg · pants_khaki.jpg · boots_brown.jpg</span>
-        <br /><span>Camera roll (IMG_*) auto-named by detected type & color</span>
-        <br /><span>Multiple photos of same item auto-grouped as angles</span>
+      {progress.errors.length > 0 && !busy && (
+        <div style={{ fontSize:12, color:"#ef4444", marginTop:4 }}>
+          Failed: {progress.errors.join(", ")}
+        </div>
+      )}
+      <div style={{ fontSize:10, color:sub, lineHeight:1.5 }}>
+        Camera roll photos auto-named by type & color · same item auto-grouped
       </div>
     </div>
   );
