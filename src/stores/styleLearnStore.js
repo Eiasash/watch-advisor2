@@ -28,8 +28,10 @@ export const useStyleLearnStore = create((set, get) => ({
     decayAll(profile.types);
     set({ profile });
     // Persist decayed state
-    getCachedState().then(cached =>
-      setCachedState({ ...cached, styleLearning: profile })
+    import("../services/localCache.js").then(({ getCachedState, setCachedState }) =>
+      getCachedState().then(cached =>
+        setCachedState({ ...cached, styleLearning: profile })
+      )
     ).catch(() => {});
   },
 
@@ -41,8 +43,10 @@ export const useStyleLearnStore = create((set, get) => ({
         nudge(p.colors, g.color, +0.02);
         nudge(p.types, g.type || g.garmentType, +0.02);
       });
-      getCachedState().then(cached =>
-        setCachedState({ ...cached, styleLearning: p })
+      import("../services/localCache.js").then(({ getCachedState, setCachedState }) =>
+        getCachedState().then(cached =>
+          setCachedState({ ...cached, styleLearning: p })
+        )
       ).catch(() => {});
       return { profile: p };
     });
