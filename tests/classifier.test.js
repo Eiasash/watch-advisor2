@@ -59,6 +59,7 @@ import {
   classifyFromFilename,
   findPossibleDuplicate,
   classify,
+  _applyDecision,
 } from "../src/features/wardrobe/classifier.js";
 
 const dz = () => ({
@@ -424,4 +425,75 @@ describe("findPossibleDuplicate", () => {
   it("dist > 6 → null",   () => expect(findPossibleDuplicate("1".repeat(32)+"0".repeat(32), ex)).toBeNull());
   it("empty list → null", () => expect(findPossibleDuplicate("1".repeat(64), [])).toBeNull());
   it("null hash → null",  () => expect(findPossibleDuplicate(null, ex)).toBeNull());
+});
+
+// ─── _applyDecision direct unit tests ────────────────────────────────────────
+// Tests the pure decision helper directly — no mock wrappers, no classify overhead.
+// fn = classifyFromFilename result, px = analyzeImageContent result.
+
+const blankPx = () => ({
+  total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
+  flatLay: false,
+  shoes:     { fires: false, reason: null },
+  shirt:     { fires: false, reason: null },
+  pants:     { fires: false, reason: null },
+  ambiguous: { fires: false, reason: null },
+  likelyType: null,
+});
+
+describe("_applyDecision — direct policy tests", () => {
+  it("1. flatLay + pixelColor, no likelyType → shirt, flat-lay src, no review", () => {
+    const fn = classifyFromFilename("IMG_1234.jpg");      // no keyword, no color
+    const px = { ...blankPx(), flatLay: true, total: 600 };
+    const r  = _applyDecision(fn, px, "olive", undefined);
+    expect(r.type).toBe("shirt");
+    expect(r._typeSource).toBe("flat-lay");
+    expect(r.needsReview).toBe(false);
+    expect(r.color).toBe("olive");                        // pixelColor used
+  });
+
+  it("2. shoes heuristic fires → shoes, image-shoes src, no review", () => {
+    const fn = classifyFromFilename("IMG_1234.jpg");
+    const px = { ...blankPx(), shoes: { fires: true, reason: "bottom-heavy" }, likelyType: "shoes" };
+    const r  = _applyDecision(fn, px, null, undefined);
+    expect(r.type).toBe("shoes");
+    expect(r._typeSource).toBe("image-shoes");
+    expect(r.needsReview).toBe(false);
+    expect(r.photoType).toBe("garment");
+  });
+
+  it("3. pants heuristic fires → pants, image-pants src, no review", () => {
+    const fn = classifyFromFilename("IMG_1234.jpg");
+    const px = { ...blankPx(), pants: { fires: true, reason: "topF=0.10 mid+bot=90%" }, likelyType: "pants" };
+    const r  = _applyDecision(fn, px, null, undefined);
+    expect(r.type).toBe("pants");
+    expect(r._typeSource).toBe("image-pants");
+    expect(r.needsReview).toBe(false);
+    expect(r.photoType).toBe("garment");
+  });
+
+  it("4. selfie filename → outfit-shot photoType, needsReview true, type shirt", () => {
+    const fn = classifyFromFilename("mirror_selfie.jpg");
+    const r  = _applyDecision(fn, blankPx(), null, undefined);
+    expect(r.photoType).toBe("outfit-shot");
+    expect(r.needsReview).toBe(true);
+    expect(r.type).toBe("shirt");                         // safe fallback
+    expect(r._typeSource).toBe("selfie-filename");
+  });
+
+  it("5. no signals at all → shirt, blind src, needsReview true", () => {
+    const fn = classifyFromFilename("IMG_1234.jpg");      // no keyword
+    const r  = _applyDecision(fn, blankPx(), null, undefined); // no pixelColor
+    expect(r.type).toBe("shirt");
+    expect(r._typeSource).toBe("blind");
+    expect(r.needsReview).toBe(true);
+  });
+
+  it("6. duplicateOf is preserved in result", () => {
+    const fn = classifyFromFilename("shirt_navy.jpg");
+    const r  = _applyDecision(fn, blankPx(), "navy", "garment-abc123");
+    expect(r.duplicateOf).toBe("garment-abc123");
+    expect(r.type).toBe("shirt");
+    expect(r.color).toBe("navy");
+  });
 });
