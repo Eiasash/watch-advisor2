@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { fuzzySearchGarments } from "../services/supabaseSync.js";
 
 /**
  * Command palette / search overlay.
@@ -20,7 +21,9 @@ const ACTIONS = [
 export default function CommandPalette({ onClose, onAction }) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dbGarments, setDbGarments] = useState([]);
   const inputRef = useRef(null);
+  const debounceRef = useRef(null);
   const watches = useWatchStore(s => s.watches);
   const setActiveWatch = useWatchStore(s => s.setActiveWatch);
   const garments = useWardrobeStore(s => s.garments);
@@ -30,6 +33,17 @@ export default function CommandPalette({ onClose, onAction }) {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Debounced DB fuzzy search — fires when query >= 3 chars, 250ms delay
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    if (query.trim().length < 3) { setDbGarments([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      const results = await fuzzySearchGarments(query.trim(), 12);
+      setDbGarments(results);
+    }, 250);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
 
   const results = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -48,14 +62,18 @@ export default function CommandPalette({ onClose, onAction }) {
       }));
     }
 
-    // Garments
+    // Garments — merge local (instant) with DB fuzzy results, deduplicate by id
     const activeGarments = garments.filter(g => g && !g.excludeFromWardrobe);
-    const matchedGarments = activeGarments.filter(g =>
+    const localMatched = activeGarments.filter(g =>
       !q || [g.name, g.type, g.color, g.originalFilename].some(f => f?.toLowerCase().includes(q))
-    ).slice(0, 6);
-    if (matchedGarments.length > 0) {
+    );
+    const localIds = new Set(localMatched.map(g => g.id));
+    const dbOnly = dbGarments.filter(g => !localIds.has(g.id));
+    const merged = [...localMatched, ...dbOnly].slice(0, 8);
+
+    if (merged.length > 0) {
       out.push({ type: "header", label: "Garments" });
-      matchedGarments.forEach(g => out.push({
+      merged.forEach(g => out.push({
         type: "garment", id: g.id, label: g.name,
         detail: `${g.type} \u00B7 ${g.color} \u00B7 formality ${g.formality}/10`,
         icon: g.type === "shoes" ? "\u{1F45F}" : g.type === "pants" ? "\u{1F456}" : g.type === "jacket" ? "\u{1F9E5}" : "\u{1F454}",
@@ -73,7 +91,7 @@ export default function CommandPalette({ onClose, onAction }) {
     }
 
     return out;
-  }, [query, watches, garments]);
+  }, [query, watches, garments, dbGarments]);
 
   const selectableResults = results.filter(r => r.type !== "header");
 
