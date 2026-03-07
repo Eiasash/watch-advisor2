@@ -138,6 +138,8 @@ export default function WatchDashboard() {
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [compareWatch, setCompareWatch] = useState(null);
+  const [watchRecLoading, setWatchRecLoading] = useState(false);
+  const [watchRecResult, setWatchRecResult] = useState(null);
 
   useEffect(() => {
     if (!activeWatch && watches.length > 0) {
