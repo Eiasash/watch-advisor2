@@ -3,7 +3,6 @@ import { FixedSizeGrid } from "react-window";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 
-const COLUMN_COUNT  = 3;
 const CELL_HEIGHT   = 280;
 const GRID_HEIGHT   = 560;
 
@@ -154,6 +153,8 @@ export default function WardrobeGrid() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Responsive columns: 2 on small phones, 3 default
+  const COLUMN_COUNT = gridWidth < 360 ? 2 : 3;
   const cellWidth = Math.floor(gridWidth / COLUMN_COUNT);
 
   const allItems = useMemo(() => garments.filter(Boolean), [garments]);
