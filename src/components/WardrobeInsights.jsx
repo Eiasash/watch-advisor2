@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import { useThemeStore } from "../stores/themeStore.js";
 import { computeInsights } from "../wardrobe/wardrobeInsights.js";
 
 const COLOR_SWATCHES = {
@@ -8,13 +9,13 @@ const COLOR_SWATCHES = {
   beige: "#d4c4a8", olive: "#6b7c3a", green: "#2d6b3a", red: "#8b2020",
 };
 
-function StatBox({ label, value }) {
+function StatBox({ label, value, isDark }) {
   return (
     <div style={{
-      background: "#0f131a", borderRadius: 10, padding: "10px 14px",
-      border: "1px solid #2b3140", textAlign: "center", minWidth: 70,
+      background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 10, padding: "10px 14px",
+      border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`, textAlign: "center", minWidth: 70,
     }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: "#e2e8f0" }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>{value}</div>
       <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
     </div>
   );
@@ -22,23 +23,28 @@ function StatBox({ label, value }) {
 
 export default function WardrobeInsights() {
   const garments = useWardrobeStore(s => s.garments);
+  const { mode } = useThemeStore();
+  const isDark = mode === "dark";
   const insights = useMemo(() => computeInsights(garments), [garments]);
 
   if (insights.total === 0) return null;
 
   return (
     <div style={{
-      padding: "16px 18px", borderRadius: 16, background: "#171a21",
-      border: "1px solid #2b3140", marginBottom: 16,
+      padding: "16px 18px", borderRadius: 16,
+      background: isDark ? "#171a21" : "#ffffff",
+      border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`, marginBottom: 16,
     }}>
-      <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700 }}>Wardrobe Insights</h3>
+      <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>
+        Wardrobe Insights
+      </h3>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        <StatBox label="Total" value={insights.total} />
-        <StatBox label="Shirts" value={insights.shirts} />
-        <StatBox label="Pants" value={insights.pants} />
-        <StatBox label="Shoes" value={insights.shoes} />
-        <StatBox label="Jackets" value={insights.jackets} />
+        <StatBox label="Total" value={insights.total} isDark={isDark} />
+        <StatBox label="Shirts" value={insights.shirts} isDark={isDark} />
+        <StatBox label="Pants" value={insights.pants} isDark={isDark} />
+        <StatBox label="Shoes" value={insights.shoes} isDark={isDark} />
+        <StatBox label="Jackets" value={insights.jackets} isDark={isDark} />
       </div>
 
       {insights.dominantColors.length > 0 && (

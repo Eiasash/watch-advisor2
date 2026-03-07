@@ -15,6 +15,7 @@ import { enqueueOriginalCache } from "../services/photoQueue.js";
 import { normalizeType } from "./normalizeType.js";
 import { findDuplicate } from "./duplicateDetection.js";
 import { shouldExcludeAsOutfitPhoto } from "./personFilter.js";
+import { buildGarmentName } from "../features/wardrobe/garmentNamer.js";
 
 /**
  * Claude Vision fallback — called when pixel classifier has low confidence.
@@ -96,11 +97,12 @@ export async function runClassifierPipeline(file, existingGarments = []) {
   // Step 7: Cache original
   enqueueOriginalCache(id, file);
 
-  const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim();
+  const descriptiveName = buildGarmentName(file.name, category, tags.color);
 
   return {
     id,
-    name: baseName || "Imported Garment",
+    name: descriptiveName,
+    originalFilename: file.name,
     type: category,
     category,
     color: tags.color,
