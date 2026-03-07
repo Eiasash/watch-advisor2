@@ -534,17 +534,20 @@ describe("_applyDecision — personLike blocks pants", () => {
   });
 
   it("skin-tone signal (hasSkin) → personLike=true → not pants", () => {
+    // Geometry-only now: personLike requires structural all-zones presence, not skin.
+    // A high-skin-ratio garment photo has low topNB → personLike stays false → pants can fire.
     const fn = classifyFromFilename("IMG_1234.jpg");
     const px = {
       ...blankPx(),
       total: 280, topF: 0.13, midF: 0.45, botF: 0.42, bilatBalance: 0.68,
-      personLike: true,   // skin detected
-      pants:     { fires: false, reason: null },
-      ambiguous: { fires: true, reason: "person-like skin=0.062" },
+      personLike: false,  // skin alone no longer triggers personLike
+      pants:     { fires: true, reason: "topF=0.13 topNB=8 mid+bot=87% total=280" },
+      likelyType: "pants",
     };
+    // With personLike=false and pants.fires=true, pants should fire (geometry-driven)
     const r = _applyDecision(fn, px, null, undefined);
-    expect(r.type).not.toBe("pants");
-    expect(r.needsReview).toBe(true);
+    expect(r.type).toBe("pants");
+    expect(r._typeSource).toBe("image-pants");
   });
 });
 
@@ -566,14 +569,14 @@ describe("classify — person-photo / ambiguous must not become pants", () => {
     expect(r.photoType).toBe("ambiguous");
   });
 
-  it("skin-toned image (hasSkin) → ambiguous review, not pants", async () => {
+  it("geometry-only personLike (all zones populated) → not pants, ambiguous review", async () => {
     const m = await import("../src/features/wardrobe/classifier.js");
     m.analyzeImageContent.mockResolvedValueOnce({
       ...dz(),
       total: 260, topF: 0.12, midF: 0.46, botF: 0.42, bilatBalance: 0.65,
-      personLike: true,
+      personLike: true,   // geometry: topNB>18, midNB>40, botNB>40
       pants:     { fires: false, reason: null },
-      ambiguous: { fires: true, reason: "person-like skin=0.071" },
+      ambiguous: { fires: true, reason: "person-like all-zones" },
     });
     const r = await classify("IMG20260221153308.jpg", "data:image/jpeg;base64,x", "", []);
     expect(r.type).not.toBe("pants");

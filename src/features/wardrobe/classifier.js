@@ -261,48 +261,28 @@ export async function analyzeImageContent(thumbnailDataURL) {
     const bilatBalance = minLR / (maxLR || 1);
 
     // ── Flat-lay ──────────────────────────────────────────────────────────────
-    // A garment filling the frame evenly: high total, all zones within 14pp of each other.
-    // This is the NORMAL case for wardrobe photography. Positive signal.
     const zoneSpread = Math.max(topF, midF, botF) - Math.min(topF, midF, botF);
     const flatLay    = total > 170 && zoneSpread < 0.14;
 
-    // ── Person-like signal ────────────────────────────────────────────────────
-    // A person standing or seated in frame has:
-    //   - absolute pixels in the top zone (head/shoulders always present, even if small)
-    //   - non-trivial content in all three zones
-    //   - typically medium-to-high total (person fills significant frame area)
+    // ── Person-like signal (geometry only, no color) ──────────────────────────
+    // A standing/seated person fills all three zones with meaningful absolute mass.
+    // Flat garments on a bed do NOT — they either have near-zero top (jeans cropped
+    // at waistband) or get caught by flatLay above.
     //
-    // Skin-tone scan: count pixels that fall in flesh/skin range
-    //   (warm, desaturated-mid: reddish > green > blue, all mid-brightness)
-    // This is intentionally loose — just needs to flag "likely person present".
-    let skinPixels = 0;
-    for (let y = 0; y < SIZE; y++) {
-      for (let x = 0; x < SIZE; x++) {
-        const i = (y * SIZE + x) * 4;
-        const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-        if (a < 100) continue;
-        // Skin tone: r dominant, warm, mid-brightness, not too saturated
-        if (r > 140 && r > g + 15 && r > b + 20 && g > 80 && b > 50
-            && r < 240 && g < 200 && b < 180) {
-          skinPixels++;
-        }
-      }
-    }
-    const skinRatio = skinPixels / (SIZE * SIZE);
-
-    // personLike: fires when BOTH:
-    //   A. top zone has meaningful absolute content (topNB > 10 raw pixels at 30×30)
-    //      — folded jeans cropped at waistband have topNB ≈ 0–5; a person always has more
-    //   B. content present in all three zones (nothing near-zero)
-    // OR:
-    //   C. skin tone ratio exceeds threshold (visible flesh in image)
-    const allZonesPresent = topNB > 10 && midNB > 10 && botNB > 10;
-    const hasSkin         = skinRatio > 0.04;  // >4% of 30×30 canvas is skin-toned
-    const personLike      = (allZonesPresent && total >= 120) || hasSkin;
+    // Requirements (ALL):
+    //   topNB > 18    — head/shoulders always produce real top-zone pixels
+    //   midNB > 40    — torso mass
+    //   botNB > 40    — legs/feet present
+    //   total >= 180  — minimum frame occupancy for a person
+    //   !flatLay      — flat-lays are garments, not people
+    //
+    // Deliberately NOT using skin-tone: warm fabric (tan, beige, camel, brown leather)
+    // matches any loose skin heuristic at 30×30 and produces false person signals.
+    // Geometry is more reliable at this resolution.
+    const personStructure = topNB > 18 && midNB > 40 && botNB > 40 && total >= 180;
+    const personLike      = personStructure && !flatLay;
     const personReason    = personLike
-      ? (hasSkin
-          ? `skin skinRatio=${skinRatio.toFixed(3)}`
-          : `all-zones topNB=${topNB} midNB=${midNB} botNB=${botNB} total=${total}`)
+      ? `all-zones topNB=${topNB} midNB=${midNB} botNB=${botNB} total=${total}`
       : null;
 
     // ── Shoes (terminal) ─────────────────────────────────────────────────────
@@ -368,7 +348,7 @@ export async function analyzeImageContent(thumbnailDataURL) {
 
     console.log(
       "[zones]",
-      `top:${topF.toFixed(2)}(${topNB}) mid:${midF.toFixed(2)} bot:${botF.toFixed(2)} total:${total}`,
+      `top:${topF.toFixed(2)}(${topNB}) mid:${midF.toFixed(2)}(${midNB}) bot:${botF.toFixed(2)}(${botNB}) total:${total}`,
       `| bilat:${bilatBalance.toFixed(2)} flatLay:${flatLay} person:${personLike}`,
       `| →${likelyType ?? (flatLay ? "flat-lay" : ambiguousFires ? "ambiguous" : "null")}`,
       shoesFires     ? `| shoes:${shoesReason}`         : "",
