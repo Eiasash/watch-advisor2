@@ -1,25 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
-import { pickWatchForCalendar } from "../engine/calendarWatchRotation.js";
 import { generateOutfit, explainOutfit } from "../engine/outfitEngine.js";
-
-const PROFILE_LABEL = {
-  "hospital-smart-casual": "Hospital · Smart Casual",
-  "smart-casual": "Smart Casual",
-  "formal": "Formal",
-  "casual": "Casual",
-  "travel": "Travel",
-};
-
-const PROFILE_COLOR = {
-  "hospital-smart-casual": "#3b82f6",
-  "smart-casual": "#6366f1",
-  "formal": "#d4a017",
-  "casual": "#22c55e",
-  "travel": "#f97316",
-};
+import { getWeather } from "../features/weather/getWeather.js";
+import { weatherDisplayText } from "../features/weather/weatherRules.js";
+import WatchSelector from "../features/watch/WatchSelector.jsx";
 
 const DIAL_SWATCH = {
   "silver-white": "#e8e8e0",
@@ -87,57 +73,81 @@ function OutfitSlot({ slot, garment }) {
 }
 
 export default function WatchDashboard() {
-  const watches  = useWatchStore(s => s.watches);
-  const garments = useWardrobeStore(s => s.garments);
-  const history  = useHistoryStore(s => s.entries);
+  const watches        = useWatchStore(s => s.watches);
+  const activeWatch    = useWatchStore(s => s.activeWatch);
+  const setActiveWatch = useWatchStore(s => s.setActiveWatch);
+  const garments       = useWardrobeStore(s => s.garments);
+  const history        = useHistoryStore(s => s.entries);
 
-  // Simulate today's events — in production this comes from a calendar service
-  const todayEvents = useMemo(() => {
-    const hour = new Date().getHours();
-    return hour >= 6 && hour <= 22 ? ["hospital rounds", "ward work"] : [];
+  const [weather, setWeather] = useState(null);
+
+  // Auto-select first watch if none selected
+  useEffect(() => {
+    if (!activeWatch && watches.length > 0) {
+      setActiveWatch(watches[0]);
+    }
+  }, [watches, activeWatch, setActiveWatch]);
+
+  // Fetch weather in background
+  useEffect(() => {
+    getWeather()
+      .then(setWeather)
+      .catch(err => console.warn("[weather] failed:", err.message));
   }, []);
 
-  const { primary, backup, dayProfile } = useMemo(() =>
-    pickWatchForCalendar(watches, todayEvents, { tempC: 22 }, history),
-  [watches, todayEvents, history]);
+  const selectedWatch = activeWatch ?? watches[0] ?? null;
 
+  // Regenerate outfit when watch, wardrobe, or weather changes
   const outfit = useMemo(() =>
-    primary ? generateOutfit(primary, garments, { tempC: 22 }, {}, history) : {},
-  [primary, garments, history]);
+    selectedWatch
+      ? generateOutfit(selectedWatch, garments, { tempC: weather?.temperature ?? 22 }, {}, history)
+      : {},
+  [selectedWatch, garments, weather, history]);
 
   const explanation = useMemo(() =>
-    primary ? explainOutfit(primary, outfit, dayProfile) : "",
-  [primary, outfit, dayProfile]);
+    selectedWatch ? explainOutfit(selectedWatch, outfit, "smart-casual") : "",
+  [selectedWatch, outfit]);
 
-  const profileColor = PROFILE_COLOR[dayProfile] ?? "#6366f1";
+  const weatherText = weatherDisplayText(weather);
 
   return (
     <div style={{
       padding: "18px 20px", borderRadius: 18, marginBottom: 20,
       background: "#171a21", border: "1px solid #2b3140",
     }}>
-      {/* Header row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+      {/* Header row — watch selector replaces fixed profile badge */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Today's Watch</h2>
-        <span style={{
-          fontSize: 12, fontWeight: 600, letterSpacing: "0.06em",
-          background: `${profileColor}22`, color: profileColor,
-          borderRadius: 6, padding: "3px 10px", textTransform: "uppercase",
-        }}>
-          {PROFILE_LABEL[dayProfile] ?? dayProfile}
-        </span>
+        {watches.length > 0 && (
+          <WatchSelector
+            watches={watches}
+            activeWatch={selectedWatch}
+            onChange={setActiveWatch}
+          />
+        )}
       </div>
 
-      {!primary && (
+      {/* Weather display */}
+      {weatherText && (
+        <div style={{
+          fontSize: 13, color: "#8b93a7", marginBottom: 14,
+          padding: "6px 12px", borderRadius: 8,
+          background: "#0f131a", border: "1px solid #2b3140",
+          display: "inline-block",
+        }}>
+          Weather: {weatherText}
+        </div>
+      )}
+
+      {!selectedWatch && (
         <div style={{ color: "#6b7280", fontSize: 14 }}>No watches available.</div>
       )}
 
-      {primary && (
+      {selectedWatch && (
         <>
-          {/* Watch cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-            <WatchCard watch={primary} label="Primary" accent={profileColor} />
-            <WatchCard watch={backup}  label="Backup"  accent="#4b5563" />
+          {/* Watch card */}
+          <div style={{ marginBottom: 18 }}>
+            <WatchCard watch={selectedWatch} label="Selected" accent="#3b82f6" />
           </div>
 
           {/* Outfit slots */}
@@ -154,7 +164,7 @@ export default function WatchDashboard() {
           <div style={{
             fontSize: 14, lineHeight: 1.6, color: "#a1a9b8",
             background: "#0f131a", borderRadius: 10,
-            padding: "12px 14px", borderLeft: `3px solid ${profileColor}`,
+            padding: "12px 14px", borderLeft: "3px solid #3b82f6",
           }}>
             {explanation}
           </div>
