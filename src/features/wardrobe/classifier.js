@@ -213,7 +213,7 @@ export async function extractDominantColor(thumbnailDataURL) {
  * This catches actual folded jeans / laid-flat trousers while rejecting
  * person legs, long knitwear, seated outfit shots, and partial body crops.
  */
-export async function analyzeImageContent(thumbnailDataURL) {
+export async function analyzeImageContent(thumbnailDataURL, filename = "") {
   const none = {
     total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
     flatLay: false,
@@ -348,6 +348,7 @@ export async function analyzeImageContent(thumbnailDataURL) {
 
     console.log(
       "[zones]",
+      filename,
       `top:${topF.toFixed(2)}(${topNB}) mid:${midF.toFixed(2)}(${midNB}) bot:${botF.toFixed(2)}(${botNB}) total:${total}`,
       `| bilat:${bilatBalance.toFixed(2)} flatLay:${flatLay} person:${personLike}`,
       `| →${likelyType ?? (flatLay ? "flat-lay" : ambiguousFires ? "ambiguous" : "null")}`,
@@ -486,7 +487,7 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
   const fn = classifyFromFilename(filename);
 
   const [px, pixelColor] = await Promise.all([
-    analyzeImageContent(thumbnailDataURL),
+    analyzeImageContent(thumbnailDataURL, filename),
     extractDominantColor(thumbnailDataURL),
   ]);
 
