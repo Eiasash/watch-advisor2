@@ -17,6 +17,7 @@ import ScrollToTop    from "../components/ScrollToTop.jsx";
 import OccasionPanel  from "../components/OccasionPanel.jsx";
 import OccasionPlanner from "../components/OccasionPlanner.jsx";
 import SelfiePanel    from "../components/SelfiePanel.jsx";
+import WatchIDPanel   from "../components/WatchIDPanel.jsx";
 import CommandPalette from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
