@@ -259,11 +259,13 @@ async function verifyPhoto(garment) {
     currentType: garment.type ?? garment.category,
     currentColor: garment.color,
     currentName: garment.name,
-    hash: garment.hash ?? null, // used as blob cache key server-side
+    hash: garment.hash ?? null,
   };
-  if (garment.thumbnail) body.imageBase64 = garment.thumbnail;
-  else if (garment.photoUrl) body.imageUrl = garment.photoUrl;
-  else return null; // no photo
+  const photo = garment.thumbnail || garment.photoUrl;
+  if (!photo) return null;
+  // Route correctly: Storage URLs go as imageUrl, data URIs go as imageBase64
+  if (photo.startsWith("data:")) body.imageBase64 = photo;
+  else body.imageUrl = photo;
 
   const res = await fetch("/.netlify/functions/verify-garment-photo", {
     method: "POST",

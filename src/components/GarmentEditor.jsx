@@ -63,6 +63,7 @@ export default function GarmentEditor({ garment, onClose }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // Route correctly: Storage URLs are https://, data URIs start with data:
           image: photo,
           current: { type: category, color, name, formality },
         }),
@@ -78,12 +79,24 @@ export default function GarmentEditor({ garment, onClose }) {
   const applyAiCorrections = useCallback(() => {
     if (!aiResult?.corrections) return;
     const c = aiResult.corrections;
-    if (c.type)      setCategory(c.type);
-    if (c.color)     setColor(c.color);
-    if (c.name)      setName(c.name);
-    if (c.formality) setFormality(c.formality);
+    const newCategory = c.type     ?? category;
+    const newColor    = c.color    ?? color;
+    const newName     = c.name     ?? name;
+    const newFormality = c.formality != null ? c.formality : formality;
+    // Update form state
+    if (c.type)      setCategory(newCategory);
+    if (c.color)     setColor(newColor);
+    if (c.name)      setName(newName);
+    if (c.formality) setFormality(newFormality);
+    // Auto-save immediately — don't rely on user clicking Save
+    const updates = { name: newName, type: newCategory, color: newColor, formality: newFormality, needsReview: false };
+    updateGarment(garment.id, updates);
+    const updated = { ...garment, ...updates };
+    pushGarment(updated).catch(e => console.warn("[GarmentEditor] applyAiCorrections push failed:", e.message));
+    const updatedGarments = garments.map(g => g.id === garment.id ? updated : g);
+    setCachedState({ watches, garments: updatedGarments, history }).catch(() => {});
     setAiResult(null);
-  }, [aiResult]);
+  }, [aiResult, category, color, name, formality, garment, garments, watches, history, updateGarment]);
 
   function handleDelete() {
     removeGarment(garment.id);
