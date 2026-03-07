@@ -9,7 +9,9 @@ import WardrobeGrid   from "../components/WardrobeGrid.jsx";
 import WeekPlanner    from "../components/WeekPlanner.jsx";
 import TodayPanel     from "../components/TodayPanel.jsx";
 import StatsPanel     from "../components/StatsPanel.jsx";
-import AuditPanel     from "../components/AuditPanel.jsx";
+import TodayPanel     from "../components/TodayPanel.jsx";
+import StatsPanel     from "../components/StatsPanel.jsx";
+import AuditPanel, { PhotoVerifierPanel } from "../components/AuditPanel.jsx";
 import SyncBar        from "../components/SyncBar.jsx";
 import SettingsPanel  from "../components/SettingsPanel.jsx";
 import ScrollToTop    from "../components/ScrollToTop.jsx";
@@ -138,14 +140,17 @@ function AppContent() {
             </>
           )}
 
-          {/* Rotation tab */}
+          {/* Rotation/Planner tab */}
           {tab === "rotation" && <WeekPlanner />}
 
           {/* Stats tab */}
           {tab === "stats" && <StatsPanel />}
 
+          {/* Stats tab */}
+          {tab === "stats" && <StatsPanel />}
+
           {/* Audit tab */}
-          {tab === "audit" && <AuditPanel />}
+          {tab === "audit" && <><AuditPanel /><PhotoVerifierPanel /></>}
           </div>
         </>
       )}

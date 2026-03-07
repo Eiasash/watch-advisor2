@@ -249,3 +249,160 @@ export default function AuditPanel() {
     </div>
   );
 }
+
+// ── Photo Verifier Section ────────────────────────────────────────────────────
+async function verifyPhoto(garment) {
+  const body = {
+    garmentId: garment.id,
+    currentType: garment.type ?? garment.category,
+    currentColor: garment.color,
+    currentName: garment.name,
+  };
+  if (garment.thumbnail) body.imageBase64 = garment.thumbnail;
+  else if (garment.photoUrl) body.imageUrl = garment.photoUrl;
+  else return null; // no photo
+
+  const res = await fetch("/.netlify/functions/verify-garment-photo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return null;
+  return await res.json();
+}
+
+export function PhotoVerifierPanel() {
+  const garments   = useWardrobeStore(s => s.garments);
+  const updateGarment = useWardrobeStore(s => s.updateGarment);
+  const { mode }   = useThemeStore();
+  const isDark     = mode === "dark";
+
+  const [results, setResults]   = useState({}); // { [id]: verifyResult }
+  const [running, setRunning]   = useState(false);
+  const [done, setDone]         = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const bg     = isDark ? "#13161f" : "#ffffff";
+  const border = isDark ? "#2b3140" : "#e5e7eb";
+  const text   = isDark ? "#e2e8f0" : "#1f2937";
+  const sub    = isDark ? "#6b7280" : "#9ca3af";
+  const card   = isDark ? "#0f131a" : "#f9fafb";
+
+  const withPhoto = garments.filter(g =>
+    g.type !== "outfit-photo" && !g.excludeFromWardrobe && (g.thumbnail || g.photoUrl)
+  );
+
+  async function runVerification() {
+    setRunning(true); setDone(false); setResults({}); setProgress(0);
+    const out = {};
+    for (let i = 0; i < withPhoto.length; i++) {
+      const g = withPhoto[i];
+      try {
+        const r = await verifyPhoto(g);
+        if (r) out[g.id] = r;
+      } catch { /* skip */ }
+      setProgress(Math.round(((i + 1) / withPhoto.length) * 100));
+    }
+    setResults(out);
+    setRunning(false);
+    setDone(true);
+  }
+
+  function applyFix(garmentId, fix) {
+    const g = garments.find(x => x.id === garmentId);
+    if (!g) return;
+    const patch = {};
+    if (fix.correctedType  && fix.correctedType  !== (g.type ?? g.category)) patch.type = fix.correctedType;
+    if (fix.correctedColor && fix.correctedColor !== g.color)                 patch.color = fix.correctedColor;
+    if (fix.correctedName  && fix.correctedName  !== g.name)                  patch.name = fix.correctedName;
+    if (Object.keys(patch).length) updateGarment(garmentId, patch);
+    // mark as applied
+    setResults(r => ({ ...r, [garmentId]: { ...r[garmentId], _applied: true } }));
+  }
+
+  const issues = Object.values(results).filter(r => !r.ok && !r._applied);
+  const oks    = Object.values(results).filter(r => r.ok);
+
+  return (
+    <div style={{ background: bg, borderRadius: 16, border: `1px solid ${border}`, padding: 18, marginTop: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: text }}>📸 AI Photo Verifier</div>
+          <div style={{ fontSize: 12, color: sub, marginTop: 2 }}>
+            {withPhoto.length} garments with photos — Claude Vision checks each label
+          </div>
+        </div>
+        <button
+          onClick={runVerification}
+          disabled={running || withPhoto.length === 0}
+          style={{ padding: "8px 16px", borderRadius: 10, border: "none",
+                   background: running ? "#374151" : "#8b5cf6", color: "#fff",
+                   fontSize: 13, fontWeight: 700, cursor: running ? "wait" : "pointer" }}>
+          {running ? `Checking… ${progress}%` : done ? "Re-verify" : "Verify Photos"}
+        </button>
+      </div>
+
+      {running && (
+        <div style={{ height: 4, borderRadius: 2, background: isDark ? "#1a1f2b" : "#e5e7eb", overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ width: `${progress}%`, height: "100%", background: "#8b5cf6", transition: "width 0.3s" }} />
+        </div>
+      )}
+
+      {done && issues.length === 0 && (
+        <div style={{ padding: "10px 14px", borderRadius: 10, background: isDark ? "#0a1a0a" : "#f0fdf4",
+                      border: `1px solid ${isDark ? "#166534" : "#bbf7d0"}`, fontSize: 13,
+                      color: isDark ? "#86efac" : "#15803d" }}>
+          ✅ All {oks.length} photos verified — labels look correct.
+        </div>
+      )}
+
+      {issues.map(r => {
+        const g = garments.find(x => x.id === r.garmentId);
+        if (!g) return null;
+        const thumb = g.thumbnail || g.photoUrl;
+        const typeChanged  = r.correctedType  !== (g.type ?? g.category);
+        const colorChanged = r.correctedColor !== g.color;
+        const nameChanged  = r.correctedName  !== g.name;
+        return (
+          <div key={r.garmentId} style={{ marginBottom: 10, padding: 12, borderRadius: 12,
+                                          background: card, border: `1px solid #f97316` }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              {thumb && (
+                <img src={thumb} alt={g.name}
+                  style={{ width: 56, height: 56, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+              )}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#f97316", marginBottom: 3 }}>
+                  ⚠ Possible mislabel — {Math.round((r.confidence ?? 0.8) * 100)}% confident
+                </div>
+                <div style={{ fontSize: 12, color: text, marginBottom: 4 }}>{r.reason}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: 11 }}>
+                  {typeChanged && (
+                    <span style={{ padding: "2px 8px", borderRadius: 5, background: "#f9731622", color: "#f97316" }}>
+                      type: <b>{g.type ?? g.category}</b> → <b>{r.correctedType}</b>
+                    </span>
+                  )}
+                  {colorChanged && (
+                    <span style={{ padding: "2px 8px", borderRadius: 5, background: "#3b82f622", color: "#3b82f6" }}>
+                      color: <b>{g.color}</b> → <b>{r.correctedColor}</b>
+                    </span>
+                  )}
+                  {nameChanged && (
+                    <span style={{ padding: "2px 8px", borderRadius: 5, background: "#8b5cf622", color: "#a78bfa" }}>
+                      name: <b>{r.correctedName}</b>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => applyFix(r.garmentId, r)}
+                style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#22c55e",
+                         color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                Apply
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

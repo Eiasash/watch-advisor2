@@ -132,8 +132,10 @@ export default function WeekPlanner() {
   const onCallDates= useWardrobeStore(s => s.onCallDates);
   const setWeekCtx = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates = useWardrobeStore(s => s.setOnCallDates);
-  const garments   = useWardrobeStore(s => s.garments);
-  const { mode }   = useThemeStore();
+  const garments     = useWardrobeStore(s => s.garments);
+  const straps       = useStrapStore(s => s.straps);
+  const activeStrap  = useStrapStore(s => s.activeStrap);
+  const { mode }     = useThemeStore();
   const isDark     = mode === "dark";
   const [showCalendar, setShowCalendar] = useState(false);
   // Per-day watch overrides { [offset]: watchId }
@@ -246,13 +248,13 @@ export default function WeekPlanner() {
                 <div style={{ marginTop: 8, border: `1px solid ${border}`, borderRadius: 10,
                               background: isDark ? "#171a21" : "#fff", overflow: "hidden" }}>
                   {watches.map(w => {
-                    const strapId = strapOverrides[day.offset];
-                    const watchStrapsAll = Object.values(straps).filter(s => s.watchId === w.id);
                     const isSelected = (watchOverrides[day.offset] ?? rotation[day.offset]?.watch?.id) === w.id;
                     return (
                       <div key={w.id}>
                         <div onClick={() => {
                           setWatchOverrides(o => ({ ...o, [day.offset]: w.id }));
+                          // Clear strapOverride when switching watch
+                          setStrapOverrides(o => { const n = {...o}; delete n[day.offset]; return n; });
                           setPickingDay(null);
                         }}
                           style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer",
@@ -270,6 +272,42 @@ export default function WeekPlanner() {
                   })}
                 </div>
               )}
+
+              {/* Strap picker — shown when a watch is assigned (overridden or auto) */}
+              {(() => {
+                const dayWatchId = watchOverrides[day.offset] ?? day.watch?.id;
+                if (!dayWatchId) return null;
+                const dayStraps = Object.values(straps).filter(s => s.watchId === dayWatchId);
+                if (dayStraps.length <= 1) return null; // nothing to choose
+                const activeStrapId = strapOverrides[day.offset]
+                  ?? Object.values(straps).find(s => s.watchId === dayWatchId && activeStrap[dayWatchId] === s.id)?.id
+                  ?? dayStraps[0]?.id;
+                return (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 10, color: sub, fontWeight: 600, marginBottom: 5 }}>STRAP</div>
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                      {dayStraps.map(s => {
+                        const isActive = activeStrapId === s.id;
+                        return (
+                          <button key={s.id}
+                            onClick={() => setStrapOverrides(o => ({ ...o, [day.offset]: s.id }))}
+                            style={{ padding: "4px 9px", borderRadius: 7, fontSize: 10, fontWeight: 600,
+                                      border: `1px solid ${isActive ? "#3b82f6" : border}`,
+                                      background: isActive ? "#3b82f622" : "transparent",
+                                      color: isActive ? "#3b82f6" : sub, cursor: "pointer" }}>
+                            {s.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {activeStrapId && straps[activeStrapId] && (
+                      <div style={{ fontSize: 10, color: sub, marginTop: 4 }}>
+                        {straps[activeStrapId].useCase}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {day.backup && (
                 <div style={{ marginTop:6, paddingTop:6, borderTop:`1px solid ${border}` }}>
