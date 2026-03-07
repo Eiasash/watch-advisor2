@@ -31,6 +31,8 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = []) {
     const type = category; // slot name matches category
     const candidates = wardrobe.filter(g => {
       const gType = g.type ?? g.category;
+      // shirt slot accepts sweater/knitwear that weren't normalized
+      if (type === "shirt") return gType === "shirt" || gType === "sweater";
       return gType === type;
     });
 

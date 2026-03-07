@@ -72,7 +72,12 @@ function AppContent() {
         <>
           <WatchDashboard />
           <WardrobeInsights />
-          <div className="wa-main-grid" style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, alignItems: "start" }}>
+          <style>{`
+            .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+            @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
+            .wa-outfit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+          `}</style>
+          <div className="wa-main-grid">
             <ImportPanel />
             <WardrobeGrid />
           </div>

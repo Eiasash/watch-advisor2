@@ -287,16 +287,22 @@ export async function analyzeImageContent(thumbnailDataURL, filename = "") {
       : null;
 
     // ── Shoes (terminal) ─────────────────────────────────────────────────────
-    // Only fires on images where the lower half clearly dominates OR two compact
-    // objects sit side by side near the bottom.
-    // total < 450 prevents a full-frame dark sweater from matching.
-    const shoesBottomHeavy = total < 420 && botF > 0.52 && topF < 0.18;
-    const shoesBilateral   = total < 300 && bilatBalance > 0.60 && botF > 0.35 && topF < 0.28;
-    const shoesFires  = shoesBottomHeavy || shoesBilateral;
+    // Three signals — any fires (terminal, blocks pants):
+    //   A. Bottom-heavy: shoe clearly in lower frame. Relaxed 0.52 → 0.44 to catch
+    //      boots/shoes photographed from standing height.
+    //   B. Bilateral + bottom: two shoes side by side, lower frame.
+    //   C. Mid-frame compact: shoes on floor at eye level — body in mid zone,
+    //      total < 280 prevents bulky sweaters from matching.
+    const shoesBottomHeavy = total < 420 && botF > 0.44 && topF < 0.18;
+    const shoesBilateral   = total < 350 && bilatBalance > 0.55 && botF > 0.32 && topF < 0.28;
+    const shoesMidFrame    = total < 280 && botF > 0.36 && midF > 0.28 && topF < 0.18 && bilatBalance > 0.42;
+    const shoesFires  = shoesBottomHeavy || shoesBilateral || shoesMidFrame;
     const shoesReason = shoesFires
-      ? (shoesBilateral
-          ? `bilateral bilat=${bilatBalance.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
-          : `bottom-heavy botF=${botF.toFixed(2)} topF=${topF.toFixed(2)} total=${total}`)
+      ? (shoesMidFrame && !shoesBottomHeavy && !shoesBilateral
+          ? `mid-frame bilat=${bilatBalance.toFixed(2)} botF=${botF.toFixed(2)} midF=${midF.toFixed(2)} total=${total}`
+          : shoesBilateral
+            ? `bilateral bilat=${bilatBalance.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
+            : `bottom-heavy botF=${botF.toFixed(2)} topF=${topF.toFixed(2)} total=${total}`)
       : null;
 
     // ── Hanger / shirt (top-heavy) ────────────────────────────────────────────

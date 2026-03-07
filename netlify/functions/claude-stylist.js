@@ -1,11 +1,10 @@
 /**
  * Netlify serverless function — Claude AI Stylist.
- * Calls Claude API to suggest the best outfit from the user's wardrobe.
+ * Validates/improves the engine's outfit pick around the selected watch.
+ * Enforces strap-shoe rule, dial color coordination, formality match.
  *
- * Environment variable required: CLAUDE_API_KEY
- *
- * POST body: { garments: [...], watch: {...}, weather: {...} }
- * Returns: { shirt, pants, shoes, jacket, explanation }
+ * POST body: { garments, watch, weather, engineOutfit, dayProfile }
+ * Returns: { shirt, pants, shoes, jacket, explanation, strapShoeOk }
  */
 
 export async function handler(event) {
@@ -25,54 +24,88 @@ export async function handler(event) {
   }
 
   try {
-    const { garments, watch, weather } = JSON.parse(event.body);
+    const { garments = [], watch, weather, engineOutfit = {}, dayProfile = "smart-casual" } = JSON.parse(event.body);
 
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }),
-      };
+      return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
     }
 
-    const garmentsSummary = (garments || [])
-      .map(g => `- ${g.name} (${g.type || g.category}, ${g.color}, formality ${g.formality}/10)`)
+    // Build a readable garment list with type+color context
+    const garmentLines = garments
+      .filter(g => g.type !== "outfit-photo" && g.type !== "outfit-shot")
+      .map(g => {
+        const type  = g.type ?? g.category ?? "?";
+        const color = g.color ?? "unknown color";
+        const form  = g.formality ?? 5;
+        return `  ID:${g.name} — ${color} ${type} (formality ${form}/10)`;
+      })
       .join("\n");
 
-    const watchInfo = watch
-      ? `${watch.brand} ${watch.model} — ${watch.dial} dial, ${watch.style} style, formality ${watch.formality}/10, ${watch.strap} strap`
-      : "No watch selected";
+    // Describe the engine's current picks
+    const engineLines = ["shirt", "pants", "shoes", "jacket"]
+      .map(slot => {
+        const g = engineOutfit[slot];
+        if (!g) return `  ${slot}: (none available)`;
+        return `  ${slot}: ID:${g.name} — ${g.color ?? ""} ${g.type ?? ""}`;
+      })
+      .join("\n");
 
-    const weatherInfo = weather
-      ? `${weather.tempC}°C, ${weather.description || "Unknown conditions"}`
-      : "Weather unknown";
+    const watchDesc = watch
+      ? `${watch.brand} ${watch.model} · ${watch.dial} dial · ${watch.style} style · formality ${watch.formality}/10 · strap: ${watch.strap ?? "bracelet"}`
+      : "No watch";
 
-    const prompt = `You are a minimalist menswear stylist specializing in watch-first outfit coordination.
+    const strapRule = (() => {
+      const strap = (watch?.strap ?? "").toLowerCase();
+      if (strap.includes("leather") || strap.includes("alligator") || strap.includes("calfskin")) {
+        const strapColor = strap.includes("black") ? "black"
+          : strap.includes("brown") || strap.includes("tan") || strap.includes("cognac") ? "brown"
+          : "leather-toned";
+        return `STRAP-SHOE RULE (non-negotiable): leather strap detected. Shoes MUST be ${strapColor} leather. Flag any violation.`;
+      }
+      return "Strap-shoe rule: bracelet or metal strap — shoe color is unrestricted.";
+    })();
 
-User wardrobe:
-${garmentsSummary}
+    const contextLabel = {
+      "hospital-smart-casual": "hospital smart casual (professional medical environment)",
+      "smart-casual":  "smart casual",
+      "formal":        "formal",
+      "casual":        "casual / weekend",
+      "travel":        "travel",
+    }[dayProfile] ?? dayProfile;
 
-Selected watch:
-${watchInfo}
+    const prompt = `You are an expert menswear stylist specializing in watch-first coordination.
 
-Weather:
-${weatherInfo}
+WATCH:
+${watchDesc}
 
-Context: The user works in a hospital setting and typically dresses hospital smart casual.
+STRAP RULE:
+${strapRule}
 
-Suggest the best outfit built around this watch. The outfit should:
-1. Match the watch's formality level
-2. Complement the dial color
-3. Account for the weather
-4. Be appropriate for hospital smart casual
+CONTEXT: ${contextLabel}
+WEATHER: ${weather?.tempC != null ? `${weather.tempC}°C, ${weather.description ?? ""}` : "unknown"}
 
-Return ONLY valid JSON in this exact format:
+ENGINE'S CURRENT OUTFIT PICK:
+${engineLines}
+
+FULL WARDROBE (ID — description):
+${garmentLines}
+
+TASK:
+1. Evaluate whether the engine's outfit is well-matched to the watch dial color, formality level, and strap rule.
+2. If it's good, keep those items and explain why.
+3. If a slot can be improved, swap to a specific better item from the wardrobe and explain the reason.
+4. Check the strap-shoe rule strictly — if violated, flag it and fix it.
+5. Return IDs exactly as they appear (the "ID:XXXXX" values, without the "ID:" prefix).
+
+Return ONLY valid JSON, no markdown, no commentary outside the JSON:
 {
-  "shirt": "<garment name from wardrobe>",
-  "pants": "<garment name from wardrobe>",
-  "shoes": "<garment name from wardrobe>",
-  "jacket": "<garment name or null>",
-  "explanation": "<2-3 sentence explanation of why this outfit works with the watch>"
+  "shirt": "<garment ID or null>",
+  "pants": "<garment ID or null>",
+  "shoes": "<garment ID or null>",
+  "jacket": "<garment ID or null>",
+  "strapShoeOk": true or false,
+  "explanation": "<2-3 sentences: why these pieces work with the specific watch, dial color, and context. Be direct and specific — mention the dial color, strap, and any formality trade-offs.>"
 }`;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -84,37 +117,27 @@ Return ONLY valid JSON in this exact format:
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 500,
-        messages: [
-          { role: "user", content: prompt },
-        ],
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
       }),
     });
 
     const data = await response.json();
     const text = data?.content?.[0]?.text ?? "";
 
-    // Extract JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const suggestion = JSON.parse(jsonMatch[0]);
       return {
         statusCode: 200,
         headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify(suggestion),
+        body: JSON.stringify(JSON.parse(jsonMatch[0])),
       };
     }
 
     return {
       statusCode: 200,
       headers: { "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({
-        shirt: null,
-        pants: null,
-        shoes: null,
-        jacket: null,
-        explanation: text || "Could not generate suggestion.",
-      }),
+      body: JSON.stringify({ shirt: null, pants: null, shoes: null, jacket: null, explanation: text }),
     };
   } catch (err) {
     return {

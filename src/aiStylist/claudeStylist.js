@@ -1,30 +1,31 @@
 /**
  * Claude AI Stylist client.
- * Calls the Netlify function to get AI-powered outfit suggestions.
+ * Sends engine's current outfit to the Netlify function for validation/improvement.
  */
 
-/**
- * Request an AI outfit suggestion from Claude.
- *
- * @param {Array} garments - User's wardrobe garments
- * @param {object} watch - Selected watch
- * @param {object} weather - Current weather { tempC, description }
- * @returns {{ shirt, pants, shoes, jacket, explanation }}
- */
-export async function getAISuggestion(garments, watch, weather) {
+export async function getAISuggestion(garments, watch, weather, engineOutfit = {}, dayProfile = "smart-casual") {
   try {
     const res = await fetch("/.netlify/functions/claude-stylist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        garments: garments.map(g => ({
-          name: g.name,
-          type: g.type ?? g.category,
-          color: g.color,
-          formality: g.formality,
-        })),
+        garments: garments
+          .filter(g => g.type !== "outfit-photo" && g.type !== "outfit-shot")
+          .map(g => ({
+            name: g.name,
+            type: g.type ?? g.category,
+            color: g.color,
+            formality: g.formality,
+          })),
         watch,
         weather,
+        engineOutfit: {
+          shirt:  engineOutfit.shirt  ? { name: engineOutfit.shirt.name,  type: engineOutfit.shirt.type,  color: engineOutfit.shirt.color  } : null,
+          pants:  engineOutfit.pants  ? { name: engineOutfit.pants.name,  type: engineOutfit.pants.type,  color: engineOutfit.pants.color  } : null,
+          shoes:  engineOutfit.shoes  ? { name: engineOutfit.shoes.name,  type: engineOutfit.shoes.type,  color: engineOutfit.shoes.color  } : null,
+          jacket: engineOutfit.jacket ? { name: engineOutfit.jacket.name, type: engineOutfit.jacket.type, color: engineOutfit.jacket.color } : null,
+        },
+        dayProfile,
       }),
     });
 

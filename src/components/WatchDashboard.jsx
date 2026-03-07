@@ -53,7 +53,7 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
   );
 }
 
-function OutfitSlot({ slot, garment, isDark }) {
+function OutfitSlot({ slot, garment, isDark, onSelect }) {
   const ICONS = { shirt: "\u{1F454}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
   return (
     <div style={{
@@ -64,7 +64,18 @@ function OutfitSlot({ slot, garment, isDark }) {
       <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{slot}</div>
       {garment ? (
         <>
-          <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3, color: isDark ? "#e2e8f0" : "#1f2937" }}>{garment.name}</div>
+          <button
+            onClick={() => onSelect && onSelect(garment.id)}
+            style={{
+              background: "none", border: "none", padding: 0, cursor: "pointer",
+              fontWeight: 700, fontSize: 15, lineHeight: 1.3,
+              color: "#3b82f6", textAlign: "left",
+              textDecoration: "underline", textDecorationStyle: "dotted",
+            }}
+            title="Jump to garment in wardrobe"
+          >
+            {garment.name}
+          </button>
           <div style={{ fontSize: 12, color: "#8b93a7", marginTop: 2 }}>{garment.color}</div>
         </>
       ) : (
@@ -78,7 +89,8 @@ export default function WatchDashboard() {
   const watches        = useWatchStore(s => s.watches);
   const activeWatch    = useWatchStore(s => s.activeWatch);
   const setActiveWatch = useWatchStore(s => s.setActiveWatch);
-  const garments       = useWardrobeStore(s => s.garments);
+  const garments             = useWardrobeStore(s => s.garments);
+  const setSelectedGarmentId = useWardrobeStore(s => s.setSelectedGarmentId);
   const history        = useHistoryStore(s => s.entries);
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
@@ -125,13 +137,16 @@ export default function WatchDashboard() {
     setAiLoading(true);
     setAiSuggestion(null);
     try {
-      const suggestion = await getAISuggestion(garments, selectedWatch, weather);
+      const contextProfile = selectedWatch?.style?.includes("formal") ? "formal"
+        : selectedWatch?.style?.includes("sport") ? "hospital-smart-casual"
+        : "smart-casual";
+      const suggestion = await getAISuggestion(garments, selectedWatch, weather, outfit, contextProfile);
       setAiSuggestion(suggestion);
     } catch (err) {
       console.warn("[aiStylist] failed:", err.message);
     }
     setAiLoading(false);
-  }, [selectedWatch, garments, weather]);
+  }, [selectedWatch, garments, weather, outfit]);
 
   return (
     <div style={{
@@ -201,9 +216,9 @@ export default function WatchDashboard() {
           <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Outfit built around this watch
           </div>
-          <div className="wa-outfit-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+          <div className="wa-outfit-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 16 }}>
             {["shirt", "pants", "shoes", "jacket"].map(slot => (
-              <OutfitSlot key={slot} slot={slot} garment={outfit[slot]} isDark={isDark} />
+              <OutfitSlot key={slot} slot={slot} garment={outfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />
             ))}
           </div>
 
@@ -236,23 +251,46 @@ export default function WatchDashboard() {
               background: isDark ? "#0f131a" : "#f5f3ff", borderRadius: 10, padding: "12px 14px",
               borderLeft: "3px solid #8b5cf6", fontSize: 13, lineHeight: 1.6, color: isDark ? "#c4b5fd" : "#5b21b6",
             }}>
-              <div style={{ fontWeight: 600, marginBottom: 6, color: "#8b5cf6", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                AI Stylist Suggestion
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <div style={{ fontWeight: 600, color: "#8b5cf6", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  AI Stylist Suggestion
+                </div>
+                {aiSuggestion.strapShoeOk === false && (
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: "#7f1d1d", color: "#fca5a5" }}>
+                    ⚠ Strap-shoe mismatch
+                  </span>
+                )}
+                {aiSuggestion.strapShoeOk === true && (
+                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: "#14532d", color: "#86efac" }}>
+                    ✓ Strap-shoe ok
+                  </span>
+                )}
               </div>
               {aiSuggestion.explanation && (
                 <div style={{ marginBottom: 8, color: isDark ? "#a1a9b8" : "#4b5563" }}>{aiSuggestion.explanation}</div>
               )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {["shirt", "pants", "shoes", "jacket"].map(slot =>
-                  aiSuggestion[slot] ? (
-                    <span key={slot} style={{
-                      fontSize: 11, padding: "2px 8px", borderRadius: 6,
-                      background: isDark ? "#2e1065" : "#ede9fe", color: isDark ? "#c4b5fd" : "#5b21b6",
-                    }}>
-                      {slot}: {aiSuggestion[slot]}
-                    </span>
-                  ) : null
-                )}
+                {["shirt", "pants", "shoes", "jacket"].map(slot => {
+                  const gName = aiSuggestion[slot];
+                  if (!gName) return null;
+                  const g = garments.find(x => x.name === gName);
+                  const label = g ? `${g.color} ${g.type}` : gName;
+                  return (
+                    <button
+                      key={slot}
+                      onClick={() => g && setSelectedGarmentId(g.id)}
+                      title={g ? `Go to ${gName} in wardrobe` : gName}
+                      style={{
+                        fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: g ? "pointer" : "default",
+                        background: isDark ? "#2e1065" : "#ede9fe", color: isDark ? "#c4b5fd" : "#5b21b6",
+                        border: g ? "1px solid #8b5cf6" : "1px solid transparent",
+                        fontWeight: 600, textAlign: "left",
+                      }}
+                    >
+                      {slot}: <span style={{ fontWeight: 400 }}>{label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
