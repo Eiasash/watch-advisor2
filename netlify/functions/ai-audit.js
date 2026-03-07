@@ -1,0 +1,54 @@
+/**
+ * Netlify function — AI Wardrobe Audit
+ * POST body: { prompt: string }
+ * Returns the parsed JSON audit result.
+ */
+
+export async function handler(event) {
+  const CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+
+  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
+  if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" };
+
+  try {
+    const { prompt } = JSON.parse(event.body || "{}");
+    const apiKey = process.env.CLAUDE_API_KEY;
+    if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key":         apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type":      "application/json",
+      },
+      body: JSON.stringify({
+        model:      "claude-sonnet-4-5",
+        max_tokens: 2000,
+        messages:   [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: err }) };
+    }
+
+    const data = await res.json();
+    const raw  = data.content?.[0]?.text ?? "{}";
+    // Strip markdown fences if present
+    const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+
+    let parsed;
+    try { parsed = JSON.parse(cleaned); }
+    catch { return { statusCode: 200, headers: CORS, body: JSON.stringify({ error: "Invalid JSON from AI", raw: cleaned.slice(0, 400) }) }; }
+
+    return { statusCode: 200, headers: CORS, body: JSON.stringify(parsed) };
+  } catch (e) {
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: String(e.message ?? e) }) };
+  }
+}

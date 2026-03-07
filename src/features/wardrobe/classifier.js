@@ -24,10 +24,16 @@
 // ─── Filename rules ───────────────────────────────────────────────────────────
 
 const TYPE_RULES = [
-  { type: "shoes",  kws: ["shoe","shoes","sneaker","sneakers","trainer","trainers","loafer","loafers","derby","derbies","boot","boots","chelsea","brogue","brogues","sandal","sandals","mule","slipper","oxford shoe","oxfords","pump","pumps","heel","heels"] },
-  { type: "pants",  kws: ["pant","pants","trouser","trousers","chino","chinos","jean","jeans","jogger","joggers","slack","slacks","shorts","cargo","legging","leggings","culottes"] },
-  { type: "jacket", kws: ["jacket","blazer","coat","overcoat","bomber","parka","anorak","gilet","cardigan","zip-up","zipup","overshirt","fleece","windbreaker","raincoat","peacoat"] },
-  { type: "shirt",  kws: ["shirt","tee","tshirt","t-shirt","polo","ocbd","knit","sweater","pullover","hoodie","sweatshirt","sweat","flannel","blouse","top","henley","jersey","crewneck"] },
+  { type: "shoes",       kws: ["shoe","shoes","sneaker","sneakers","trainer","trainers","loafer","loafers","derby","derbies","boot","boots","chelsea","brogue","brogues","sandal","sandals","mule","slipper","oxford shoe","oxfords","pump","pumps","heel","heels"] },
+  { type: "pants",       kws: ["pant","pants","trouser","trousers","chino","chinos","jean","jeans","jogger","joggers","slack","slacks","shorts","cargo","legging","leggings","culottes"] },
+  { type: "jacket",      kws: ["jacket","blazer","coat","overcoat","bomber","parka","anorak","gilet","cardigan","zip-up","zipup","overshirt","fleece","windbreaker","raincoat","peacoat"] },
+  { type: "shirt",       kws: ["shirt","tee","tshirt","t-shirt","polo","ocbd","knit","sweater","pullover","hoodie","sweatshirt","sweat","flannel","blouse","top","henley","jersey","crewneck"] },
+  { type: "belt",        kws: ["belt","belts"] },
+  { type: "sunglasses",  kws: ["sunglass","sunglasses","shades","eyewear","glasses"] },
+  { type: "hat",         kws: ["hat","cap","beanie","baseball cap","fedora","bucket hat","beret"] },
+  { type: "scarf",       kws: ["scarf","scarves","neckerchief","muffler"] },
+  { type: "bag",         kws: ["bag","bags","backpack","tote","briefcase","satchel","pouch","holdall"] },
+  { type: "accessory",   kws: ["accessory","accessories","watch strap","strap","wallet","bracelet","necklace","ring","tie","bow tie","suspenders"] },
 ];
 
 const COLOR_RULES = [

@@ -39,7 +39,12 @@ export async function pullCloudState() {
     setSyncState({ status: "idle" });
     return {
       watches: WATCH_COLLECTION,
-      garments: garments ?? [],
+      // Strip ephemeral blob URLs — thumbnails are the persistent display source
+      garments: (garments ?? []).map(row => ({
+        ...row,
+        photoUrl: row.photo_url?.startsWith?.("blob:") ? undefined : (row.photo_url ?? row.photoUrl),
+        thumbnail: row.thumbnail_url ?? row.thumbnail ?? null,
+      })),
       history: (history ?? []).map(row => ({
         id: row.id,
         watchId: row.watch_id,
