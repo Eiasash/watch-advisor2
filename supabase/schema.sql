@@ -1,12 +1,14 @@
 create table if not exists watches (
   id text primary key,
-  brand text not null,
-  model text not null,
+  brand text,
+  model text,
+  style text,
+  dial_color text,
+  formality integer default 5,
+  -- extended fields preserved from seed data
   ref text,
   dial text,
   strap text,
-  style text,
-  formality integer default 5,
   size numeric,
   lug integer,
   created_at timestamptz default now()
@@ -14,20 +16,30 @@ create table if not exists watches (
 
 create table if not exists garments (
   id text primary key,
-  name text not null,
-  type text not null,
+  name text,
+  category text,
   color text,
   formality integer default 5,
+  image_url text,
+  hash text,
+  -- extended fields for app use
   photo_url text,
   thumbnail_url text,
-  hash text,
+  photo_type text,
+  needs_review boolean default false,
+  duplicate_of text,
   created_at timestamptz default now()
 );
 
 create table if not exists history (
-  id text primary key,
-  watch_id text not null references watches(id) on delete cascade,
-  date date not null,
-  payload jsonb not null default '{}'::jsonb,
-  created_at timestamptz default now()
+  id uuid primary key default gen_random_uuid(),
+  watch_id text,
+  shirt_id text,
+  pants_id text,
+  shoes_id text,
+  jacket_id text,
+  created_at timestamptz default now(),
+  -- legacy columns kept for backward compat
+  date date,
+  payload jsonb default '{}'::jsonb
 );

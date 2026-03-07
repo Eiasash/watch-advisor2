@@ -52,7 +52,7 @@ export async function handler(event) {
               },
               {
                 type: "text",
-                text: 'Identify the clothing item type and color. Return JSON: {"type": "shirt"|"pants"|"shoes"|"jacket"|"sweater", "color": "<color>"}',
+                text: 'Identify the clothing item type, color, and formality level. Return JSON: {"type": "shirt"|"pants"|"shoes"|"jacket"|"sweater", "color": "navy"|"gray"|"brown"|"black"|"white"|"olive"|"tan"|"beige", "formality": <1-10>}',
               },
             ],
           },

@@ -7,4 +7,7 @@ export const useWardrobeStore = create(set => ({
   updateGarment: (id, updates) => set(state => ({
     garments: state.garments.map(g => g.id === id ? { ...g, ...updates } : g),
   })),
+  removeGarment: id => set(state => ({
+    garments: state.garments.filter(g => g.id !== id),
+  })),
 }));

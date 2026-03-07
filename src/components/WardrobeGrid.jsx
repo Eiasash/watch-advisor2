@@ -1,17 +1,18 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import { FixedSizeGrid } from "react-window";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import GarmentEditor from "./GarmentEditor.jsx";
 
-const COLUMN_COUNT = 3;
-const CELL_WIDTH   = 192;
-const CELL_HEIGHT  = 280;
+const COLUMN_COUNT = 4;
+const CELL_WIDTH   = 210;
+const CELL_HEIGHT  = 300;
 const GRID_WIDTH   = COLUMN_COUNT * CELL_WIDTH;
-const GRID_HEIGHT  = 560;
+const GRID_HEIGHT  = 620;
 
-const TYPE_ICONS   = { shirt: "👔", pants: "👖", shoes: "👟", jacket: "🧥", sweater: "🧶" };
+const TYPE_ICONS   = { shirt: "\u{1F454}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}", sweater: "\u{1F9F6}" };
 const GARMENT_TYPES = ["shirt", "pants", "shoes", "jacket", "sweater"];
 const COLOR_SWATCHES = {
-  black: "#1a1a1a", white: "#f5f5f0", grey: "#8a8a8a", navy: "#1e2f5e",
+  black: "#1a1a1a", white: "#f5f5f0", grey: "#8a8a8a", gray: "#8a8a8a", navy: "#1e2f5e",
   blue: "#2d5fa0", brown: "#6b3a2a", tan: "#c4a882", beige: "#d4c4a8",
   olive: "#6b7c3a", green: "#2d6b3a", red: "#8b2020",
 };
@@ -41,12 +42,16 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
 
   return (
     <div style={{ ...style, padding: 6 }}>
-      <div style={{
-        height: "100%", borderRadius: 12, overflow: "hidden",
-        background: "#0f131a",
-        border: `1px solid ${needsReview ? "#854d0e" : isDuplicate ? "#7c3aed" : "#2b3140"}`,
-        display: "flex", flexDirection: "column",
-      }}>
+      <div
+        style={{
+          height: "100%", borderRadius: 12, overflow: "hidden",
+          background: "#0f131a",
+          border: `1px solid ${isDuplicate ? "#7c3aed" : needsReview ? "#854d0e" : "#2b3140"}`,
+          display: "flex", flexDirection: "column",
+          cursor: "pointer",
+        }}
+        onClick={() => data.onEdit(item)}
+      >
         {/* Image area */}
         {item.thumbnail || item.photoUrl ? (
           <img
@@ -54,30 +59,30 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
             alt={item.name}
             loading="lazy"
             decoding="async"
-            style={{ width: "100%", height: 130, objectFit: "cover", display: "block", flexShrink: 0 }}
+            style={{ width: "100%", height: 140, objectFit: "cover", display: "block", flexShrink: 0 }}
           />
         ) : (
           <div style={{
-            width: "100%", height: 130, display: "flex", alignItems: "center",
+            width: "100%", height: 140, display: "flex", alignItems: "center",
             justifyContent: "center", fontSize: 36, background: "#171a21", flexShrink: 0,
           }}>
-            {isOutfitShot ? "🪞" : (TYPE_ICONS[item.type] ?? "👕")}
+            {isOutfitShot ? "\u{1FA9E}" : (TYPE_ICONS[item.type] ?? "\u{1F455}")}
           </div>
         )}
 
         {/* Info area */}
-        <div style={{ padding: "6px 10px", flex: 1, minHeight: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.3, marginBottom: 3,
+        <div style={{ padding: "8px 10px", flex: 1, minHeight: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.3, marginBottom: 4,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {item.name}
           </div>
 
-          {/* Type + color row */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
-            <span style={{ fontSize: 11, color: "#6b7280" }}>{item.type}</span>
+          {/* Category + color row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: "#6b7280" }}>{item.type ?? item.category}</span>
             {item.color && (
               <>
-                <span style={{ fontSize: 11, color: "#4b5563" }}>·</span>
+                <span style={{ fontSize: 11, color: "#4b5563" }}>&middot;</span>
                 <span style={{
                   display: "inline-block", width: 10, height: 10,
                   borderRadius: "50%", background: swatch,
@@ -97,7 +102,8 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
           {needsReview && !isOutfitShot && (
             <select
               value={item.type}
-              onChange={(e) => data.onUpdateType(item.id, e.target.value)}
+              onChange={(e) => { e.stopPropagation(); data.onUpdateType(item.id, e.target.value); }}
+              onClick={e => e.stopPropagation()}
               style={{
                 width: "100%", fontSize: 11, padding: "2px 4px",
                 background: "#171a21", color: "#e2e8f0",
@@ -115,10 +121,7 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
           <div style={{ lineHeight: 1 }}>
             {isOutfitShot  && <Badge label="outfit shot"  color="#92400e" bg="#451a03" />}
             {needsReview && !isOutfitShot && <Badge label="review" color="#92400e" bg="#451a03" />}
-            {isDuplicate   && <Badge label="duplicate?"  color="#7c3aed" bg="#2e1065" />}
-            {needsReview && item._confidence && (
-              <Badge label={item._confidence} color="#6b7280" bg="#111827" />
-            )}
+            {isDuplicate   && <Badge label="DUPLICATE?"  color="#7c3aed" bg="#2e1065" />}
           </div>
         </div>
       </div>
@@ -129,8 +132,8 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
 export default function WardrobeGrid() {
   const garments      = useWardrobeStore(s => s.garments);
   const updateGarment = useWardrobeStore(s => s.updateGarment);
+  const [editing, setEditing] = useState(null);
 
-  // Filter out items excluded from wardrobe (outfit shots from isOutfitPhoto filter)
   const items = useMemo(() =>
     garments.filter(g => g && !g.excludeFromWardrobe),
   [garments]);
@@ -141,6 +144,10 @@ export default function WardrobeGrid() {
   const handleUpdateType = useCallback((id, newType) => {
     updateGarment(id, { type: newType, needsReview: false });
   }, [updateGarment]);
+
+  const handleEdit = useCallback((item) => {
+    setEditing(item);
+  }, []);
 
   return (
     <div style={{ padding: "16px 18px", borderRadius: 16, background: "#171a21", border: "1px solid #2b3140" }}>
@@ -173,10 +180,14 @@ export default function WardrobeGrid() {
           rowHeight={CELL_HEIGHT}
           width={GRID_WIDTH}
           height={Math.min(GRID_HEIGHT, rowCount * CELL_HEIGHT)}
-          itemData={{ items, columns: COLUMN_COUNT, onUpdateType: handleUpdateType }}
+          itemData={{ items, columns: COLUMN_COUNT, onUpdateType: handleUpdateType, onEdit: handleEdit }}
         >
           {Cell}
         </FixedSizeGrid>
+      )}
+
+      {editing && (
+        <GarmentEditor garment={editing} onClose={() => setEditing(null)} />
       )}
     </div>
   );
