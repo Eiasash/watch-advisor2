@@ -59,12 +59,13 @@ export function useBootstrap() {
           const h = cloud.history ?? [];
 
           // Safety: never replace a non-empty local wardrobe with an empty cloud result.
-          // This prevents data wipe when garments haven't been synced to the cloud yet.
-          const localCount = (cached.garments ?? []).length;
+          // Read CURRENT state (not stale `cached`) to catch garments imported after boot.
+          const currentGarments = useWardrobeStore.getState().garments ?? [];
+          const localCount = currentGarments.length;
           if (cloudGarments.length === 0 && localCount > 0) {
             // Cloud is empty but local has items — push local up to cloud instead
             const { pushGarment } = await import("../services/supabaseSync.js");
-            for (const g of (cached.garments ?? [])) {
+            for (const g of currentGarments) {
               pushGarment(g).catch(() => {});
             }
             return;

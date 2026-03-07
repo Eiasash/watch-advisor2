@@ -86,9 +86,8 @@ describe("pullCloudState", () => {
 
     const result = await pullCloudState();
     expect(result.garments[0].photoUrl).toBeUndefined();
-    // thumbnail prefers photo_url over thumbnail_url (even blob: URLs pass through here)
-    // The photoUrl field filters blob:, but thumbnail field takes photo_url as-is
-    expect(result.garments[0].thumbnail).toBe("blob:http://localhost/12345");
+    // thumbnail also filters blob: URLs — falls back to thumbnail_url
+    expect(result.garments[0].thumbnail).toBe("data:image/jpeg;base64,abc");
   });
 
   it("maps history rows with payload unpacking", async () => {

@@ -9,16 +9,16 @@ import { STYLE_FORMALITY_TARGET } from "./watchStyles.js";
 
 // Dial color → compatible garment colors
 const DIAL_COLOR_MAP = {
-  "silver-white": ["black", "navy", "gray", "grey", "white", "beige"],
-  "green":        ["olive", "beige", "brown", "gray", "grey", "khaki"],
-  "grey":         ["black", "white", "navy", "gray", "grey", "beige"],
-  "blue":         ["navy", "gray", "grey", "white", "beige", "black"],
-  "navy":         ["gray", "grey", "white", "black", "beige"],
-  "white":        ["black", "navy", "gray", "grey", "beige", "brown"],
-  "black-red":    ["black", "gray", "grey", "white"],
+  "silver-white": ["black", "navy", "gray", "grey", "white", "beige", "slate"],
+  "green":        ["olive", "beige", "brown", "gray", "grey", "khaki", "cream"],
+  "grey":         ["black", "white", "navy", "gray", "grey", "stone", "beige"],
+  "blue":         ["navy", "gray", "grey", "white", "beige", "stone", "black"],
+  "navy":         ["gray", "grey", "white", "black", "beige", "stone", "cream"],
+  "white":        ["black", "navy", "gray", "grey", "beige", "stone", "brown"],
+  "black-red":    ["black", "gray", "grey", "white", "red"],
   "black":        ["black", "white", "gray", "grey", "navy", "olive", "brown"],
-  "white-teal":   ["gray", "grey", "white", "black", "navy"],
-  // Replica dial colors — previously missing, always scored 0.3
+  "white-teal":   ["gray", "grey", "white", "black", "navy", "teal"],
+  // Replica dial colors
   "teal":         ["grey", "white", "black", "navy", "olive", "khaki"],
   "burgundy":     ["grey", "white", "navy", "black", "beige", "stone"],
   "purple":       ["grey", "black", "navy", "white", "stone"],

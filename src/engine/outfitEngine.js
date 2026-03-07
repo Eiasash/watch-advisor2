@@ -3,17 +3,17 @@
  * Slots: shirt, pants, shoes, jacket
  */
 
-// Dial color → compatible garment colors
+// Dial color → compatible garment colors (unified with outfitEngine/scoring.js)
 const DIAL_COLOR_MAP = {
-  "silver-white": ["black", "navy", "grey", "white", "beige", "slate"],
-  "green":        ["olive", "beige", "brown", "grey", "cream", "khaki"],
-  "grey":         ["black", "white", "navy", "grey", "stone", "beige"],
-  "blue":         ["navy", "grey", "white", "beige", "stone", "black"],
-  "navy":         ["grey", "white", "black", "beige", "stone", "cream"],
-  "white":        ["black", "navy", "grey", "beige", "stone", "brown"],
-  "black-red":    ["black", "grey", "white", "red"],
-  "black":        ["black", "white", "grey", "navy", "olive", "brown"],
-  "white-teal":   ["grey", "white", "black", "navy", "teal"],
+  "silver-white": ["black", "navy", "gray", "grey", "white", "beige", "slate"],
+  "green":        ["olive", "beige", "brown", "gray", "grey", "khaki", "cream"],
+  "grey":         ["black", "white", "navy", "gray", "grey", "stone", "beige"],
+  "blue":         ["navy", "gray", "grey", "white", "beige", "stone", "black"],
+  "navy":         ["gray", "grey", "white", "black", "beige", "stone", "cream"],
+  "white":        ["black", "navy", "gray", "grey", "beige", "stone", "brown"],
+  "black-red":    ["black", "gray", "grey", "white", "red"],
+  "black":        ["black", "white", "gray", "grey", "navy", "olive", "brown"],
+  "white-teal":   ["gray", "grey", "white", "black", "navy", "teal"],
   // Replica dial colors
   "teal":         ["grey", "white", "black", "navy", "olive", "khaki"],
   "burgundy":     ["grey", "white", "navy", "black", "beige", "stone"],
@@ -22,6 +22,8 @@ const DIAL_COLOR_MAP = {
   "red":          ["black", "grey", "white", "navy"],
   "meteorite":    ["black", "grey", "navy", "white", "brown"],
 };
+
+const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 function formalityScore(watch, garment) {
   const diff = Math.abs((watch.formality ?? 5) - (garment.formality ?? 5));
@@ -56,8 +58,8 @@ function strapScore(watch, garment) {
     const isBlack = strap.includes("black");
     const isBrown = strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
       || strap.includes("cognac") || strap.includes("caramel") || strap.includes("alligator");
-    if (isBlack) return shoeColor === "black" ? 1.0 : 0.1;
-    if (isBrown) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.1;
+    if (isBlack) return shoeColor === "black" ? 1.0 : 0.0;
+    if (isBrown) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;
     // Non-standard leather (teal, olive etc.)
     return ["white", "brown", "tan"].includes(shoeColor) ? 0.85 : 0.5;
   }
@@ -92,10 +94,18 @@ export function garmentScore(watch, garment, weather, history) {
 }
 
 export function generateOutfit(watch, wardrobe, weather = {}, _profile = {}, history = []) {
+  // Filter out accessories and excluded items
+  const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
+
   const slots = ["shirt", "pants", "shoes", "jacket"];
   const outfit = {};
   for (const slot of slots) {
-    const items = wardrobe.filter(g => g.type === slot);
+    const items = wearable.filter(g => {
+      const gType = g.type ?? g.category;
+      // shirt slot accepts sweaters
+      if (slot === "shirt") return gType === "shirt" || gType === "sweater";
+      return gType === slot;
+    });
     if (!items.length) { outfit[slot] = null; continue; }
     items.sort((a, b) =>
       garmentScore(watch, b, weather, history) -
