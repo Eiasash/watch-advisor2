@@ -16,10 +16,10 @@ export function hammingDistance(h1, h2) {
  * Find a possible duplicate garment by comparing perceptual hashes.
  * @param {string} newHash - Hash of the new image
  * @param {Array} existingGarments - Array of garment objects with hash field
- * @param {number} threshold - Maximum Hamming distance to consider a duplicate (default: 5)
+ * @param {number} threshold - Maximum Hamming distance to consider a duplicate (default: 6)
  * @returns {string|null} - ID of the duplicate garment, or null
  */
-export function findDuplicate(newHash, existingGarments, threshold = 5) {
+export function findDuplicate(newHash, existingGarments, threshold = 6) {
   if (!newHash || newHash.length < 8) return null;
   for (const g of existingGarments) {
     if (g.hash && hammingDistance(newHash, g.hash) <= threshold) {

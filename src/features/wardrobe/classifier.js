@@ -21,6 +21,8 @@
  *   8. Blind                      → needsReview true
  */
 
+import { findDuplicate } from "../../classifier/duplicateDetection.js";
+
 // ─── Filename rules ───────────────────────────────────────────────────────────
 
 const TYPE_RULES = [
@@ -377,21 +379,11 @@ export async function analyzeImageContent(thumbnailDataURL, filename = "") {
   }
 }
 
-// ─── Duplicate detection ──────────────────────────────────────────────────────
+// ─── Duplicate detection (delegates to canonical implementation) ──────────────
 
-function hammingDistance(h1, h2) {
-  if (!h1 || !h2 || h1.length !== h2.length) return 999;
-  let d = 0;
-  for (let i = 0; i < h1.length; i++) if (h1[i] !== h2[i]) d++;
-  return d;
-}
-
+// Note: hammingDistance and findDuplicate imported at top of file from duplicateDetection.js
 export function findPossibleDuplicate(newHash, existingGarments, threshold = 6) {
-  if (!newHash || newHash.length < 8) return null;
-  for (const g of existingGarments) {
-    if (g.hash && hammingDistance(newHash, g.hash) <= threshold) return g.id;
-  }
-  return null;
+  return findDuplicate(newHash, existingGarments, threshold);
 }
 
 // ─── Pure decision helper (exported for tests) ────────────────────────────────

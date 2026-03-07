@@ -47,7 +47,7 @@ export async function pullCloudState() {
         type:        row.type ?? row.category,
         category:    row.type ?? row.category,
         photoUrl:    row.photo_url?.startsWith?.("blob:") ? undefined : (row.photo_url ?? null),
-        thumbnail:   row.photo_url ?? row.thumbnail_url ?? null,  // prefer Storage URL over base64
+        thumbnail:   (row.photo_url && !row.photo_url.startsWith("blob:")) ? row.photo_url : (row.thumbnail_url ?? null),
         photoType:   row.photo_type ?? null,
         needsReview: row.needs_review ?? false,
         duplicateOf: row.duplicate_of ?? undefined,

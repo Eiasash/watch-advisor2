@@ -25,10 +25,12 @@ const TYPE_MAP = {
   // Sweater / knitwear  (keep as sweater, not jacket)
   cardigan:"sweater", pullover:"sweater", hoodie:"sweater",
   sweatshirt:"sweater", crewneck:"sweater",
+  knitwear:"sweater", knit:"sweater",
 
   // Shirt / tops
   polo:"shirt", tee:"shirt", tshirt:"shirt", "t-shirt":"shirt",
   henley:"shirt", flannel:"shirt", overshirt:"jacket",
+  blouse:"shirt", top:"shirt",
 
   // Accessories
   belts:"belt",
@@ -49,6 +51,8 @@ export const OUTFIT_TYPES = new Set(["shirt","pants","shoes","jacket","sweater"]
 export function normalizeType(type) {
   if (!type) return "shirt";
   const lower = type.toLowerCase().replace(/[^a-z-]/g, "");
+  // outfit-photo is never a wearable garment type
+  if (lower === "outfit-photo" || lower === "outfit-shot") return "outfit-photo";
   return TYPE_MAP[lower] ?? lower;
 }
 

@@ -48,17 +48,49 @@ describe("normalizeType — classifier version", () => {
   it("strips non-alpha characters", () => {
     expect(normalizeType("  sneaker! ")).toBe("shoes");
   });
-});
 
-// ─── normalizeType (feature version) ────────────────────────────────────────
-
-describe("normalizeType — feature version", () => {
-  it("sweater → shirt (maps to shirt slot)", () => {
-    expect(featureNormalizeType("sweater")).toBe("shirt");
+  it("knitwear → sweater", () => {
+    expect(normalizeType("knitwear")).toBe("sweater");
   });
 
-  it("hoodie → shirt", () => {
-    expect(featureNormalizeType("hoodie")).toBe("shirt");
+  it("knit → sweater", () => {
+    expect(normalizeType("knit")).toBe("sweater");
+  });
+
+  it("blouse → shirt", () => {
+    expect(normalizeType("blouse")).toBe("shirt");
+  });
+
+  it("top → shirt", () => {
+    expect(normalizeType("top")).toBe("shirt");
+  });
+
+  it("outfit-photo → outfit-photo", () => {
+    expect(normalizeType("outfit-photo")).toBe("outfit-photo");
+  });
+
+  it("outfit-shot → outfit-photo", () => {
+    expect(normalizeType("outfit-shot")).toBe("outfit-photo");
+  });
+
+  it("windbreaker → jacket", () => {
+    expect(normalizeType("windbreaker")).toBe("jacket");
+  });
+
+  it("raincoat → jacket", () => {
+    expect(normalizeType("raincoat")).toBe("jacket");
+  });
+});
+
+// ─── normalizeType (feature version — now re-exports classifier) ────────────
+
+describe("normalizeType — feature version (unified)", () => {
+  it("sweater → sweater (canonical type, outfit engine handles slot mapping)", () => {
+    expect(featureNormalizeType("sweater")).toBe("sweater");
+  });
+
+  it("hoodie → sweater", () => {
+    expect(featureNormalizeType("hoodie")).toBe("sweater");
   });
 
   it("outfit-photo → outfit-photo (passthrough)", () => {
@@ -75,6 +107,10 @@ describe("normalizeType — feature version", () => {
 
   it("null → shirt", () => {
     expect(featureNormalizeType(null)).toBe("shirt");
+  });
+
+  it("is the same function as classifier normalizeType", () => {
+    expect(featureNormalizeType).toBe(normalizeType);
   });
 });
 
