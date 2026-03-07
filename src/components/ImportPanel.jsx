@@ -102,6 +102,8 @@ export default function ImportPanel() {
     const groups = groupByAngles(processed);
     let imported = 0;
     let autoAngles = 0;
+    let aiChecksUsed = 0;
+    const AI_CHECK_LIMIT = 5; // max AI Vision calls per import batch
 
     for (const group of groups) {
       const primary = group.primary;
@@ -135,9 +137,10 @@ export default function ImportPanel() {
         continue;
       }
 
-      // Phase 2: near-miss (distance 7–14) → ask AI Vision
-      if (existingDupe && dupeDistance <= DHASH_AI_THRESHOLD && primary.thumbnail && existingDupe.thumbnail) {
-        setProgress(p => ({ ...p, phase: "AI dupe check" }));
+      // Phase 2: near-miss (distance 7–14) → ask AI Vision (rate-limited)
+      if (existingDupe && dupeDistance <= DHASH_AI_THRESHOLD && primary.thumbnail && existingDupe.thumbnail && aiChecksUsed < AI_CHECK_LIMIT) {
+        setProgress(p => ({ ...p, phase: `AI dupe check ${aiChecksUsed + 1}/${AI_CHECK_LIMIT}` }));
+        aiChecksUsed++;
         const aiResult = await aiDuplicateCheck(primary.thumbnail, existingDupe.thumbnail);
         if (aiResult?.isDuplicate && aiResult.confidence !== "low") {
           const existAngles = existingDupe.photoAngles ?? [];

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import { useBootstrap } from "./bootstrap.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import Header        from "../components/Header.jsx";
@@ -6,10 +6,11 @@ import WatchDashboard  from "../components/WatchDashboard.jsx";
 import WardrobeInsights from "../components/WardrobeInsights.jsx";
 import ImportPanel    from "../components/ImportPanel.jsx";
 import WardrobeGrid   from "../components/WardrobeGrid.jsx";
-import WeekPlanner    from "../components/WeekPlanner.jsx";
 import TodayPanel     from "../components/TodayPanel.jsx";
 import StatsPanel     from "../components/StatsPanel.jsx";
 import AuditPanel, { PhotoVerifierPanel } from "../components/AuditPanel.jsx";
+
+const WeekPlanner = lazy(() => import("../components/WeekPlanner.jsx"));
 import SyncBar        from "../components/SyncBar.jsx";
 import SettingsPanel  from "../components/SettingsPanel.jsx";
 import ScrollToTop    from "../components/ScrollToTop.jsx";
@@ -138,8 +139,12 @@ function AppContent() {
             </>
           )}
 
-          {/* Rotation/Planner tab */}
-          {tab === "rotation" && <WeekPlanner />}
+          {/* Rotation/Planner tab — lazy-loaded */}
+          {tab === "rotation" && (
+            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
+              <WeekPlanner />
+            </Suspense>
+          )}
 
           {/* Stats tab */}
           {tab === "stats" && <StatsPanel />}

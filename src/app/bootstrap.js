@@ -40,6 +40,7 @@ export function useBootstrap() {
       // Restore planner state
       if (Array.isArray(cached.weekCtx) && cached.weekCtx.length === 7) setWeekCtx(cached.weekCtx);
       if (Array.isArray(cached.onCallDates)) setOnCallDates(cached.onCallDates);
+      if (cached._outfitOverrides) useWardrobeStore.setState({ _outfitOverrides: cached._outfitOverrides });
       if (cached.strapStore) hydrateStraps(cached.strapStore);
 
       setReady(true);

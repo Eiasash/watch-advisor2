@@ -256,14 +256,40 @@ export default function WeekPlanner() {
   const [strapOverrides, setStrapOverrides] = useState({});
   const [pickingDay, setPickingDay]         = useState(null);
   // Per-day per-slot garment overrides: { [offset]: { shirt: garmentId, ... } }
-  const [outfitOverrides, setOutfitOverrides] = useState({});
+  const [outfitOverrides, setOutfitOverrides] = useState(() => {
+    // Restore from IDB on mount (sync read from wardrobeStore cache)
+    try {
+      const cached = useWardrobeStore.getState();
+      return cached._outfitOverrides ?? {};
+    } catch { return {}; }
+  });
 
-  // 7-day weather forecast
+  // Persist outfit overrides to IDB when they change
+  useEffect(() => {
+    setCachedState({ _outfitOverrides: outfitOverrides }).catch(() => {});
+  }, [outfitOverrides]);
+
+  // 7-day weather forecast with IDB caching (1-hour TTL)
   const [forecast, setForecast] = useState([]);
   useEffect(() => {
-    fetchWeatherForecast()
-      .then(setForecast)
-      .catch(err => console.warn("[weather] forecast failed:", err.message));
+    (async () => {
+      try {
+        const { getCachedState: getCache } = await import("../services/localCache.js");
+        const cached = await getCache();
+        const now = Date.now();
+        if (cached._forecast && cached._forecastTs && (now - cached._forecastTs) < 3600000) {
+          setForecast(cached._forecast);
+          return;
+        }
+      } catch {}
+      try {
+        const data = await fetchWeatherForecast();
+        setForecast(data);
+        setCachedState({ _forecast: data, _forecastTs: Date.now() }).catch(() => {});
+      } catch (err) {
+        console.warn("[weather] forecast failed:", err.message);
+      }
+    })();
   }, []);
 
   const rawRotation = useMemo(
@@ -300,7 +326,7 @@ export default function WeekPlanner() {
     return result;
   }, [wearable]);
 
-  // Generate outfits per day — uses watch, weather forecast, and diversity penalty
+  // Generate outfits per day — uses watch + strap, weather forecast, and diversity penalty
   const weekOutfits = useMemo(() => {
     const usedGarmentIds = new Set();
     return rotation.map(day => {
@@ -308,13 +334,26 @@ export default function WeekPlanner() {
       const dayForecast = forecast.find(f => f.date === day.date);
       const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
 
+      // Enrich watch with active strap for this day (shoe-strap coordination)
+      const dayWatchId = watchOverrides[day.offset] ?? day.watch?.id;
+      const dayStrapId = strapOverrides[day.offset]
+        ?? (dayWatchId && activeStrap[dayWatchId]) ?? null;
+      const dayStrapObj = dayStrapId ? straps[dayStrapId] : null;
+      let enrichedWatch = day.watch;
+      if (dayStrapObj) {
+        const strapStr = dayStrapObj.type === "bracelet" || dayStrapObj.type === "integrated"
+          ? dayStrapObj.type
+          : `${dayStrapObj.color} ${dayStrapObj.type}`;
+        enrichedWatch = { ...day.watch, strap: strapStr };
+      }
+
       // Augment history with garments already assigned earlier this week for diversity
       const fakeHistory = [...history];
       for (const gId of usedGarmentIds) {
         fakeHistory.unshift({ outfit: { shirt: gId, pants: gId, shoes: gId, jacket: gId } });
       }
 
-      const outfit = generateOutfit(day.watch, wearable, weather, {}, fakeHistory);
+      const outfit = generateOutfit(enrichedWatch, wearable, weather, {}, fakeHistory);
 
       // Apply manual overrides
       const overrides = outfitOverrides[day.offset] ?? {};
@@ -332,7 +371,7 @@ export default function WeekPlanner() {
 
       return outfit;
     });
-  }, [rotation, wearable, garments, history, forecast, outfitOverrides]);
+  }, [rotation, wearable, garments, history, forecast, outfitOverrides, watchOverrides, strapOverrides, straps, activeStrap]);
 
   const today = new Date().toISOString().slice(0, 10);
 
