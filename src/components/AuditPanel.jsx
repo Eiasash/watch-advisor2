@@ -390,6 +390,16 @@ export function PhotoVerifierPanel() {
         </div>
       )}
 
+      {done && issues.length > 1 && (
+        <button
+          onClick={() => issues.forEach(r => applyFix(r.garmentId, r))}
+          style={{ padding: "8px 16px", borderRadius: 10, border: "none",
+                   background: "#22c55e", color: "#fff", fontSize: 13, fontWeight: 700,
+                   cursor: "pointer", marginBottom: 10, width: "100%" }}>
+          Apply All {issues.length} Fixes
+        </button>
+      )}
+
       {done && issues.length === 0 && (
         <div style={{ padding: "10px 14px", borderRadius: 10, background: isDark ? "#0a1a0a" : "#f0fdf4",
                       border: `1px solid ${isDark ? "#166534" : "#bbf7d0"}`, fontSize: 13,
