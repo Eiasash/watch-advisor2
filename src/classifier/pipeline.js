@@ -72,7 +72,7 @@ export async function runClassifierPipeline(file, existingGarments = []) {
   }
 
   // Step 4: Claude Vision fallback when confidence is low
-  if (tags._typeSource === "default" || tags._typeSource === "ambiguous" || tags._typeSource === "blind") {
+  if (tags._typeSource === "ambiguous" || tags._typeSource === "blind") {
     console.log("[pipeline] low confidence — trying Claude Vision fallback");
     if (thumbnail) {
       const base64 = thumbnail.replace(/^data:image\/[^;]+;base64,/, "");
