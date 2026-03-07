@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { pushGarment } from "../services/supabaseSync.js";
-import { setCachedState } from "../services/localCache.js";
+import { getCachedState, setCachedState } from "../services/localCache.js";
+import { enqueueTask, getPendingTasks, subscribeQueue } from "../services/backgroundQueue.js";
 
 async function runAudit(garments, watches, history) {
   const garmentsSummary = garments
@@ -286,6 +287,26 @@ export function PhotoVerifierPanel() {
   const [running, setRunning]   = useState(false);
   const [done, setDone]         = useState(false);
   const [progress, setProgress] = useState(0);
+  const [bgPending, setBgPending] = useState(0);
+
+  // Restore cached verification results from IDB on mount
+  useEffect(() => {
+    getCachedState().then(cached => {
+      if (cached._verifyResults && Object.keys(cached._verifyResults).length > 0) {
+        setResults(cached._verifyResults);
+        setDone(true);
+      }
+    });
+    // Subscribe to background queue for verify tasks
+    const off = subscribeQueue(state => {
+      if (state.type === "verify-photo") setBgPending(state.pending);
+    });
+    // Check for pending verify tasks from previous session
+    getPendingTasks("verify-photo").then(tasks => {
+      if (tasks.length > 0) setBgPending(tasks.length);
+    });
+    return off;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bg     = isDark ? "#13161f" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
@@ -311,6 +332,8 @@ export function PhotoVerifierPanel() {
     setResults(out);
     setRunning(false);
     setDone(true);
+    // Persist results to IDB so they survive tab close
+    setCachedState({ _verifyResults: out }).catch(() => {});
   }
 
   function applyFix(garmentId, fix) {
@@ -346,6 +369,7 @@ export function PhotoVerifierPanel() {
           <div style={{ fontSize: 15, fontWeight: 700, color: text }}>📸 AI Photo Verifier</div>
           <div style={{ fontSize: 12, color: sub, marginTop: 2 }}>
             {withPhoto.length} garments with photos — Claude Vision checks each label
+            {bgPending > 0 && <span style={{ color: "#f59e0b", marginLeft: 6 }}>{bgPending} uploads queued</span>}
           </div>
         </div>
         <button

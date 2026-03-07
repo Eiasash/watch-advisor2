@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
-import { pullCloudState, subscribeSyncState } from "../services/supabaseSync.js";
+import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync } from "../services/supabaseSync.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
 import { useStrapStore }     from "../stores/strapStore.js";
+import { resumePendingTasks, registerHandler } from "../services/backgroundQueue.js";
+import { checkAndBackup } from "../services/backupService.js";
 
 export function useBootstrap() {
   const [ready,  setReady]  = useState(false);
@@ -46,7 +48,21 @@ export function useBootstrap() {
       setReady(true);
       setStatus("Ready");
 
-      // ── 2. Pull cloud state in background ────────────────────────────────
+      // ── 2. Resume background tasks & run weekly backup ──────────────────
+      registerHandler("push-garment", async (p) => { await pushGarmentSync(p.garment); });
+      registerHandler("upload-photo", async (p) => { await uploadPhotoSync(p.garmentId, p.source, p.kind); });
+      registerHandler("upload-angle", async (p) => { await uploadAngleSync(p.garmentId, p.index, p.source); });
+      registerHandler("verify-photo", async (p) => {
+        const res = await fetch("/.netlify/functions/verify-garment-photo", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(p),
+        });
+        if (!res.ok) throw new Error(`verify failed: ${res.status}`);
+      });
+      resumePendingTasks();
+      checkAndBackup();
+
+      // ── 3. Pull cloud state in background ────────────────────────────────
       setTimeout(async () => {
         try {
           const cloud = await pullCloudState();
