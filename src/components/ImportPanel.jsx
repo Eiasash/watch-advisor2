@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { runClassifierPipeline } from "../classifier/pipeline.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
-import { pushGarment, pushGarmentDelete } from "../services/supabaseSync.js";
+import { pushGarment } from "../services/supabaseSync.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
@@ -145,7 +145,7 @@ export default function ImportPanel() {
         {/* Gallery */}
         <label style={{
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-          padding:"20px 12px", borderRadius:12, textAlign:"center",
+          padding:"20px 12px", minHeight:80, borderRadius:12, textAlign:"center",
           border:`2px dashed ${isDark?"#2b3140":"#d1d5db"}`,
           cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1,
         }}>
@@ -157,7 +157,7 @@ export default function ImportPanel() {
         {/* Camera */}
         <label style={{
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-          padding:"20px 12px", borderRadius:12, textAlign:"center",
+          padding:"20px 12px", minHeight:80, borderRadius:12, textAlign:"center",
           border:`1px solid ${isDark?"#2b3140":"#d1d5db"}`,
           background: isDark ? "#0f131a" : "#f9fafb",
           cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1,

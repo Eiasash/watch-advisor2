@@ -59,7 +59,7 @@ export async function pullCloudState() {
   } catch (e) {
     setSyncState({ status: "error" });
     console.warn("[supabaseSync] pull failed:", e.message);
-    return { watches: WATCH_COLLECTION, garments: [], history: [] };
+    return { watches: WATCH_COLLECTION, garments: [], history: [], _localOnly: true };
   }
 }
 
