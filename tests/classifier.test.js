@@ -65,6 +65,7 @@ import {
 const dz = () => ({
   total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
   flatLay: false,
+  personLike: false,
   shoes:     { fires: false, reason: null },
   shirt:     { fires: false, reason: null },
   pants:     { fires: false, reason: null },
@@ -434,6 +435,7 @@ describe("findPossibleDuplicate", () => {
 const blankPx = () => ({
   total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
   flatLay: false,
+  personLike: false,
   shoes:     { fires: false, reason: null },
   shirt:     { fires: false, reason: null },
   pants:     { fires: false, reason: null },
@@ -495,5 +497,113 @@ describe("_applyDecision — direct policy tests", () => {
     expect(r.duplicateOf).toBe("garment-abc123");
     expect(r.type).toBe("shirt");
     expect(r.color).toBe("navy");
+  });
+});
+
+// ─── _applyDecision — personLike guard on pants ───────────────────────────────
+
+describe("_applyDecision — personLike blocks pants", () => {
+  it("personLike=true with bottom-heavy zones → NOT pants, goes ambiguous", () => {
+    const fn = classifyFromFilename("IMG_1234.jpg");
+    const px = {
+      ...blankPx(),
+      total: 350, topF: 0.12, midF: 0.44, botF: 0.44, bilatBalance: 0.72,
+      personLike: true,   // person guard active
+      pants:     { fires: false, reason: null },  // personLike blocked it
+      ambiguous: { fires: true, reason: "person-like no-shape-signal" },
+    };
+    const r = _applyDecision(fn, px, null, undefined);
+    expect(r.type).not.toBe("pants");
+    expect(r.needsReview).toBe(true);
+    expect(r.photoType).toBe("ambiguous");
+  });
+
+  it("personLike=false + strict topF < 0.15 + mid+bot > 0.85 → pants fires", () => {
+    const fn = classifyFromFilename("IMG_1234.jpg");
+    const px = {
+      ...blankPx(),
+      total: 300, topF: 0.08, midF: 0.46, botF: 0.46, bilatBalance: 0.85,
+      personLike: false,
+      pants: { fires: true, reason: "topF=0.08 topNB=4 mid+bot=92% total=300" },
+      likelyType: "pants",
+    };
+    const r = _applyDecision(fn, px, null, undefined);
+    expect(r.type).toBe("pants");
+    expect(r.needsReview).toBe(false);
+    expect(r._typeSource).toBe("image-pants");
+  });
+
+  it("skin-tone signal (hasSkin) → personLike=true → not pants", () => {
+    const fn = classifyFromFilename("IMG_1234.jpg");
+    const px = {
+      ...blankPx(),
+      total: 280, topF: 0.13, midF: 0.45, botF: 0.42, bilatBalance: 0.68,
+      personLike: true,   // skin detected
+      pants:     { fires: false, reason: null },
+      ambiguous: { fires: true, reason: "person-like skin=0.062" },
+    };
+    const r = _applyDecision(fn, px, null, undefined);
+    expect(r.type).not.toBe("pants");
+    expect(r.needsReview).toBe(true);
+  });
+});
+
+// ─── classify — person-photo and ambiguous via injected zones ─────────────────
+
+describe("classify — person-photo / ambiguous must not become pants", () => {
+  it("personLike=true zones → not pants, ambiguous review", async () => {
+    const m = await import("../src/features/wardrobe/classifier.js");
+    m.analyzeImageContent.mockResolvedValueOnce({
+      ...dz(),
+      total: 350, topF: 0.14, midF: 0.44, botF: 0.42, bilatBalance: 0.70,
+      personLike: true,
+      pants:     { fires: false, reason: null },
+      ambiguous: { fires: true, reason: "person-like all-zones topNB=15" },
+    });
+    const r = await classify("IMG20260208053034.jpg", "data:image/jpeg;base64,x", "", []);
+    expect(r.type).not.toBe("pants");
+    expect(r.needsReview).toBe(true);
+    expect(r.photoType).toBe("ambiguous");
+  });
+
+  it("skin-toned image (hasSkin) → ambiguous review, not pants", async () => {
+    const m = await import("../src/features/wardrobe/classifier.js");
+    m.analyzeImageContent.mockResolvedValueOnce({
+      ...dz(),
+      total: 260, topF: 0.12, midF: 0.46, botF: 0.42, bilatBalance: 0.65,
+      personLike: true,
+      pants:     { fires: false, reason: null },
+      ambiguous: { fires: true, reason: "person-like skin=0.071" },
+    });
+    const r = await classify("IMG20260221153308.jpg", "data:image/jpeg;base64,x", "", []);
+    expect(r.type).not.toBe("pants");
+    expect(r.needsReview).toBe(true);
+  });
+
+  it("shoes still outrank pants when both signals present", async () => {
+    const m = await import("../src/features/wardrobe/classifier.js");
+    m.analyzeImageContent.mockResolvedValueOnce({
+      ...dz(),
+      total: 180, topF: 0.06, midF: 0.22, botF: 0.72, bilatBalance: 0.84,
+      shoes: { fires: true, reason: "bottom-heavy botF=0.72" },
+      pants: { fires: true, reason: "should be ignored" },
+      likelyType: "shoes",
+    });
+    const r = await classify("IMG20260209233402.jpg", "data:image/jpeg;base64,x", "", []);
+    expect(r.type).toBe("shoes");
+    expect(r._typeSource).toBe("image-shoes");
+  });
+
+  it("flatLay image is never pants and never review", async () => {
+    const m = await import("../src/features/wardrobe/classifier.js");
+    m.analyzeImageContent.mockResolvedValueOnce({
+      ...dz(),
+      total: 680, topF: 0.33, midF: 0.34, botF: 0.33, bilatBalance: 0.91,
+      flatLay: true,
+    });
+    const r = await classify("IMG20260209233604.jpg", "data:image/jpeg;base64,x", "", []);
+    expect(r.type).not.toBe("pants");
+    expect(r.type).toBe("shirt");
+    expect(r.needsReview).toBe(false);
   });
 });

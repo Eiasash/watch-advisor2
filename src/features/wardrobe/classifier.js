@@ -217,6 +217,7 @@ export async function analyzeImageContent(thumbnailDataURL) {
   const none = {
     total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
     flatLay: false,
+    personLike: false,
     shoes:     { fires: false, reason: null },
     shirt:     { fires: false, reason: null },
     pants:     { fires: false, reason: null },
@@ -265,6 +266,45 @@ export async function analyzeImageContent(thumbnailDataURL) {
     const zoneSpread = Math.max(topF, midF, botF) - Math.min(topF, midF, botF);
     const flatLay    = total > 170 && zoneSpread < 0.14;
 
+    // ── Person-like signal ────────────────────────────────────────────────────
+    // A person standing or seated in frame has:
+    //   - absolute pixels in the top zone (head/shoulders always present, even if small)
+    //   - non-trivial content in all three zones
+    //   - typically medium-to-high total (person fills significant frame area)
+    //
+    // Skin-tone scan: count pixels that fall in flesh/skin range
+    //   (warm, desaturated-mid: reddish > green > blue, all mid-brightness)
+    // This is intentionally loose — just needs to flag "likely person present".
+    let skinPixels = 0;
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        const i = (y * SIZE + x) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+        if (a < 100) continue;
+        // Skin tone: r dominant, warm, mid-brightness, not too saturated
+        if (r > 140 && r > g + 15 && r > b + 20 && g > 80 && b > 50
+            && r < 240 && g < 200 && b < 180) {
+          skinPixels++;
+        }
+      }
+    }
+    const skinRatio = skinPixels / (SIZE * SIZE);
+
+    // personLike: fires when BOTH:
+    //   A. top zone has meaningful absolute content (topNB > 10 raw pixels at 30×30)
+    //      — folded jeans cropped at waistband have topNB ≈ 0–5; a person always has more
+    //   B. content present in all three zones (nothing near-zero)
+    // OR:
+    //   C. skin tone ratio exceeds threshold (visible flesh in image)
+    const allZonesPresent = topNB > 10 && midNB > 10 && botNB > 10;
+    const hasSkin         = skinRatio > 0.04;  // >4% of 30×30 canvas is skin-toned
+    const personLike      = (allZonesPresent && total >= 120) || hasSkin;
+    const personReason    = personLike
+      ? (hasSkin
+          ? `skin skinRatio=${skinRatio.toFixed(3)}`
+          : `all-zones topNB=${topNB} midNB=${midNB} botNB=${botNB} total=${total}`)
+      : null;
+
     // ── Shoes (terminal) ─────────────────────────────────────────────────────
     // Only fires on images where the lower half clearly dominates OR two compact
     // objects sit side by side near the bottom.
@@ -287,46 +327,36 @@ export async function analyzeImageContent(thumbnailDataURL) {
       : null;
 
     // ── Pants (very strict) ───────────────────────────────────────────────────
-    // Deliberately narrow to avoid false positives from:
-    //   - person legs visible in outfit photos
-    //   - long knitwear (also bottom-heavy)
-    //   - seated shots with legs filling lower frame
-    //   - partial body photos
+    // Deliberately narrow. Requirements (ALL must hold):
     //
-    // Requirements (ALL must hold):
-    //   topF < 0.18      — top zone nearly empty (stricter than before)
-    //   mid+bot > 0.82   — strong lower mass (stricter than before)
+    //   topF < 0.15      — top zone nearly empty (tightened from 0.18)
+    //                      A person's head/torso always produces topF > 0.15 even
+    //                      when partially cropped. Folded jeans have topF ≈ 0.02–0.10.
+    //   topNB < 12       — absolute top pixels low (direct count guard)
+    //                      Person standing with head near top always has topNB > 12.
+    //                      Folded jeans cropped at waistband: topNB ≈ 0–8.
+    //   mid+bot > 0.85   — strong lower mass (tightened from 0.82)
     //   !flatLay         — not a full-frame garment fill
     //   !shoesFires      — terminal
     //   !shirtFires      — hanger already caught
-    //   total 90–550     — excludes wrist closeups (<90) AND large flat-lays (>550)
-    //
-    // A pair of jeans folded on a bed with the waistband cropped out will have:
-    //   topF ≈ 0.05–0.15, midF ≈ 0.40, botF ≈ 0.45, total ≈ 150–400
-    // A person standing: topF ≈ 0.25–0.35 (torso) → fails topF < 0.18
-    // A long knit sweater laid flat: flatLay=true → excluded
-    const pantsFires  = !flatLay && !shoesFires && !shirtFires
-      && topF < 0.18
-      && (midF + botF) > 0.82
-      && total > 90 && total < 550;
+    //   !personLike      — explicit person-in-frame guard
+    //   total 90–500     — narrowed upper bound (was 550)
+    const pantsFires  = !flatLay && !shoesFires && !shirtFires && !personLike
+      && topF < 0.15
+      && topNB < 12
+      && (midF + botF) > 0.85
+      && total > 90 && total < 500;
     const pantsReason = pantsFires
-      ? `topF=${topF.toFixed(2)} mid+bot=${((midF+botF)*100).toFixed(0)}% total=${total}`
+      ? `topF=${topF.toFixed(2)} topNB=${topNB} mid+bot=${((midF+botF)*100).toFixed(0)}% total=${total}`
       : null;
 
     // ── Ambiguous ─────────────────────────────────────────────────────────────
-    // Catches everything that didn't match a positive signal above but
-    // also isn't a clean flat-lay.
-    // These images get needsReview=true in classify().
-    // Typical members:
-    //   - seated outfit shots (topF mid-range, botF mid-range, medium total)
-    //   - wrist/watch photos (low total but not shoe-shaped)
-    //   - belt/accessory shots (odd bilateral distribution)
-    //   - stacked garments (uneven zones, medium total)
-    //   - mirror selfie without filename keyword
-    // Condition: no positive type signal AND not a flat-lay AND some content present
+    // Everything that didn't match a positive signal AND isn't a clean flat-lay.
+    // Explicitly includes personLike images that didn't get caught by filename selfie kw.
+    // needsReview=true in classify().
     const ambiguousFires = !shoesFires && !shirtFires && !pantsFires && !flatLay && total >= 20;
     const ambiguousReason = ambiguousFires
-      ? `no-shape-signal topF=${topF.toFixed(2)} midF=${midF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
+      ? `${personLike ? "person-like " : ""}no-shape-signal topF=${topF.toFixed(2)} midF=${midF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}${hasSkin ? ` skin=${skinRatio.toFixed(3)}` : ""}`
       : null;
 
     // ── likelyType ────────────────────────────────────────────────────────────
@@ -338,18 +368,20 @@ export async function analyzeImageContent(thumbnailDataURL) {
 
     console.log(
       "[zones]",
-      `top:${topF.toFixed(2)} mid:${midF.toFixed(2)} bot:${botF.toFixed(2)} total:${total}`,
-      `| bilat:${bilatBalance.toFixed(2)} flatLay:${flatLay}`,
+      `top:${topF.toFixed(2)}(${topNB}) mid:${midF.toFixed(2)} bot:${botF.toFixed(2)} total:${total}`,
+      `| bilat:${bilatBalance.toFixed(2)} flatLay:${flatLay} person:${personLike}`,
       `| →${likelyType ?? (flatLay ? "flat-lay" : ambiguousFires ? "ambiguous" : "null")}`,
-      shoesFires     ? `| shoes:${shoesReason}`       : "",
-      shirtFires     ? `| shirt:${shirtReason}`       : "",
-      pantsFires     ? `| pants:${pantsReason}`       : "",
+      shoesFires     ? `| shoes:${shoesReason}`         : "",
+      shirtFires     ? `| shirt:${shirtReason}`         : "",
+      pantsFires     ? `| pants:${pantsReason}`         : "",
+      personLike     ? `| personLike:${personReason}`   : "",
       flatLay        ? `| flatLay:spread=${zoneSpread.toFixed(3)}` : "",
       ambiguousFires ? `| ambiguous:${ambiguousReason}` : "",
     );
 
     return {
       total, topF, midF, botF, bilatBalance, flatLay,
+      personLike,
       shoes:     { fires: shoesFires,     reason: shoesReason },
       shirt:     { fires: shirtFires,     reason: shirtReason },
       pants:     { fires: pantsFires,     reason: pantsReason },
@@ -462,6 +494,7 @@ export function _applyDecision(fn, px, pixelColor, duplicateOf) {
     _confidence:     fn.confidence,
     _typeSource:     typeSource,
     _flatLay:        px.flatLay,
+    _personLike:     px.personLike ?? false,
     _ambiguous:      px.ambiguous.fires,
     _decisionReason: decisionReason,
   };
@@ -489,6 +522,7 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
     "| pixColor:", pixelColor,
     "| imgType:", px.likelyType,
     "| flatLay:", px.flatLay,
+    "| personLike:", px.personLike,
     "| ambiguous:", px.ambiguous.fires,
     "| reason:", result._decisionReason,
     ...(result.duplicateOf ? ["| DUPE:", result.duplicateOf] : []),
