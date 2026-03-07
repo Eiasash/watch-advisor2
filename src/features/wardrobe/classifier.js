@@ -361,19 +361,7 @@ export async function analyzeImageContent(thumbnailDataURL, filename = "") {
     else if (pantsFires) likelyType = "pants";
     // flat-lay and ambiguous → likelyType null (classify() handles them)
 
-    console.log(
-      "[zones]",
-      filename,
-      `top:${topF.toFixed(2)}(${topNB}) mid:${midF.toFixed(2)}(${midNB}) bot:${botF.toFixed(2)}(${botNB}) total:${total}`,
-      `| bilat:${bilatBalance.toFixed(2)} flatLay:${flatLay} person:${personLike}`,
-      `| →${likelyType ?? (flatLay ? "flat-lay" : ambiguousFires ? "ambiguous" : "null")}`,
-      shoesFires     ? `| shoes:${shoesReason}`         : "",
-      shirtFires     ? `| shirt:${shirtReason}`         : "",
-      pantsFires     ? `| pants:${pantsReason}`         : "",
-      personLike     ? `| personLike:${personReason}`   : "",
-      flatLay        ? `| flatLay:spread=${zoneSpread.toFixed(3)}` : "",
-      ambiguousFires ? `| ambiguous:${ambiguousReason}` : "",
-    );
+
 
     return {
       total, topF, midF, botF, bilatBalance, flatLay,

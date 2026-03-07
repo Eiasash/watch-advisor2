@@ -122,7 +122,7 @@ export default function WatchDashboard() {
     const hasItems = Object.values(newOutfit).some(Boolean);
     if (hasItems) return newOutfit;
     return generateOutfit(selectedWatch, garments, weatherObj, {}, history);
-  }, [selectedWatch, garments, weatherObj, history]);
+  }, [selectedWatch, garments, weatherObj, history]); // buildOutfit/generateOutfit filter accessories internally
 
   const explanation = useMemo(() => {
     if (!selectedWatch) return "";

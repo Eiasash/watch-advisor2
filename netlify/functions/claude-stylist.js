@@ -33,7 +33,7 @@ export async function handler(event) {
 
     // Build a readable garment list with type+color context
     const garmentLines = garments
-      .filter(g => g.type !== "outfit-photo" && g.type !== "outfit-shot")
+      .filter(g => !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type ?? g.category))
       .map(g => {
         const type  = g.type ?? g.category ?? "?";
         const color = g.color ?? "unknown color";

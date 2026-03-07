@@ -4,12 +4,15 @@
  * when watch or weather changes.
  */
 
+const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
+
 export function generateOutfit(watch, garments, weather) {
-  const shirts   = garments.filter(g => g.type === "shirt");
-  const pants    = garments.filter(g => g.type === "pants");
-  const shoes    = garments.filter(g => g.type === "shoes");
-  const jackets  = garments.filter(g => g.type === "jacket");
-  const sweaters = garments.filter(g => g.type === "sweater");
+  const wearable = garments.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
+  const shirts   = wearable.filter(g => g.type === "shirt" || g.type === "sweater");
+  const pants    = wearable.filter(g => g.type === "pants");
+  const shoes    = wearable.filter(g => g.type === "shoes");
+  const jackets  = wearable.filter(g => g.type === "jacket");
+  const sweaters = wearable.filter(g => g.type === "sweater");
 
   let jacket = null;
 
