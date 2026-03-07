@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync } from "../services/supabaseSync.js";
+import { registerHandler, resumePendingTasks } from "../services/backgroundQueue.js";
+import { checkAndBackup } from "../services/backupService.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";

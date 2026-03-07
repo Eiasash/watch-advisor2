@@ -15,6 +15,7 @@ import SyncBar        from "../components/SyncBar.jsx";
 import SettingsPanel  from "../components/SettingsPanel.jsx";
 import ScrollToTop    from "../components/ScrollToTop.jsx";
 import OccasionPanel  from "../components/OccasionPanel.jsx";
+import OccasionPlanner from "../components/OccasionPlanner.jsx";
 import SelfiePanel    from "../components/SelfiePanel.jsx";
 import CommandPalette from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
