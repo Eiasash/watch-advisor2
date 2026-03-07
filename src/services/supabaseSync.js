@@ -54,10 +54,16 @@ export async function pullCloudState() {
         photoAngles: row.photo_angles ?? [],
       })),
       history: (history ?? []).map(row => ({
-        id:      row.id,
-        watchId: row.watch_id,
-        date:    row.date,
-        outfit:  row.payload?.outfit ?? {},
+        id:         row.id,
+        watchId:    row.watch_id,
+        date:       row.date,
+        outfit:     row.payload?.outfit      ?? {},
+        garmentIds: row.payload?.garmentIds  ?? [],
+        strapId:    row.payload?.strapId     ?? null,
+        strapLabel: row.payload?.strapLabel  ?? null,
+        context:    row.payload?.context     ?? null,
+        notes:      row.payload?.notes       ?? null,
+        loggedAt:   row.payload?.loggedAt    ?? null,
       })),
     };
   } catch (e) {
@@ -199,7 +205,16 @@ export async function pushHistoryEntry(entry) {
       id:       entry.id,
       watch_id: entry.watchId,
       date:     entry.date,
-      payload:  { outfit: entry.outfit ?? {} },
+      payload:  {
+        outfit:       entry.outfit      ?? {},
+        garmentIds:   entry.garmentIds  ?? [],
+        strapId:      entry.strapId     ?? null,
+        strapLabel:   entry.strapLabel  ?? null,
+        context:      entry.context     ?? null,
+        notes:        entry.notes       ?? null,
+        // outfitPhoto excluded from cloud — could be large base64; keep local only
+        loggedAt:     entry.loggedAt    ?? null,
+      },
     }, { onConflict: "id" });
     if (error) console.warn("[supabaseSync] pushHistoryEntry error:", error.message);
   } catch (e) {

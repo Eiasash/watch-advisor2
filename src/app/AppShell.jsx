@@ -9,8 +9,6 @@ import WardrobeGrid   from "../components/WardrobeGrid.jsx";
 import WeekPlanner    from "../components/WeekPlanner.jsx";
 import TodayPanel     from "../components/TodayPanel.jsx";
 import StatsPanel     from "../components/StatsPanel.jsx";
-import TodayPanel     from "../components/TodayPanel.jsx";
-import StatsPanel     from "../components/StatsPanel.jsx";
 import AuditPanel, { PhotoVerifierPanel } from "../components/AuditPanel.jsx";
 import SyncBar        from "../components/SyncBar.jsx";
 import SettingsPanel  from "../components/SettingsPanel.jsx";

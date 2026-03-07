@@ -143,9 +143,20 @@ export default function WeekPlanner() {
   const [strapOverrides, setStrapOverrides] = useState({}); // { [offset]: strapId }
   const [pickingDay, setPickingDay]         = useState(null); // offset of day with open picker
 
-  const rotation = useMemo(
+  const rawRotation = useMemo(
     () => genWeekRotation(watches, history, weekCtx, onCallDates),
     [watches, history, weekCtx, onCallDates]
+  );
+
+  // Apply per-day manual watch overrides
+  const rotation = useMemo(() =>
+    rawRotation.map(day => {
+      const oid = watchOverrides[day.offset];
+      if (!oid) return day;
+      const w = watches.find(x => x.id === oid);
+      return w ? { ...day, watch: w, isOverridden: true } : day;
+    }),
+    [rawRotation, watchOverrides, watches]
   );
 
   const today = new Date().toISOString().slice(0, 10);
@@ -248,13 +259,11 @@ export default function WeekPlanner() {
                 <div style={{ marginTop: 8, border: `1px solid ${border}`, borderRadius: 10,
                               background: isDark ? "#171a21" : "#fff", overflow: "hidden" }}>
                   {watches.map(w => {
-                    const isSelected = (watchOverrides[day.offset] ?? rotation[day.offset]?.watch?.id) === w.id;
+                    const isSelected = (watchOverrides[day.offset] ?? day.watch?.id) === w.id;
                     return (
                       <div key={w.id}>
                         <div onClick={() => {
                           setWatchOverrides(o => ({ ...o, [day.offset]: w.id }));
-                          // Clear strapOverride when switching watch
-                          setStrapOverrides(o => { const n = {...o}; delete n[day.offset]; return n; });
                           setPickingDay(null);
                         }}
                           style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer",
