@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useStrapStore }   from "../stores/strapStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
+import { generateOutfit } from "../engine/outfitEngine.js";
 import { setCachedState } from "../services/localCache.js";
+import { fetchWeatherForecast, getLayerRecommendation } from "../weather/weatherService.js";
 
-const DAY_NAMES_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const CONTEXTS = [
   { key:"smart-casual",            label:"Smart Casual" },
   { key:"hospital-smart-casual",   label:"Clinic/Hospital" },
@@ -15,6 +16,19 @@ const CONTEXTS = [
   { key:"casual",                  label:"Casual" },
   { key:"shift",                   label:"On-Call Shift" },
 ];
+
+const OUTFIT_SLOTS = ["shirt", "pants", "shoes", "jacket"];
+const SLOT_ICONS = { shirt:"\u{1F454}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}" };
+const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
+
+const WEATHER_ICONS = {
+  "Clear sky": "\u2600\uFE0F",
+  "Partly cloudy": "\u26C5",
+  "Foggy": "\u{1F32B}\uFE0F",
+  "Rain": "\u{1F327}\uFE0F",
+  "Snow": "\u{1F328}\uFE0F",
+  "Thunderstorm": "\u26C8\uFE0F",
+};
 
 function WatchMini({ watch, label, isDark, isOnCall }) {
   if (!watch) return <div style={{ color:"#4b5563", fontSize:12, fontStyle:"italic" }}>No watches</div>;
@@ -28,7 +42,7 @@ function WatchMini({ watch, label, isDark, isOnCall }) {
         display:"flex", alignItems:"center", justifyContent:"center",
         fontSize:16,
       }}>
-        {watch.emoji ?? "⌚"}
+        {watch.emoji ?? "\u231A"}
       </div>
       <div>
         <div style={{ fontSize:11, fontWeight:700, color:isDark?"#e2e8f0":"#111827", lineHeight:1.2 }}>
@@ -39,6 +53,106 @@ function WatchMini({ watch, label, isDark, isOnCall }) {
           {label && <span style={{ color:accent, marginLeft:4 }}>{label}</span>}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Outfit Slot Chip — tap to swap garment ──────────────────────────────────
+function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates }) {
+  const [open, setOpen] = useState(false);
+  const icon = SLOT_ICONS[slot] ?? "\u2022";
+  const sub = isDark ? "#6b7280" : "#9ca3af";
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        onClick={() => candidates.length > 0 && setOpen(!open)}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "5px 10px", borderRadius: 8,
+          border: `1px solid ${border}`,
+          background: isDark ? "#0f131a" : "#f9fafb",
+          cursor: candidates.length > 0 ? "pointer" : "default",
+          minHeight: 36,
+        }}
+      >
+        {garment?.thumbnail ? (
+          <img src={garment.thumbnail} alt="" style={{ width: 28, height: 28, borderRadius: 5, objectFit: "cover" }} />
+        ) : (
+          <span style={{ fontSize: 16, width: 28, textAlign: "center" }}>{icon}</span>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: sub, textTransform: "uppercase", letterSpacing: "0.06em" }}>{slot}</div>
+          {garment ? (
+            <div style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1f2937",
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {garment.color} {garment.type}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: sub, fontStyle: "italic" }}>None</div>
+          )}
+        </div>
+        {candidates.length > 0 && (
+          <span style={{ fontSize: 10, color: sub }}>{open ? "\u25B2" : "\u25BC"}</span>
+        )}
+      </div>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
+          maxHeight: 180, overflowY: "auto",
+          background: isDark ? "#171a21" : "#fff",
+          border: `1px solid ${border}`, borderRadius: 8,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+        }}>
+          {candidates.map(c => (
+            <div key={c.id}
+              onClick={() => { onSwap(slot, c); setOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "6px 10px", cursor: "pointer",
+                background: c.id === garment?.id ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
+                borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+              }}
+            >
+              {c.thumbnail ? (
+                <img src={c.thumbnail} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
+              ) : (
+                <span style={{ fontSize: 14, width: 24, textAlign: "center" }}>{icon}</span>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1f2937",
+                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {c.color} {c.type}
+                </div>
+                {c.brand && <div style={{ fontSize: 10, color: sub }}>{c.brand}</div>}
+              </div>
+              {c.id === garment?.id && <span style={{ color: "#3b82f6", fontWeight: 700, fontSize: 12 }}>{"\u2713"}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Weather Badge ───────────────────────────────────────────────────────────
+function WeatherBadge({ forecast, isDark }) {
+  if (!forecast) return null;
+  const icon = WEATHER_ICONS[forecast.description] ?? "\u{1F321}\uFE0F";
+  const layer = getLayerRecommendation(forecast.tempC);
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6,
+      fontSize: 11, color: isDark ? "#8b93a7" : "#6b7280",
+      padding: "3px 8px", borderRadius: 6,
+      background: isDark ? "#171a2188" : "#f3f4f688",
+    }}>
+      <span>{icon}</span>
+      <span>{forecast.tempMin}{"\u00B0"}{"\u2013"}{forecast.tempMax}{"\u00B0"}C</span>
+      {layer.layer !== "none" && (
+        <span style={{ color: "#f97316", fontWeight: 600 }}>{"\u00B7"} {layer.label.replace(" recommended", "")}</span>
+      )}
     </div>
   );
 }
@@ -61,7 +175,6 @@ function OnCallCalendar({ onCallDates, onToggle, isDark }) {
     const first = new Date(year, month, 1);
     const last  = new Date(year, month + 1, 0);
     const days  = [];
-    // pad start (Mon = 0 here)
     for (let i = (first.getDay() + 6) % 7; i > 0; i--) days.push(null);
     for (let d = 1; d <= last.getDate(); d++) days.push(new Date(year, month, d));
     return days;
@@ -81,10 +194,10 @@ function OnCallCalendar({ onCallDates, onToggle, isDark }) {
         <span style={{ fontWeight:700, fontSize:14, color:text }}>On-Call Dates</span>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button onClick={() => setViewDate(({ year:y, month:m }) => m===0 ? {year:y-1,month:11} : {year:y,month:m-1})}
-            style={{ background:"none", border:"none", color:text, cursor:"pointer", fontSize:16 }}>‹</button>
+            style={{ background:"none", border:"none", color:text, cursor:"pointer", fontSize:16 }}>{"\u2039"}</button>
           <span style={{ fontSize:12, fontWeight:600, color:text, minWidth:120, textAlign:"center" }}>{monthLabel}</span>
           <button onClick={() => setViewDate(({ year:y, month:m }) => m===11 ? {year:y+1,month:0} : {year:y,month:m+1})}
-            style={{ background:"none", border:"none", color:text, cursor:"pointer", fontSize:16 }}>›</button>
+            style={{ background:"none", border:"none", color:text, cursor:"pointer", fontSize:16 }}>{"\u203A"}</button>
         </div>
       </div>
 
@@ -116,8 +229,8 @@ function OnCallCalendar({ onCallDates, onToggle, isDark }) {
 
       {onCallDates.length > 0 && (
         <div style={{ fontSize:11, color:"#f97316", marginTop:6 }}>
-          🟠 {onCallDates.filter(d => d >= todayIso).sort().slice(0,4).join("  ")}
-          {onCallDates.filter(d => d >= todayIso).length > 4 ? " …" : ""}
+          {"\u{1F7E0}"} {onCallDates.filter(d => d >= todayIso).sort().slice(0,4).join("  ")}
+          {onCallDates.filter(d => d >= todayIso).length > 4 ? " \u2026" : ""}
         </div>
       )}
     </div>
@@ -138,17 +251,26 @@ export default function WeekPlanner() {
   const { mode }     = useThemeStore();
   const isDark     = mode === "dark";
   const [showCalendar, setShowCalendar] = useState(false);
-  // Per-day watch overrides { [offset]: watchId }
+  const [showOutfits, setShowOutfits]   = useState(true);
   const [watchOverrides, setWatchOverrides] = useState({});
-  const [strapOverrides, setStrapOverrides] = useState({}); // { [offset]: strapId }
-  const [pickingDay, setPickingDay]         = useState(null); // offset of day with open picker
+  const [strapOverrides, setStrapOverrides] = useState({});
+  const [pickingDay, setPickingDay]         = useState(null);
+  // Per-day per-slot garment overrides: { [offset]: { shirt: garmentId, ... } }
+  const [outfitOverrides, setOutfitOverrides] = useState({});
+
+  // 7-day weather forecast
+  const [forecast, setForecast] = useState([]);
+  useEffect(() => {
+    fetchWeatherForecast()
+      .then(setForecast)
+      .catch(err => console.warn("[weather] forecast failed:", err.message));
+  }, []);
 
   const rawRotation = useMemo(
     () => genWeekRotation(watches, history, weekCtx, onCallDates),
     [watches, history, weekCtx, onCallDates]
   );
 
-  // Apply per-day manual watch overrides
   const rotation = useMemo(() =>
     rawRotation.map(day => {
       const oid = watchOverrides[day.offset];
@@ -158,6 +280,59 @@ export default function WeekPlanner() {
     }),
     [rawRotation, watchOverrides, watches]
   );
+
+  // Wearable garments (exclude accessories)
+  const wearable = useMemo(() =>
+    garments.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe),
+    [garments]
+  );
+
+  // Candidates per slot type for swap dropdowns
+  const slotCandidates = useMemo(() => {
+    const result = {};
+    for (const slot of OUTFIT_SLOTS) {
+      result[slot] = wearable.filter(g => {
+        const t = g.type ?? g.category;
+        if (slot === "shirt") return t === "shirt" || t === "sweater";
+        return t === slot;
+      });
+    }
+    return result;
+  }, [wearable]);
+
+  // Generate outfits per day — uses watch, weather forecast, and diversity penalty
+  const weekOutfits = useMemo(() => {
+    const usedGarmentIds = new Set();
+    return rotation.map(day => {
+      if (!day.watch) return {};
+      const dayForecast = forecast.find(f => f.date === day.date);
+      const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
+
+      // Augment history with garments already assigned earlier this week for diversity
+      const fakeHistory = [...history];
+      for (const gId of usedGarmentIds) {
+        fakeHistory.unshift({ outfit: { shirt: gId, pants: gId, shoes: gId, jacket: gId } });
+      }
+
+      const outfit = generateOutfit(day.watch, wearable, weather, {}, fakeHistory);
+
+      // Apply manual overrides
+      const overrides = outfitOverrides[day.offset] ?? {};
+      for (const slot of OUTFIT_SLOTS) {
+        if (overrides[slot]) {
+          const g = garments.find(x => x.id === overrides[slot]);
+          if (g) outfit[slot] = g;
+        }
+      }
+
+      // Track used garments for cross-day diversity
+      for (const slot of OUTFIT_SLOTS) {
+        if (outfit[slot]?.id) usedGarmentIds.add(outfit[slot].id);
+      }
+
+      return outfit;
+    });
+  }, [rotation, wearable, garments, history, forecast, outfitOverrides]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -177,6 +352,21 @@ export default function WeekPlanner() {
     setCachedState({ onCallDates: next }).catch(() => {});
   }
 
+  const handleSwapGarment = useCallback((offset, slot, garment) => {
+    setOutfitOverrides(prev => ({
+      ...prev,
+      [offset]: { ...(prev[offset] ?? {}), [slot]: garment.id },
+    }));
+  }, []);
+
+  const handleResetOutfit = useCallback((offset) => {
+    setOutfitOverrides(prev => {
+      const next = { ...prev };
+      delete next[offset];
+      return next;
+    });
+  }, []);
+
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
@@ -184,33 +374,45 @@ export default function WeekPlanner() {
 
   return (
     <div style={{ padding:"18px 20px", borderRadius:16, background:bg, border:`1px solid ${border}`, marginBottom:16 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-        <h2 style={{ margin:0, fontSize:17, fontWeight:700, color:text }}>7-Day Watch Rotation</h2>
-        <button onClick={() => setShowCalendar(v => !v)} style={{
-          background:showCalendar?"#f9731622":"transparent", border:`1px solid ${showCalendar?"#f97316":border}`,
-          color:showCalendar?"#f97316":sub, borderRadius:8, padding:"5px 12px",
-          fontSize:12, fontWeight:600, cursor:"pointer",
-        }}>
-          🟠 On-Call {onCallDates.length > 0 ? `(${onCallDates.filter(d=>d>=today).length})` : ""}
-        </button>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:8 }}>
+        <h2 style={{ margin:0, fontSize:17, fontWeight:700, color:text }}>7-Day Rotation</h2>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+          <button onClick={() => setShowOutfits(v => !v)} style={{
+            background:showOutfits?"#3b82f622":"transparent", border:`1px solid ${showOutfits?"#3b82f6":border}`,
+            color:showOutfits?"#3b82f6":sub, borderRadius:8, padding:"5px 12px",
+            fontSize:12, fontWeight:600, cursor:"pointer",
+          }}>
+            {"\u{1F454}"} Outfits {showOutfits ? "ON" : "OFF"}
+          </button>
+          <button onClick={() => setShowCalendar(v => !v)} style={{
+            background:showCalendar?"#f9731622":"transparent", border:`1px solid ${showCalendar?"#f97316":border}`,
+            color:showCalendar?"#f97316":sub, borderRadius:8, padding:"5px 12px",
+            fontSize:12, fontWeight:600, cursor:"pointer",
+          }}>
+            {"\u{1F7E0}"} On-Call {onCallDates.length > 0 ? `(${onCallDates.filter(d=>d>=today).length})` : ""}
+          </button>
+        </div>
       </div>
 
-      {/* Day cards */}
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        {rotation.map(day => {
+        {rotation.map((day, dayIdx) => {
           const isToday = day.date === today;
           const cardBg = day.isOnCall
             ? (isDark ? "#1a1400" : "#fff8f0")
             : isToday ? (isDark ? "#0d1929" : "#eff6ff")
             : (isDark ? "#0f131a" : "#f9fafb");
           const cardBorder = day.isOnCall ? "#f97316" : isToday ? "#3b82f6" : border;
+          const dayForecast = forecast.find(f => f.date === day.date);
+          const dayOutfit = weekOutfits[dayIdx] ?? {};
+          const hasOverrides = !!outfitOverrides[day.offset];
 
           return (
             <div key={day.offset} style={{
               borderRadius:12, padding:"12px 14px",
               background:cardBg, border:`1px solid ${cardBorder}`,
             }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              {/* Day header */}
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8, flexWrap:"wrap", gap:6 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ fontWeight:700, fontSize:13, color:text }}>
                     {isToday ? "Today" : day.dayName}
@@ -221,18 +423,23 @@ export default function WeekPlanner() {
                                    background:"#f97316", color:"#fff" }}>ON-CALL</span>
                   )}
                 </div>
-                <select
-                  value={day.ctx}
-                  onChange={e => handleCtxChange(day.offset, e.target.value)}
-                  style={{
-                    fontSize:11, padding:"2px 6px", borderRadius:6,
-                    border:`1px solid ${border}`, background:isDark?"#171a21":"#f3f4f6",
-                    color:text, cursor:"pointer",
-                  }}
-                >
-                  {CONTEXTS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-                </select>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <WeatherBadge forecast={dayForecast} isDark={isDark} />
+                  <select
+                    value={day.ctx}
+                    onChange={e => handleCtxChange(day.offset, e.target.value)}
+                    style={{
+                      fontSize:11, padding:"2px 6px", borderRadius:6,
+                      border:`1px solid ${border}`, background:isDark?"#171a21":"#f3f4f6",
+                      color:text, cursor:"pointer",
+                    }}
+                  >
+                    {CONTEXTS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </select>
+                </div>
               </div>
+
+              {/* Watch */}
               <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall}
                 label={day.isOverridden ? "overridden" : null} />
 
@@ -243,7 +450,7 @@ export default function WeekPlanner() {
                             border: `1px solid ${day.isOverridden ? "#3b82f6" : border}`,
                             background: day.isOverridden ? "#3b82f622" : "transparent",
                             color: day.isOverridden ? "#3b82f6" : sub, fontWeight: 600 }}>
-                  {day.isOverridden ? "⌚ Change" : "⌚ Override"}
+                  {day.isOverridden ? "\u231A Change" : "\u231A Override"}
                 </button>
                 {day.isOverridden && (
                   <button onClick={() => setWatchOverrides(o => { const n = {...o}; delete n[day.offset]; return n; })}
@@ -269,12 +476,12 @@ export default function WeekPlanner() {
                           style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer",
                                     background: isSelected ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
                                     borderBottom: `1px solid ${border}` }}>
-                          <span style={{ fontSize: 16 }}>{w.emoji ?? "⌚"}</span>
+                          <span style={{ fontSize: 16 }}>{w.emoji ?? "\u231A"}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: text }}>{w.brand} {w.model}</div>
-                            <div style={{ fontSize: 10, color: sub }}>{w.dial} · {w.replica ? "replica" : "genuine"}</div>
+                            <div style={{ fontSize: 10, color: sub }}>{w.dial} {"\u00B7"} {w.replica ? "replica" : "genuine"}</div>
                           </div>
-                          {isSelected && <span style={{ color: "#3b82f6", fontWeight: 700 }}>✓</span>}
+                          {isSelected && <span style={{ color: "#3b82f6", fontWeight: 700 }}>{"\u2713"}</span>}
                         </div>
                       </div>
                     );
@@ -282,12 +489,12 @@ export default function WeekPlanner() {
                 </div>
               )}
 
-              {/* Strap picker — shown when a watch is assigned (overridden or auto) */}
+              {/* Strap picker */}
               {(() => {
                 const dayWatchId = watchOverrides[day.offset] ?? day.watch?.id;
                 if (!dayWatchId) return null;
                 const dayStraps = Object.values(straps).filter(s => s.watchId === dayWatchId);
-                if (dayStraps.length <= 1) return null; // nothing to choose
+                if (dayStraps.length <= 1) return null;
                 const activeStrapId = strapOverrides[day.offset]
                   ?? Object.values(straps).find(s => s.watchId === dayWatchId && activeStrap[dayWatchId] === s.id)?.id
                   ?? dayStraps[0]?.id;
@@ -318,6 +525,41 @@ export default function WeekPlanner() {
                 );
               })()}
 
+              {/* Clothing rotation — outfit per day */}
+              {showOutfits && day.watch && wearable.length > 0 && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${border}` }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ fontSize: 10, color: sub, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      OUTFIT
+                    </div>
+                    {hasOverrides && (
+                      <button onClick={() => handleResetOutfit(day.offset)}
+                        style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                                  border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
+                        Reset outfit
+                      </button>
+                    )}
+                  </div>
+                  <style>{`
+                    .wa-week-outfit-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+                    @media (max-width:500px) { .wa-week-outfit-grid { grid-template-columns:1fr; } }
+                  `}</style>
+                  <div className="wa-week-outfit-grid">
+                    {OUTFIT_SLOTS.map(slot => (
+                      <OutfitSlotChip
+                        key={slot}
+                        slot={slot}
+                        garment={dayOutfit[slot]}
+                        isDark={isDark}
+                        border={border}
+                        candidates={slotCandidates[slot]}
+                        onSwap={(s, g) => handleSwapGarment(day.offset, s, g)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {day.backup && (
                 <div style={{ marginTop:6, paddingTop:6, borderTop:`1px solid ${border}` }}>
                   <div style={{ fontSize:10, color:sub, marginBottom:3 }}>Backup</div>
@@ -329,7 +571,6 @@ export default function WeekPlanner() {
         })}
       </div>
 
-      {/* On-call calendar */}
       {showCalendar && (
         <OnCallCalendar
           onCallDates={onCallDates}

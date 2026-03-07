@@ -83,7 +83,7 @@ function AppContent() {
           {/* Tab bar — top on desktop, bottom on mobile */}
           <style>{`
             .wa-tab-bar {
-              display:flex; gap:6; margin-bottom:16px; overflow-x:auto; padding-bottom:2px;
+              display:flex; gap:6px; margin-bottom:16px; overflow-x:auto; padding-bottom:2px;
             }
             @media (max-width:600px) {
               .wa-tab-bar {
@@ -140,9 +140,6 @@ function AppContent() {
 
           {/* Rotation/Planner tab */}
           {tab === "rotation" && <WeekPlanner />}
-
-          {/* Stats tab */}
-          {tab === "stats" && <StatsPanel />}
 
           {/* Stats tab */}
           {tab === "stats" && <StatsPanel />}
