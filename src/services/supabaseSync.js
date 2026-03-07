@@ -31,7 +31,7 @@ export async function pullCloudState() {
   setSyncState({ status: "pulling" });
   try {
     const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
-      supabase.from("garments").select("*").order("created_at", { ascending: true }),
+      supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,photo_angles,brand,notes,created_at").order("created_at", { ascending: true }).limit(500),
       supabase.from("history").select("*").order("date", { ascending: false }).limit(60),
     ]);
 
@@ -47,7 +47,7 @@ export async function pullCloudState() {
         type:        row.type ?? row.category,
         category:    row.type ?? row.category,
         photoUrl:    row.photo_url?.startsWith?.("blob:") ? undefined : (row.photo_url ?? null),
-        thumbnail:   row.thumbnail_url ?? null,
+        thumbnail:   row.photo_url ?? row.thumbnail_url ?? null,  // prefer Storage URL over base64
         photoType:   row.photo_type ?? null,
         needsReview: row.needs_review ?? false,
         duplicateOf: row.duplicate_of ?? undefined,
@@ -80,13 +80,16 @@ export async function pushGarment(garment) {
       color:        garment.color,
       formality:    garment.formality ?? 5,
       hash:         garment.hash ?? "",
-      thumbnail_url: garment.thumbnail ?? null,
+      // Only store base64 in thumbnail_url if no Storage URL yet (temporary fallback)
+      thumbnail_url: (garment.photoUrl && typeof garment.photoUrl === "string" && !garment.photoUrl.startsWith("blob:"))
+                      ? null : (garment.thumbnail ?? null),
       photo_url:    typeof garment.photoUrl === "string" && !garment.photoUrl.startsWith("blob:")
                       ? garment.photoUrl : null,
       photo_type:   garment.photoType ?? null,
       needs_review: garment.needsReview ?? false,
       duplicate_of: garment.duplicateOf ?? null,
-      photo_angles: garment.photoAngles ?? [],
+      // Never write base64 data URLs to photo_angles — only Storage URLs
+      photo_angles: (garment.photoAngles ?? []).filter(u => u && typeof u === "string" && !u.startsWith("data:")),
       brand:        garment.brand ?? null,
       notes:        garment.notes ?? null,
     }, { onConflict: "id" });
@@ -144,15 +147,32 @@ export async function uploadPhoto(garmentId, source, kind = "thumbnail") {
   }
 }
 
+/**
+ * Upload an angle photo to Supabase Storage.
+ * @param {string} garmentId
+ * @param {number} index - angle index (0, 1, 2…)
+ * @param {string|File} source - base64 data URL or File
+ * @returns {Promise<string|null>} Storage public URL or null
+ */
+export async function uploadAngle(garmentId, index, source) {
+  return uploadPhoto(garmentId, source, `angle-${index}`);
+}
+
 export async function deleteStoragePhoto(garmentId) {
   if (IS_PLACEHOLDER) return;
   try {
-    await supabase.storage.from("photos").remove([
+    const paths = [
       `garments/${garmentId}/thumbnail.jpg`,
       `garments/${garmentId}/thumbnail.png`,
       `garments/${garmentId}/original.jpg`,
       `garments/${garmentId}/original.png`,
-    ]);
+    ];
+    // Also remove angle photos (up to 4 angles)
+    for (let i = 0; i < 4; i++) {
+      paths.push(`garments/${garmentId}/angle-${i}.jpg`);
+      paths.push(`garments/${garmentId}/angle-${i}.png`);
+    }
+    await supabase.storage.from("photos").remove(paths);
   } catch (e) {
     console.warn("[supabaseSync] deleteStoragePhoto failed:", e.message);
   }

@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { runClassifierPipeline } from "../classifier/pipeline.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
-import { pushGarment, uploadPhoto } from "../services/supabaseSync.js";
+import { pushGarment, uploadPhoto, uploadAngle } from "../services/supabaseSync.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
@@ -113,16 +113,37 @@ export default function ImportPanel() {
 
       addGarment(finalItem);
       garmentsRef.current = [...garmentsRef.current, finalItem];
-      // Push metadata to DB
+      // Push metadata row to DB (no base64 — thumbnail_url=null until Storage upload completes)
       pushGarment(finalItem).catch(() => {});
-      // Upload thumbnail to Supabase Storage (persistent cross-device photo)
-      if (finalItem.thumbnail) {
-        uploadPhoto(finalItem.id, finalItem.thumbnail, "thumbnail")
-          .then(url => {
-            if (url) pushGarment({ ...finalItem, photoUrl: url }).catch(() => {});
-          })
-          .catch(() => {});
-      }
+
+      // Upload thumbnail + all angles to Storage in background
+      (async () => {
+        try {
+          // Upload primary thumbnail
+          const thumbUrl = finalItem.thumbnail
+            ? await uploadPhoto(finalItem.id, finalItem.thumbnail, "thumbnail").catch(() => null)
+            : null;
+
+          // Upload each angle photo
+          const angleBase64 = (finalItem.photoAngles ?? []).filter(u => u?.startsWith("data:"));
+          const angleUrls = [];
+          for (let i = 0; i < angleBase64.length; i++) {
+            const aUrl = await uploadAngle(finalItem.id, i, angleBase64[i]).catch(() => null);
+            if (aUrl) angleUrls.push(aUrl);
+          }
+
+          // Re-push garment with Storage URLs (replaces any temporary base64 in DB)
+          if (thumbUrl || angleUrls.length) {
+            await pushGarment({
+              ...finalItem,
+              photoUrl: thumbUrl ?? finalItem.photoUrl,
+              photoAngles: angleUrls.length ? angleUrls : finalItem.photoAngles,
+            }).catch(() => {});
+          }
+        } catch (err) {
+          console.warn("[ImportPanel] Storage upload failed:", err.message);
+        }
+      })();
       imported++;
       if (group.angles.length > 0) autoAngles += group.angles.length;
     }

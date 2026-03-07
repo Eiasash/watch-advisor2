@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
-import { pushGarment, deleteGarment, deleteStoragePhoto } from "../services/supabaseSync.js";
+import { pushGarment, deleteGarment, deleteStoragePhoto, uploadAngle } from "../services/supabaseSync.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
@@ -63,20 +63,36 @@ export default function GarmentEditor({ garment, onClose }) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      // Resize to thumbnail
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const c = document.createElement("canvas");
         const scale = Math.min(1, 300 / Math.max(img.width, img.height));
         c.width = Math.round(img.width * scale);
         c.height = Math.round(img.height * scale);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         const thumb = c.toDataURL("image/jpeg", 0.7);
+
+        // Store base64 locally for instant display
         addAngle(garment.id, thumb);
-        const newAngles = (garment.photoAngles ?? []).concat([thumb]);
-        const updated = garments.map(g => g.id === garment.id ? { ...g, photoAngles: newAngles } : g);
-        setCachedState({ watches, garments: updated, history }).catch(() => {});
-        setAngleIdx(angles.length); // focus new angle
+        const newAnglesLocal = (garment.photoAngles ?? []).concat([thumb]);
+        const updatedLocal = garments.map(g => g.id === garment.id ? { ...g, photoAngles: newAnglesLocal } : g);
+        setCachedState({ watches, garments: updatedLocal, history }).catch(() => {});
+        setAngleIdx(angles.length);
+
+        // Upload to Storage in background — replace base64 with persistent URL in DB
+        const angleIndex = (garment.photoAngles ?? []).length;
+        try {
+          const url = await uploadAngle(garment.id, angleIndex, thumb);
+          if (url) {
+            // Rebuild photoAngles: replace base64 entries with Storage URLs where available
+            const existingUrls = (garment.photoAngles ?? []).filter(u => u && !u.startsWith("data:"));
+            const newAnglesCloud = [...existingUrls, url];
+            pushGarment({ ...garment, photoAngles: newAnglesCloud }).catch(() => {});
+          }
+        } catch {
+          // Upload failed — base64 stays local, angle not persisted to cloud
+          console.warn("[GarmentEditor] angle upload failed — local only");
+        }
       };
       img.src = reader.result;
     };

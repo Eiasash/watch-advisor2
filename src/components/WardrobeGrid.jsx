@@ -179,7 +179,7 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
         {/* Photo */}
         {(item.thumbnail || item.photoUrl) ? (
           <img
-            src={item.thumbnail}
+            src={item.thumbnail || item.photoUrl}
             alt={item.name}
             loading="lazy"
             decoding="async"
