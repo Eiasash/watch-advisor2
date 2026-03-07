@@ -54,6 +54,39 @@ export function getLayerRecommendation(tempC) {
 }
 
 /**
+ * Fetch 7-day weather forecast (daily min/max/avg temp + weather codes).
+ * Returns array of { date, tempC, tempMin, tempMax, description }
+ */
+export async function fetchWeatherForecast() {
+  const position = await new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      timeout: 10000,
+      maximumAge: 300000,
+    });
+  });
+
+  const { latitude, longitude } = position.coords;
+  const res = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
+  );
+  const data = await res.json();
+  const daily = data.daily;
+  if (!daily?.time) return [];
+
+  return daily.time.map((date, i) => {
+    const max = daily.temperature_2m_max[i];
+    const min = daily.temperature_2m_min[i];
+    return {
+      date,
+      tempC: Math.round((max + min) / 2),
+      tempMin: Math.round(min),
+      tempMax: Math.round(max),
+      description: weatherCodeToDescription(daily.weathercode[i]),
+    };
+  });
+}
+
+/**
  * Format weather display text.
  */
 export function formatWeatherText(weather) {

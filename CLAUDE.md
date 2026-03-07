@@ -37,6 +37,8 @@ src/
     supabaseSync.js  pullCloudState, pushGarment, pushHistoryEntry
     imagePipeline.js thumbnail + dHash generation
     photoQueue.js    original full-res cache queue
+    backgroundQueue.js  IDB-persisted task queue (survives tab close)
+    backupService.js    weekly automated backup to IDB
   stores/
     wardrobeStore.js  garments, selectMode, weekCtx, onCallDates
     watchStore.js     watches, activeWatch
@@ -77,10 +79,18 @@ supabase/
 - Pants rule: `topF < 0.15 && topNB < 12 && midF+botF > 0.85 && total 90–500`
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
-### Tests
-- **140 tests, 3 files** — `tests/classifier.test.js`, `tests/outfitEngine.test.js`, `tests/importPipeline.test.js`
+### Tests — auto-expansion mandatory
+- **527+ tests across 24+ files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
-- Always run `npm test` before every push. All 140 must pass.
+- Always run `npm test` before every push. ALL tests must pass.
+- **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
+  - New function → unit tests for happy path + edge cases + error handling
+  - Bug fix → regression test that reproduces the bug before the fix
+  - New component logic → test the core behavior (not just rendering)
+  - Modified scoring/engine logic → boundary tests + property tests
+- After adding tests, update the test count in this section
+- Test files live in `tests/` — name pattern: `tests/<module>.test.js`
+- Run `/wa-audit` after significant changes to verify full coverage
 
 ### Mobile-first UX rules
 - Bottom tab bar on ≤600px (fixed, safe-area-inset-bottom)
@@ -129,8 +139,8 @@ supabase/
 
 ## Environment
 
-- Node 20, npm
-- `npm test` → vitest (140 tests)
+- Node 22, npm
+- `npm test` → vitest (527+ tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`

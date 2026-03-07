@@ -3,12 +3,15 @@ import { runClassifierPipeline } from "../classifier/pipeline.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
 import { pushGarment, uploadPhoto, uploadAngle } from "../services/supabaseSync.js";
+import { enqueueTask } from "../services/backgroundQueue.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { useToast } from "./ToastProvider.jsx";
 
 const MAX_ANGLES = 4;
+const DHASH_EXACT_THRESHOLD = 6;   // distance ≤ 6 → definite dupe (auto-merge)
+const DHASH_AI_THRESHOLD    = 14;  // distance 7–14 → near-miss, ask AI
 
 /** dHash Hamming distance — compare two 64-bit hex strings */
 function hammingDist(a, b) {
@@ -19,6 +22,23 @@ function hammingDist(a, b) {
     for (let x = diff; x; x &= x-1) dist++;
   }
   return dist;
+}
+
+/** Ask Claude Vision whether two thumbnails show the same garment */
+async function aiDuplicateCheck(thumbA, thumbB) {
+  try {
+    const stripPrefix = s => s.replace(/^data:image\/[^;]+;base64,/, "");
+    const res = await fetch("/.netlify/functions/detect-duplicate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageA: stripPrefix(thumbA), imageB: stripPrefix(thumbB) }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data; // { isDuplicate, confidence, reason }
+  } catch {
+    return null;
+  }
 }
 
 /** Group batch items: if Hamming ≤ 8, second is angle of first primary */
@@ -83,6 +103,8 @@ export default function ImportPanel() {
     const groups = groupByAngles(processed);
     let imported = 0;
     let autoAngles = 0;
+    let aiChecksUsed = 0;
+    const AI_CHECK_LIMIT = 5; // max AI Vision calls per import batch
 
     for (const group of groups) {
       const primary = group.primary;
@@ -94,56 +116,58 @@ export default function ImportPanel() {
       };
 
       // Check if this matches an EXISTING garment (cross-session dupe)
-      const existingDupe = garmentsRef.current.find(ex =>
-        ex.hash && primary.hash && hammingDist(ex.hash, primary.hash) <= 6
-      );
+      // Phase 1: exact dHash match (distance ≤ 6) → auto-merge
+      let existingDupe = null;
+      let dupeDistance = 999;
+      for (const ex of garmentsRef.current) {
+        if (!ex.hash || !primary.hash) continue;
+        const d = hammingDist(ex.hash, primary.hash);
+        if (d < dupeDistance) { dupeDistance = d; existingDupe = ex; }
+      }
 
-      if (existingDupe && primary.type === existingDupe.type) {
-        // Add as angle to existing, don't create new garment
+      if (existingDupe && dupeDistance <= DHASH_EXACT_THRESHOLD && primary.type === existingDupe.type) {
+        // Definite dupe — auto-merge as angle
         const existAngles = existingDupe.photoAngles ?? [];
         if (existAngles.length < MAX_ANGLES && primary.thumbnail) {
           const newAngles = [...existAngles, primary.thumbnail].slice(0, MAX_ANGLES);
           updateGarment(existingDupe.id, { photoAngles: newAngles });
-          if (toast) toast.addToast(`📐 Added angle to "${existingDupe.name}"`, "info", 2500);
+          if (toast) toast.addToast(`Added angle to "${existingDupe.name}"`, "info", 2500);
         } else {
-          if (toast) toast.addToast(`⚠ Duplicate of "${existingDupe.name}" skipped`, "warning", 2500);
+          if (toast) toast.addToast(`Duplicate of "${existingDupe.name}" skipped`, "warning", 2500);
         }
         continue;
       }
 
+      // Phase 2: near-miss (distance 7–14) → ask AI Vision (rate-limited)
+      if (existingDupe && dupeDistance <= DHASH_AI_THRESHOLD && primary.thumbnail && existingDupe.thumbnail && aiChecksUsed < AI_CHECK_LIMIT) {
+        setProgress(p => ({ ...p, phase: `AI dupe check ${aiChecksUsed + 1}/${AI_CHECK_LIMIT}` }));
+        aiChecksUsed++;
+        const aiResult = await aiDuplicateCheck(primary.thumbnail, existingDupe.thumbnail);
+        if (aiResult?.isDuplicate && aiResult.confidence !== "low") {
+          const existAngles = existingDupe.photoAngles ?? [];
+          if (existAngles.length < MAX_ANGLES && primary.thumbnail) {
+            const newAngles = [...existAngles, primary.thumbnail].slice(0, MAX_ANGLES);
+            updateGarment(existingDupe.id, { photoAngles: newAngles });
+            if (toast) toast.addToast(`AI merged angle into "${existingDupe.name}"`, "info", 2500);
+          } else {
+            if (toast) toast.addToast(`AI duplicate of "${existingDupe.name}" skipped`, "warning", 2500);
+          }
+          continue;
+        }
+      }
+
       addGarment(finalItem);
       garmentsRef.current = [...garmentsRef.current, finalItem];
-      // Push metadata row to DB (no base64 — thumbnail_url=null until Storage upload completes)
-      pushGarment(finalItem).catch(() => {});
 
-      // Upload thumbnail + all angles to Storage in background
-      (async () => {
-        try {
-          // Upload primary thumbnail
-          const thumbUrl = finalItem.thumbnail
-            ? await uploadPhoto(finalItem.id, finalItem.thumbnail, "thumbnail").catch(() => null)
-            : null;
-
-          // Upload each angle photo
-          const angleBase64 = (finalItem.photoAngles ?? []).filter(u => u?.startsWith("data:"));
-          const angleUrls = [];
-          for (let i = 0; i < angleBase64.length; i++) {
-            const aUrl = await uploadAngle(finalItem.id, i, angleBase64[i]).catch(() => null);
-            if (aUrl) angleUrls.push(aUrl);
-          }
-
-          // Re-push garment with Storage URLs (replaces any temporary base64 in DB)
-          if (thumbUrl || angleUrls.length) {
-            await pushGarment({
-              ...finalItem,
-              photoUrl: thumbUrl ?? finalItem.photoUrl,
-              photoAngles: angleUrls.length ? angleUrls : finalItem.photoAngles,
-            }).catch(() => {});
-          }
-        } catch (err) {
-          console.warn("[ImportPanel] Storage upload failed:", err.message);
-        }
-      })();
+      // Queue all upload work to background queue (survives tab close)
+      enqueueTask("push-garment", { garment: finalItem }, `push-${finalItem.id}`);
+      if (finalItem.thumbnail) {
+        enqueueTask("upload-photo", { garmentId: finalItem.id, source: finalItem.thumbnail, kind: "thumbnail" }, `thumb-${finalItem.id}`);
+      }
+      const angleBase64 = (finalItem.photoAngles ?? []).filter(u => u?.startsWith("data:"));
+      for (let ai = 0; ai < angleBase64.length; ai++) {
+        enqueueTask("upload-angle", { garmentId: finalItem.id, index: ai, source: angleBase64[ai] }, `angle-${finalItem.id}-${ai}`);
+      }
       imported++;
       if (group.angles.length > 0) autoAngles += group.angles.length;
     }
@@ -201,7 +225,9 @@ export default function ImportPanel() {
       {/* Progress bar */}
       {busy && (
         <div style={{ marginBottom:8 }}>
-          <div style={{ fontSize:12, color:sub, marginBottom:4, textAlign:"center" }}>Importing {progress.done}/{progress.total}…</div>
+          <div style={{ fontSize:12, color:sub, marginBottom:4, textAlign:"center" }}>
+            Importing {progress.done}/{progress.total}{progress.phase ? ` · ${progress.phase}` : ""}…
+          </div>
           <div style={{ height:4, borderRadius:2, background:isDark?"#2b3140":"#d1d5db", overflow:"hidden" }}>
             <div style={{ height:"100%", borderRadius:2, background:"#3b82f6", width:pct+"%", transition:"width 0.15s" }} />
           </div>
@@ -214,7 +240,7 @@ export default function ImportPanel() {
         </div>
       )}
       <div style={{ fontSize:10, color:sub, lineHeight:1.5 }}>
-        Camera roll photos auto-named by type & color · same item auto-grouped
+        Auto-named by type & color · dupes detected by dHash + AI Vision · angles auto-grouped
       </div>
     </div>
   );

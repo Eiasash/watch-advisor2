@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { subscribeSyncState, pullCloudState } from "../services/supabaseSync.js";
+import { subscribeQueue } from "../services/backgroundQueue.js";
 import { useThemeStore } from "../stores/themeStore.js";
 
 const STATUS_CONFIG = {
@@ -12,11 +13,13 @@ const STATUS_CONFIG = {
 
 export default function SyncBar() {
   const [sync, setSync] = useState({ status: "idle", queued: 0 });
+  const [bgQueue, setBgQueue] = useState({ pending: 0, running: 0 });
   const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
 
   useEffect(() => subscribeSyncState(setSync), []);
+  useEffect(() => subscribeQueue(setBgQueue), []);
 
   useEffect(() => {
     const goOnline = () => setOnline(true);
@@ -56,6 +59,11 @@ export default function SyncBar() {
       {sync.queued > 0 && (
         <span style={{ color: isDark ? "#6b7280" : "#9ca3af", marginLeft: 6 }}>
           &middot; {sync.queued} queued
+        </span>
+      )}
+      {(bgQueue.pending > 0 || bgQueue.running > 0) && (
+        <span style={{ color: "#3b82f6", marginLeft: 6 }}>
+          &middot; {bgQueue.pending + bgQueue.running} background task{bgQueue.pending + bgQueue.running !== 1 ? "s" : ""}
         </span>
       )}
       {(sync.status === "error" || sync.status === "local-only") && online && (
