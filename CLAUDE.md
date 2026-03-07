@@ -139,7 +139,7 @@ supabase/
 
 ## Environment
 
-- Node 20, npm
+- Node 22, npm
 - `npm test` → vitest (527+ tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
