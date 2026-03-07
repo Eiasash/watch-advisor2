@@ -9,6 +9,7 @@ import { fetchWeather, formatWeatherText, getLayerRecommendation } from "../weat
 import { getAISuggestion } from "../aiStylist/claudeStylist.js";
 import WatchSelector from "../features/watch/WatchSelector.jsx";
 import WatchCompare from "./WatchCompare.jsx";
+import StrapPanel from "./StrapPanel.jsx";
 
 const DIAL_SWATCH = {
   "silver-white": "#e8e8e0",
@@ -62,32 +63,56 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
 
 function OutfitSlot({ slot, garment, isDark, onSelect }) {
   const ICONS = { shirt: "\u{1F454}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const photo = garment?.thumbnail || garment?.photoUrl;
+
   return (
-    <div style={{
-      background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 12, padding: "12px 14px",
-      border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`, minHeight: 90,
-    }}>
-      <div style={{ fontSize: 18, marginBottom: 4 }}>{ICONS[slot] ?? "\u{2022}"}</div>
-      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{slot}</div>
-      {garment ? (
-        <>
-          <button
-            onClick={() => onSelect && onSelect(garment.id)}
-            style={{
-              background: "none", border: "none", padding: 0, cursor: "pointer",
-              fontWeight: 700, fontSize: 15, lineHeight: 1.3,
-              color: "#3b82f6", textAlign: "left",
-              textDecoration: "underline", textDecorationStyle: "dotted",
-            }}
-            title="Jump to garment in wardrobe"
-          >
-            {garment.name}
-          </button>
-          <div style={{ fontSize: 12, color: "#8b93a7", marginTop: 2 }}>{garment.color}</div>
-        </>
+    <div
+      onClick={() => garment && onSelect && onSelect(garment.id)}
+      style={{
+        background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 12,
+        border: `1px solid ${border}`,
+        overflow: "hidden", cursor: garment ? "pointer" : "default",
+        transition: "border-color 0.15s",
+        minHeight: 90,
+      }}
+    >
+      {/* Photo area */}
+      {photo ? (
+        <img
+          src={photo}
+          alt={garment.name}
+          style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }}
+        />
       ) : (
-        <div style={{ fontSize: 12, color: "#4b5563", fontStyle: "italic" }}>No garments yet</div>
+        <div style={{
+          width: "100%", height: 80,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 28, background: isDark ? "#171a21" : "#e5e7eb",
+        }}>
+          {ICONS[slot] ?? "\u{2022}"}
+        </div>
       )}
+
+      {/* Label */}
+      <div style={{ padding: "8px 10px" }}>
+        <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase",
+                      letterSpacing: "0.07em", marginBottom: 2 }}>{slot}</div>
+        {garment ? (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937",
+                          lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden",
+                          textOverflow: "ellipsis" }}>
+              {garment.color} {garment.type}
+            </div>
+            {garment.brand && (
+              <div style={{ fontSize: 11, color: "#8b93a7", marginTop: 1 }}>{garment.brand}</div>
+            )}
+          </>
+        ) : (
+          <div style={{ fontSize: 11, color: "#4b5563", fontStyle: "italic" }}>Empty</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -260,6 +285,8 @@ export default function WatchDashboard() {
           }}>
             {explanation}
           </div>
+
+          <StrapPanel watch={selectedWatch} isDark={isDark} />
 
           <button
             onClick={handleAIStylist}

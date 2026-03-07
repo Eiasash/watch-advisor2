@@ -5,6 +5,7 @@ import { WATCH_COLLECTION } from "../data/watchSeed.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
+import { useStrapStore }     from "../stores/strapStore.js";
 
 export function useBootstrap() {
   const [ready,  setReady]  = useState(false);
@@ -15,6 +16,7 @@ export function useBootstrap() {
   const setHistory      = useHistoryStore(s => s.setEntries);
   const setWeekCtx      = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates  = useWardrobeStore(s => s.setOnCallDates);
+  const hydrateStraps   = useStrapStore(s => s.hydrate);
 
   useEffect(() => {
     const off = subscribeSyncState(state => setStatus(`Sync ${state.status}`));
@@ -38,6 +40,7 @@ export function useBootstrap() {
       // Restore planner state
       if (Array.isArray(cached.weekCtx) && cached.weekCtx.length === 7) setWeekCtx(cached.weekCtx);
       if (Array.isArray(cached.onCallDates)) setOnCallDates(cached.onCallDates);
+      if (cached.strapStore) hydrateStraps(cached.strapStore);
 
       setReady(true);
       setStatus("Ready");
