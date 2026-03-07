@@ -66,16 +66,26 @@ describe("buildOutfit — accessory filtering", () => {
 
 // ─── buildOutfit — sweater accepted in shirt slot ───────────────────────────
 
-describe("buildOutfit — sweater in shirt slot", () => {
-  it("sweater can fill the shirt slot", () => {
+describe("buildOutfit — sweater layer", () => {
+  it("sweater fills the sweater layer when cold", () => {
     const sweaterOnly = [
       { id: "sw1", type: "sweater", name: "Navy Sweater", color: "navy", formality: 6 },
       { id: "p1",  type: "pants",   name: "Grey Trousers", color: "grey", formality: 7 },
       { id: "sh1", type: "shoes",   name: "Tan Eccos",     color: "tan",  formality: 6 },
     ];
     const outfit = buildOutfit(snowflake, sweaterOnly, { tempC: 15 });
-    expect(outfit.shirt).toBeTruthy();
-    expect(outfit.shirt.id).toBe("sw1");
+    expect(outfit.sweater).toBeTruthy();
+    expect(outfit.sweater.id).toBe("sw1");
+  });
+
+  it("sweater layer is null when warm", () => {
+    const wardrobe = [
+      { id: "sw1", type: "sweater", name: "Navy Sweater", color: "navy", formality: 6 },
+      { id: "s1",  type: "shirt",   name: "White Shirt",  color: "white", formality: 7 },
+      { id: "p1",  type: "pants",   name: "Grey Trousers", color: "grey", formality: 7 },
+    ];
+    const outfit = buildOutfit(snowflake, wardrobe, { tempC: 28 });
+    expect(outfit.sweater).toBeNull();
   });
 });
 

@@ -65,7 +65,7 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
 }
 
 function OutfitSlot({ slot, garment, isDark, onSelect }) {
-  const ICONS = { shirt: "\u{1F454}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
+  const ICONS = { shirt: "\u{1F454}", sweater: "\u{1FAA2}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
   const border = isDark ? "#2b3140" : "#d1d5db";
   const photo = garment?.thumbnail || garment?.photoUrl;
 
@@ -296,10 +296,34 @@ export default function WatchDashboard() {
             @media (max-width:400px) { .wa-outfit-grid { grid-template-columns:1fr; } }
           `}</style>
           <div className="wa-outfit-grid">
-            {["shirt", "pants", "shoes", "jacket"].map(slot => (
-              <OutfitSlot key={slot} slot={slot} garment={outfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />
-            ))}
+            {["shirt", "sweater", "pants", "shoes", "jacket"].map(slot => {
+              if (slot === "sweater" && !outfit.sweater) return null;
+              return <OutfitSlot key={slot} slot={slot} garment={outfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />;
+            })}
           </div>
+
+          <button
+            onClick={() => {
+              const garmentIds = ["shirt","sweater","pants","shoes","jacket"]
+                .map(s => outfit[s]?.id).filter(Boolean);
+              const addEntry = useHistoryStore.getState().addEntry;
+              addEntry({
+                id: `dash-${Date.now()}`,
+                date: new Date().toISOString().slice(0,10),
+                watchId: selectedWatch.id,
+                garmentIds,
+                context: "smart-casual",
+                loggedAt: new Date().toISOString(),
+              });
+            }}
+            style={{
+              width: "100%", marginBottom: 12, padding: "10px 0", borderRadius: 8,
+              border: "none", background: "#22c55e", color: "#fff",
+              fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            Wear This Outfit
+          </button>
 
           <div style={{
             fontSize: 14, lineHeight: 1.6, color: isDark ? "#a1a9b8" : "#4b5563",

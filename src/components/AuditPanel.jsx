@@ -254,13 +254,18 @@ export default function AuditPanel() {
 }
 
 // ── Photo Verifier Section ────────────────────────────────────────────────────
-async function verifyPhoto(garment) {
+async function verifyPhoto(garment, allGarments) {
   const body = {
     garmentId: garment.id,
     currentType: garment.type ?? garment.category,
     currentColor: garment.color,
     currentName: garment.name,
     hash: garment.hash ?? null,
+    // Send nearby garments for angle/dupe detection
+    neighbors: allGarments
+      .filter(g => g.id !== garment.id && g.hash && garment.hash)
+      .map(g => ({ id: g.id, name: g.name, type: g.type ?? g.category, color: g.color, hash: g.hash }))
+      .slice(0, 10),
   };
   const photo = garment.thumbnail || garment.photoUrl;
   if (!photo) return null;
@@ -326,7 +331,7 @@ export function PhotoVerifierPanel() {
     for (let i = 0; i < withPhoto.length; i++) {
       const g = withPhoto[i];
       try {
-        const r = await verifyPhoto(g);
+        const r = await verifyPhoto(g, withPhoto);
         if (r) out[g.id] = r;
       } catch { /* skip */ }
       setProgress(Math.round(((i + 1) / withPhoto.length) * 100));
@@ -362,6 +367,8 @@ export function PhotoVerifierPanel() {
   }
 
   const issues = Object.values(results).filter(r => !r.ok && !r._applied);
+  const angles = Object.values(results).filter(r => r.isAngleShot && !r._dismissed);
+  const dupes  = Object.values(results).filter(r => r.isDuplicate && !r._dismissed);
   const oks    = Object.values(results).filter(r => r.ok);
 
   return (
@@ -425,7 +432,7 @@ export function PhotoVerifierPanel() {
               )}
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#f97316", marginBottom: 3 }}>
-                  ⚠ Possible mislabel — {Math.round((r.confidence ?? 0.8) * 100)}% confident
+                  Possible mislabel — {Math.round((r.confidence ?? 0.8) * 100)}% confident
                 </div>
                 <div style={{ fontSize: 12, color: text, marginBottom: 4 }}>{r.reason}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: 11 }}>
@@ -455,6 +462,77 @@ export function PhotoVerifierPanel() {
           </div>
         );
       })}
+
+      {/* Angle shots detected */}
+      {done && angles.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", marginBottom: 8, textTransform: "uppercase" }}>
+            Angle Shots Detected ({angles.length})
+          </div>
+          {angles.map(r => {
+            const g = garments.find(x => x.id === r.garmentId);
+            const parent = garments.find(x => x.id === r.angleOfId);
+            if (!g) return null;
+            const thumb = g.thumbnail || g.photoUrl;
+            const parentThumb = parent?.thumbnail || parent?.photoUrl;
+            return (
+              <div key={r.garmentId} style={{ marginBottom: 8, padding: 10, borderRadius: 10,
+                                              background: card, border: `1px solid #3b82f6` }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {thumb && <img src={thumb} alt={g.name} style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover" }} />}
+                  <div style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600 }}>→</div>
+                  {parentThumb && <img src={parentThumb} alt={parent?.name} style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover" }} />}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: text }}>
+                      "{g.name}" is another angle of "{parent?.name ?? r.angleOfId}"
+                    </div>
+                    <div style={{ fontSize: 11, color: sub }}>{r.reason}</div>
+                  </div>
+                  <button onClick={() => setResults(prev => ({ ...prev, [r.garmentId]: { ...prev[r.garmentId], _dismissed: true } }))}
+                    style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: `1px solid ${border}`,
+                             background: "transparent", color: sub, cursor: "pointer" }}>
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Duplicates detected */}
+      {done && dupes.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", marginBottom: 8, textTransform: "uppercase" }}>
+            Duplicates Detected ({dupes.length})
+          </div>
+          {dupes.map(r => {
+            const g = garments.find(x => x.id === r.garmentId);
+            const original = garments.find(x => x.id === r.duplicateOfId);
+            if (!g) return null;
+            const thumb = g.thumbnail || g.photoUrl;
+            return (
+              <div key={r.garmentId} style={{ marginBottom: 8, padding: 10, borderRadius: 10,
+                                              background: card, border: `1px solid #ef4444` }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  {thumb && <img src={thumb} alt={g.name} style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover" }} />}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#ef4444" }}>
+                      Duplicate of "{original?.name ?? r.duplicateOfId}"
+                    </div>
+                    <div style={{ fontSize: 11, color: sub }}>{r.reason}</div>
+                  </div>
+                  <button onClick={() => setResults(prev => ({ ...prev, [r.garmentId]: { ...prev[r.garmentId], _dismissed: true } }))}
+                    style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: `1px solid ${border}`,
+                             background: "transparent", color: sub, cursor: "pointer" }}>
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -11,10 +11,12 @@
 
 import { cacheGet, cacheSet } from "./_blobCache.js";
 
-const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","accessory","watch","outfit-photo"];
+const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat","scarf","bag","accessory","watch","outfit-photo"];
 const VALID_COLORS = ["black","white","navy","blue","grey","brown","tan","beige","cream","ecru",
                       "green","olive","teal","khaki","stone","burgundy","red","pink","orange",
-                      "yellow","purple","charcoal","dark brown","light blue","dark navy","coral","multicolor"];
+                      "yellow","purple","charcoal","dark brown","light blue","dark navy","coral",
+                      "multicolor","camel","rust","maroon","ivory","slate","mint","lavender",
+                      "sage","wine","taupe","cognac","sand","pewter","silver","gold","denim"];
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -62,11 +64,18 @@ export async function handler(event) {
       return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
     }
 
+    // Build neighbor context for angle/dupe detection
+    const neighbors = JSON.parse(event.body ?? "{}").neighbors ?? [];
+    const neighborCtx = neighbors.length > 0
+      ? `\nNEARBY GARMENTS (same hash neighborhood — check for duplicates/angles):\n${neighbors.map(n => `- [${n.id}] "${n.name}" type=${n.type} color=${n.color} hash=${n.hash ?? "none"}`).join("\n")}\n`
+      : "";
+
     const prompt = `You are a wardrobe AI classifying garment photos. Current labels for this item:
 - Type: ${currentType ?? "unknown"}
 - Color: ${currentColor ?? "unknown"}
 - Name: ${currentName ?? "unknown"}
-
+- Hash: ${hash ?? "none"}
+${neighborCtx}
 Look at the photo carefully and respond with ONLY a JSON object (no markdown, no extra text):
 
 {
@@ -75,10 +84,19 @@ Look at the photo carefully and respond with ONLY a JSON object (no markdown, no
   "correctedColor": "${currentColor ?? "black"}" (use current if correct, else one of: ${VALID_COLORS.join(", ")}),
   "correctedName": "${currentName ?? ""}" (short descriptive name, max 5 words),
   "confidence": 0.0-1.0,
-  "reason": "one sentence: what you see and whether labels match"
+  "reason": "one sentence: what you see and whether labels match",
+  "isAngleShot": false (true if this looks like a different angle of the same garment as a neighbor),
+  "angleOfId": null (if isAngleShot=true, the neighbor ID this is an angle of),
+  "isDuplicate": false (true if this is an exact or near-exact duplicate photo of a neighbor),
+  "duplicateOfId": null (if isDuplicate=true, the neighbor ID this duplicates)
 }
 
-Set ok=true if type AND color are both correct. Set ok=false if either is wrong.`;
+Rules:
+- Set ok=true ONLY if type AND color are both correct.
+- Set ok=false if type or color is wrong.
+- isAngleShot=true when the photo shows the SAME garment from a different angle (e.g. front vs back, folded vs flat).
+- isDuplicate=true when photos are near-identical (same angle, same lighting, same garment).
+- Use the hash values: if two items have very similar hashes, they are likely the same photo.`;
 
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

@@ -102,8 +102,8 @@ export function generateOutfit(watch, wardrobe, weather = {}, _profile = {}, his
   for (const slot of slots) {
     const items = wearable.filter(g => {
       const gType = g.type ?? g.category;
-      // shirt slot accepts sweaters
-      if (slot === "shirt") return gType === "shirt" || gType === "sweater";
+      // shirt slot: only actual shirts (sweaters go to sweater layer)
+      if (slot === "shirt") return gType === "shirt";
       return gType === slot;
     });
     if (!items.length) { outfit[slot] = null; continue; }
@@ -113,6 +113,21 @@ export function generateOutfit(watch, wardrobe, weather = {}, _profile = {}, his
     );
     outfit[slot] = items[0];
   }
+
+  // Sweater layer — separate from shirt, added when temp < 22°C
+  outfit.sweater = null;
+  const tempC = weather?.tempC ?? 22;
+  if (tempC < 22) {
+    const sweaters = wearable.filter(g => (g.type ?? g.category) === "sweater");
+    if (sweaters.length) {
+      sweaters.sort((a, b) =>
+        garmentScore(watch, b, weather, history) -
+        garmentScore(watch, a, weather, history)
+      );
+      outfit.sweater = sweaters[0];
+    }
+  }
+
   return outfit;
 }
 

@@ -17,8 +17,8 @@ const CONTEXTS = [
   { key:"shift",                   label:"On-Call Shift" },
 ];
 
-const OUTFIT_SLOTS = ["shirt", "pants", "shoes", "jacket"];
-const SLOT_ICONS = { shirt:"\u{1F454}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}" };
+const OUTFIT_SLOTS = ["shirt", "sweater", "pants", "shoes", "jacket"];
+const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}" };
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 const WEATHER_ICONS = {
@@ -241,6 +241,7 @@ function OnCallCalendar({ onCallDates, onToggle, isDark }) {
 export default function WeekPlanner() {
   const watches    = useWatchStore(s => s.watches);
   const history    = useHistoryStore(s => s.entries);
+  const addEntry   = useHistoryStore(s => s.addEntry);
   const weekCtx    = useWardrobeStore(s => s.weekCtx);
   const onCallDates= useWardrobeStore(s => s.onCallDates);
   const setWeekCtx = useWardrobeStore(s => s.setWeekCtx);
@@ -319,7 +320,6 @@ export default function WeekPlanner() {
     for (const slot of OUTFIT_SLOTS) {
       result[slot] = wearable.filter(g => {
         const t = g.type ?? g.category;
-        if (slot === "shirt") return t === "shirt" || t === "sweater";
         return t === slot;
       });
     }
@@ -597,6 +597,32 @@ export default function WeekPlanner() {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Wear This Outfit — save to history (today only) */}
+              {showOutfits && isToday && day.watch && (
+                <button
+                  onClick={() => {
+                    const garmentIds = OUTFIT_SLOTS
+                      .map(s => dayOutfit[s]?.id)
+                      .filter(Boolean);
+                    addEntry({
+                      id: `rotation-${Date.now()}`,
+                      date: day.date,
+                      watchId: day.watch.id,
+                      garmentIds,
+                      context: day.ctx,
+                      loggedAt: new Date().toISOString(),
+                    });
+                  }}
+                  style={{
+                    width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8,
+                    border: "none", background: "#22c55e", color: "#fff",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  Wear This Outfit
+                </button>
               )}
 
               {day.backup && (
