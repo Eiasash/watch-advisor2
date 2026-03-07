@@ -336,7 +336,7 @@ export async function analyzeImageContent(thumbnailDataURL) {
     // needsReview=true in classify().
     const ambiguousFires = !shoesFires && !shirtFires && !pantsFires && !flatLay && total >= 20;
     const ambiguousReason = ambiguousFires
-      ? `${personLike ? "person-like " : ""}no-shape-signal topF=${topF.toFixed(2)} midF=${midF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}${hasSkin ? ` skin=${skinRatio.toFixed(3)}` : ""}`
+      ? `${personLike ? "person-like " : ""}no-shape-signal topF=${topF.toFixed(2)} midF=${midF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
       : null;
 
     // ── likelyType ────────────────────────────────────────────────────────────

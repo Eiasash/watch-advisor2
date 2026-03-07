@@ -23,6 +23,7 @@ vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
   const defaultZones = () => ({
     total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
     flatLay: false,
+    personLike: false,
     shoes:     { fires: false, reason: null },
     shirt:     { fires: false, reason: null },
     pants:     { fires: false, reason: null },
@@ -533,9 +534,9 @@ describe("_applyDecision — personLike blocks pants", () => {
     expect(r._typeSource).toBe("image-pants");
   });
 
-  it("skin-tone signal (hasSkin) → personLike=true → not pants", () => {
-    // Geometry-only now: personLike requires structural all-zones presence, not skin.
-    // A high-skin-ratio garment photo has low topNB → personLike stays false → pants can fire.
+  it("pants fires when personLike=false and strict thresholds met (geometry-only path)", () => {
+    // Geometry-only: personLike requires structural all-zones presence, not skin.
+    // A garment photo has low topNB → personLike stays false → pants can fire.
     const fn = classifyFromFilename("IMG_1234.jpg");
     const px = {
       ...blankPx(),
