@@ -1,18 +1,24 @@
 /**
- * Rule-based garment classifier.
- * Priority: strong filename match > image shape heuristics > dominant color > default.
+ * Garment classifier — conservative by design.
  *
- * Key insight: total non-bg pixel count + zone distribution at 30×30:
- *   - Full-frame flat lay garment: total ~600-900, zones ~even (0.30-0.37 each)
- *   - Hanger shirt:                total ~300-600, topF high (>0.40)
- *   - Shoes pair on floor:         total ~100-350, botF high (>0.50) OR bilateral
- *   - Single shoe:                 total ~80-200,  botF high
- *   - Jeans/pants laid flat:       total ~400-700, midF+botF > topF
- *   - Mirror selfie / person:      filename keyword only — pixel zones cannot reliably distinguish
- *   - Watch/wrist closeup:         total low (<150), high bot or even — NOT pants
+ * Core philosophy:
+ *   It is always better to review an ambiguous item than to wrongly classify it.
+ *   pants is the most damage-prone type — restrict it severely.
+ *   shoes is terminal — once detected, nothing overrides.
+ *   flat-lay is the normal case for wardrobe photos — treat it as a positive signal.
+ *   person-in-frame detection via pixel zones is unreliable → use filename only.
  *
- * NEVER classify as outfit-shot based on zone balance alone.
- * ONLY classify as outfit-shot via selfie filename keywords.
+ * Decision order (strict):
+ *   1. Filename high-confidence   → use it
+ *   2. Filename medium            → use it (shoes image can upgrade)
+ *   3. Image: shoes               → terminal, return shoes
+ *   4. Image: hanger/shirt        → return shirt
+ *   5. Image: flat-lay            → return shirt, no review
+ *   6. Image: pants               → ONLY on very strong lower-body signal
+ *                                   + NOT flat-lay + NOT shoes + NOT hanger
+ *                                   + topF very low + total in narrow range
+ *   7. Ambiguous                  → needsReview true, type shirt (safe fallback)
+ *   8. Blind                      → needsReview true
  */
 
 // ─── Filename rules ───────────────────────────────────────────────────────────
@@ -49,8 +55,8 @@ const FORMALITY_MAP = {
   jean: 4, jeans: 4, jogger: 3, joggers: 3, cargo: 3, shorts: 3,
 };
 
-// Only explicit person/mirror/outfit keywords → outfit-shot
-// Camera roll patterns (IMG_1234, DSC_0042) are NOT selfies
+// Only literal selfie/mirror/ootd terms trigger selfie filename flag.
+// Camera-roll filenames (IMG_1234, DSC_0042) are NOT selfies.
 const SELFIE_KWS = [
   "selfie","mirror","ootd","fitcheck","fit-check","fit check",
   "outfit of the day","full body","full-body","fullbody","lookbook",
@@ -63,11 +69,8 @@ export function classifyFromFilename(filename) {
   let type = null;
   outer: for (const rule of TYPE_RULES) {
     for (const kw of rule.kws) {
-      const isMultiWord = kw.includes(" ");
-      if (isMultiWord ? lower.includes(kw) : words.includes(kw)) {
-        type = rule.type;
-        break outer;
-      }
+      const multi = kw.includes(" ");
+      if (multi ? lower.includes(kw) : words.includes(kw)) { type = rule.type; break outer; }
     }
   }
 
@@ -116,7 +119,7 @@ function colorDist(r1, g1, b1, r2, g2, b2) {
 function nearestPalette(r, g, b) {
   let best = PALETTE[0]; let bestD = Infinity;
   for (const p of PALETTE) {
-    const d = colorDist(r, g, b, p.r, p.g, p.b);
+    const d = colorDist(r,g,b,p.r,p.g,p.b);
     if (d < bestD) { bestD = d; best = p; }
   }
   return best.name;
@@ -130,12 +133,14 @@ function loadImageFromDataURL(dataURL) {
   });
 }
 
-// Returns true if pixel should be treated as background
+/**
+ * Background pixel filter.
+ */
 function isBgPixel(r, g, b) {
-  if (r > 215 && g > 215 && b > 215) return true;                          // near-white
+  if (r > 215 && g > 215 && b > 215) return true;                                            // near-white
   if (Math.max(r,g,b) - Math.min(r,g,b) < 15 && r > 185 && g > 185 && b > 185) return true; // light neutral
-  if (r > 155 && r > g + 18 && r > b + 18 && g > 120 && b > 120) return true; // pink/mauve bedding
-  if (r > 170 && g > 155 && b > 130 && Math.max(r,g,b) - Math.min(r,g,b) < 40) return true; // warm beige floor/rug
+  if (r > 155 && r > g + 18 && r > b + 18 && g > 120 && b > 120) return true;                // pink/mauve bedding
+  if (r > 170 && g > 155 && b > 130 && Math.max(r,g,b) - Math.min(r,g,b) < 40) return true; // warm beige floor
   return false;
 }
 
@@ -152,44 +157,74 @@ export async function extractDominantColor(thumbnailDataURL) {
 
     const CENTER = SIZE / 2;
     const EDGE_ZONE = SIZE * 0.22;
-    const tally = {};
-    let counted = 0;
+    const tally = {}; let counted = 0;
 
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const i = (y * SIZE + x) * 4;
         const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
         if (a < 100) continue;
-        if (isBgPixel(r, g, b)) continue;
-        const dist = Math.sqrt((x - CENTER)**2 + (y - CENTER)**2);
+        if (isBgPixel(r,g,b)) continue;
+        const dist = Math.sqrt((x-CENTER)**2 + (y-CENTER)**2);
         const weight = dist > (CENTER - EDGE_ZONE) ? 1 : 3;
-        const name = nearestPalette(r, g, b);
+        const name = nearestPalette(r,g,b);
         tally[name] = (tally[name] ?? 0) + weight;
         counted += weight;
       }
     }
 
     if (counted < 15) return null;
-    const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+    const sorted = Object.entries(tally).sort((a,b) => b[1]-a[1]);
     const top = sorted[0]; const runner = sorted[1];
-    // Prefer runner-up over ambiguous grey (grey = common shadow/background tone)
+    // Avoid returning ambiguous grey when a color is nearly as dominant
     if (top?.[0] === "grey" && runner && runner[1] > top[1] * 0.7) return runner[0];
     return top?.[0] ?? null;
   } catch { return null; }
 }
 
 /**
- * Pixel zone analysis at 30×30.
+ * Zone analysis at 30×30.
  *
  * Returns:
- *   likelyType        — "shoes" | "pants" | "shirt" | null
- *   likelyOutfitShot  — ONLY via filename keywords, never via zones alone
- *   flatLay           — true when garment fills frame evenly (the NORMAL case for flat-lay photos)
- *   debug             — object with all intermediate values for logging
+ * {
+ *   total, topF, midF, botF, bilatBalance,
+ *   flatLay,       — high total + even zone spread → definite garment
+ *   shoes,         — { fires, reason }  terminal
+ *   shirt,         — { fires, reason }  hanger/top-heavy
+ *   pants,         — { fires, reason }  STRICT: only very strong lower-body
+ *   ambiguous,     — { fires, reason }  everything else that wasn't caught above
+ *   likelyType,    — "shoes"|"shirt"|"pants"|null
+ * }
+ *
+ * IMPORTANT: pixel zones cannot distinguish a standing person from a garment
+ * filling the frame — this was empirically proven. Therefore:
+ *   - person-photo detection is FILENAME-ONLY (selfie/mirror/ootd keywords)
+ *   - pixel zones only detect unambiguous structural signals:
+ *       shoes (extreme bottom-heavy or bilateral compact pair)
+ *       hanger (extreme top-heavy)
+ *       pants (very strict: near-empty top + strong lower mass + tight total range)
+ *   - everything else falls to flat-lay or ambiguous
+ *
+ * Pants rule is deliberately narrow:
+ *   topF < 0.18   (top zone nearly empty — not just "low")
+ *   midF+botF > 0.82
+ *   total 90–550  (excludes tiny closeups AND massive flat-lays)
+ *   not flatLay, not shoes, not shirt
+ * This catches actual folded jeans / laid-flat trousers while rejecting
+ * person legs, long knitwear, seated outfit shots, and partial body crops.
  */
 export async function analyzeImageContent(thumbnailDataURL) {
-  const none = { likelyType: null, likelyOutfitShot: false, flatLay: false, debug: {} };
+  const none = {
+    total: 0, topF: 0, midF: 0, botF: 0, bilatBalance: 0,
+    flatLay: false,
+    shoes:     { fires: false, reason: null },
+    shirt:     { fires: false, reason: null },
+    pants:     { fires: false, reason: null },
+    ambiguous: { fires: false, reason: null },
+    likelyType: null,
+  };
   if (!thumbnailDataURL || !thumbnailDataURL.startsWith("data:")) return none;
+
   try {
     const SIZE = 30;
     const img = await loadImageFromDataURL(thumbnailDataURL);
@@ -199,17 +234,15 @@ export async function analyzeImageContent(thumbnailDataURL) {
     ctx.drawImage(img, 0, 0, SIZE, SIZE);
     const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
 
-    let topNB = 0, midNB = 0, botNB = 0;
-    // Also track left/right halves for bilateral shoe detection
-    let leftNB = 0, rightNB = 0;
+    let topNB = 0, midNB = 0, botNB = 0, leftNB = 0, rightNB = 0;
 
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         const i = (y * SIZE + x) * 4;
         const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
         if (a < 100) continue;
-        if (isBgPixel(r, g, b)) continue;
-        if (y < 10)      topNB++;
+        if (isBgPixel(r,g,b)) continue;
+        if      (y < 10) topNB++;
         else if (y < 20) midNB++;
         else             botNB++;
         if (x < 15) leftNB++; else rightNB++;
@@ -217,86 +250,114 @@ export async function analyzeImageContent(thumbnailDataURL) {
     }
 
     const total = topNB + midNB + botNB;
-    if (total < 8) return { ...none, debug: { total, reason: "too-few-pixels" } };
+    if (total < 8) return { ...none, total };
 
     const topF = topNB / total;
     const midF = midNB / total;
     const botF = botNB / total;
     const maxLR = Math.max(leftNB, rightNB);
     const minLR = Math.min(leftNB, rightNB);
-    const bilatBalance = minLR / (maxLR || 1); // 1.0 = perfectly bilateral
+    const bilatBalance = minLR / (maxLR || 1);
 
-    // ── Flat-lay detection ──────────────────────────────────────────────────
-    // A garment laid flat on a bed fills the frame evenly — this is the GOOD CASE.
-    // HIGH total + EVEN zones = flat-lay garment, NOT outfit-shot.
-    const isEven = Math.max(topF, midF, botF) - Math.min(topF, midF, botF) < 0.12;
-    const flatLay = total > 200 && isEven;
+    // ── Flat-lay ──────────────────────────────────────────────────────────────
+    // A garment filling the frame evenly: high total, all zones within 14pp of each other.
+    // This is the NORMAL case for wardrobe photography. Positive signal.
+    const zoneSpread = Math.max(topF, midF, botF) - Math.min(topF, midF, botF);
+    const flatLay    = total > 170 && zoneSpread < 0.14;
 
-    // ── Shoe detection ──────────────────────────────────────────────────────
-    // Shoes: low-to-medium occupancy, bottom-heavy OR bilateral pair
-    // Guard: total must be < 500 — a full-frame flat-lay shirt is not shoes
-    // Bilateral: two shoes side by side have balanced left/right pixel mass
-    const shoesLowTotal = total < 450;
-    const shoesBottomHeavy = botF > 0.48 && topF < 0.22;
-    const shoesBilateral = bilatBalance > 0.6 && total < 350 && botF > 0.35;
-    const likelyShoes = shoesLowTotal && (shoesBottomHeavy || shoesBilateral);
-
-    const shoesReason = likelyShoes
-      ? (shoesBilateral ? "bilateral-pair" : "bottom-heavy")
+    // ── Shoes (terminal) ─────────────────────────────────────────────────────
+    // Only fires on images where the lower half clearly dominates OR two compact
+    // objects sit side by side near the bottom.
+    // total < 450 prevents a full-frame dark sweater from matching.
+    const shoesBottomHeavy = total < 420 && botF > 0.52 && topF < 0.18;
+    const shoesBilateral   = total < 300 && bilatBalance > 0.60 && botF > 0.35 && topF < 0.28;
+    const shoesFires  = shoesBottomHeavy || shoesBilateral;
+    const shoesReason = shoesFires
+      ? (shoesBilateral
+          ? `bilateral bilat=${bilatBalance.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
+          : `bottom-heavy botF=${botF.toFixed(2)} topF=${topF.toFixed(2)} total=${total}`)
       : null;
 
-    // ── Pants detection ─────────────────────────────────────────────────────
-    // Pants laid flat: mid+bot heavy, topF low, MEDIUM total (not a tiny closeup)
-    // Guard against wrist/watch closeups: total must be > 80 AND not be too small
-    // Guard against flat-lay shirts: if flatLay is true, don't also call pants
-    const likelyPants = !flatLay
-      && !likelyShoes
-      && (midF + botF) > 0.70
-      && topF < 0.30
-      && total > 80
-      && total < 800; // wrist closeup would be low total; full garment flat-lay would flatLay=true
+    // ── Hanger / shirt (top-heavy) ────────────────────────────────────────────
+    // Shirt on hanger: top zone very dominant, narrow bottom mass, moderate total.
+    const shirtFires  = !flatLay && !shoesFires
+      && topF > 0.42 && botF < 0.18 && total > 30 && total < 600;
+    const shirtReason = shirtFires
+      ? `hanger topF=${topF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
+      : null;
 
-    const pantsReason = likelyPants ? `mid+bot=${((midF+botF)*100).toFixed(0)}%` : null;
+    // ── Pants (very strict) ───────────────────────────────────────────────────
+    // Deliberately narrow to avoid false positives from:
+    //   - person legs visible in outfit photos
+    //   - long knitwear (also bottom-heavy)
+    //   - seated shots with legs filling lower frame
+    //   - partial body photos
+    //
+    // Requirements (ALL must hold):
+    //   topF < 0.18      — top zone nearly empty (stricter than before)
+    //   mid+bot > 0.82   — strong lower mass (stricter than before)
+    //   !flatLay         — not a full-frame garment fill
+    //   !shoesFires      — terminal
+    //   !shirtFires      — hanger already caught
+    //   total 90–550     — excludes wrist closeups (<90) AND large flat-lays (>550)
+    //
+    // A pair of jeans folded on a bed with the waistband cropped out will have:
+    //   topF ≈ 0.05–0.15, midF ≈ 0.40, botF ≈ 0.45, total ≈ 150–400
+    // A person standing: topF ≈ 0.25–0.35 (torso) → fails topF < 0.18
+    // A long knit sweater laid flat: flatLay=true → excluded
+    const pantsFires  = !flatLay && !shoesFires && !shirtFires
+      && topF < 0.18
+      && (midF + botF) > 0.82
+      && total > 90 && total < 550;
+    const pantsReason = pantsFires
+      ? `topF=${topF.toFixed(2)} mid+bot=${((midF+botF)*100).toFixed(0)}% total=${total}`
+      : null;
 
-    // ── Hanger/shirt detection ───────────────────────────────────────────────
-    // Shirt on hanger: top-heavy, medium total, narrow bottom
-    const likelyHangerShirt = !flatLay && !likelyShoes && !likelyPants
-      && topF > 0.40 && botF < 0.20 && total > 40 && total < 600;
+    // ── Ambiguous ─────────────────────────────────────────────────────────────
+    // Catches everything that didn't match a positive signal above but
+    // also isn't a clean flat-lay.
+    // These images get needsReview=true in classify().
+    // Typical members:
+    //   - seated outfit shots (topF mid-range, botF mid-range, medium total)
+    //   - wrist/watch photos (low total but not shoe-shaped)
+    //   - belt/accessory shots (odd bilateral distribution)
+    //   - stacked garments (uneven zones, medium total)
+    //   - mirror selfie without filename keyword
+    // Condition: no positive type signal AND not a flat-lay AND some content present
+    const ambiguousFires = !shoesFires && !shirtFires && !pantsFires && !flatLay && total >= 20;
+    const ambiguousReason = ambiguousFires
+      ? `no-shape-signal topF=${topF.toFixed(2)} midF=${midF.toFixed(2)} botF=${botF.toFixed(2)} total=${total}`
+      : null;
 
-    const hangerReason = likelyHangerShirt ? `topF=${topF.toFixed(2)}` : null;
-
-    // ── Type resolution ──────────────────────────────────────────────────────
+    // ── likelyType ────────────────────────────────────────────────────────────
     let likelyType = null;
-    if (likelyShoes)       likelyType = "shoes";
-    else if (likelyPants)  likelyType = "pants";
-    else if (likelyHangerShirt) likelyType = "shirt";
-    // flatLay → null type (let default shirt handle it — it's probably a shirt/jacket/knit)
+    if      (shoesFires) likelyType = "shoes";
+    else if (shirtFires) likelyType = "shirt";
+    else if (pantsFires) likelyType = "pants";
+    // flat-lay and ambiguous → likelyType null (classify() handles them)
 
-    // ── Outfit-shot: NEVER from pixel zones ─────────────────────────────────
-    // Outfit-shot detection is 100% filename-driven (selfie/mirror keywords).
-    // Zone analysis cannot reliably detect a person vs a flat-lay garment.
-    // This prevents the core bug: even zones + high total ≠ person.
-    const likelyOutfitShot = false;
-
-    const debug = {
-      total, topF: +topF.toFixed(3), midF: +midF.toFixed(3), botF: +botF.toFixed(3),
-      bilatBalance: +bilatBalance.toFixed(3),
-      flatLay, likelyShoes, likelyPants, likelyHangerShirt,
-      shoesReason, pantsReason, hangerReason,
-    };
-
-    console.log("[zones]",
+    console.log(
+      "[zones]",
       `top:${topF.toFixed(2)} mid:${midF.toFixed(2)} bot:${botF.toFixed(2)} total:${total}`,
-      `| flatLay:${flatLay} bilat:${bilatBalance.toFixed(2)}`,
-      `| type→${likelyType ?? "null"}`,
-      shoesReason  ? `shoes:${shoesReason}`  : "",
-      pantsReason  ? `pants:${pantsReason}`  : "",
-      hangerReason ? `hanger:${hangerReason}` : "",
+      `| bilat:${bilatBalance.toFixed(2)} flatLay:${flatLay}`,
+      `| →${likelyType ?? (flatLay ? "flat-lay" : ambiguousFires ? "ambiguous" : "null")}`,
+      shoesFires     ? `| shoes:${shoesReason}`       : "",
+      shirtFires     ? `| shirt:${shirtReason}`       : "",
+      pantsFires     ? `| pants:${pantsReason}`       : "",
+      flatLay        ? `| flatLay:spread=${zoneSpread.toFixed(3)}` : "",
+      ambiguousFires ? `| ambiguous:${ambiguousReason}` : "",
     );
 
-    return { likelyType, likelyOutfitShot, flatLay, debug };
+    return {
+      total, topF, midF, botF, bilatBalance, flatLay,
+      shoes:     { fires: shoesFires,     reason: shoesReason },
+      shirt:     { fires: shirtFires,     reason: shirtReason },
+      pants:     { fires: pantsFires,     reason: pantsReason },
+      ambiguous: { fires: ambiguousFires, reason: ambiguousReason },
+      likelyType,
+    };
   } catch (e) {
-    return { ...none, debug: { error: e.message } };
+    return { ...none, _error: e.message };
   }
 }
 
@@ -322,87 +383,138 @@ export function findPossibleDuplicate(newHash, existingGarments, threshold = 6) 
 export async function classify(filename, thumbnailDataURL, hash, existingGarments = []) {
   const fn = classifyFromFilename(filename);
 
-  const [pixels, pixelColor] = await Promise.all([
+  const [px, pixelColor] = await Promise.all([
     analyzeImageContent(thumbnailDataURL),
     extractDominantColor(thumbnailDataURL),
   ]);
 
-  // ── TYPE ──────────────────────────────────────────────────────────────────
-  let type, typeSource;
+  let type, typeSource, photoType, needsReview, decisionReason;
 
+  // ── 1. Filename high-confidence ───────────────────────────────────────────
   if (fn.type != null && fn.confidence === "high") {
-    type = fn.type;
-    typeSource = "filename-high";
-  } else if (fn.type != null && fn.confidence === "medium") {
-    // Camera-roll file with a garment keyword — trust keyword unless image strongly disagrees
-    if (pixels.likelyType && pixels.likelyType !== fn.type) {
-      // Shape-obvious types (shoes/pants) override medium filename confidence
-      type = (pixels.likelyType === "shoes" || pixels.likelyType === "pants")
-        ? pixels.likelyType : fn.type;
-      typeSource = "image-override";
-    } else {
-      type = fn.type;
-      typeSource = "filename-medium";
-    }
-  } else if (fn.type == null && pixels.likelyType) {
-    type = pixels.likelyType;
-    typeSource = "image";
-  } else {
-    // No filename keyword, no image signal — flat-lay default
-    // shirt is the right default (majority of wardrobe, catches knits/sweaters/jackets too)
-    type = "shirt";
-    typeSource = "default";
+    type          = fn.type;
+    typeSource    = "filename-high";
+    photoType     = fn.isSelfieFilename ? "outfit-shot" : "garment";
+    needsReview   = fn.isSelfieFilename;
+    decisionReason = `filename keyword → ${fn.type}`;
   }
 
-  // ── COLOR ──────────────────────────────────────────────────────────────────
-  const color = fn.color ?? pixelColor ?? "grey";
+  // ── 2. Filename medium ────────────────────────────────────────────────────
+  else if (fn.type != null && fn.confidence === "medium") {
+    // Shoes image signal can upgrade a non-shoes medium filename (e.g. "IMG_shoes")
+    if (px.shoes.fires && fn.type !== "shoes") {
+      type       = "shoes";
+      typeSource = "image-shoes-upgrade";
+      decisionReason = `image shoes overrides medium filename; ${px.shoes.reason}`;
+    } else {
+      type       = fn.type;
+      typeSource = "filename-medium";
+      decisionReason = `camera-roll filename keyword → ${fn.type}`;
+    }
+    photoType   = fn.isSelfieFilename ? "outfit-shot" : "garment";
+    needsReview = fn.isSelfieFilename;
+  }
 
-  // ── PHOTO TYPE ──────────────────────────────────────────────────────────────
-  // ONLY filename selfie keywords trigger outfit-shot.
-  // Pixel zone analysis CANNOT reliably detect a person vs a flat-lay.
-  const photoType = fn.isSelfieFilename ? "outfit-shot" : "garment";
+  // ── 3–8. Image-driven (no reliable filename keyword) ──────────────────────
+  else {
+    // 3. Selfie filename keyword → outfit-shot, review
+    if (fn.isSelfieFilename) {
+      type          = "shirt";
+      typeSource    = "selfie-filename";
+      photoType     = "outfit-shot";
+      needsReview   = true;
+      decisionReason = "selfie/mirror/ootd filename keyword";
+    }
 
-  // ── NEEDS REVIEW ────────────────────────────────────────────────────────────
-  // True only when:
-  //   1. Explicit outfit-shot (selfie/mirror keyword in filename)
-  //   2. Absolutely no signal — camera-roll file, no color, no image type hint
-  // A flat-lay garment with a detected color is NOT flagged for review.
-  const totallyBlind = typeSource === "default" && !pixelColor && !pixels.likelyType;
-  const needsReview  = photoType === "outfit-shot" || totallyBlind;
+    // 4. Image: shoes (terminal)
+    else if (px.shoes.fires) {
+      type          = "shoes";
+      typeSource    = "image-shoes";
+      photoType     = "garment";
+      needsReview   = false;
+      decisionReason = px.shoes.reason;
+    }
 
+    // 5. Image: hanger/shirt
+    else if (px.shirt.fires) {
+      type          = "shirt";
+      typeSource    = "image-shirt";
+      photoType     = "garment";
+      needsReview   = false;
+      decisionReason = px.shirt.reason;
+    }
+
+    // 6. Flat-lay: positive garment signal, type unknown → shirt default
+    else if (px.flatLay) {
+      type          = "shirt";
+      typeSource    = "flat-lay";
+      photoType     = "garment";
+      needsReview   = false;
+      decisionReason = `flat-lay total=${px.total}`;
+    }
+
+    // 7. Image: pants (strict — only after flat-lay is excluded)
+    else if (px.pants.fires) {
+      type          = "pants";
+      typeSource    = "image-pants";
+      photoType     = "garment";
+      needsReview   = false;
+      decisionReason = px.pants.reason;
+    }
+
+    // 8. Ambiguous image → review
+    // This catches: person photos, seated selfies, accessory shots,
+    // stacked garments, watch/wrist closeups, anything without a clear shape signal.
+    // We do NOT guess the type — safer to review.
+    else if (px.ambiguous.fires) {
+      type          = "shirt";   // safe fallback displayed to user until they correct it
+      typeSource    = "ambiguous";
+      photoType     = "ambiguous";
+      needsReview   = true;
+      decisionReason = px.ambiguous.reason;
+    }
+
+    // 9. Blind (total < 20 — near-empty canvas after bg filter)
+    else {
+      const totallyBlind = !pixelColor;
+      type          = "shirt";
+      typeSource    = "blind";
+      photoType     = "garment";
+      needsReview   = totallyBlind;
+      decisionReason = totallyBlind
+        ? "no-pixels no-color no-filename"
+        : `low-pixel color=${pixelColor}`;
+    }
+  }
+
+  const color       = fn.color ?? pixelColor ?? "grey";
   const duplicateOf = findPossibleDuplicate(hash, existingGarments) ?? undefined;
 
   const result = {
     type, color,
-    formality: fn.formality,
+    formality:    fn.formality,
     photoType,
     needsReview,
     ...(duplicateOf ? { duplicateOf } : {}),
-    _confidence: fn.confidence,
-    _typeSource: typeSource,
-    _flatLay: pixels.flatLay,
+    _confidence:  fn.confidence,
+    _typeSource:  typeSource,
+    _flatLay:     px.flatLay,
+    _ambiguous:   px.ambiguous.fires,
+    _decisionReason: decisionReason,
   };
-
-  // Rich classifier log
-  const fallbackReason = typeSource === "default"
-    ? `no-filename-keyword; pixelType=${pixels.likelyType ?? "null"}; flatLay=${pixels.flatLay}`
-    : null;
 
   console.log(
     "[classifier]", filename,
-    "→", result.type, result.color,
-    "| photo:", result.photoType,
-    "| review:", result.needsReview,
+    "→", type, color,
+    "| photo:", photoType,
+    "| review:", needsReview,
     "| src:", typeSource,
     "| pixColor:", pixelColor,
-    "| imgType:", pixels.likelyType,
-    "| flatLay:", pixels.flatLay,
-    "| outfitShotReason:", fn.isSelfieFilename ? "selfie-keyword" : "none",
-    ...(pixels.debug?.shoesReason  ? ["| shoes:", pixels.debug.shoesReason]  : []),
-    ...(pixels.debug?.pantsReason  ? ["| pants:", pixels.debug.pantsReason]  : []),
-    ...(pixels.debug?.hangerReason ? ["| hanger:", pixels.debug.hangerReason] : []),
-    ...(fallbackReason             ? ["| fallback:", fallbackReason]           : []),
-    ...(duplicateOf                ? ["| DUPE:", duplicateOf]                  : []),
+    "| imgType:", px.likelyType,
+    "| flatLay:", px.flatLay,
+    "| ambiguous:", px.ambiguous.fires,
+    "| reason:", decisionReason,
+    ...(duplicateOf ? ["| DUPE:", duplicateOf] : []),
   );
 
   return result;
