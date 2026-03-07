@@ -28,7 +28,7 @@ export async function handler(event) {
   }
 
   try {
-    const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash } = JSON.parse(event.body ?? "{}");
+    const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors } = JSON.parse(event.body ?? "{}");
 
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
@@ -65,7 +65,7 @@ export async function handler(event) {
     }
 
     // Build neighbor context for angle/dupe detection
-    const neighbors = JSON.parse(event.body ?? "{}").neighbors ?? [];
+    const neighbors = Array.isArray(rawNeighbors) ? rawNeighbors : [];
     const neighborCtx = neighbors.length > 0
       ? `\nNEARBY GARMENTS (same hash neighborhood — check for duplicates/angles):\n${neighbors.map(n => `- [${n.id}] "${n.name}" type=${n.type} color=${n.color} hash=${n.hash ?? "none"}`).join("\n")}\n`
       : "";

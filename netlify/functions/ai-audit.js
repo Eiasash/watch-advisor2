@@ -12,7 +12,7 @@ export async function handler(event) {
   };
 
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
-  if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" };
+  if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
     const { prompt } = JSON.parse(event.body || "{}");

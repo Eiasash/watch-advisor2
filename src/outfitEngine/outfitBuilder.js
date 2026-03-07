@@ -25,7 +25,7 @@ import { useRejectStore } from "../stores/rejectStore.js";
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = []) {
-  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null };
+  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null };
 
   // Strip accessories, outfit photos and excluded items from outfit consideration
   const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
