@@ -256,11 +256,14 @@ export async function analyzeImageContent(thumbnailDataURL) {
     }
 
     const total = topNB + midNB + botNB;
-    if (total < 20) return none; // too little content to analyse
+    if (total < 8) return none; // very few non-bg pixels
 
     const topF = topNB / total;
     const midF = midNB / total;
     const botF = botNB / total;
+
+    // Debug — remove after tuning
+    console.log("[zones]", `top:${topF.toFixed(2)} mid:${midF.toFixed(2)} bot:${botF.toFixed(2)} total:${total}`);
 
     // Outfit/person shot: requires VERY strong evidence of a person.
     // A flat-lay garment with arms spread out naturally fills all three zones — do NOT flag it.
@@ -317,9 +320,10 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
   ]);
 
   // ── TYPE PRIORITY ──
-  // A. Strong filename match (specific garment keyword, not camera-roll)
+  // A. Strong filename match
   // B. Image shape heuristic
-  // C. Default shirt
+  // C. Aspect-ratio hint for pants (portrait photo + lower color mass)
+  // D. Default shirt
   let type;
   let typeSource;
 
@@ -327,9 +331,7 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
     type = fn.type;
     typeSource = "filename-high";
   } else if (fn.type != null && fn.confidence === "medium") {
-    // Camera-roll filename had a garment keyword — trust it unless image strongly disagrees
     if (pixels.likelyType && pixels.likelyType !== fn.type) {
-      // Disagreement — prefer image for shape-obvious types (shoes, pants)
       type = (pixels.likelyType === "shoes" || pixels.likelyType === "pants")
         ? pixels.likelyType : fn.type;
       typeSource = "image-override";
@@ -338,33 +340,31 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
       typeSource = "filename-medium";
     }
   } else if (fn.type == null && pixels.likelyType) {
-    // No filename keyword — use image
     type = pixels.likelyType;
     typeSource = "image";
   } else if (fn.type == null) {
-    type = "shirt"; // last resort default
+    type = "shirt"; // reasonable default — majority of wardrobe is upper body
     typeSource = "default";
   } else {
     type = fn.type;
     typeSource = "filename-low";
   }
 
-  // ── COLOR PRIORITY ──
-  // Filename color beats pixel when present; pixel beats grey default
+  // ── COLOR ──
   const color = fn.color ?? pixelColor ?? "grey";
 
   // ── PHOTO TYPE ──
-  // Strict: only selfie keywords trigger outfit-shot, NOT camera-roll patterns alone
+  // Strict: only explicit selfie keywords or very strong image evidence
   const photoType = (fn.isSelfieFilename || pixels.likelyOutfitShot) ? "outfit-shot" : "garment";
 
   // ── NEEDS REVIEW ──
-  // Only flag when genuinely uncertain:
-  // - outfit shot (person in frame)
-  // - type came from default with no signals
-  // - no color found at all (couldn't determine anything)
-  const needsReview = photoType === "outfit-shot"
-    || typeSource === "default"
-    || (fn.confidence === "low" && !pixels.likelyType && !pixelColor);
+  // Flag only when we genuinely have nothing to work with:
+  // - outfit shot / person in frame
+  // - type AND color are both unknown (truly blind)
+  // If we found a color, pixel analysis worked — don't flag review just because
+  // the zone heuristic couldn't determine type. shirt is a good default.
+  const noSignals = typeSource === "default" && !pixelColor;
+  const needsReview = photoType === "outfit-shot" || noSignals;
 
   const duplicateOf = findPossibleDuplicate(hash, existingGarments) ?? undefined;
 
@@ -380,12 +380,12 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
   };
 
   console.log("[classifier]", filename, "→", result.type, result.color,
-    "formality:", result.formality,
-    "photoType:", result.photoType,
-    "needsReview:", result.needsReview,
-    "src:", typeSource,
-    "conf:", fn.confidence,
-    ...(duplicateOf ? ["DUPE:", duplicateOf] : [])
+    "| photoType:", result.photoType,
+    "| needsReview:", result.needsReview,
+    "| src:", typeSource, "conf:", fn.confidence,
+    "| pixelColor:", pixelColor, "likelyType:", pixels.likelyType,
+    "| outfitShot:", pixels.likelyOutfitShot,
+    ...(duplicateOf ? ["| DUPE:", duplicateOf] : [])
   );
 
   return result;
