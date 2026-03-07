@@ -75,14 +75,37 @@ export function weatherLayerScore(garment, weather) {
 }
 
 /**
- * Compute total garment score for outfit selection.
- * score = colorMatch * 2 + formalityMatch * 3 + watchCompatibility * 3 + weatherLayer
+ * Score how well shoes match the watch strap color.
+ * Non-negotiable rule: leather strap → matching leather shoe color.
+ * Returns 0-1.
  */
+export function strapShoeScore(watch, garment) {
+  if ((garment.type ?? garment.category) !== "shoes") return 1.0; // only applies to shoes slot
+
+  const strap = (watch.strap ?? "").toLowerCase();
+  const isLeather = strap.includes("leather") || strap.includes("alligator") || strap.includes("calfskin");
+  if (!isLeather) return 1.0; // bracelet/integrated — no restriction
+
+  const shoeColor = (garment.color ?? "").toLowerCase();
+  const isBlackStrap = strap.includes("black");
+  const isBrownStrap = strap.includes("brown") || strap.includes("tan") || strap.includes("cognac") || strap.includes("alligator");
+
+  if (isBlackStrap) return ["black"].includes(shoeColor) ? 1.0 : 0.0;
+  if (isBrownStrap) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;
+
+  // Generic leather — prefer earth tones
+  return ["brown", "tan", "black", "cognac"].includes(shoeColor) ? 0.9 : 0.4;
+}
+
+
 export function scoreGarment(watch, garment, weather = {}) {
   const cm = colorMatchScore(watch, garment);
   const fm = formalityMatchScore(watch, garment);
   const wc = watchCompatibilityScore(watch, garment);
   const wl = weatherLayerScore(garment, weather);
+  const ss = strapShoeScore(watch, garment); // 0.0 on strap-shoe mismatch for shoes
 
-  return cm * 2 + fm * 3 + wc * 3 + wl;
+  const base = cm * 2 + fm * 3 + wc * 3 + wl;
+  // For shoes: strap-shoe is a hard multiplier — a 0.0 effectively removes the shoe from contention
+  return (garment.type ?? garment.category) === "shoes" ? base * ss : base;
 }

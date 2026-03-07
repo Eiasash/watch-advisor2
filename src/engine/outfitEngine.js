@@ -35,17 +35,15 @@ function colorScore(watch, garment) {
 }
 
 function strapScore(watch, garment) {
-  const strap = watch.strap ?? "";
-  // Leather/alligator strap → favour earth tones to enforce strap-shoe matching
-  if (strap === "alligator" || strap === "leather") {
-    const earthTones = ["brown", "tan", "black", "cognac", "beige"];
-    if (garment.type === "shoes") {
-      return earthTones.includes(garment.color?.toLowerCase()) ? 1 : 0.4;
-    }
-    return 0.7;
+  const strap = (watch.strap ?? "").toLowerCase();
+  const isLeather = strap.includes("leather") || strap.includes("alligator") || strap.includes("calfskin");
+  if (!isLeather) return 0.75; // bracelet / integrated — no restriction
+
+  const earthTones = ["brown", "tan", "black", "cognac", "dark brown", "beige"];
+  if (garment.type === "shoes") {
+    return earthTones.includes(garment.color?.toLowerCase()) ? 1 : 0.2;
   }
-  // Bracelet / integrated → neutral, no restriction
-  return 0.75;
+  return 0.7;
 }
 
 function weatherScore(garment, weather) {
@@ -103,6 +101,7 @@ export function explainOutfit(watch, outfit, dayProfile = "smart-casual") {
     "formal": "formal occasion",
     "casual": "casual day",
     "travel": "travel day",
+    "shift": "on-call shift",
   };
   const contextLabel = profileLabels[dayProfile] ?? "today";
 
@@ -110,7 +109,9 @@ export function explainOutfit(watch, outfit, dayProfile = "smart-casual") {
   const pantsName = outfit.pants?.name ?? null;
   const shoesName = outfit.shoes?.name ?? null;
 
-  const strapNote = watch.strap === "leather" || watch.strap === "alligator"
+  const strapLower = (watch.strap ?? "").toLowerCase();
+  const isLeatherStrap = strapLower.includes("leather") || strapLower.includes("alligator") || strapLower.includes("calfskin");
+  const strapNote = isLeatherStrap
     ? `Leather strap — confirm shoe color matches.`
     : `Bracelet — shoe color is unrestricted.`;
 

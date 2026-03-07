@@ -20,6 +20,13 @@ const DIAL_SWATCH = {
   "black-red":    "#1a1a1a",
   "black":        "#1a1a1a",
   "white-teal":   "#4da89c",
+  // Replica dials — previously all showed #444
+  "teal":         "#2a8a82",
+  "burgundy":     "#6b1a2a",
+  "purple":       "#5a2a7a",
+  "turquoise":    "#1a9b8a",
+  "red":          "#9b1a1a",
+  "meteorite":    "#c0c0c0",
 };
 
 function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
