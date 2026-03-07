@@ -429,6 +429,42 @@ describe("findPossibleDuplicate", () => {
   it("null hash → null",  () => expect(findPossibleDuplicate(null, ex)).toBeNull());
 });
 
+// ─── analyzeImageContent — real implementation smoke tests ───────────────────
+// Uses vi.importActual to bypass the mock and exercise the real function.
+// jsdom has no canvas renderer, so data: URL paths hit the try/catch and
+// return { ...none, _error }. Both outcomes must return a stable px shape.
+
+describe("analyzeImageContent — real implementation smoke", () => {
+  it("null input returns none shape immediately without touching DOM", async () => {
+    const { analyzeImageContent } = await vi.importActual(
+      "../src/features/wardrobe/classifier.js"
+    );
+    const px = await analyzeImageContent(null, "smoke.jpg");
+    expect(px.total).toBe(0);
+    expect(px.topF).toBe(0);
+    expect(px.flatLay).toBe(false);
+    expect(px.personLike).toBe(false);
+    expect(px.shoes).toEqual({ fires: false, reason: null });
+    expect(px.shirt).toEqual({ fires: false, reason: null });
+    expect(px.pants).toEqual({ fires: false, reason: null });
+    expect(px.ambiguous).toEqual({ fires: false, reason: null });
+    expect(px.likelyType).toBeNull();
+  });
+
+  it("non-data-url input returns none shape immediately without touching DOM", async () => {
+    const { analyzeImageContent } = await vi.importActual(
+      "../src/features/wardrobe/classifier.js"
+    );
+    // "blob:fake" does not start with "data:" → early-exit guard fires, no canvas needed
+    const px = await analyzeImageContent("blob:fake", "smoke.jpg");
+    expect(px.total).toBe(0);
+    expect(px.flatLay).toBe(false);
+    expect(px.shoes).toEqual({ fires: false, reason: null });
+    expect(px.pants).toEqual({ fires: false, reason: null });
+    expect(px.likelyType).toBeNull();
+  });
+});
+
 // ─── _applyDecision direct unit tests ────────────────────────────────────────
 // Tests the pure decision helper directly — no mock wrappers, no classify overhead.
 // fn = classifyFromFilename result, px = analyzeImageContent result.

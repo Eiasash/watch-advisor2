@@ -206,10 +206,11 @@ export async function extractDominantColor(thumbnailDataURL) {
  *   - everything else falls to flat-lay or ambiguous
  *
  * Pants rule is deliberately narrow:
- *   topF < 0.18   (top zone nearly empty — not just "low")
- *   midF+botF > 0.82
- *   total 90–550  (excludes tiny closeups AND massive flat-lays)
- *   not flatLay, not shoes, not shirt
+ *   topF < 0.15   (top zone nearly empty — not just "low")
+ *   topNB < 12    (absolute top pixel count; person head always exceeds this)
+ *   midF+botF > 0.85
+ *   total 90–500  (excludes tiny closeups AND massive flat-lays)
+ *   not flatLay, not shoes, not shirt, not personLike
  * This catches actual folded jeans / laid-flat trousers while rejecting
  * person legs, long knitwear, seated outfit shots, and partial body crops.
  */
