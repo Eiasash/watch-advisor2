@@ -3,6 +3,7 @@ import { useBootstrap } from "./bootstrap.js";
 import Header from "../components/Header.jsx";
 import WatchDashboard from "../components/WatchDashboard.jsx";
 import WardrobeGrid from "../components/WardrobeGrid.jsx";
+import WardrobeInsights from "../components/WardrobeInsights.jsx";
 import ImportPanel from "../components/ImportPanel.jsx";
 import SyncBar from "../components/SyncBar.jsx";
 
@@ -22,6 +23,7 @@ export default function AppShell() {
         </div>
       )}
       <WatchDashboard />
+      <WardrobeInsights />
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, alignItems: "start" }}>
         <ImportPanel />
         <WardrobeGrid />

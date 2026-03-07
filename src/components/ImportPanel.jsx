@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { runPhotoImport } from "../features/wardrobe/photoImport.js";
+import { runClassifierPipeline } from "../classifier/pipeline.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
 import { useWatchStore } from "../stores/watchStore.js";
@@ -32,7 +32,7 @@ export default function ImportPanel() {
 
       try {
         // Pass current garments snapshot for duplicate detection
-        const garment = await runPhotoImport(files[i], garmentsRef.current);
+        const garment = await runClassifierPipeline(files[i], garmentsRef.current);
         addGarment(garment);
         console.log("[ImportPanel] garment added:", garment.id, garment.type, garment.color);
         imported.push(garment);
