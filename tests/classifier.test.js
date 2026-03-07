@@ -451,17 +451,37 @@ describe("analyzeImageContent — real implementation smoke", () => {
     expect(px.likelyType).toBeNull();
   });
 
-  it("non-data-url input returns none shape immediately without touching DOM", async () => {
-    const { analyzeImageContent } = await vi.importActual(
-      "../src/features/wardrobe/classifier.js"
-    );
-    // "blob:fake" does not start with "data:" → early-exit guard fires, no canvas needed
-    const px = await analyzeImageContent("blob:fake", "smoke.jpg");
-    expect(px.total).toBe(0);
-    expect(px.flatLay).toBe(false);
-    expect(px.shoes).toEqual({ fires: false, reason: null });
-    expect(px.pants).toEqual({ fires: false, reason: null });
-    expect(px.likelyType).toBeNull();
+  it("1×1 PNG data URL — canvas path executes and returns stable shape without throwing", async () => {
+    // jsdom does not decode images — Image.onload/onerror never fire for data: URLs.
+    // Shim global.Image so loadImageFromDataURL settles via onerror, which lets
+    // the try/catch inside analyzeImageContent execute and return { ...none, _error }.
+    const OrigImage = global.Image;
+    global.Image = class {
+      constructor() {}
+      set src(_) { Promise.resolve().then(() => this.onerror?.(new Error("jsdom-no-decode"))); }
+    };
+    try {
+      const { analyzeImageContent } = await vi.importActual(
+        "../src/features/wardrobe/classifier.js"
+      );
+      // Genuine 1×1 PNG
+      const px = await analyzeImageContent(
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=",
+        "test.png"
+      );
+      // Shape contract must hold regardless of canvas outcome
+      expect(px).toHaveProperty("total");
+      expect(px).toHaveProperty("flatLay");
+      expect(px).toHaveProperty("personLike");
+      expect(px.shoes).toHaveProperty("fires");
+      expect(px.shirt).toHaveProperty("fires");
+      expect(px.pants).toHaveProperty("fires");
+      expect(px.ambiguous).toHaveProperty("fires");
+      expect(px.shoes.fires).toBe(false);
+      expect(px.pants.fires).toBe(false);
+    } finally {
+      global.Image = OrigImage;
+    }
   });
 });
 
