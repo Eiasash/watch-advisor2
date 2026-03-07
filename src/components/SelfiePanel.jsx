@@ -1,11 +1,14 @@
 /**
- * SelfiePanel — outfit photo AI analysis (aiSelfieCheck equivalent)
- * Drop a photo or use camera → Claude Vision returns full analysis:
- * impact score, color story, proportion, fit, works/risk, upgrade, watch details.
+ * SelfiePanel — AI Selfie / Outfit Photo Checker
+ * Upload or take a photo → Claude Vision analyzes the full look.
+ * Shows impact score, color story, strap-shoe check, upgrade suggestion.
+ * Stores history of last 20 checks in localStorage via styleLearningStore.
  */
-import React, { useState, useCallback, useRef } from "react";
-import { useWatchStore }   from "../stores/watchStore.js";
-import { useThemeStore }   from "../stores/themeStore.js";
+import React, { useState, useRef, useCallback } from "react";
+import { useWatchStore }    from "../stores/watchStore.js";
+import { useThemeStore }    from "../stores/themeStore.js";
+
+const API = "/.netlify/functions/selfie-check";
 
 function resizeImage(file, maxPx = 800) {
   return new Promise(resolve => {
@@ -13,9 +16,9 @@ function resizeImage(file, maxPx = 800) {
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
         const c = document.createElement("canvas");
-        c.width  = Math.round(img.width  * scale);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        c.width  = Math.round(img.width * scale);
         c.height = Math.round(img.height * scale);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         resolve(c.toDataURL("image/jpeg", 0.82));
@@ -26,38 +29,41 @@ function resizeImage(file, maxPx = 800) {
   });
 }
 
-const IMPACT_COLOR = n => n >= 8 ? "#10b981" : n >= 6 ? "#f59e0b" : "#ef4444";
+const SCORE_COLOR = s => s >= 8 ? "#10b981" : s >= 6 ? "#f59e0b" : "#ef4444";
 
 export default function SelfiePanel({ context = "smart-casual" }) {
-  const { mode }    = useThemeStore();
-  const isDark      = mode === "dark";
-  const watches     = useWatchStore(s => s.watches);
+  const { mode }  = useThemeStore();
+  const isDark    = mode === "dark";
+  const watches   = useWatchStore(s => s.watches);
 
-  const [image,    setImage]    = useState(null); // data URL
-  const [result,   setResult]   = useState(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState(null);
-  const [history,  setHistory]  = useState([]);
-  const [showHist, setShowHist] = useState(false);
-  const cameraRef  = useRef(null);
-  const selfieRef  = useRef(null);
-  const galleryRef = useRef(null);
+  const [preview,  setPreview]  = useState(null);
+  const [result,   setResult]   = useState(null);
+  const [history,  setHistory]  = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("selfie_history") ?? "[]"); }
+    catch { return []; }
+  });
 
-  const card   = isDark ? "#171a21" : "#ffffff";
-  const border = isDark ? "#2b3140" : "#e5e7eb";
+  const cameraRef   = useRef();
+  const frontRef    = useRef();
+  const galleryRef  = useRef();
+
   const text   = isDark ? "#e2e8f0" : "#1f2937";
   const muted  = isDark ? "#6b7280" : "#9ca3af";
-  const bg     = isDark ? "#0f131a" : "#f3f4f6";
+  const card   = isDark ? "#171a21" : "#ffffff";
+  const border = isDark ? "#2b3140" : "#e5e7eb";
+  const bg2    = isDark ? "#0f131a" : "#f3f4f6";
 
-  const handleFile = useCallback(async (file) => {
+  const check = useCallback(async (file) => {
     if (!file) return;
     setError(null);
-    const dataUrl = await resizeImage(file, 1024);
-    setImage(dataUrl);
     setResult(null);
+    const dataUrl = await resizeImage(file);
+    setPreview(dataUrl);
     setLoading(true);
     try {
-      const res = await fetch("/.netlify/functions/selfie-check", {
+      const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: dataUrl, watches, context }),
@@ -65,148 +71,222 @@ export default function SelfiePanel({ context = "smart-casual" }) {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
-      setHistory(prev => [{ image: dataUrl, result: data, ts: Date.now() }, ...prev].slice(0, 10));
+      const entry = { id: Date.now(), ts: new Date().toISOString(), preview: dataUrl, result: data };
+      setHistory(prev => {
+        const next = [entry, ...prev].slice(0, 20);
+        try { sessionStorage.setItem("selfie_history", JSON.stringify(next)); } catch {}
+        return next;
+      });
     } catch (e) {
-      setError(e.message ?? "Analysis failed");
+      setError(e.message ?? "AI check failed");
     } finally {
       setLoading(false);
     }
   }, [watches, context]);
 
-  const onFileChange = e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = ""; };
+  const handleFile = useCallback(e => {
+    const f = e.target.files?.[0];
+    if (f) check(f);
+    e.target.value = "";
+  }, [check]);
 
-  const scoreColor = result ? IMPACT_COLOR(result.impact ?? 0) : "#3b82f6";
+  const clear = () => { setPreview(null); setResult(null); setError(null); };
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: text }}>📸 Outfit Check</div>
-            <div style={{ fontSize: 12, color: muted }}>Claude Vision analyses your look</div>
-          </div>
-          {history.length > 0 && (
-            <button onClick={() => setShowHist(v => !v)}
-              style={{ fontSize: 11, color: "#3b82f6", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
-              {showHist ? "Hide" : `History (${history.length})`}
-            </button>
-          )}
-        </div>
-
-        {/* Camera / gallery buttons */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          {[
-            { ref: selfieRef,  capture: "user",        label: "🤳 Selfie" },
-            { ref: cameraRef,  capture: "environment", label: "📷 Camera" },
-            { ref: galleryRef, capture: null,           label: "📁 Gallery" },
-          ].map(({ ref, capture, label }) => (
-            <label key={label} style={{ flex: 1, padding: "10px 0", borderRadius: 10,
-                border: `1px dashed ${border}`, display: "flex", alignItems: "center",
-                justifyContent: "center", cursor: "pointer", color: muted, fontSize: 12, fontWeight: 600 }}>
-              {label}
-              <input ref={ref} type="file" accept="image/*" style={{ display: "none" }}
-                {...(capture ? { capture } : {})} onChange={onFileChange} />
-            </label>
-          ))}
-        </div>
-
-        {/* Preview */}
-        {image && (
-          <div style={{ position: "relative", marginBottom: 14, borderRadius: 10, overflow: "hidden" }}>
-            <img src={image} alt="outfit" style={{ width: "100%", maxHeight: 300, objectFit: "cover", display: "block" }} />
-            {loading && (
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            flexDirection: "column", gap: 12 }}>
-                <div style={{ width: 36, height: 36, border: "3px solid #3b82f6",
-                              borderTopColor: "transparent", borderRadius: "50%",
-                              animation: "spin 0.8s linear infinite" }} />
-                <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Analysing…</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div style={{ padding: "10px 14px", borderRadius: 10, background: "#ef444422",
-                        border: "1px solid #ef444444", color: "#ef4444", fontSize: 12, marginBottom: 14 }}>
-            {error}
-          </div>
-        )}
-
-        {/* Result */}
-        {result && !loading && (
-          <div>
-            {/* Impact score */}
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14,
-                          padding: "14px 16px", borderRadius: 12,
-                          background: isDark ? "#0f131a" : "#f3f4f6", border: `1px solid ${border}` }}>
-              <div style={{ textAlign: "center", flexShrink: 0 }}>
-                <div style={{ fontSize: 36, fontWeight: 900, color: scoreColor }}>{result.impact ?? "—"}</div>
-                <div style={{ fontSize: 9, color: muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Impact</div>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: text, lineHeight: 1.5, marginBottom: 4 }}>{result.impact_why}</div>
-                {result.vision && <div style={{ fontSize: 11, color: muted, lineHeight: 1.5, fontStyle: "italic" }}>{result.vision}</div>}
-              </div>
-            </div>
-
-            {/* Color story + proportion */}
-            {[
-              { label: "Color Story",  val: result.color_story,      icon: "🎨" },
-              { label: "Proportion",   val: result.proportion_note,  icon: "📐" },
-              { label: "Fit",          val: result.fit_assessment,   icon: "✂️" },
-              { label: "What works",   val: result.works,            icon: "✅" },
-              { label: "Risk",         val: result.risk,             icon: "⚠️", skip: !result.risk },
-              { label: "Upgrade",      val: result.upgrade,          icon: "⬆️" },
-              { label: "Strap call",   val: result.strap_call,       icon: "⌚", skip: !result.strap_call },
-              { label: "Better watch", val: result.better_watch,     icon: "🔄", skip: !result.better_watch },
-            ].filter(x => !x.skip && x.val).map(({ label, val, icon }) => (
-              <div key={label} style={{ marginBottom: 8, padding: "10px 12px", borderRadius: 8,
-                                        background: bg, border: `1px solid ${border}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: muted, textTransform: "uppercase",
-                              letterSpacing: "0.07em", marginBottom: 3 }}>{icon} {label}</div>
-                <div style={{ fontSize: 12, color: text, lineHeight: 1.5 }}>{val}</div>
-              </div>
-            ))}
-
-            {/* Watch detection */}
-            {result.watch_details && (
-              <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8,
-                            background: isDark ? "#0c1f3f" : "#eff6ff", border: "1px solid #3b82f633" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#3b82f6", marginBottom: 3,
-                              textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  ⌚ Watch Detected — {result.watch_confidence ?? "?"}/10 confidence
-                </div>
-                <div style={{ fontSize: 12, color: text }}>{result.watch_details}</div>
-              </div>
-            )}
-          </div>
-        )}
+    <div style={{ padding: "0 0 80px" }}>
+      <div style={{ fontSize: 20, fontWeight: 800, color: text, marginBottom: 4 }}>Outfit Check</div>
+      <div style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
+        AI analyzes your full look — garments, watch, strap-shoe rule, color harmony.
       </div>
 
+      {/* Upload area */}
+      {!preview && (
+        <div style={{ background: card, borderRadius: 16, border: `1px dashed ${border}`, padding: 24, marginBottom: 16 }}>
+          <div style={{ textAlign: "center", marginBottom: 16, fontSize: 40 }}>🪞</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <label style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${border}`,
+                            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                            cursor: "pointer", color: text, fontSize: 12, fontWeight: 600 }}>
+              📷 Camera
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+                     style={{ display: "none" }} onChange={handleFile} />
+            </label>
+            <label style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${border}`,
+                            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                            cursor: "pointer", color: text, fontSize: 12, fontWeight: 600 }}>
+              🤳 Selfie
+              <input ref={frontRef} type="file" accept="image/*" capture="user"
+                     style={{ display: "none" }} onChange={handleFile} />
+            </label>
+            <label style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${border}`,
+                            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                            cursor: "pointer", color: text, fontSize: 12, fontWeight: 600 }}>
+              📁 Gallery
+              <input ref={galleryRef} type="file" accept="image/*"
+                     style={{ display: "none" }} onChange={handleFile} />
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* Preview + loading */}
+      {preview && (
+        <div style={{ position: "relative", marginBottom: 16 }}>
+          <img src={preview} alt="outfit"
+               style={{ width: "100%", maxHeight: 400, objectFit: "cover", borderRadius: 16, display: "block" }} />
+          {!loading && (
+            <button onClick={clear}
+              style={{ position: "absolute", top: 8, right: 8, background: "#ef4444", color: "#fff",
+                       border: "none", borderRadius: "50%", width: 28, height: 28, fontSize: 14,
+                       cursor: "pointer", fontWeight: 700 }}>×</button>
+          )}
+          {loading && (
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", borderRadius: 16,
+                          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <div style={{ width: 36, height: 36, border: "3px solid rgba(255,255,255,0.2)",
+                            borderTopColor: "#fff", borderRadius: "50%",
+                            animation: "spin 0.8s linear infinite" }} />
+              <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Analyzing outfit…</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div style={{ background: "#450a0a", border: "1px solid #7f1d1d", borderRadius: 10,
+                      padding: "10px 14px", color: "#fca5a5", fontSize: 13, marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+
+      {/* Result */}
+      {result && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Impact score */}
+          <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
+              <div style={{ fontSize: 48, fontWeight: 900, color: SCORE_COLOR(result.impact), lineHeight: 1 }}>
+                {result.impact}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: muted, textTransform: "uppercase",
+                              letterSpacing: "0.08em" }}>Impact Score</div>
+                <div style={{ fontSize: 13, color: text, marginTop: 2, lineHeight: 1.4 }}>{result.impact_why}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: muted, lineHeight: 1.6, fontStyle: "italic" }}>{result.vision}</div>
+          </div>
+
+          {/* Color story */}
+          {result.color_story && (
+            <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: muted, textTransform: "uppercase",
+                            letterSpacing: "0.08em", marginBottom: 8 }}>🎨 Color Story</div>
+              <div style={{ fontSize: 13, color: text, lineHeight: 1.6 }}>{result.color_story}</div>
+            </div>
+          )}
+
+          {/* Works / Risk */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {result.works && (
+              <div style={{ background: "#052e16", border: "1px solid #14532d", borderRadius: 12, padding: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#4ade80", textTransform: "uppercase",
+                              letterSpacing: "0.08em", marginBottom: 6 }}>✓ Works</div>
+                <div style={{ fontSize: 12, color: "#bbf7d0", lineHeight: 1.5 }}>{result.works}</div>
+              </div>
+            )}
+            {result.risk && (
+              <div style={{ background: "#450a0a", border: "1px solid #7f1d1d", borderRadius: 12, padding: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#f87171", textTransform: "uppercase",
+                              letterSpacing: "0.08em", marginBottom: 6 }}>⚠ Risk</div>
+                <div style={{ fontSize: 12, color: "#fca5a5", lineHeight: 1.5 }}>{result.risk}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Proportion + fit */}
+          {result.proportion_note && (
+            <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: muted, textTransform: "uppercase",
+                            letterSpacing: "0.08em", marginBottom: 8 }}>📐 Proportion & Fit</div>
+              <div style={{ fontSize: 13, color: text, lineHeight: 1.5 }}>{result.proportion_note}</div>
+              {result.fit_assessment && (
+                <div style={{ marginTop: 6, fontSize: 12, color: muted, fontStyle: "italic" }}>{result.fit_assessment}</div>
+              )}
+            </div>
+          )}
+
+          {/* Watch detection */}
+          {result.watch_details && (
+            <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: muted, textTransform: "uppercase",
+                              letterSpacing: "0.08em" }}>⌚ Watch Detected</div>
+                <div style={{ fontSize: 11, fontWeight: 700,
+                              color: result.watch_confidence >= 7 ? "#10b981" : "#f59e0b" }}>
+                  {result.watch_confidence}/10
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: text }}>{result.watch_details}</div>
+              {result.strap_call && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#60a5fa", lineHeight: 1.5 }}>
+                  🔗 {result.strap_call}
+                </div>
+              )}
+              {result.better_watch && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "#a78bfa" }}>
+                  💡 Alt: {result.better_watch}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Upgrade */}
+          {result.upgrade && (
+            <div style={{ background: "linear-gradient(135deg,#1e3a5f,#1a1f2b)", borderRadius: 14,
+                          border: "1px solid #2563eb44", padding: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase",
+                            letterSpacing: "0.08em", marginBottom: 8 }}>⚡ Upgrade</div>
+              <div style={{ fontSize: 13, color: "#bfdbfe", lineHeight: 1.6 }}>{result.upgrade}</div>
+            </div>
+          )}
+
+          {/* New photo button */}
+          <button onClick={clear}
+            style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: `1px solid ${border}`,
+                     background: "transparent", color: text, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            Check Another Outfit
+          </button>
+        </div>
+      )}
+
       {/* History */}
-      {showHist && history.length > 0 && (
-        <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 16, marginTop: 12 }}>
+      {!result && history.length > 0 && (
+        <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: muted, textTransform: "uppercase",
-                        letterSpacing: "0.08em", marginBottom: 12 }}>Past Checks</div>
-          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
-            {history.map(({ image: img, result: r, ts }) => (
-              <div key={ts} onClick={() => { setImage(img); setResult(r); setShowHist(false); }}
-                style={{ flexShrink: 0, cursor: "pointer", borderRadius: 10, overflow: "hidden",
-                         border: `1px solid ${border}`, position: "relative", width: 80 }}>
-                <img src={img} style={{ width: 80, height: 100, objectFit: "cover", display: "block" }} />
-                <div style={{ position: "absolute", top: 4, right: 4, background: IMPACT_COLOR(r.impact ?? 0),
-                              color: "#fff", borderRadius: 20, fontSize: 10, fontWeight: 800,
-                              padding: "1px 5px" }}>{r.impact}</div>
+                        letterSpacing: "0.08em", marginBottom: 10, marginTop: 4 }}>Recent Checks</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+            {history.slice(0, 6).map(h => (
+              <div key={h.id} style={{ cursor: "pointer", borderRadius: 10, overflow: "hidden",
+                                        border: `1px solid ${border}`, position: "relative" }}
+                   onClick={() => { setPreview(h.preview); setResult(h.result); }}>
+                <img src={h.preview} alt="past"
+                     style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0,
+                              background: "linear-gradient(transparent,rgba(0,0,0,0.8))",
+                              padding: "8px 6px 4px", display: "flex", alignItems: "flex-end" }}>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: SCORE_COLOR(h.result?.impact ?? 0) }}>
+                    {h.result?.impact ?? "?"}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
     </div>
   );
 }

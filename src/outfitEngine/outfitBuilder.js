@@ -47,11 +47,14 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       continue;
     }
 
-    // Score and sort
-    const scored = candidates.map(g => ({
-      garment: g,
-      score: scoreGarment(watch, g, weather) + diversityBonus(g, history),
-    }));
+    // Score and sort — with rejection penalty
+    const rejectState = useRejectStore.getState();
+    const scored = candidates.map(g => {
+      let score = scoreGarment(watch, g, weather) + diversityBonus(g, history);
+      // Apply -0.3 penalty if this watch+garment combo was recently rejected
+      if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
+      return { garment: g, score };
+    });
     scored.sort((a, b) => b.score - a.score);
 
     outfit[slotName] = scored[0].garment;

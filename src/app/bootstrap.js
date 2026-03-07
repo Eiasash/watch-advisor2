@@ -5,9 +5,9 @@ import { WATCH_COLLECTION } from "../data/watchSeed.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
-import { useStrapStore }     from "../stores/strapStore.js";
-import { resumePendingTasks, registerHandler } from "../services/backgroundQueue.js";
-import { checkAndBackup } from "../services/backupService.js";
+import { useStrapStore }         from "../stores/strapStore.js";
+import { useRejectStore }        from "../stores/rejectStore.js";
+import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 export function useBootstrap() {
   const [ready,  setReady]  = useState(false);
@@ -46,9 +46,8 @@ export function useBootstrap() {
       if (Array.isArray(cached.onCallDates)) setOnCallDates(cached.onCallDates);
       if (cached._outfitOverrides) useWardrobeStore.setState({ _outfitOverrides: cached._outfitOverrides });
       if (cached.strapStore) hydrateStraps(cached.strapStore);
-      if (cached.rejectLog) hydrateRejects(cached.rejectLog);
-      if (cached.styleLearning) hydrateStyle(cached.styleLearning);
-      else hydrateStyle({}); // triggers decay even if fresh
+      await hydrateRejects();
+      hydrateStyle(cached.styleLearning ?? {});
 
       setReady(true);
       setStatus("Ready");

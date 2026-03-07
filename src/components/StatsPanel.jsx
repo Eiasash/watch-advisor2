@@ -198,8 +198,8 @@ export default function StatsPanel() {
     };
   }, [entries]);
 
-  // ── Cost per wear ───────────────────────────────────────────────────────────
-  const cpwItems = useMemo(() => {
+  // ── Cost per wear (simple — used in Most Worn inline) ──────────────────────
+  const cpwItemsSimple = useMemo(() => {
     return garments
       .filter(g => g.price > 0)
       .map(g => {
@@ -214,6 +214,20 @@ export default function StatsPanel() {
   const maxType    = Math.max(...typeFreq.map(x => x[1]), 1);
   const maxGarment = Math.max(...garmentFreq.map(x => x.n), 1);
   const maxCtx     = Math.max(...contextFreq.map(x => x[1]), 1);
+
+  // ── CPW leaderboard ─────────────────────────────────────────────────────────
+  const cpwItems = useMemo(() => {
+    return garments
+      .filter(g => g.price > 0)
+      .map(g => {
+        const wears = entries.filter(e => (e.garmentIds ?? []).includes(g.id)).length;
+        if (!wears) return null;
+        return { garment: g, wears, cpw: Math.round(g.price / wears) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.cpw - b.cpw)
+      .slice(0, 8);
+  }, [garments, entries]);
 
   return (
     <div style={{ padding: "0 0 100px" }}>
@@ -354,11 +368,11 @@ export default function StatsPanel() {
                 </div>
               ))}
             </div>
-            {cpwItems.length > 0 && (
+            {cpwItemsSimple.length > 0 && (
               <>
                 <div style={{ fontSize:11, fontWeight:700, color:muted, textTransform:"uppercase",
                               letterSpacing:"0.06em", marginBottom:8 }}>Cost Per Wear</div>
-                {cpwItems.slice(0,8).map(({ g, cpw, wears }) => (
+                {cpwItemsSimple.slice(0,8).map(({ g, cpw, wears }) => (
                   <div key={g.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
                     {(g.thumbnail||g.photoUrl)
                       ? <img src={g.thumbnail||g.photoUrl} style={{ width:28,height:36,objectFit:"cover",borderRadius:4,flexShrink:0 }} />
@@ -378,7 +392,7 @@ export default function StatsPanel() {
           </Section>
 
           {/* Summary card */}
-          <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 18 }}>
+          <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 18, marginBottom: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: muted, textTransform: "uppercase",
                           letterSpacing: "0.08em", marginBottom: 12 }}>Summary</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12 }}>
@@ -387,6 +401,8 @@ export default function StatsPanel() {
                 { label: "Watches rotated", value: watchFreq.length },
                 { label: "Colors worn", value: colorFreq.length },
                 { label: "Pieces worn", value: garmentFreq.length },
+                { label: "Day streak 🔥", value: streak },
+                { label: "This week", value: thisWeek },
               ].map(({ label, value }) => (
                 <div key={label} style={{ textAlign: "center", padding: "12px 0",
                                           background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 10 }}>
@@ -396,6 +412,32 @@ export default function StatsPanel() {
               ))}
             </div>
           </div>
+
+          {/* CPW leaderboard */}
+          {cpwItems.length > 0 && (
+            <Section title="Cost-per-Wear (best value)" isDark={isDark}>
+              {cpwItems.slice(0, 6).map(({ garment: g, cpw, wears }) => (
+                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <div style={{ width: 36, height: 48, borderRadius: 6, overflow: "hidden", flexShrink: 0,
+                                border: `1px solid ${border}` }}>
+                    {(g.thumbnail || g.photoUrl) ? (
+                      <img src={g.thumbnail || g.photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center",
+                                    justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 16 }}>👕</div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: text,
+                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</div>
+                    <div style={{ fontSize: 10, color: muted }}>{wears} wear{wears !== 1 ? "s" : ""}</div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#4ade80",
+                                background: "#052e16", borderRadius: 8, padding: "3px 9px" }}>~{cpw}/w</div>
+                </div>
+              ))}
+            </Section>
+          )}
         </>
       )}
     </div>

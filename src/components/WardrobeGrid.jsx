@@ -110,7 +110,7 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
   const item  = data.items[index];
   if (!item) return <div style={style} />;
 
-  const { isDark, selectMode, selectedIds, onSelect, onLongPress, onEdit, onLightbox, selectedGarmentId } = data;
+  const { isDark, selectMode, selectedIds, onSelect, onLongPress, onEdit, onLightbox, selectedGarmentId, history } = data;
   const isSelected   = selectedIds.has(item.id) || selectedGarmentId === item.id;
   const isLinked     = selectedGarmentId === item.id;
   const swatch       = COLOR_SWATCHES[item.color] ?? "#333";
@@ -118,6 +118,13 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
   const hasAngles    = (item.photoAngles?.length ?? 0) > 0;
   const needsReview  = item.needsReview;
   const isDuplicate  = !!item.duplicateOf;
+  // Cost-per-wear
+  const cpw = useMemo(() => {
+    if (!item.price) return null;
+    const wears = (history ?? []).filter(e => (e.garmentIds ?? []).includes(item.id)).length;
+    if (!wears) return null;
+    return Math.round(item.price / wears);
+  }, [item.id, item.price, history]);
 
   const borderColor = isLinked   ? "#f59e0b"
     : isSelected && selectMode   ? "#3b82f6"
@@ -225,6 +232,10 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
             {isDuplicate && (
               <span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:4,
                              background:"#2e1065", color:"#c4b5fd", textTransform:"uppercase" }}>dupe?</span>
+            )}
+            {cpw !== null && (
+              <span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:4,
+                             background:"#052e16", color:"#4ade80" }} title="Cost per wear">~{cpw}/w</span>
             )}
             {item.brand && (
               <span style={{ fontSize:9, color:isDark?"#4b5563":"#9ca3af", fontStyle:"italic" }}>{item.brand}</span>
@@ -467,7 +478,7 @@ export default function WardrobeGrid() {
               selectMode, selectedIds, selectedGarmentId,
               onSelect: toggleSelect, onLongPress: handleLongPress,
               onEdit: handleEdit, onLightbox: handleLightbox,
-              selectedRef,
+              selectedRef, history,
             }}
           >
             {Cell}

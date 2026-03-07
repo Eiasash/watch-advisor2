@@ -127,6 +127,7 @@ export default function WatchDashboard() {
   const garments             = useWardrobeStore(s => s.garments);
   const setSelectedGarmentId = useWardrobeStore(s => s.setSelectedGarmentId);
   const history        = useHistoryStore(s => s.entries);
+  const addRejection   = useRejectStore(s => s.addRejection);
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
 

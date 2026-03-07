@@ -135,7 +135,7 @@ export default function TodayPanel() {
     e.target.value = "";
   }, []);
 
-  const handleLog = useCallback(() => {
+  const handleLog = useCallback(async () => {
     if (!watchId) return;
     const entry = {
       id: `today-${Date.now()}`,
@@ -149,15 +149,15 @@ export default function TodayPanel() {
       outfitPhoto: extraImg ?? null,
       loggedAt: new Date().toISOString(),
     };
-    addEntry(entry);
-    // Style learning — record what was worn
+    addEntry(entry, wornGarments);
+    // Style learning — record worn garments in preference profile
     try {
-      const { useStyleLearnStore } = await import("../stores/styleLearnStore.js");
+      const { usePrefStore } = await import("../stores/prefStore.js");
       const wornG = garments.filter(g => selected.has(g.id));
-      useStyleLearnStore.getState().recordWear(wornG);
+      usePrefStore.getState().recordWear(wornG);
     } catch(_) {}
     setLogged(true);
-  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImg, addEntry]);
+  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImg, addEntry, garments]);
 
   // ── Summary card when already logged ────────────────────────────────────────
   if (logged && todayEntry) {

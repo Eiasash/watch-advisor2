@@ -5,8 +5,8 @@
  * Auto-expires entries older than 30 days on hydration.
  */
 import { create } from "zustand";
-async function _getCache() { const { getCachedState } = await import("../services/localCache.js"); return _getCache(); }
-async function _setCache(p) { const { setCachedState } = await import("../services/localCache.js"); return _setCache(p); }
+async function _getCache() { try { const { getCachedState } = await import("../services/localCache.js"); return await getCachedState(); } catch { return {}; } }
+async function _setCache(p) { try { const { setCachedState } = await import("../services/localCache.js"); await setCachedState(p); } catch {} }
 
 const EXPIRY_DAYS = 30;
 const MS = 1000 * 60 * 60 * 24;
@@ -49,4 +49,22 @@ export const useRejectStore = create((set, get) => ({
       return overlap.length >= Math.min(2, garmentIds.length);
     });
   },
+
+  /** Alias for outfitBuilder compatibility */
+  isRecentlyRejected: (watchId, garmentIds = []) => {
+    const { entries } = get();
+    return entries.some(e => {
+      if (e.watchId !== watchId) return false;
+      if (!garmentIds.length) return false;
+      return garmentIds.some(id => e.garmentIds.includes(id));
+    });
+  },
 }));
+
+export async function hydrateRejectStore() {
+  try {
+    const { getCachedState } = await import("../services/localCache.js");
+    const cached = await getCachedState();
+    if (Array.isArray(cached?.rejectLog)) useRejectStore.getState().hydrate(cached.rejectLog);
+  } catch {}
+}

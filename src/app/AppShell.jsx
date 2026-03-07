@@ -15,6 +15,7 @@ import SyncBar        from "../components/SyncBar.jsx";
 import SettingsPanel  from "../components/SettingsPanel.jsx";
 import ScrollToTop    from "../components/ScrollToTop.jsx";
 import OccasionPanel  from "../components/OccasionPanel.jsx";
+import SelfiePanel    from "../components/SelfiePanel.jsx";
 import CommandPalette from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
@@ -26,7 +27,9 @@ const TABS = [
   { key:"rotation", label:"⌚ Rotation" },
   { key:"stats",    label:"📊 Stats"    },
   { key:"audit",    label:"🔍 Audit"    },
-  { key:"occasion",  label:"✨ Plan"    },
+  { key:"occasion", label:"✨ Plan"     },
+  { key:"selfie",   label:"📸 Check"   },
+  { key:"watchid",  label:"🔍 ID"      },
 ];
 
 function AppContent() {
@@ -152,7 +155,13 @@ function AppContent() {
           {tab === "audit" && <><AuditPanel /><PhotoVerifierPanel /></>}
 
           {/* Occasion planner tab */}
-          {tab === "occasion" && <OccasionPanel />}
+          {tab === "occasion" && <OccasionPlanner />}
+
+          {/* Selfie / outfit check tab */}
+          {tab === "selfie" && <SelfiePanel />}
+
+          {/* Watch ID tab */}
+          {tab === "watchid" && <WatchIDPanel />}
           </div>
         </>
       )}
