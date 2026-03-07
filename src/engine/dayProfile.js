@@ -2,15 +2,21 @@
  * Day profile engine.
  * Infers a day profile from calendar events + weather,
  * then scores watches against that profile.
+ *
+ * "shift" = on-call hospital night / weekend duty:
+ *   - genuine only (replica penalty applied here)
+ *   - smart-casual formality (7)
+ *   - sport-elegant / dress-sport preferred
  */
 
-export const DAY_PROFILES = ["hospital-smart-casual", "smart-casual", "formal", "casual", "travel"];
+export const DAY_PROFILES = ["hospital-smart-casual", "smart-casual", "formal", "casual", "travel", "shift"];
 
 const EVENT_KEYWORDS = {
   "hospital-smart-casual": ["hospital", "ward", "rounds", "consult", "clinic", "medical", " er ", "icu", "patient", "duty"],
   formal: ["wedding", "gala", "black tie", "black-tie", "ceremony", "formal dinner", "evening dinner", "dinner party"],
   casual: ["gym", "run", "hike", "beach", "workout", "training"],
   travel: ["travel", "flight", "airport", "conference", "trip"],
+  shift: ["on-call", "oncall", "night shift", "night duty", "call night"],
 };
 
 const TARGET_FORMALITY = {
@@ -19,6 +25,7 @@ const TARGET_FORMALITY = {
   "hospital-smart-casual": 7,
   formal: 9,
   travel: 5,
+  shift: 7,   // on-call = clinic-level formality
 };
 
 const STYLE_SUITABILITY = {
@@ -27,7 +34,15 @@ const STYLE_SUITABILITY = {
   casual: ["sport", "pilot"],
   "smart-casual": ["sport-elegant", "sport", "dress-sport"],
   travel: ["sport", "pilot"],
+  shift: ["sport-elegant", "dress-sport", "sport"],
 };
+
+// Profiles where replicas are strongly discouraged
+const GENUINE_PREFERRED_PROFILES = new Set([
+  "hospital-smart-casual",
+  "formal",
+  "shift",
+]);
 
 /**
  * Infer a day profile from events and optional weather.
@@ -49,6 +64,7 @@ export function inferDayProfile(events = [], weather = {}) {
 
 /**
  * Score a single watch for a day profile and recent history.
+ * Penalizes replicas in clinic / formal / shift contexts.
  */
 export function scoreWatchForDay(watch, dayProfile, history = []) {
   const targetFormality = TARGET_FORMALITY[dayProfile] ?? 6;
@@ -65,5 +81,8 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   const recentIds = new Set(history.slice(-7).map(h => h.watchId));
   const recencyScore = recentIds.has(watch.id) ? 0 : 1;
 
-  return 0.4 * formalityScore + 0.35 * styleScore + 0.25 * recencyScore;
+  // Replica penalty: strong penalty in professional contexts
+  const replicaPenalty = (watch.replica && GENUINE_PREFERRED_PROFILES.has(dayProfile)) ? -0.5 : 0;
+
+  return 0.4 * formalityScore + 0.35 * styleScore + 0.25 * recencyScore + replicaPenalty;
 }

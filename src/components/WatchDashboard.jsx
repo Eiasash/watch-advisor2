@@ -137,8 +137,16 @@ export default function WatchDashboard() {
     setAiLoading(true);
     setAiSuggestion(null);
     try {
-      const contextProfile = selectedWatch?.style?.includes("formal") ? "formal"
-        : selectedWatch?.style?.includes("sport") ? "hospital-smart-casual"
+      // Derive day profile from today's context in week planner (not from watch style)
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
+      const weekCtx = useWardrobeStore.getState().weekCtx ?? [];
+      const todayDayIdx = new Date().getDay();
+      const baseCtx = weekCtx[todayDayIdx] ?? "smart-casual";
+      const contextProfile = onCallDates.includes(todayIso) ? "shift"
+        : baseCtx === "hospital-smart-casual" ? "hospital-smart-casual"
+        : baseCtx === "formal" ? "formal"
+        : baseCtx === "casual" ? "casual"
         : "smart-casual";
       const suggestion = await getAISuggestion(garments, selectedWatch, weather, outfit, contextProfile);
       setAiSuggestion(suggestion);

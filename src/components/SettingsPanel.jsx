@@ -7,10 +7,17 @@ import { useThemeStore } from "../stores/themeStore.js";
 function exportData(garments, watches, history) {
   const data = {
     exportedAt: new Date().toISOString(),
+    version: 2,
     watches,
     garments: garments.map(g => ({
       id: g.id, name: g.name, type: g.type, color: g.color,
       formality: g.formality, needsReview: g.needsReview,
+      hash: g.hash ?? "",
+      thumbnail: g.thumbnail ?? null,
+      photoAngles: g.photoAngles ?? [],
+      originalFilename: g.originalFilename ?? null,
+      duplicateOf: g.duplicateOf ?? null,
+      excludeFromWardrobe: g.excludeFromWardrobe ?? false,
     })),
     history,
   };

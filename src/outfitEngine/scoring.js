@@ -10,7 +10,7 @@ import { STYLE_FORMALITY_TARGET } from "./watchStyles.js";
 // Dial color → compatible garment colors
 const DIAL_COLOR_MAP = {
   "silver-white": ["black", "navy", "gray", "grey", "white", "beige"],
-  "green":        ["olive", "beige", "brown", "gray", "grey"],
+  "green":        ["olive", "beige", "brown", "gray", "grey", "khaki"],
   "grey":         ["black", "white", "navy", "gray", "grey", "beige"],
   "blue":         ["navy", "gray", "grey", "white", "beige", "black"],
   "navy":         ["gray", "grey", "white", "black", "beige"],
@@ -18,6 +18,13 @@ const DIAL_COLOR_MAP = {
   "black-red":    ["black", "gray", "grey", "white"],
   "black":        ["black", "white", "gray", "grey", "navy", "olive", "brown"],
   "white-teal":   ["gray", "grey", "white", "black", "navy"],
+  // Replica dial colors — previously missing, always scored 0.3
+  "teal":         ["grey", "white", "black", "navy", "olive", "khaki"],
+  "burgundy":     ["grey", "white", "navy", "black", "beige", "stone"],
+  "purple":       ["grey", "black", "navy", "white", "stone"],
+  "turquoise":    ["white", "beige", "stone", "navy", "cream"],
+  "red":          ["black", "grey", "white", "navy"],
+  "meteorite":    ["black", "grey", "navy", "white", "brown"],
 };
 
 /**

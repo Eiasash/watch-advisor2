@@ -14,6 +14,13 @@ const DIAL_COLOR_MAP = {
   "black-red":    ["black", "grey", "white", "red"],
   "black":        ["black", "white", "grey", "navy", "olive", "brown"],
   "white-teal":   ["grey", "white", "black", "navy", "teal"],
+  // Replica dial colors
+  "teal":         ["grey", "white", "black", "navy", "olive", "khaki"],
+  "burgundy":     ["grey", "white", "navy", "black", "beige", "stone"],
+  "purple":       ["grey", "black", "navy", "white", "stone"],
+  "turquoise":    ["white", "beige", "stone", "navy", "cream"],
+  "red":          ["black", "grey", "white", "navy"],
+  "meteorite":    ["black", "grey", "navy", "white", "brown"],
 };
 
 function formalityScore(watch, garment) {
