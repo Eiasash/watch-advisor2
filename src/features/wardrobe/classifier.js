@@ -269,7 +269,9 @@ export async function analyzeImageContent(thumbnailDataURL, filename = "") {
 
     // ── Flat-lay ──────────────────────────────────────────────────────────────
     const zoneSpread = Math.max(topF, midF, botF) - Math.min(topF, midF, botF);
-    const flatLay    = total > 170 && zoneSpread < 0.14;
+    // flatLay: high total + even zone spread (garment fills frame)
+    // Note: slightly bot-heavy flat-lays (trousers) still qualify — decision layer uses botF to disambiguate
+    const flatLay    = total > 140 && zoneSpread < 0.18;
 
     // ── Person-like signal (geometry only, no color) ──────────────────────────
     // A standing/seated person fills all three zones with meaningful absolute mass.
@@ -457,9 +459,11 @@ export function _applyDecision(fn, px, pixelColor, duplicateOf) {
     photoType = "garment"; needsReview = false;
     decisionReason = px.shirt.reason;
   } else if (px.flatLay) {
-    type = "shirt"; typeSource = "flat-lay";
+    // Flat-lay zone bias: pants tend to have more bottom pixels, tops tend toward top/mid
+    const flatLayType = (px.botF > px.topF + 0.08) ? "pants" : "shirt";
+    type = flatLayType; typeSource = "flat-lay";
     photoType = "garment"; needsReview = false;
-    decisionReason = `flat-lay total=${px.total}`;
+    decisionReason = `flat-lay total=${px.total} botF=${px.botF?.toFixed(2)} topF=${px.topF?.toFixed(2)} → ${flatLayType}`;
   } else if (px.pants.fires) {
     type = "pants"; typeSource = "image-pants";
     photoType = "garment"; needsReview = false;
