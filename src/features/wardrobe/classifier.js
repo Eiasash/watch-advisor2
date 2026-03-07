@@ -184,10 +184,13 @@ export async function extractDominantColor(thumbnailDataURL) {
         if (a < 100) continue;
 
         // Skip background: near-white OR near light-grey
-        const isNearWhite = r > 205 && g > 205 && b > 205;
-        // Also skip very light neutral (background walls, tables)
-        const isLightNeutral = Math.max(r,g,b) - Math.min(r,g,b) < 20 && r > 170;
-        if (isNearWhite || isLightNeutral) continue;
+        const isNearWhite = r > 215 && g > 215 && b > 215;
+        // Light neutral: grey/beige background — but be conservative to avoid eating cream garments.
+        // Only skip if saturation is very low AND brightness very high (>185 all channels)
+        const isLightNeutral = Math.max(r,g,b) - Math.min(r,g,b) < 15 && r > 185 && g > 185 && b > 185;
+        // Pink/mauve fluffy surface (common bedding in wardrobe photos): r dominant, g≈b, mid-bright
+        const isPinkBg = r > 160 && r > g + 20 && r > b + 20 && g > 130 && b > 130;
+        if (isNearWhite || isLightNeutral || isPinkBg) continue;
 
         // Weight by proximity to center
         const distFromCenter = Math.sqrt((x - CENTER)**2 + (y - CENTER)**2);
@@ -240,9 +243,12 @@ export async function analyzeImageContent(thumbnailDataURL) {
         const i = (y * SIZE + x) * 4;
         const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
         if (a < 100) continue;
-        const isNearWhite = r > 200 && g > 200 && b > 200;
-        const isLightNeutral = Math.max(r,g,b) - Math.min(r,g,b) < 18 && r > 165;
-        if (isNearWhite || isLightNeutral) continue;
+        const isNearWhite = r > 210 && g > 210 && b > 210;
+        // Pink/beige fluffy surface: skip only if near-neutral AND all channels high
+        const isLightNeutral = Math.max(r,g,b) - Math.min(r,g,b) < 15 && r > 180 && g > 180 && b > 180;
+        // Pink/mauve fluffy bedding background
+        const isPinkBg = r > 160 && r > g + 20 && r > b + 20 && g > 130 && b > 130;
+        if (isNearWhite || isLightNeutral || isPinkBg) continue;
         if (y < 10)       topNB++;
         else if (y < 20)  midNB++;
         else              botNB++;
@@ -256,9 +262,11 @@ export async function analyzeImageContent(thumbnailDataURL) {
     const midF = midNB / total;
     const botF = botNB / total;
 
-    // Outfit/person shot: content genuinely spread across all three zones
-    // Requires STRONG evidence — set high thresholds to avoid false positives
-    const likelyOutfitShot = topF > 0.28 && midF > 0.28 && botF > 0.28 && total > 120;
+    // Outfit/person shot: requires VERY strong evidence of a person.
+    // A flat-lay garment with arms spread out naturally fills all three zones — do NOT flag it.
+    // Only flag if zone distribution is truly even AND there is a lot of non-bg content,
+    // suggesting a full person or complex multi-garment scene.
+    const likelyOutfitShot = topF > 0.30 && midF > 0.30 && botF > 0.30 && total > 200;
 
     // Shoes: dominant mass in lower half, compressed vertical spread
     const likelyShoes  = botF > 0.55 && topF < 0.18;
