@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
+import { pushGarment, deleteGarment } from "../services/supabaseSync.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
@@ -39,16 +40,20 @@ export default function GarmentEditor({ garment, onClose }) {
   const angles = [garment.thumbnail].concat(garment.photoAngles ?? []).filter(Boolean);
 
   function handleSave() {
-    updateGarment(garment.id, { name, type: category, color, formality, brand, notes, needsReview: false });
-    const updated = garments.map(g => g.id === garment.id
-      ? { ...g, name, type: category, color, formality, brand, notes, needsReview: false } : g);
+    const updates = { name, type: category, color, formality, brand, notes, needsReview: false };
+    updateGarment(garment.id, updates);
+    const updated = garments.map(g => g.id === garment.id ? { ...g, ...updates } : g);
     setCachedState({ watches, garments: updated, history }).catch(() => {});
+    // Push edit to cloud
+    pushGarment({ ...garment, ...updates }).catch(() => {});
     onClose();
   }
 
   function handleDelete() {
     removeGarment(garment.id);
     setCachedState({ watches, garments: garments.filter(g => g.id !== garment.id), history }).catch(() => {});
+    // Delete from cloud
+    deleteGarment(garment.id).catch(() => {});
     onClose();
   }
 
