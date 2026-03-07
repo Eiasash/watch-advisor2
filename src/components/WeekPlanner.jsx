@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
+import { useStrapStore }   from "../stores/strapStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
 import { setCachedState } from "../services/localCache.js";
@@ -135,6 +136,10 @@ export default function WeekPlanner() {
   const { mode }   = useThemeStore();
   const isDark     = mode === "dark";
   const [showCalendar, setShowCalendar] = useState(false);
+  // Per-day watch overrides { [offset]: watchId }
+  const [watchOverrides, setWatchOverrides] = useState({});
+  const [strapOverrides, setStrapOverrides] = useState({}); // { [offset]: strapId }
+  const [pickingDay, setPickingDay]         = useState(null); // offset of day with open picker
 
   const rotation = useMemo(
     () => genWeekRotation(watches, history, weekCtx, onCallDates),
@@ -215,7 +220,57 @@ export default function WeekPlanner() {
                   {CONTEXTS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </div>
-              <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall} />
+              <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall}
+                label={day.isOverridden ? "overridden" : null} />
+
+              {/* Watch override picker */}
+              <div style={{ marginTop: 8, display: "flex", gap: 6, alignItems: "center" }}>
+                <button onClick={() => setPickingDay(pickingDay === day.offset ? null : day.offset)}
+                  style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, cursor: "pointer",
+                            border: `1px solid ${day.isOverridden ? "#3b82f6" : border}`,
+                            background: day.isOverridden ? "#3b82f622" : "transparent",
+                            color: day.isOverridden ? "#3b82f6" : sub, fontWeight: 600 }}>
+                  {day.isOverridden ? "⌚ Change" : "⌚ Override"}
+                </button>
+                {day.isOverridden && (
+                  <button onClick={() => setWatchOverrides(o => { const n = {...o}; delete n[day.offset]; return n; })}
+                    style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, cursor: "pointer",
+                              border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              {/* Watch picker dropdown */}
+              {pickingDay === day.offset && (
+                <div style={{ marginTop: 8, border: `1px solid ${border}`, borderRadius: 10,
+                              background: isDark ? "#171a21" : "#fff", overflow: "hidden" }}>
+                  {watches.map(w => {
+                    const strapId = strapOverrides[day.offset];
+                    const watchStrapsAll = Object.values(straps).filter(s => s.watchId === w.id);
+                    const isSelected = (watchOverrides[day.offset] ?? rotation[day.offset]?.watch?.id) === w.id;
+                    return (
+                      <div key={w.id}>
+                        <div onClick={() => {
+                          setWatchOverrides(o => ({ ...o, [day.offset]: w.id }));
+                          setPickingDay(null);
+                        }}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer",
+                                    background: isSelected ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
+                                    borderBottom: `1px solid ${border}` }}>
+                          <span style={{ fontSize: 16 }}>{w.emoji ?? "⌚"}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: text }}>{w.brand} {w.model}</div>
+                            <div style={{ fontSize: 10, color: sub }}>{w.dial} · {w.replica ? "replica" : "genuine"}</div>
+                          </div>
+                          {isSelected && <span style={{ color: "#3b82f6", fontWeight: 700 }}>✓</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {day.backup && (
                 <div style={{ marginTop:6, paddingTop:6, borderTop:`1px solid ${border}` }}>
                   <div style={{ fontSize:10, color:sub, marginBottom:3 }}>Backup</div>

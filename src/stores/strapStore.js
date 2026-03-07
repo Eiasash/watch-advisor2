@@ -1,23 +1,12 @@
 import { create } from "zustand";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
 
-/**
- * Strap store — manages per-watch active strap selection and strap photos.
- * Initialised from watchSeed straps arrays. Photos stored as base64 locally.
- */
-
 function buildInitialStraps() {
   const straps = {};
   for (const watch of WATCH_COLLECTION) {
     if (!watch.straps?.length) continue;
     for (const s of watch.straps) {
-      straps[s.id] = {
-        ...s,
-        watchId: watch.id,
-        thumbnail: null,  // base64 — set via addStrapPhoto
-        photoUrl: null,   // Supabase Storage URL — set after upload
-        wristShot: null,  // base64 wrist shot
-      };
+      straps[s.id] = { ...s, watchId: watch.id, thumbnail: null, photoUrl: null, wristShot: null, custom: false };
     }
   }
   return straps;
@@ -27,52 +16,62 @@ function buildInitialActive() {
   const active = {};
   for (const watch of WATCH_COLLECTION) {
     if (!watch.straps?.length) continue;
-    // Default: first strap (usually bracelet)
     active[watch.id] = watch.straps[0].id;
   }
   return active;
 }
 
 export const useStrapStore = create((set, get) => ({
-  straps: buildInitialStraps(),       // { [strapId]: StrapObj }
-  activeStrap: buildInitialActive(),  // { [watchId]: strapId }
+  straps: buildInitialStraps(),
+  activeStrap: buildInitialActive(),
 
-  /** Set the active strap for a watch */
   setActiveStrap: (watchId, strapId) =>
     set(s => ({ activeStrap: { ...s.activeStrap, [watchId]: strapId } })),
 
-  /** Add/update a strap photo thumbnail */
   addStrapPhoto: (strapId, thumbnail, photoUrl = null) =>
     set(s => ({
-      straps: {
-        ...s.straps,
-        [strapId]: { ...s.straps[strapId], thumbnail, photoUrl: photoUrl ?? s.straps[strapId]?.photoUrl },
-      },
+      straps: { ...s.straps, [strapId]: { ...s.straps[strapId], thumbnail, photoUrl: photoUrl ?? s.straps[strapId]?.photoUrl } },
     })),
 
-  /** Add/update a wrist shot for a strap */
   addWristShot: (strapId, wristShot) =>
-    set(s => ({
-      straps: {
-        ...s.straps,
-        [strapId]: { ...s.straps[strapId], wristShot },
-      },
-    })),
+    set(s => ({ straps: { ...s.straps, [strapId]: { ...s.straps[strapId], wristShot } } })),
 
-  /** Get active strap object for a watch */
+  /** Add a fully custom strap */
+  addStrap: (watchId, strapData) => {
+    const id = `custom-${watchId}-${Date.now()}`;
+    set(s => ({
+      straps: { ...s.straps, [id]: { id, watchId, custom: true, thumbnail: null, photoUrl: null, wristShot: null, ...strapData } },
+      activeStrap: { ...s.activeStrap, [watchId]: id },
+    }));
+    return id;
+  },
+
+  /** Edit label/color/type/useCase of any strap */
+  updateStrap: (strapId, patch) =>
+    set(s => ({ straps: { ...s.straps, [strapId]: { ...s.straps[strapId], ...patch } } })),
+
+  /** Delete a strap (and reset active if it was active) */
+  deleteStrap: (strapId) =>
+    set(s => {
+      const newStraps = { ...s.straps };
+      const watchId = newStraps[strapId]?.watchId;
+      delete newStraps[strapId];
+      const newActive = { ...s.activeStrap };
+      if (watchId && newActive[watchId] === strapId) {
+        const fallback = Object.values(newStraps).find(x => x.watchId === watchId);
+        newActive[watchId] = fallback?.id ?? null;
+      }
+      return { straps: newStraps, activeStrap: newActive };
+    }),
+
   getActiveStrapObj: (watchId) => {
     const { straps, activeStrap } = get();
-    const strapId = activeStrap[watchId];
-    return strapId ? straps[strapId] : null;
+    const id = activeStrap[watchId];
+    return id ? straps[id] : null;
   },
 
-  /** Get all straps for a watch */
-  getStrapsForWatch: (watchId) => {
-    const { straps } = get();
-    return Object.values(straps).filter(s => s.watchId === watchId);
-  },
+  getStrapsForWatch: (watchId) => Object.values(get().straps).filter(s => s.watchId === watchId),
 
-  /** Restore from serialised state (localCache) */
   hydrate: (saved) => {
     if (!saved) return;
     set(s => ({
@@ -81,36 +80,21 @@ export const useStrapStore = create((set, get) => ({
     }));
   },
 
-  /** Serialise for localCache */
   serialise: () => {
     const { straps, activeStrap } = get();
     return { straps, activeStrap };
   },
 }));
 
-
-// ── Auto-persist to localCache on every mutation ───────────────────────────
-// Done outside the store to avoid circular imports with localCache
 import { setCachedState } from "../services/localCache.js";
 
 function persist() {
   const state = useStrapStore.getState();
-  // Only persist non-empty photos to avoid blowing up cache with base64
   const strapsToSave = {};
   for (const [id, s] of Object.entries(state.straps)) {
-    strapsToSave[id] = {
-      id: s.id,
-      watchId: s.watchId,
-      label: s.label,
-      color: s.color,
-      type: s.type,
-      useCase: s.useCase,
-      thumbnail: s.thumbnail ?? null,
-      photoUrl: s.photoUrl ?? null,
-      wristShot: s.wristShot ?? null,
-    };
+    strapsToSave[id] = { id: s.id, watchId: s.watchId, label: s.label, color: s.color, type: s.type, useCase: s.useCase,
+      thumbnail: s.thumbnail ?? null, photoUrl: s.photoUrl ?? null, wristShot: s.wristShot ?? null, custom: s.custom ?? false };
   }
   setCachedState({ strapStore: { straps: strapsToSave, activeStrap: state.activeStrap } }).catch(() => {});
 }
-
 useStrapStore.subscribe(() => persist());

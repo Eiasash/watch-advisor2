@@ -7,6 +7,8 @@ import WardrobeInsights from "../components/WardrobeInsights.jsx";
 import ImportPanel    from "../components/ImportPanel.jsx";
 import WardrobeGrid   from "../components/WardrobeGrid.jsx";
 import WeekPlanner    from "../components/WeekPlanner.jsx";
+import TodayPanel     from "../components/TodayPanel.jsx";
+import StatsPanel     from "../components/StatsPanel.jsx";
 import AuditPanel     from "../components/AuditPanel.jsx";
 import SyncBar        from "../components/SyncBar.jsx";
 import SettingsPanel  from "../components/SettingsPanel.jsx";
@@ -17,8 +19,10 @@ import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 const TABS = [
+  { key:"today",    label:"👕 Today"    },
   { key:"wardrobe", label:"👔 Wardrobe" },
   { key:"rotation", label:"⌚ Rotation" },
+  { key:"stats",    label:"📊 Stats"    },
   { key:"audit",    label:"🔍 Audit"    },
 ];
 
@@ -27,7 +31,7 @@ function AppContent() {
   const { mode }          = useThemeStore();
   const isDark            = mode === "dark";
 
-  const [tab, setTab]             = useState("wardrobe");
+  const [tab, setTab]             = useState("today");
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette,  setShowPalette]  = useState(false);
   const toast = useToast();
@@ -115,8 +119,10 @@ function AppContent() {
             ))}
           </div>
 
-          {/* Wardrobe tab */}
+          {/* Tab content */}
           <div className="wa-bottom-pad">
+          {tab === "today" && <TodayPanel />}
+
           {tab === "wardrobe" && (
             <>
               <WatchDashboard />
@@ -134,6 +140,9 @@ function AppContent() {
 
           {/* Rotation tab */}
           {tab === "rotation" && <WeekPlanner />}
+
+          {/* Stats tab */}
+          {tab === "stats" && <StatsPanel />}
 
           {/* Audit tab */}
           {tab === "audit" && <AuditPanel />}

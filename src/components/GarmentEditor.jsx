@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
 import { pushGarment, deleteGarment, deleteStoragePhoto, uploadAngle } from "../services/supabaseSync.js";
@@ -48,6 +48,42 @@ export default function GarmentEditor({ garment, onClose }) {
     pushGarment({ ...garment, ...updates }).catch(() => {});
     onClose();
   }
+
+  // ── AI photo label check ──────────────────────────────────────────────────
+  const [aiChecking, setAiChecking]     = useState(false);
+  const [aiResult,   setAiResult]       = useState(null); // { confirmed, corrections, reason, confidence }
+
+  const handleAiCheck = useCallback(async () => {
+    const photo = garment.thumbnail || garment.photoUrl;
+    if (!photo) return;
+    setAiChecking(true);
+    setAiResult(null);
+    try {
+      const res = await fetch("/.netlify/functions/relabel-garment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: photo,
+          current: { type: category, color, name, formality },
+        }),
+      });
+      const data = await res.json();
+      setAiResult(data);
+    } catch (err) {
+      setAiResult({ error: err.message });
+    }
+    setAiChecking(false);
+  }, [garment, category, color, name, formality]);
+
+  const applyAiCorrections = useCallback(() => {
+    if (!aiResult?.corrections) return;
+    const c = aiResult.corrections;
+    if (c.type)      setCategory(c.type);
+    if (c.color)     setColor(c.color);
+    if (c.name)      setName(c.name);
+    if (c.formality) setFormality(c.formality);
+    setAiResult(null);
+  }, [aiResult]);
 
   function handleDelete() {
     removeGarment(garment.id);
@@ -198,6 +234,61 @@ export default function GarmentEditor({ garment, onClose }) {
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           rows={2} style={{ ...inp, resize:"vertical", marginBottom:14 }}
           placeholder="Pairing notes, fit, condition…" />
+
+        {/* AI Photo Check */}
+        {(garment.thumbnail || garment.photoUrl) && (
+          <div style={{ marginBottom:10 }}>
+            <button onClick={handleAiCheck} disabled={aiChecking}
+              style={{ width:"100%", padding:"8px 0", borderRadius:9, border:"1px solid #4b5563",
+                       background:"transparent", color: isDark ? "#e2e8f0" : "#374151",
+                       fontSize:13, fontWeight:600, cursor:aiChecking?"wait":"pointer" }}>
+              {aiChecking ? "🔍 Checking photo…" : "🔍 AI check label"}
+            </button>
+            {aiResult && !aiResult.error && (
+              <div style={{ marginTop:8, padding:"10px 12px", borderRadius:9,
+                            background: aiResult.confirmed ? (isDark?"#0a1f0a":"#f0fdf4") : (isDark?"#1f0a0a":"#fff7f7"),
+                            border:`1px solid ${aiResult.confirmed?"#16a34a":"#ef4444"}` }}>
+                <div style={{ fontSize:12, fontWeight:700,
+                              color: aiResult.confirmed?"#16a34a":"#ef4444", marginBottom:4 }}>
+                  {aiResult.confirmed ? "✓ Label correct" : "⚠ Possible mislabel"}
+                  <span style={{ fontWeight:400, color: isDark?"#8b93a7":"#6b7280", marginLeft:6 }}>
+                    {Math.round((aiResult.confidence ?? 0) * 100)}% confidence
+                  </span>
+                </div>
+                <div style={{ fontSize:11, color: isDark?"#e2e8f0":"#374151", marginBottom:6 }}>
+                  {aiResult.reason}
+                </div>
+                {!aiResult.confirmed && aiResult.corrections && (
+                  <div style={{ fontSize:11, color: isDark?"#8b93a7":"#6b7280", marginBottom:6 }}>
+                    {[
+                      aiResult.corrections.type  && `Type: ${aiResult.corrections.type}`,
+                      aiResult.corrections.color && `Color: ${aiResult.corrections.color}`,
+                      aiResult.corrections.name  && `Name: ${aiResult.corrections.name}`,
+                    ].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+                {!aiResult.confirmed && (
+                  <div style={{ display:"flex", gap:6 }}>
+                    <button onClick={applyAiCorrections}
+                      style={{ flex:1, padding:"5px 0", borderRadius:7, border:"none",
+                               background:"#ef4444", color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+                      Apply fix
+                    </button>
+                    <button onClick={() => setAiResult(null)}
+                      style={{ flex:1, padding:"5px 0", borderRadius:7, border:"1px solid #4b5563",
+                               background:"transparent", color: isDark?"#8b93a7":"#6b7280",
+                               fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {aiResult?.error && (
+              <div style={{ marginTop:6, fontSize:11, color:"#ef4444" }}>Error: {aiResult.error}</div>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div style={{ display:"flex", gap:8 }}>
