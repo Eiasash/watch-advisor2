@@ -167,6 +167,9 @@ function AppContent() {
             </Suspense>
           )}
 
+          {/* Stats tab */}
+          {tab === "stats" && <StatsPanel />}
+
           {/* History tab */}
           {tab === "history" && <OutfitHistory />}
 
