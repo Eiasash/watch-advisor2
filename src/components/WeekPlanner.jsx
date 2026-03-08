@@ -416,7 +416,7 @@ export default function WeekPlanner() {
       const fakeHistory = [...history];
       for (const slot of OUTFIT_SLOTS) {
         for (const gId of usedPerSlot[slot]) {
-          fakeHistory.unshift({ outfit: { [slot]: gId } });
+          fakeHistory.push({ outfit: { [slot]: gId } });
         }
       }
 
@@ -424,11 +424,21 @@ export default function WeekPlanner() {
       // forcing the scoring engine to penalize them and surface alternatives.
       // shuffleSeed N means "skip the top N combinations" — each increment adds
       // 5 fake appearances per slot, enough to push -0.60 penalty and force next-best.
+      // Extract pinned garments for this day so engine complements them
+      const dayOverrides = outfitOverrides[day.offset] ?? {};
+      const pinnedSlotGarments = {};
+      for (const slot of OUTFIT_SLOTS) {
+        if (dayOverrides[slot]) {
+          const g = garments.find(x => x.id === dayOverrides[slot]);
+          if (g) pinnedSlotGarments[slot] = g;
+        }
+      }
+
       const shuffleSeed = shuffleSeeds[day.offset] ?? 0;
       let iterHistory = [...fakeHistory];
       let outfit = {};
       for (let round = 0; round <= shuffleSeed; round++) {
-        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory);
+        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments);
         const hasItems = Object.values(adv).some(Boolean);
         outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, { context: day.ctx }, iterHistory);
         if (round < shuffleSeed) {
@@ -436,7 +446,7 @@ export default function WeekPlanner() {
           for (const slot of OUTFIT_SLOTS) {
             if (outfit[slot]?.id) {
               for (let i = 0; i < 5; i++) {
-                iterHistory.unshift({ outfit: { [slot]: outfit[slot].id } });
+                iterHistory.push({ outfit: { [slot]: outfit[slot].id } });
               }
             }
           }

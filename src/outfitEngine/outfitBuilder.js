@@ -25,8 +25,8 @@ import { useStrapStore } from "../stores/strapStore.js";
  */
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
-export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = []) {
-  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null };
+export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}) {
+  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null };
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today
   const activeStrapObj = useStrapStore.getState().getActiveStrap?.(watch.id);
@@ -37,10 +37,21 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   // Strip accessories, outfit photos and excluded items from outfit consideration
   const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
 
+  // Formality anchor: if slots are pinned by the user, score other slots to complement them
+  const pinnedList = Object.values(pinnedSlots).filter(Boolean);
+  const outfitFormality = pinnedList.length > 0
+    ? Math.round(pinnedList.reduce((s, g) => s + (g.formality ?? 5), 0) / pinnedList.length)
+    : null;
+
   const slots = STYLE_TO_SLOTS[watch.style] ?? STYLE_TO_SLOTS["sport-elegant"];
   const outfit = {};
 
   for (const [slotName, category] of Object.entries(slots)) {
+    // If this slot was manually pinned by the user, use it directly
+    if (pinnedSlots[slotName]) {
+      outfit[slotName] = pinnedSlots[slotName];
+      continue;
+    }
     const type = category; // slot name matches category
     const candidates = wearable.filter(g => {
       const gType = g.type ?? g.category;
@@ -57,7 +68,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     // Score and sort — with rejection penalty
     const rejectState = useRejectStore.getState();
     const scored = candidates.map(g => {
-      let score = scoreGarment(watchWithStrap, g, weather) + diversityBonus(g, history);
+      let score = scoreGarment(watchWithStrap, g, weather, outfitFormality) + diversityBonus(g, history);
       // Apply -0.3 penalty if this watch+garment combo was recently rejected
       if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
       return { garment: g, score };
@@ -80,17 +91,12 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       const sweaters = wearable.filter(g => (g.type ?? g.category) === "sweater");
       if (sweaters.length) {
         const scored = sweaters.map(g => {
-          let score = scoreGarment(watchWithStrap, g, weather) + diversityBonus(g, history);
+          let score = scoreGarment(watchWithStrap, g, weather, outfitFormality) + diversityBonus(g, history);
           if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
           return { garment: g, score };
         });
         scored.sort((a, b) => b.score - a.score);
-        outfit.sweater = scored[0].garment;
-
-        // Second layer — pick a different sweater/knitwear item when very cold
-        if (temp < 12 && scored.length >= 2) {
-          outfit.layer = scored[1].garment;
-        }
+        outfit.sweater = pinnedSlots.sweater ?? scored[0].garment;
       }
     }
   }
