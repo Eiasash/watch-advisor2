@@ -12,11 +12,12 @@ export async function handler(event) {
   }
 
   try {
-    const { image } = JSON.parse(event.body);
+    const { image } = JSON.parse(event.body ?? "{}");
 
     if (!image) {
       return {
         statusCode: 400,
+        headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({ error: "Missing image data" }),
       };
     }
@@ -25,6 +26,7 @@ export async function handler(event) {
     if (!apiKey) {
       return {
         statusCode: 500,
+        headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }),
       };
     }

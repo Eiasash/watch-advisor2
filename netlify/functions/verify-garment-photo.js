@@ -25,14 +25,14 @@ export async function handler(event) {
       "Access-Control-Allow-Headers": "Content-Type" } };
   }
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
     const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors } = JSON.parse(event.body ?? "{}");
 
     const apiKey = process.env.CLAUDE_API_KEY;
-    if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
+    if (!apiKey) return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
     // ── Cache check ──────────────────────────────────────────────────────────
     // Key by garment hash (dHash of photo) — same image = same result forever.
@@ -62,7 +62,7 @@ export async function handler(event) {
       const ct = imgRes.headers.get("content-type") || "image/jpeg";
       imageBlock = { type: "image", source: { type: "base64", media_type: ct, data: b64 } };
     } else {
-      return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
+      return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "No image provided" }) };
     }
 
     // Build neighbor context for angle/dupe detection
@@ -122,6 +122,6 @@ Rules:
     };
   } catch (err) {
     const isClaudeError = err.message?.startsWith("Claude API error");
-    return { statusCode: isClaudeError ? 502 : 500, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: isClaudeError ? 502 : 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: err.message }) };
   }
 }

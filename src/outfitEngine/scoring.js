@@ -31,7 +31,6 @@ const DIAL_COLOR_MAP = {
  * Score how well a garment's color matches the watch dial.
  * Returns 0-1.
  */
-import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 export function colorMatchScore(watch, garment) {
   const compatible = DIAL_COLOR_MAP[watch.dial] ?? [];
   const gc = (garment.color ?? "").toLowerCase();

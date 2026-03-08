@@ -12,11 +12,11 @@ export async function handler(event) {
   try {
     const { image, current } = JSON.parse(event.body ?? "{}");
     if (!image || !current) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Missing image or current label" }) };
+      return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Missing image or current label" }) };
     }
 
     const apiKey = process.env.CLAUDE_API_KEY;
-    if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "No API key" }) };
+    if (!apiKey) return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "No API key" }) };
 
     // Build image block — handle both base64 data URLs and HTTPS Storage URLs
     let imageBlock;
@@ -26,13 +26,13 @@ export async function handler(event) {
       imageBlock = { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } };
     } else if (image.startsWith("http")) {
       const imgRes = await fetch(image);
-      if (!imgRes.ok) return { statusCode: 502, body: JSON.stringify({ error: "Could not fetch image" }) };
+      if (!imgRes.ok) return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Could not fetch image" }) };
       const buf = await imgRes.arrayBuffer();
       const b64 = Buffer.from(buf).toString("base64");
       const ct  = imgRes.headers.get("content-type") || "image/jpeg";
       imageBlock = { type: "image", source: { type: "base64", media_type: ct, data: b64 } };
     } else {
-      return { statusCode: 400, body: JSON.stringify({ error: "image must be a data URL or https:// URL" }) };
+      return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "image must be a data URL or https:// URL" }) };
     }
 
     const prompt = `You are a men's fashion classifier. Examine this garment photo and validate or correct the existing classification.

@@ -115,6 +115,13 @@ export default function StatsPanel() {
 
   const filtered = useMemo(() => entries.filter(e => (e.date ?? "") >= cutoff), [entries, cutoff]);
 
+  // O(1) garment lookup map — avoids repeated .find() inside loops
+  const garmentMap = useMemo(() => {
+    const m = {};
+    garments.forEach(g => { m[g.id] = g; });
+    return m;
+  }, [garments]);
+
   // ── Watch wear frequency ────────────────────────────────────────────────────
   const watchFreq = useMemo(() => {
     const freq = {};
@@ -130,24 +137,24 @@ export default function StatsPanel() {
     const freq = {};
     filtered.forEach(e => {
       (e.garmentIds ?? []).forEach(gid => {
-        const g = garments.find(x => x.id === gid);
+        const g = garmentMap[gid];
         if (g?.color) freq[g.color] = (freq[g.color] ?? 0) + 1;
       });
     });
     return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  }, [filtered, garments]);
+  }, [filtered, garmentMap]);
 
   // ── Garment type breakdown ──────────────────────────────────────────────────
   const typeFreq = useMemo(() => {
     const freq = {};
     filtered.forEach(e => {
       (e.garmentIds ?? []).forEach(gid => {
-        const g = garments.find(x => x.id === gid);
+        const g = garmentMap[gid];
         if (g?.type) freq[g.type] = (freq[g.type] ?? 0) + 1;
       });
     });
     return Object.entries(freq).sort((a, b) => b[1] - a[1]);
-  }, [filtered, garments]);
+  }, [filtered, garmentMap]);
 
   // ── Most worn individual garments ───────────────────────────────────────────
   const garmentFreq = useMemo(() => {
@@ -158,9 +165,9 @@ export default function StatsPanel() {
     return Object.entries(freq)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
-      .map(([id, n]) => ({ id, n, garment: garments.find(g => g.id === id) }))
+      .map(([id, n]) => ({ id, n, garment: garmentMap[id] }))
       .filter(x => x.garment);
-  }, [filtered, garments]);
+  }, [filtered, garmentMap]);
 
   // ── Context breakdown ───────────────────────────────────────────────────────
   const contextFreq = useMemo(() => {
@@ -402,7 +409,7 @@ export default function StatsPanel() {
                 { label: "Colors worn", value: colorFreq.length },
                 { label: "Pieces worn", value: garmentFreq.length },
                 { label: "Day streak 🔥", value: streak },
-                { label: "This week", value: thisWeek },
+                { label: "This week", value: last7 },
               ].map(({ label, value }) => (
                 <div key={label} style={{ textAlign: "center", padding: "12px 0",
                                           background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 10 }}>

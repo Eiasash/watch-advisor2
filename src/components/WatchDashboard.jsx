@@ -456,7 +456,9 @@ export default function WatchDashboard() {
           {/* Reject current suggestion */}
           <button onClick={() => {
             if (!selectedWatch) return;
-            const garmentIds = garments.slice(0,8).map(g => g.id);
+            const garmentIds = ["shirt","sweater","pants","shoes","jacket"]
+              .map(s => outfit[s]?.id).filter(Boolean);
+            if (garmentIds.length === 0) return;
             addRejection(selectedWatch.id, garmentIds, "smart-casual");
           }}
           style={{ fontSize:11, color:isDark?"#4b5563":"#9ca3af", background:"none", border:"none",
