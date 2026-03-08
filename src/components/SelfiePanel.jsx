@@ -6,11 +6,16 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useStrapStore }    from "../stores/strapStore.js";
+import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import { useHistoryStore }  from "../stores/historyStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 
-const API = "/.netlify/functions/selfie-check";
+const API         = "/.netlify/functions/selfie-check";
+const EXTRACT_API = "/.netlify/functions/extract-outfit";
 const SELFIE_CACHE_KEY = "selfieHistory";
+
+function getTodayISO() { return new Date().toISOString().split("T")[0]; }
 
 function resizeImage(file, maxPx = 800) {
   return new Promise(resolve => {
@@ -37,15 +42,21 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
   const { mode }  = useThemeStore();
   const isDark    = mode === "dark";
   const watches   = useWatchStore(s => s.watches);
+  const garments  = useWardrobeStore(s => s.garments);
+  const updateGarment = useWardrobeStore(s => s.updateGarment);
+  const upsertEntry   = useHistoryStore(s => s.upsertEntry);
+  const entries       = useHistoryStore(s => s.entries);
   // Active watch + strap — if no propWatchId, use first watch as fallback
   const activeWatchId = propWatchId ?? watches[0]?.id ?? null;
   const activeStrapObj = useStrapStore(s => s.getActiveStrap?.(activeWatchId)) ?? null;
 
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState(null);
-  const [preview,  setPreview]  = useState(null);
-  const [result,   setResult]   = useState(null);
-  const [history,  setHistory]  = useState([]);
+  const [loading,      setLoading]      = useState(false);
+  const [extracting,   setExtracting]   = useState(false);
+  const [extractToast, setExtractToast] = useState(null); // {msg, ok}
+  const [error,        setError]        = useState(null);
+  const [preview,      setPreview]      = useState(null);
+  const [result,       setResult]       = useState(null);
+  const [history,      setHistory]      = useState([]);
 
   // Load history from IDB on mount (survives refresh, unlike sessionStorage)
   useEffect(() => {
@@ -107,6 +118,50 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
     if (f) check(f);
     e.target.value = "";
   }, [check]);
+
+  // ── Extract garments from photo → populate today's history entry ─────────
+  const extractAndUse = useCallback(async (photoDataUrl) => {
+    setExtracting(true);
+    setExtractToast(null);
+    try {
+      const activeGarments = garments.filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo");
+      const res = await fetch(EXTRACT_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: photoDataUrl, garments: activeGarments }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const matchedIds = (data.matches ?? []).map(m => m.garmentId);
+      if (!matchedIds.length) {
+        setExtractToast({ msg: "No wardrobe matches found in photo", ok: false });
+        return;
+      }
+
+      const TODAY = getTodayISO();
+      const existing = entries.find(e => e.date === TODAY);
+      const entry = {
+        ...(existing ?? {}),
+        id: existing?.id ?? `today-${Date.now()}`,
+        date: TODAY,
+        watchId: existing?.watchId ?? activeWatchId,
+        garmentIds: matchedIds,
+        loggedAt: new Date().toISOString(),
+      };
+      upsertEntry(entry);
+
+      // Update lastWorn
+      matchedIds.forEach(id => updateGarment(id, { lastWorn: TODAY }));
+
+      setExtractToast({ msg: `✓ ${matchedIds.length} garment${matchedIds.length > 1 ? "s" : ""} set as today's outfit`, ok: true });
+    } catch (e) {
+      setExtractToast({ msg: e.message ?? "Extraction failed", ok: false });
+    } finally {
+      setExtracting(false);
+      setTimeout(() => setExtractToast(null), 4000);
+    }
+  }, [garments, entries, activeWatchId, upsertEntry, updateGarment]);
 
   const clear = () => { setPreview(null); setResult(null); setError(null); };
 
@@ -270,6 +325,38 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
             </div>
           )}
 
+          {/* Extract toast */}
+          {extractToast && (
+            <div style={{
+              padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+              background: extractToast.ok ? "#052e16" : "#450a0a",
+              border: `1px solid ${extractToast.ok ? "#14532d" : "#7f1d1d"}`,
+              color: extractToast.ok ? "#4ade80" : "#fca5a5",
+            }}>{extractToast.msg}</div>
+          )}
+
+          {/* Use as today's outfit */}
+          <button
+            onClick={() => extractAndUse(preview)}
+            disabled={extracting}
+            style={{
+              width: "100%", padding: "13px 0", borderRadius: 12,
+              border: "1px solid #7c3aed44",
+              background: extracting ? "transparent" : "linear-gradient(135deg,#1e1b4b,#1a1f2b)",
+              color: extracting ? muted : "#a78bfa",
+              fontSize: 14, fontWeight: 700, cursor: extracting ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}>
+            {extracting ? (
+              <>
+                <div style={{ width: 14, height: 14, border: "2px solid rgba(167,139,250,0.3)",
+                              borderTopColor: "#a78bfa", borderRadius: "50%",
+                              animation: "spin 0.8s linear infinite" }} />
+                Extracting…
+              </>
+            ) : "👕 Use as Today's Outfit"}
+          </button>
+
           {/* New photo button */}
           <button onClick={clear}
             style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: `1px solid ${border}`,
@@ -286,18 +373,30 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
                         letterSpacing: "0.08em", marginBottom: 10, marginTop: 4 }}>Recent Checks</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
             {history.slice(0, 6).map(h => (
-              <div key={h.id} style={{ cursor: "pointer", borderRadius: 10, overflow: "hidden",
-                                        border: `1px solid ${border}`, position: "relative" }}
-                   onClick={() => { setPreview(h.preview); setResult(h.result); }}>
-                <img src={h.preview} alt="past"
-                     style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0,
-                              background: "linear-gradient(transparent,rgba(0,0,0,0.8))",
-                              padding: "8px 6px 4px", display: "flex", alignItems: "flex-end" }}>
-                  <div style={{ fontSize: 14, fontWeight: 900, color: SCORE_COLOR(h.result?.impact ?? 0) }}>
-                    {h.result?.impact ?? "?"}
+              <div key={h.id} style={{ borderRadius: 10, overflow: "hidden",
+                                        border: `1px solid ${border}`, position: "relative" }}>
+                <div style={{ cursor: "pointer" }}
+                     onClick={() => { setPreview(h.preview); setResult(h.result); }}>
+                  <img src={h.preview} alt="past"
+                       style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0,
+                                background: "linear-gradient(transparent,rgba(0,0,0,0.8))",
+                                padding: "8px 6px 4px", display: "flex", alignItems: "flex-end" }}>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: SCORE_COLOR(h.result?.impact ?? 0) }}>
+                      {h.result?.impact ?? "?"}
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={e => { e.stopPropagation(); extractAndUse(h.preview); }}
+                  disabled={extracting}
+                  title="Use as today's outfit"
+                  style={{
+                    position: "absolute", top: 5, right: 5,
+                    background: "rgba(124,58,237,0.88)", border: "none", borderRadius: 6,
+                    padding: "2px 6px", fontSize: 11, fontWeight: 700, color: "#fff",
+                    cursor: extracting ? "default" : "pointer",
+                  }}>👕</button>
               </div>
             ))}
           </div>
