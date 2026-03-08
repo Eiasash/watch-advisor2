@@ -5,6 +5,7 @@ import { pushGarment, deleteGarment, deleteStoragePhoto, uploadAngle } from "../
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { useToast } from "./ToastProvider.jsx";
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
 
@@ -157,11 +158,13 @@ export default function GarmentEditor({ garment, onClose }) {
   const updateGarment = useWardrobeStore(s => s.updateGarment);
   const removeGarment = useWardrobeStore(s => s.removeGarment);
   const addAngle      = useWardrobeStore(s => s.addAngle);
+  const addGarment    = useWardrobeStore(s => s.addGarment);
   const garments      = useWardrobeStore(s => s.garments);
   const watches       = useWatchStore(s => s.watches);
   const history       = useHistoryStore(s => s.entries);
   const { mode }      = useThemeStore();
   const isDark        = mode === "dark";
+  const { addToast }  = useToast() ?? {};
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [typeRaw,    setTypeRaw]    = useState(garment.type       ?? garment.category ?? "shirt");
@@ -280,6 +283,28 @@ export default function GarmentEditor({ garment, onClose }) {
     onClose();
   }
 
+  // ── Split: another item in same photo ───────────────────────────────────────
+  function handleSplitPhoto() {
+    const newId = `g_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const newGarment = {
+      id: newId,
+      name: "New item from same photo",
+      type: "shirt",
+      category: "shirt",
+      color: garment.color ?? "grey",
+      formality: garment.formality ?? 5,
+      thumbnail: garment.thumbnail ?? null,
+      photoUrl: garment.photoUrl ?? null,
+      splitFrom: garment.id,
+      needsReview: true,
+    };
+    addGarment(newGarment);
+    const updated = [...garments, newGarment];
+    setCachedState({ watches, garments: updated, history }).catch(() => {});
+    pushGarment(newGarment).catch(() => {});
+    addToast?.("New item added — tap to label it", "success");
+  }
+
   // ── Angle upload ────────────────────────────────────────────────────────────
   async function handleAngleUpload(e) {
     const file = e.target.files?.[0]; if (!file) return;
@@ -376,6 +401,16 @@ export default function GarmentEditor({ garment, onClose }) {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Split: multi-item photo */}
+          {(garment.thumbnail || garment.photoUrl) && (
+            <button onClick={handleSplitPhoto}
+              style={{ width:"100%", padding:"8px 0", borderRadius:9, border:`1px dashed ${border}`,
+                       background:"transparent", color:sub, fontSize:12, fontWeight:600,
+                       cursor:"pointer", marginBottom:14 }}>
+              + Another item in this photo
+            </button>
           )}
 
           {/* Name */}

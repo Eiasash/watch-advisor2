@@ -15,7 +15,7 @@ export function pickWatch(watches, history = [], dayProfile = "smart-casual") {
     .map(w => ({ watch: w, score: scoreWatchForDay(w, dayProfile, history) }))
     .sort((a, b) => b.score - a.score);
 
-  return scored[0].watch;
+  return scored[0]?.watch ?? null;
 }
 
 /**
