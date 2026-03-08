@@ -10,7 +10,7 @@ export async function getAISuggestion(garments, watch, weather, engineOutfit = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         garments: garments
-          .filter(g => g.type !== "outfit-photo" && g.type !== "outfit-shot")
+          .filter(g => !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type ?? g.category))
           .map(g => ({
             name: g.name,
             type: g.type ?? g.category,
