@@ -93,7 +93,7 @@ export default function TodayPanel() {
   const [watchId,  setWatchId]    = useState(todayEntry?.watchId  ?? watches[0]?.id ?? null);
   const [context,  setContext]    = useState(todayEntry?.context  ?? "smart-casual");
   const [notes,    setNotes]      = useState(todayEntry?.notes    ?? "");
-  const [extraImg, setExtraImg]   = useState(null); // outfit photo from camera
+  const [extraImgs, setExtraImgs] = useState([]); // outfit photos — array
   const [logged,   setLogged]     = useState(!!todayEntry);
   const [filter,   setFilter]     = useState("all");
   const cameraRef = useRef();
@@ -128,10 +128,10 @@ export default function TodayPanel() {
   });
 
   const handleCamera = useCallback(async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const thumb = await resizeImage(f, 600);
-    setExtraImg(thumb);
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const thumbs = await Promise.all(files.map(f => resizeImage(f, 600)));
+    setExtraImgs(prev => [...prev, ...thumbs]);
     e.target.value = "";
   }, []);
 
@@ -146,7 +146,8 @@ export default function TodayPanel() {
       garmentIds: [...selected],
       context,
       notes: notes.trim() || null,
-      outfitPhoto: extraImg ?? null,
+      outfitPhoto: extraImgs[0] ?? null,      // back-compat: first image
+      outfitPhotos: extraImgs.length ? extraImgs : null, // full array
       loggedAt: new Date().toISOString(),
     };
     addEntry(entry);
@@ -157,7 +158,7 @@ export default function TodayPanel() {
       usePrefStore.getState().recordWear(wornG);
     } catch(_) {}
     setLogged(true);
-  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImg, addEntry, garments]);
+  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImgs, addEntry, garments]);
 
   // ── Summary card when already logged ────────────────────────────────────────
   if (logged && todayEntry) {
@@ -199,9 +200,15 @@ export default function TodayPanel() {
             </div>
           )}
 
-          {todayEntry.outfitPhoto && (
-            <img src={todayEntry.outfitPhoto} alt="outfit"
-              style={{ width: "100%", borderRadius: 10, marginTop: 12, objectFit: "cover", maxHeight: 300 }} />
+          {(todayEntry.outfitPhotos?.length || todayEntry.outfitPhoto) && (
+            <div style={{ marginTop: 12, display: "grid",
+                          gridTemplateColumns: (todayEntry.outfitPhotos?.length ?? 1) > 1 ? "repeat(2, 1fr)" : "1fr",
+                          gap: 6 }}>
+              {(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : [])).map((src, i) => (
+                <img key={i} src={src} alt={`outfit ${i + 1}`}
+                  style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 300, display: "block" }} />
+              ))}
+            </div>
           )}
 
           {todayEntry.notes && (
@@ -318,13 +325,15 @@ export default function TodayPanel() {
       {/* Outfit photo */}
       <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase",
-                      letterSpacing: "0.06em", marginBottom: 10 }}>Outfit Photo (optional)</div>
-        <div style={{ display: "flex", gap: 8 }}>
+                      letterSpacing: "0.06em", marginBottom: 10 }}>
+          Outfit Photos (optional){extraImgs.length > 0 && <span style={{ color: "#3b82f6", marginLeft: 6 }}>{extraImgs.length}</span>}
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: extraImgs.length ? 10 : 0 }}>
           <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px dashed ${border}`,
                           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                           cursor: "pointer", color: muted, fontSize: 13 }}>
             📁 Gallery
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleCamera} />
+            <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleCamera} />
           </label>
           <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px dashed ${border}`,
                           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -333,12 +342,19 @@ export default function TodayPanel() {
             <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleCamera} />
           </label>
         </div>
-        {extraImg && (
-          <div style={{ marginTop: 10, position: "relative" }}>
-            <img src={extraImg} alt="outfit" style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 260 }} />
-            <button onClick={() => setExtraImg(null)}
-              style={{ position: "absolute", top: 6, right: 6, background: "#ef4444", color: "#fff",
-                       border: "none", borderRadius: "50%", width: 24, height: 24, fontSize: 13, cursor: "pointer" }}>×</button>
+        {extraImgs.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+            {extraImgs.map((src, i) => (
+              <div key={i} style={{ position: "relative", borderRadius: 8, overflow: "hidden", aspectRatio: "1/1" }}>
+                <img src={src} alt={`outfit ${i + 1}`}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <button onClick={() => setExtraImgs(prev => prev.filter((_, j) => j !== i))}
+                  style={{ position: "absolute", top: 4, right: 4, background: "#ef4444", color: "#fff",
+                           border: "none", borderRadius: "50%", width: 20, height: 20,
+                           fontSize: 11, cursor: "pointer", lineHeight: 1, display: "flex",
+                           alignItems: "center", justifyContent: "center" }}>×</button>
+              </div>
+            ))}
           </div>
         )}
       </div>
