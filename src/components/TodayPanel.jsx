@@ -216,7 +216,7 @@ export default function TodayPanel() {
           )}
         </div>
 
-        <SelfiePanel context={todayEntry?.context ?? "smart-casual"} />
+        <SelfiePanel context={todayEntry?.context ?? "smart-casual"} watchId={todayEntry?.watchId ?? null} />
 
         <button onClick={() => setLogged(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 10,
           border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 13, cursor: "pointer" }}>

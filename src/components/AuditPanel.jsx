@@ -3,7 +3,7 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
-import { pushGarment } from "../services/supabaseSync.js";
+import { pushGarment, deleteGarment as deleteGarmentCloud } from "../services/supabaseSync.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { enqueueTask, getPendingTasks, subscribeQueue } from "../services/backgroundQueue.js";
 
@@ -395,8 +395,11 @@ export function PhotoVerifierPanel() {
   }
 
   function deleteGarment(garmentId) {
-    const { deleteGarment: del } = useWardrobeStore.getState();
-    if (del) del(garmentId);
+    useWardrobeStore.getState().removeGarment(garmentId);
+    deleteGarmentCloud(garmentId).catch(() => {});
+    // Update IDB cache
+    const remaining = garments.filter(g => g.id !== garmentId);
+    setCachedState({ watches, garments: remaining, history }).catch(() => {});
     setResults(r => { const n = { ...r }; delete n[garmentId]; return n; });
   }
 

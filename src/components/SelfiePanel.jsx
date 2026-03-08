@@ -2,13 +2,15 @@
  * SelfiePanel — AI Selfie / Outfit Photo Checker
  * Upload or take a photo → Claude Vision analyzes the full look.
  * Shows impact score, color story, strap-shoe check, upgrade suggestion.
- * Stores history of last 20 checks in localStorage via styleLearningStore.
  */
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useWatchStore }    from "../stores/watchStore.js";
+import { useStrapStore }    from "../stores/strapStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
+import { getCachedState, setCachedState } from "../services/localCache.js";
 
 const API = "/.netlify/functions/selfie-check";
+const SELFIE_CACHE_KEY = "selfieHistory";
 
 function resizeImage(file, maxPx = 800) {
   return new Promise(resolve => {
@@ -31,19 +33,26 @@ function resizeImage(file, maxPx = 800) {
 
 const SCORE_COLOR = s => s >= 8 ? "#10b981" : s >= 6 ? "#f59e0b" : "#ef4444";
 
-export default function SelfiePanel({ context = "smart-casual" }) {
+export default function SelfiePanel({ context = "smart-casual", watchId: propWatchId = null }) {
   const { mode }  = useThemeStore();
   const isDark    = mode === "dark";
   const watches   = useWatchStore(s => s.watches);
+  // Active watch + strap — if no propWatchId, use first watch as fallback
+  const activeWatchId = propWatchId ?? watches[0]?.id ?? null;
+  const activeStrapObj = useStrapStore(s => s.getActiveStrap?.(activeWatchId)) ?? null;
 
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState(null);
   const [preview,  setPreview]  = useState(null);
   const [result,   setResult]   = useState(null);
-  const [history,  setHistory]  = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem("selfie_history") ?? "[]"); }
-    catch { return []; }
-  });
+  const [history,  setHistory]  = useState([]);
+
+  // Load history from IDB on mount (survives refresh, unlike sessionStorage)
+  useEffect(() => {
+    getCachedState().then(cached => {
+      if (Array.isArray(cached[SELFIE_CACHE_KEY])) setHistory(cached[SELFIE_CACHE_KEY]);
+    });
+  }, []);
 
   const cameraRef   = useRef();
   const frontRef    = useRef();
@@ -63,10 +72,18 @@ export default function SelfiePanel({ context = "smart-casual" }) {
     setPreview(dataUrl);
     setLoading(true);
     try {
+      // Pass active watch ID + active strap label so Claude can do accurate strap-shoe audit
+      const activeWatch = watches.find(w => w.id === activeWatchId) ?? null;
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl, watches, context }),
+        body: JSON.stringify({
+          image: dataUrl,
+          watches,
+          context,
+          confirmedWatchId: activeWatchId,
+          activeStrapLabel: activeStrapObj?.label ?? activeStrapObj?.color ?? activeWatch?.strap ?? null,
+        }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -74,7 +91,8 @@ export default function SelfiePanel({ context = "smart-casual" }) {
       const entry = { id: Date.now(), ts: new Date().toISOString(), preview: dataUrl, result: data };
       setHistory(prev => {
         const next = [entry, ...prev].slice(0, 20);
-        try { sessionStorage.setItem("selfie_history", JSON.stringify(next)); } catch {}
+        // Persist to IDB — survives Chrome Android refresh
+        setCachedState({ [SELFIE_CACHE_KEY]: next }).catch(() => {});
         return next;
       });
     } catch (e) {
@@ -82,7 +100,7 @@ export default function SelfiePanel({ context = "smart-casual" }) {
     } finally {
       setLoading(false);
     }
-  }, [watches, context]);
+  }, [watches, context, activeWatchId, activeStrapObj]);
 
   const handleFile = useCallback(e => {
     const f = e.target.files?.[0];

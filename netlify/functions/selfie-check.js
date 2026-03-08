@@ -22,7 +22,7 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
-    const { image, watches = [], context = "smart-casual", confirmedWatchId } = JSON.parse(event.body ?? "{}");
+    const { image, watches = [], context = "smart-casual", confirmedWatchId, activeStrapLabel } = JSON.parse(event.body ?? "{}");
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
     if (!image) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "image required" }) };
@@ -54,12 +54,13 @@ export async function handler(event) {
 
     const confirmed = confirmedWatchId ? watches.find(w => w.id === confirmedWatchId) : null;
     const confirmedLine = confirmed ? `CONFIRMED WATCH: ${confirmed.brand} ${confirmed.model}${confirmed.ref ? ` (Ref ${confirmed.ref})` : ""}\n` : "";
+    const activeStrapLine = activeStrapLabel ? `ACTIVE STRAP TODAY: ${activeStrapLabel} — apply strap-shoe rule against this specific strap.\n` : "";
 
     const prompt = `Elite men's luxury style advisor. Analyze this outfit photo completely.
 
 WATCH COLLECTION (${watchList.length} pieces):
 ${JSON.stringify(watchList, null, 0)}
-${confirmedLine}
+${confirmedLine}${activeStrapLine}
 CONTEXT: ${Array.isArray(context) ? context.join(" + ") : context}
 
 COLOR PAIRING RULES:
