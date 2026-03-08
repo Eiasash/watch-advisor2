@@ -138,6 +138,51 @@ describe("buildOutfit — diversity penalty with different history shapes", () =
     const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 20 }, []);
     expect(outfit.shirt).toBeTruthy();
   });
+
+  // REGRESSION: bug — garmentIds format was not checked, diversity never fired
+  it("fires diversity penalty with garmentIds flat-array format (TodayPanel / WatchDashboard log)", () => {
+    // All 5 recent entries have s1 in garmentIds (the format both panels produce)
+    const history = Array(5).fill(null).map(() => ({
+      garmentIds: ["s1", "p1", "sh1"],
+    }));
+    const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 20 }, history);
+    // s1 should be heavily penalised and avoided in favour of s2 or s3
+    expect(outfit.shirt.id).not.toBe("s1");
+  });
+
+  it("garmentIds with no match does not penalise", () => {
+    const history = [{ garmentIds: ["totally-unknown-id"] }];
+    const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 20 }, history);
+    // No penalty — outfit should still produce a shirt
+    expect(outfit.shirt).toBeTruthy();
+  });
+});
+
+// ─── buildOutfit — weather jacket fallback uses scoring ─────────────────────
+
+describe("buildOutfit — weather jacket fallback uses scoring (regression)", () => {
+  it("picks a jacket from wardrobe when cold with no jacket slot in style", () => {
+    // Use a style that has no jacket slot but still triggers weather fallback
+    const coldWatch = { ...snowflake };
+    const jacketWardrobe = [
+      { id: "s1", type: "shirt",  color: "white", formality: 7 },
+      { id: "p1", type: "pants",  color: "grey",  formality: 7 },
+      { id: "sh1",type: "shoes",  color: "black", formality: 7 },
+      { id: "j1", type: "jacket", color: "beige", formality: 7, name: "Camel Coat" },
+      { id: "j2", type: "jacket", color: "black", formality: 8, name: "Dark Blazer" },
+    ];
+    const outfit = buildOutfit(coldWatch, jacketWardrobe, { tempC: 10 });
+    // A jacket must be present when cold
+    expect(outfit.jacket).toBeTruthy();
+    // It must be one of the actual jackets (not null / not a non-jacket)
+    expect(["j1","j2"]).toContain(outfit.jacket.id);
+  });
+
+  it("no jacket when wardrobe has no jackets even when cold", () => {
+    const noJackets = fullWardrobe.filter(g => g.type !== "jacket");
+    const outfit = buildOutfit(snowflake, noJackets, { tempC: 5 });
+    expect(outfit.jacket).toBeNull();
+  });
 });
 
 // ─── explainOutfitChoice — edge cases ───────────────────────────────────────

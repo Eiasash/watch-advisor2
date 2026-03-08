@@ -33,7 +33,7 @@ const TABS = [
   { key:"audit",    label:"Audit",    icon:"🔍" },
   { key:"occasion", label:"Plan",     icon:"✨" },
   { key:"selfie",   label:"Check",    icon:"📸" },
-  { key:"watchid",  label:"ID",       icon:"🔍" },
+  { key:"watchid",  label:"ID",       icon:"🔎" },
 ];
 
 function AppContent() {
