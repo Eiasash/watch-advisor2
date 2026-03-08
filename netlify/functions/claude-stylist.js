@@ -20,7 +20,7 @@ export async function handler(event) {
   }
 
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
@@ -28,7 +28,7 @@ export async function handler(event) {
 
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) {
-      return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
+      return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
     }
 
     // Build a readable garment list with type+color context

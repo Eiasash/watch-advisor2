@@ -8,11 +8,12 @@ const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","access
 
 export function generateOutfit(watch, garments, weather) {
   const wearable = garments.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
-  const shirts   = wearable.filter(g => g.type === "shirt");
-  const pants    = wearable.filter(g => g.type === "pants");
-  const shoes    = wearable.filter(g => g.type === "shoes");
-  const jackets  = wearable.filter(g => g.type === "jacket");
-  const sweaters = wearable.filter(g => g.type === "sweater");
+  const typeOf   = g => g.type ?? g.category;
+  const shirts   = wearable.filter(g => typeOf(g) === "shirt");
+  const pants    = wearable.filter(g => typeOf(g) === "pants");
+  const shoes    = wearable.filter(g => typeOf(g) === "shoes");
+  const jackets  = wearable.filter(g => typeOf(g) === "jacket");
+  const sweaters = wearable.filter(g => typeOf(g) === "sweater");
 
   let jacket = null;
   let sweater = null;

@@ -24,14 +24,14 @@ export async function handler(event) {
       "Access-Control-Allow-Headers": "Content-Type" } };
   }
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
     const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors } = JSON.parse(event.body ?? "{}");
 
     const apiKey = process.env.CLAUDE_API_KEY;
-    if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
+    if (!apiKey) return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
     // ── Cache check ──────────────────────────────────────────────────────────
     // Key by garment hash (dHash of photo) — same image = same result forever.
@@ -61,7 +61,7 @@ export async function handler(event) {
       const ct = imgRes.headers.get("content-type") || "image/jpeg";
       imageBlock = { type: "image", source: { type: "base64", media_type: ct, data: b64 } };
     } else {
-      return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
+      return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "No image provided" }) };
     }
 
     // Build neighbor context for angle/dupe detection
@@ -114,7 +114,7 @@ Rules:
 
     if (!res.ok) {
       const err = await res.text();
-      return { statusCode: 502, body: JSON.stringify({ error: `Claude API error: ${res.status}`, detail: err }) };
+      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${res.status}`, detail: err }) };
     }
 
     const data = await res.json();
@@ -133,6 +133,6 @@ Rules:
       body: JSON.stringify({ garmentId, ...parsed }),
     };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: err.message }) };
   }
 }
