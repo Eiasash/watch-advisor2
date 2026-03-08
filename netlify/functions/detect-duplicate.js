@@ -44,34 +44,24 @@ export async function handler(event) {
       };
     }
 
-        const response = await callClaude(apiKey, {
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 150,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: { type: "base64", media_type: "image/jpeg", data: imageA },
-              },
-              {
-                type: "image",
-                source: { type: "base64", media_type: "image/jpeg", data: imageB },
-              },
-              {
-                type: "text",
-                text: 'Are these two photos of the SAME clothing item (possibly from different angles, lighting, or backgrounds)? Return ONLY JSON: {"isDuplicate": true/false, "confidence": "high"/"medium"/"low", "reason": "<brief reason>"}',
-              },
-            ],
-          },
-        ],
-      });
+    const data = await callClaude(apiKey, {
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 150,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageA } },
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageB } },
+            {
+              type: "text",
+              text: 'Are these two photos of the SAME clothing item (possibly from different angles, lighting, or backgrounds)? Return ONLY JSON: {"isDuplicate": true/false, "confidence": "high"/"medium"/"low", "reason": "<brief reason>"}',
+            },
+          ],
+        },
+      ],
+    });
 
-
-      const err = await response.text();
-      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
-    }
     const text = data?.content?.[0]?.text ?? "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
 

@@ -31,6 +31,26 @@ async function runAudit(garments, watches, history) {
     .map(([id,n]) => { const w = watches.find(x => x.id === id); return (w ? `${w.brand} ${w.model}` : id) + ` ×${n}`; })
     .join(", ");
 
+  // Garment wear frequency from history
+  const garmentWearFreq = {};
+  history.forEach(e => (e.garmentIds ?? []).forEach(gid => {
+    garmentWearFreq[gid] = (garmentWearFreq[gid] ?? 0) + 1;
+  }));
+  const today = new Date().toISOString().split("T")[0];
+  const neglectedGarments = garments
+    .filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo")
+    .filter(g => {
+      if (!g.lastWorn) return true; // never worn
+      const d = Math.floor((Date.now() - new Date(g.lastWorn).getTime()) / 864e5);
+      return d > 30;
+    })
+    .map(g => `${g.name} (${g.type}, ${g.color})${g.lastWorn ? ` — last worn ${g.lastWorn}` : " — never worn"}`);
+
+  const topWornGarments = Object.entries(garmentWearFreq)
+    .sort((a,b) => b[1]-a[1]).slice(0, 8)
+    .map(([id,n]) => { const g = garments.find(x => x.id === id); return (g ? g.name : id) + ` ×${n}`; })
+    .join(", ");
+
   const prompt = `You are a luxury men's wardrobe consultant for a watch collector. Perform a comprehensive audit.
 
 WARDROBE (${garments.length} garments):
@@ -44,6 +64,8 @@ ${watchSummary}
 
 WEAR LOG: ${history.length} entries
 Watch wear frequency: ${watchWears || "none recorded"}
+Most worn garments (last 60 days): ${topWornGarments || "none recorded"}
+Neglected garments (30+ days or never worn, ${neglectedGarments.length} items): ${neglectedGarments.slice(0, 10).join("; ") || "none"}
 
 OWNER CONTEXT:
 - Hospital-based physician: clinic days require genuine watches + formal attire

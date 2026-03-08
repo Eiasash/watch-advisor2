@@ -99,18 +99,14 @@ Rules:
 - isDuplicate=true when photos are near-identical (same angle, same lighting, same garment).
 - Use the hash values: if two items have very similar hashes, they are likely the same photo.`;
 
-        const res = await callClaude(apiKey, {
-    const data = res;
+    const res = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 256,
         messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
       });
 
-      const err = await res.text();
-      return { statusCode: 502, body: JSON.stringify({ error: `Claude API error: ${res.status}`, detail: err }) };
-    }
 
-    const raw  = data.content?.[0]?.text ?? "{}";
+    const raw  = res.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 

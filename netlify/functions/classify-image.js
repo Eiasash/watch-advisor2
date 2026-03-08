@@ -29,8 +29,7 @@ export async function handler(event) {
       };
     }
 
-        const response = await callClaude(apiKey, {
-    const data = response;
+    const response = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 200,
         messages: [
@@ -54,15 +53,11 @@ export async function handler(event) {
         ],
       });
 
-      const err = await response.text();
-      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
-    }
-
 
     return {
       statusCode: 200,
       headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(response),
     };
   } catch (err) {
     return {

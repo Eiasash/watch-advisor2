@@ -4,7 +4,7 @@
  * Pick a watch + strap
  * Log to history
  */
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useStrapStore }    from "../stores/strapStore.js";
@@ -13,7 +13,26 @@ import { useThemeStore }    from "../stores/themeStore.js";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 
-const TODAY_ISO = new Date().toISOString().split("T")[0];
+// Live date key — recomputes every render, rolls over at midnight
+function useTodayKey() {
+  const [key, setKey] = useState(() => new Date().toISOString().split("T")[0]);
+  useEffect(() => {
+    // Recalculate time until next midnight and reset then
+    function scheduleRollover() {
+      const now = new Date();
+      const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) - now;
+      const t = setTimeout(() => {
+        setKey(new Date().toISOString().split("T")[0]);
+        scheduleRollover();
+      }, msUntilMidnight + 100);
+      return t;
+    }
+    const t = scheduleRollover();
+    return () => clearTimeout(t);
+  }, []);
+  return key;
+}
+
 const CONTEXT_OPTIONS = [
   { key: "smart-casual",          label: "Smart Casual" },
   { key: "hospital-smart-casual", label: "Clinic / Hospital" },
@@ -21,7 +40,8 @@ const CONTEXT_OPTIONS = [
   { key: "casual",                label: "Casual" },
   { key: "shift",                 label: "On-Call" },
 ];
-const GARMENT_PRIORITY = ["shoes","pants","shirt","sweater","jacket"];
+// Normalised to lowercase to match garment.type values (DB stores lowercase)
+const GARMENT_PRIORITY = ["shoes", "pants", "shirt", "sweater", "jacket", "coat"];
 
 function resizeImage(file, maxPx = 480) {
   return new Promise(resolve => {
@@ -77,26 +97,43 @@ function GarmentThumb({ g, selected, onClick, isDark }) {
 }
 
 export default function TodayPanel() {
+  const TODAY_ISO    = useTodayKey();
   const { mode }     = useThemeStore();
   const isDark       = mode === "dark";
   const garments     = useWardrobeStore(s => s.garments);
+  const updateGarment = useWardrobeStore(s => s.updateGarment);
   const watches      = useWatchStore(s => s.watches);
   const straps       = useStrapStore(s => s.straps);
   const activeStrap  = useStrapStore(s => s.activeStrap);
-  const addEntry     = useHistoryStore(s => s.addEntry);
+  const upsertEntry  = useHistoryStore(s => s.upsertEntry);
   const entries      = useHistoryStore(s => s.entries);
 
   // Today's already-logged entry (if any)
-  const todayEntry = useMemo(() => entries.find(e => e.date === TODAY_ISO), [entries]);
+  const todayEntry = useMemo(() => entries.find(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);
 
   const [selected, setSelected]   = useState(new Set(todayEntry?.garmentIds ?? []));
   const [watchId,  setWatchId]    = useState(todayEntry?.watchId  ?? watches[0]?.id ?? null);
   const [context,  setContext]    = useState(todayEntry?.context  ?? "smart-casual");
   const [notes,    setNotes]      = useState(todayEntry?.notes    ?? "");
-  const [extraImgs, setExtraImgs] = useState([]); // outfit photos — array
+  const [extraImgs, setExtraImgs] = useState(
+    todayEntry?.outfitPhotos ?? (todayEntry?.outfitPhoto ? [todayEntry.outfitPhoto] : [])
+  );
   const [logged,   setLogged]     = useState(!!todayEntry);
   const [filter,   setFilter]     = useState("all");
   const cameraRef = useRef();
+
+  // Sync form state when todayEntry hydrates from Supabase after initial render
+  const prevEntryId = useRef(todayEntry?.id);
+  useEffect(() => {
+    if (!todayEntry || todayEntry.id === prevEntryId.current) return;
+    prevEntryId.current = todayEntry.id;
+    setSelected(new Set(todayEntry.garmentIds ?? []));
+    setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
+    setContext(todayEntry.context ?? "smart-casual");
+    setNotes(todayEntry.notes ?? "");
+    setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
+    setLogged(true);
+  }, [todayEntry, watches]);
 
   const bg     = isDark ? "#101114" : "#f9fafb";
   const card   = isDark ? "#171a21" : "#ffffff";
@@ -110,11 +147,13 @@ export default function TodayPanel() {
   );
 
   const garmentTypes = useMemo(() => {
-    const types = new Set(activeGarments.map(g => g.type).filter(Boolean));
+    const types = new Set(activeGarments.map(g => (g.type ?? "").toLowerCase()).filter(Boolean));
     return ["all", ...GARMENT_PRIORITY.filter(t => types.has(t)), ...[...types].filter(t => !GARMENT_PRIORITY.includes(t))];
   }, [activeGarments]);
 
-  const visible = filter === "all" ? activeGarments : activeGarments.filter(g => g.type === filter);
+  const visible = filter === "all"
+    ? activeGarments
+    : activeGarments.filter(g => (g.type ?? "").toLowerCase() === filter);
 
   const selectedWatch = watches.find(w => w.id === watchId);
   const watchStraps   = Object.values(straps).filter(s => s.watchId === watchId);
@@ -137,8 +176,10 @@ export default function TodayPanel() {
 
   const handleLog = useCallback(async () => {
     if (!watchId) return;
+    // Preserve ID from existing entry so upsert hits the same DB row
+    const entryId = todayEntry?.id ?? `today-${Date.now()}`;
     const entry = {
-      id: `today-${Date.now()}`,
+      id: entryId,
       date: TODAY_ISO,
       watchId,
       strapId: activeStrapId ?? null,
@@ -146,19 +187,26 @@ export default function TodayPanel() {
       garmentIds: [...selected],
       context,
       notes: notes.trim() || null,
-      outfitPhoto: extraImgs[0] ?? null,      // back-compat: first image
-      outfitPhotos: extraImgs.length ? extraImgs : null, // full array
+      outfitPhoto: extraImgs[0] ?? null,
+      outfitPhotos: extraImgs.length ? extraImgs : null,
       loggedAt: new Date().toISOString(),
     };
-    addEntry(entry);
-    // Style learning — record worn garments in preference profile
+    upsertEntry(entry);
+
+    // Update lastWorn on each worn garment
+    const wornIds = [...selected];
+    wornIds.forEach(id => updateGarment(id, { lastWorn: TODAY_ISO }));
+
+    // Style learning
     try {
       const { usePrefStore } = await import("../stores/prefStore.js");
       const wornG = garments.filter(g => selected.has(g.id));
       usePrefStore.getState().recordWear(wornG);
     } catch(_) {}
+
     setLogged(true);
-  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImgs, addEntry, garments]);
+  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImgs,
+      upsertEntry, updateGarment, garments, todayEntry, TODAY_ISO]);
 
   // ── Summary card when already logged ────────────────────────────────────────
   if (logged && todayEntry) {
@@ -218,7 +266,17 @@ export default function TodayPanel() {
 
         <SelfiePanel context={todayEntry?.context ?? "smart-casual"} watchId={todayEntry?.watchId ?? null} />
 
-        <button onClick={() => setLogged(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 10,
+        <button onClick={() => {
+          // Reload form state from the logged entry before switching to edit mode
+          if (todayEntry) {
+            setSelected(new Set(todayEntry.garmentIds ?? []));
+            setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
+            setContext(todayEntry.context ?? "smart-casual");
+            setNotes(todayEntry.notes ?? "");
+            setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
+          }
+          setLogged(false);
+        }} style={{ width: "100%", padding: "12px 0", borderRadius: 10,
           border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 13, cursor: "pointer" }}>
           Edit today's log
         </button>

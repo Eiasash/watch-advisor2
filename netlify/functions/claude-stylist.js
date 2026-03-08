@@ -119,16 +119,12 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
   "explanation": "<2-3 sentences: why these pieces work with the specific watch, dial color, and context. Be direct and specific — mention the dial color, strap, and any formality trade-offs.>"
 }`;
 
-        const response = await callClaude(apiKey, {
+    const data = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 600,
         messages: [{ role: "user", content: prompt }],
       });
 
-
-      const err = await response.text();
-      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
-    }
     const text = data?.content?.[0]?.text ?? "";
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);

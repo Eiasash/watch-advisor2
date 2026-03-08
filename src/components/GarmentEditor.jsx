@@ -251,8 +251,19 @@ export default function GarmentEditor({ garment, onClose }) {
         <input value={price} onChange={e => setPrice(e.target.value)} type="number" min="0" step="1" style={{ ...inp, marginBottom:10 }}
           placeholder="Price paid ₪ (for cost-per-wear)" />
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
-          rows={2} style={{ ...inp, resize:"vertical", marginBottom:14 }}
+          rows={2} style={{ ...inp, resize:"vertical", marginBottom:10 }}
           placeholder="Pairing notes, fit, condition…" />
+
+        {/* Last worn (read-only — set automatically on log) */}
+        {garment.lastWorn && (() => {
+          const d = Math.floor((Date.now() - new Date(garment.lastWorn).getTime()) / 864e5);
+          const col = d <= 3 ? "#4ade80" : d <= 14 ? "#f59e0b" : "#9ca3af";
+          return (
+            <div style={{ fontSize:11, color:col, marginBottom:14 }}>
+              Last worn: {garment.lastWorn} ({d === 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`})
+            </div>
+          );
+        })()}
 
         {/* AI Photo Check */}
         {(garment.thumbnail || garment.photoUrl) && (

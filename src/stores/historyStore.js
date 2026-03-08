@@ -13,4 +13,15 @@ export const useHistoryStore = create((set, get) => ({
     // Sync to cloud — fire and forget
     pushHistoryEntry(entry).catch(() => {});
   },
+  // Replace an existing entry by date (for editing today's log), or append if new
+  upsertEntry: entry => {
+    const existing = get().entries;
+    const idx = existing.findIndex(e => e.date === entry.date);
+    const all = idx >= 0
+      ? existing.map((e, i) => i === idx ? entry : e)
+      : [...existing, entry];
+    set({ entries: all });
+    setCachedState({ history: all }).catch(() => {});
+    pushHistoryEntry(entry).catch(() => {});
+  },
 }));

@@ -60,7 +60,7 @@ Respond ONLY with valid JSON, no markdown:
   }
 }`;
 
-        const response = await callClaude(apiKey, {
+    const data = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 400,
         messages: [{
@@ -72,11 +72,7 @@ Respond ONLY with valid JSON, no markdown:
         }],
       });
 
-
-      const err = await response.text();
-      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
-    }
-    const text = data.content?.[0]?.text ?? "{}";
+    const text = data?.content?.[0]?.text ?? "{}";
     const cleaned = text.replace(/```json|```/g, "").trim();
     const result = JSON.parse(cleaned);
 

@@ -20,18 +20,14 @@ export async function handler(event) {
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
-        const res = await callClaude(apiKey, {
-    const data = res;
+    const res = await callClaude(apiKey, {
         model:      "claude-sonnet-4-20250514",
         max_tokens: 2000,
         messages:   [{ role: "user", content: prompt }],
       });
 
-      const err = await res.text();
-      return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: err }) };
-    }
 
-    const raw  = data.content?.[0]?.text ?? "{}";
+    const raw  = res.content?.[0]?.text ?? "{}";
     // Strip markdown fences if present
     const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
 

@@ -52,9 +52,9 @@ RULES:
 Return ONLY valid JSON, no markdown:
 {"top_pick":"exact watch brand + model","top_pick_why":"2-3 sentences on color/formality/strap logic","strap_rec":"which strap and why (1 sentence), or null if bracelet-only","runner_up":"second best watch name","runner_up_why":"1 sentence on why it's the alternative","avoid":"watch to avoid and why (1 sentence) or null","color_logic":"how dial+strap interact with outfit palette (1-2 sentences)"}`;
 
-        const res = await callClaude(apiKey, { model:"claude-sonnet-4-20250514", max_tokens:700,
-    const data = res;
+    const res = await callClaude(apiKey, { model:"claude-sonnet-4-20250514", max_tokens:700,
         messages:[{role:"user",content:prompt}] });
+    const data = res;
     const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}");
     cacheSet(ck, parsed);
     return { statusCode:200, headers:{...CORS,"X-Cache":"MISS"}, body:JSON.stringify(parsed) };

@@ -46,9 +46,9 @@ RULES:
 Create 2 complete outfit recommendations. Return ONLY valid JSON, no markdown:
 {"occasion_tips":"3-4 sentences of advice — dress code nuances, common mistakes, power moves","outfits":[{"name":"creative editorial outfit name","top":"exact color + item name","bottom":"exact color + item name","shoes":"color and type","watch":"exact brand + model name","layers":"outer/mid layer if relevant or null","why":"2 sentences on color story and why it works","confidence":1-10},{"name":"...","top":"...","bottom":"...","shoes":"...","watch":"...","layers":"...","why":"...","confidence":1-10}],"avoid":"2 sentences on what to avoid with specific examples","power_move":"one unexpected styling choice that would make a statement (1 sentence)"}`;
 
-        const res = await callClaude(apiKey, { model:"claude-sonnet-4-20250514", max_tokens:1000,
-    const data = res;
+    const res = await callClaude(apiKey, { model:"claude-sonnet-4-20250514", max_tokens:1000,
         messages:[{role:"user",content:prompt}] });
+    const data = res;
     const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}");
     cacheSet(ck, parsed);
     return { statusCode:200, headers:{...CORS,"X-Cache":"MISS"}, body:JSON.stringify(parsed) };
