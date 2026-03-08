@@ -78,10 +78,12 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     outfit[slotName] = scored[0].garment;
   }
 
-  // Sweater layer — separate from shirt, added when cold
+  // ── Multilayer logic ────────────────────────────────────────────────────────
+  // sweater: primary mid-layer (temp < 22°C)
+  // layer:   second mid-layer  (temp < 12°C) — e.g. vest, cardigan, hoodie
   outfit.sweater = null;
+  outfit.layer   = null;
 
-  // Sweater layer — pick best sweater when cold
   {
     const temp = weather?.tempC ?? 22;
     if (temp < 22) {
@@ -151,6 +153,8 @@ export function explainOutfitChoice(watch, outfit, weather) {
   ];
 
   if (outfit.shirt) parts.push(`${outfit.shirt.name} (${outfit.shirt.color}) pairs with the ${watch.dial} dial.`);
+  if (outfit.sweater) parts.push(`${outfit.sweater.name} layered for warmth.`);
+  if (outfit.layer) parts.push(`${outfit.layer.name} as second layer for extra warmth.`);
   if (outfit.pants) parts.push(`${outfit.pants.name} complements the formality level.`);
   if (outfit.shoes) parts.push(`${outfit.shoes.name} ground the outfit.`);
   if (outfit.jacket && weather?.tempC != null) {

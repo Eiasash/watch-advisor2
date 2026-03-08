@@ -45,17 +45,19 @@ export async function runPhotoImport(file, existingGarments = []) {
   const id = `g_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
   console.log("[import] processImage START:", file.name);
-  const { thumbnail, hash } = await processImage(file);
-  console.log("[import] processImage DONE:", file.name, "thumb:", !!thumbnail, "hash:", hash?.length);
+  const { thumbnail, hiRes, hash } = await processImage(file);
+  console.log("[import] processImage DONE:", file.name, "thumb:", !!thumbnail, "hiRes:", !!hiRes, "hash:", hash?.length);
 
   // classify is now async — awaits image decode for pixel analysis
   const tags = await classify(file.name, thumbnail, hash, existingGarments);
 
   // ── Claude Vision fallback when confidence is low ──────────────────────────
+  // Uses hi-res 512×512 image for better AI color/detail detection
   if (tags._typeSource === "default" || tags._typeSource === "ambiguous" || tags._typeSource === "blind") {
-    console.log("[import] low confidence — trying Claude Vision fallback");
-    if (thumbnail) {
-      const base64 = thumbnail.replace(/^data:image\/[^;]+;base64,/, "");
+    console.log("[import] low confidence — trying Claude Vision fallback (512px)");
+    const aiImage = hiRes ?? thumbnail;
+    if (aiImage) {
+      const base64 = aiImage.replace(/^data:image\/[^;]+;base64,/, "");
       const vision = await claudeFallback(base64);
       if (vision?.type) {
         tags.type = normalizeType(vision.type);

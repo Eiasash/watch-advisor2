@@ -48,7 +48,7 @@ export async function handler(event) {
               },
               {
                 type: "text",
-                text: 'Identify the clothing item type, color, and formality level. Return JSON: {"type": "shirt"|"pants"|"shoes"|"jacket"|"sweater", "color": "navy"|"gray"|"brown"|"black"|"white"|"olive"|"tan"|"beige", "formality": <1-10>}',
+                text: 'Identify the clothing item type, exact color, and formality level (1=very casual, 10=black tie). Be precise about color — distinguish between similar shades. Return JSON only: {"type": "shirt"|"pants"|"shoes"|"jacket"|"sweater"|"belt"|"hat"|"scarf"|"bag"|"accessory", "color": "beige"|"black"|"blue"|"brown"|"burgundy"|"camel"|"charcoal"|"cognac"|"coral"|"cream"|"dark brown"|"dark green"|"dark navy"|"denim"|"gold"|"green"|"grey"|"ivory"|"khaki"|"lavender"|"light blue"|"maroon"|"mint"|"multicolor"|"navy"|"olive"|"orange"|"pink"|"purple"|"red"|"rust"|"sage"|"sand"|"silver"|"slate"|"tan"|"taupe"|"teal"|"white"|"wine"|"yellow", "formality": <1-10>}',
               },
             ],
           },

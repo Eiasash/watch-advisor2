@@ -435,7 +435,7 @@ export function PhotoVerifierPanel() {
   const oks    = Object.values(results).filter(r => r.ok && !r._dismissed);
 
   const TYPE_OPTIONS  = ["shirt","pants","shoes","jacket","sweater","shorts","dress","skirt","coat","accessory","bag","other"];
-  const COLOR_OPTIONS = ["black","white","navy","grey","brown","tan","khaki","olive","green","blue","red","burgundy","pink","purple","orange","cream","beige","teal","yellow","multicolor"];
+  const COLOR_OPTIONS = ["beige","black","blue","brown","burgundy","camel","charcoal","cognac","coral","cream","dark brown","dark green","dark navy","denim","gold","green","grey","ivory","khaki","lavender","light blue","maroon","mint","multicolor","navy","olive","orange","pink","purple","red","rust","sage","sand","silver","slate","tan","taupe","teal","white","wine","yellow"];
 
   return (
     <div style={{ background: bg, borderRadius: 16, border: `1px solid ${border}`, padding: 18, marginTop: 16 }}>
