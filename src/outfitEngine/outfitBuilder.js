@@ -12,6 +12,7 @@
 import { STYLE_TO_SLOTS } from "./watchStyles.js";
 import { scoreGarment } from "./scoring.js";
 import { useRejectStore } from "../stores/rejectStore.js";
+import { useStrapStore } from "../stores/strapStore.js";
 
 /**
  * Generate the best outfit around a watch.
@@ -26,6 +27,12 @@ const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","access
 
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = []) {
   if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null };
+
+  // Inject active strap label so strapShoeScore uses the real strap being worn today
+  const activeStrapObj = useStrapStore.getState().getActiveStrap?.(watch.id);
+  const watchWithStrap = activeStrapObj
+    ? { ...watch, strap: activeStrapObj.label ?? activeStrapObj.color ?? watch.strap }
+    : watch;
 
   // Strip accessories, outfit photos and excluded items from outfit consideration
   const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
@@ -50,7 +57,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     // Score and sort — with rejection penalty
     const rejectState = useRejectStore.getState();
     const scored = candidates.map(g => {
-      let score = scoreGarment(watch, g, weather) + diversityBonus(g, history);
+      let score = scoreGarment(watchWithStrap, g, weather) + diversityBonus(g, history);
       // Apply -0.3 penalty if this watch+garment combo was recently rejected
       if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
       return { garment: g, score };
@@ -71,7 +78,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       const sweaters = wearable.filter(g => (g.type ?? g.category) === "sweater");
       if (sweaters.length) {
         const scored = sweaters.map(g => {
-          let score = scoreGarment(watch, g, weather) + diversityBonus(g, history);
+          let score = scoreGarment(watchWithStrap, g, weather) + diversityBonus(g, history);
           if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
           return { garment: g, score };
         });

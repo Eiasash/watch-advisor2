@@ -237,6 +237,18 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
               <span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:4,
                              background:"#052e16", color:"#4ade80" }} title="Cost per wear">~{cpw}/w</span>
             )}
+            {item.lastWorn && (() => {
+              const d = Math.floor((Date.now() - new Date(item.lastWorn).getTime()) / 864e5);
+              const col = d <= 3 ? "#4ade80" : d <= 14 ? "#f59e0b" : "#6b7280";
+              const label = d === 0 ? "today" : d === 1 ? "1d ago" : `${d}d ago`;
+              return (
+                <span style={{ fontSize:9, padding:"1px 5px", borderRadius:4, color:col,
+                               background: isDark ? "#1a1a1a" : "#f3f4f6" }}
+                      title={`Last worn: ${item.lastWorn}`}>
+                  {label}
+                </span>
+              );
+            })()}
             {item.brand && (
               <span style={{ fontSize:9, color:isDark?"#4b5563":"#9ca3af", fontStyle:"italic" }}>{item.brand}</span>
             )}

@@ -1,3 +1,4 @@
+import { callClaude } from "./_claudeClient.js";
 /**
  * AI relabel — Claude Vision checks a garment photo against its current label.
  * Returns { confirmed: bool, corrections: { type?, color?, name?, notes? }, confidence, reason }
@@ -59,14 +60,7 @@ Respond ONLY with valid JSON, no markdown:
   }
 }`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
+    const data = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 400,
         messages: [{
@@ -76,16 +70,9 @@ Respond ONLY with valid JSON, no markdown:
             { type: "text", text: prompt },
           ],
         }],
-      }),
-    });
+      });
 
-
-    if (!response.ok) {
-      const err = await response.text();
-      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
-    }
-    const data = await response.json();
-    const text = data.content?.[0]?.text ?? "{}";
+    const text = data?.content?.[0]?.text ?? "{}";
     const cleaned = text.replace(/```json|```/g, "").trim();
     const result = JSON.parse(cleaned);
 
@@ -95,8 +82,9 @@ Respond ONLY with valid JSON, no markdown:
       body: JSON.stringify(result),
     };
   } catch (err) {
+    const isClaudeError = err.message?.startsWith("Claude API error");
     return {
-      statusCode: 500,
+      statusCode: isClaudeError ? 502 : 500,
       headers: { "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({ error: err.message }),
     };

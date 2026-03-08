@@ -9,6 +9,7 @@
  *            better_watch, watch_confidence, watch_details, items_detected[] }
  */
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
+import { callClaude } from "./_claudeClient.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +22,7 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
-    const { image, watches = [], context = "smart-casual", confirmedWatchId } = JSON.parse(event.body ?? "{}");
+    const { image, watches = [], context = "smart-casual", confirmedWatchId, activeStrapLabel } = JSON.parse(event.body ?? "{}");
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
     if (!image) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "image required" }) };
@@ -53,12 +54,13 @@ export async function handler(event) {
 
     const confirmed = confirmedWatchId ? watches.find(w => w.id === confirmedWatchId) : null;
     const confirmedLine = confirmed ? `CONFIRMED WATCH: ${confirmed.brand} ${confirmed.model}${confirmed.ref ? ` (Ref ${confirmed.ref})` : ""}\n` : "";
+    const activeStrapLine = activeStrapLabel ? `ACTIVE STRAP TODAY: ${activeStrapLabel} — apply strap-shoe rule against this specific strap.\n` : "";
 
     const prompt = `Elite men's luxury style advisor. Analyze this outfit photo completely.
 
 WATCH COLLECTION (${watchList.length} pieces):
 ${JSON.stringify(watchList, null, 0)}
-${confirmedLine}
+${confirmedLine}${activeStrapLine}
 CONTEXT: ${Array.isArray(context) ? context.join(" + ") : context}
 
 COLOR PAIRING RULES:
@@ -87,18 +89,13 @@ Return ONLY valid JSON, no markdown:
   "items_detected": [{"type":"Top|Bottom|Shoes|Watch|Accessory","color":"","description":""}]
 }`;
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
+        const res = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
         messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
-      }),
-    });
+      });
+    const data = res;
 
-    if (!res.ok) { const err = await res.text(); return { statusCode:502, headers:CORS, body:JSON.stringify({ error:`Claude API error: ${res.status}`, detail:err }) }; }
-    const data  = await res.json();
     const raw   = data.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
@@ -106,6 +103,7 @@ Return ONLY valid JSON, no markdown:
     cacheSet(cacheKey, parsed);
     return { statusCode: 200, headers: { ...CORS, "X-Cache": "MISS" }, body: JSON.stringify(parsed) };
   } catch (e) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
+    const isClaudeError = e.message?.startsWith("Claude API error");
+    return { statusCode: isClaudeError ? 502 : 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
   }
 }

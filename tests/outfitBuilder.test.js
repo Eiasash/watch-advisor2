@@ -1,4 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("../src/services/localCache.js", () => ({
+  getCachedState: vi.fn().mockResolvedValue({}),
+  setCachedState: vi.fn().mockResolvedValue(undefined),
+  saveImage: vi.fn().mockResolvedValue(undefined),
+  getImage: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { buildOutfit, explainOutfitChoice } from "../src/outfitEngine/outfitBuilder.js";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 

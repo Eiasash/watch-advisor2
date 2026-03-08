@@ -4,7 +4,7 @@
  * Pick a watch + strap
  * Log to history
  */
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useStrapStore }    from "../stores/strapStore.js";
@@ -13,7 +13,26 @@ import { useThemeStore }    from "../stores/themeStore.js";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 
-const TODAY_ISO = new Date().toISOString().split("T")[0];
+// Live date key — recomputes every render, rolls over at midnight
+function useTodayKey() {
+  const [key, setKey] = useState(() => new Date().toISOString().split("T")[0]);
+  useEffect(() => {
+    // Recalculate time until next midnight and reset then
+    function scheduleRollover() {
+      const now = new Date();
+      const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) - now;
+      const t = setTimeout(() => {
+        setKey(new Date().toISOString().split("T")[0]);
+        scheduleRollover();
+      }, msUntilMidnight + 100);
+      return t;
+    }
+    const t = scheduleRollover();
+    return () => clearTimeout(t);
+  }, []);
+  return key;
+}
+
 const CONTEXT_OPTIONS = [
   { key: "smart-casual",          label: "Smart Casual" },
   { key: "hospital-smart-casual", label: "Clinic / Hospital" },
@@ -21,7 +40,8 @@ const CONTEXT_OPTIONS = [
   { key: "casual",                label: "Casual" },
   { key: "shift",                 label: "On-Call" },
 ];
-const GARMENT_PRIORITY = ["shoes","pants","shirt","sweater","jacket"];
+// Normalised to lowercase to match garment.type values (DB stores lowercase)
+const GARMENT_PRIORITY = ["shoes", "pants", "shirt", "sweater", "jacket", "coat"];
 
 function resizeImage(file, maxPx = 480) {
   return new Promise(resolve => {
@@ -77,26 +97,43 @@ function GarmentThumb({ g, selected, onClick, isDark }) {
 }
 
 export default function TodayPanel() {
+  const TODAY_ISO    = useTodayKey();
   const { mode }     = useThemeStore();
   const isDark       = mode === "dark";
   const garments     = useWardrobeStore(s => s.garments);
+  const updateGarment = useWardrobeStore(s => s.updateGarment);
   const watches      = useWatchStore(s => s.watches);
   const straps       = useStrapStore(s => s.straps);
   const activeStrap  = useStrapStore(s => s.activeStrap);
-  const addEntry     = useHistoryStore(s => s.addEntry);
+  const upsertEntry  = useHistoryStore(s => s.upsertEntry);
   const entries      = useHistoryStore(s => s.entries);
 
   // Today's already-logged entry (if any)
-  const todayEntry = useMemo(() => entries.find(e => e.date === TODAY_ISO), [entries]);
+  const todayEntry = useMemo(() => entries.find(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);
 
   const [selected, setSelected]   = useState(new Set(todayEntry?.garmentIds ?? []));
   const [watchId,  setWatchId]    = useState(todayEntry?.watchId  ?? watches[0]?.id ?? null);
   const [context,  setContext]    = useState(todayEntry?.context  ?? "smart-casual");
   const [notes,    setNotes]      = useState(todayEntry?.notes    ?? "");
-  const [extraImg, setExtraImg]   = useState(null); // outfit photo from camera
+  const [extraImgs, setExtraImgs] = useState(
+    todayEntry?.outfitPhotos ?? (todayEntry?.outfitPhoto ? [todayEntry.outfitPhoto] : [])
+  );
   const [logged,   setLogged]     = useState(!!todayEntry);
   const [filter,   setFilter]     = useState("all");
   const cameraRef = useRef();
+
+  // Sync form state when todayEntry hydrates from Supabase after initial render
+  const prevEntryId = useRef(todayEntry?.id);
+  useEffect(() => {
+    if (!todayEntry || todayEntry.id === prevEntryId.current) return;
+    prevEntryId.current = todayEntry.id;
+    setSelected(new Set(todayEntry.garmentIds ?? []));
+    setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
+    setContext(todayEntry.context ?? "smart-casual");
+    setNotes(todayEntry.notes ?? "");
+    setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
+    setLogged(true);
+  }, [todayEntry, watches]);
 
   const bg     = isDark ? "#101114" : "#f9fafb";
   const card   = isDark ? "#171a21" : "#ffffff";
@@ -110,11 +147,13 @@ export default function TodayPanel() {
   );
 
   const garmentTypes = useMemo(() => {
-    const types = new Set(activeGarments.map(g => g.type).filter(Boolean));
+    const types = new Set(activeGarments.map(g => (g.type ?? "").toLowerCase()).filter(Boolean));
     return ["all", ...GARMENT_PRIORITY.filter(t => types.has(t)), ...[...types].filter(t => !GARMENT_PRIORITY.includes(t))];
   }, [activeGarments]);
 
-  const visible = filter === "all" ? activeGarments : activeGarments.filter(g => g.type === filter);
+  const visible = filter === "all"
+    ? activeGarments
+    : activeGarments.filter(g => (g.type ?? "").toLowerCase() === filter);
 
   const selectedWatch = watches.find(w => w.id === watchId);
   const watchStraps   = Object.values(straps).filter(s => s.watchId === watchId);
@@ -128,17 +167,19 @@ export default function TodayPanel() {
   });
 
   const handleCamera = useCallback(async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const thumb = await resizeImage(f, 600);
-    setExtraImg(thumb);
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const thumbs = await Promise.all(files.map(f => resizeImage(f, 600)));
+    setExtraImgs(prev => [...prev, ...thumbs]);
     e.target.value = "";
   }, []);
 
   const handleLog = useCallback(async () => {
     if (!watchId) return;
+    // Preserve ID from existing entry so upsert hits the same DB row
+    const entryId = todayEntry?.id ?? `today-${Date.now()}`;
     const entry = {
-      id: `today-${Date.now()}`,
+      id: entryId,
       date: TODAY_ISO,
       watchId,
       strapId: activeStrapId ?? null,
@@ -146,18 +187,26 @@ export default function TodayPanel() {
       garmentIds: [...selected],
       context,
       notes: notes.trim() || null,
-      outfitPhoto: extraImg ?? null,
+      outfitPhoto: extraImgs[0] ?? null,
+      outfitPhotos: extraImgs.length ? extraImgs : null,
       loggedAt: new Date().toISOString(),
     };
-    addEntry(entry);
-    // Style learning — record worn garments in preference profile
+    upsertEntry(entry);
+
+    // Update lastWorn on each worn garment
+    const wornIds = [...selected];
+    wornIds.forEach(id => updateGarment(id, { lastWorn: TODAY_ISO }));
+
+    // Style learning
     try {
       const { usePrefStore } = await import("../stores/prefStore.js");
       const wornG = garments.filter(g => selected.has(g.id));
       usePrefStore.getState().recordWear(wornG);
     } catch(_) {}
+
     setLogged(true);
-  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImg, addEntry, garments]);
+  }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImgs,
+      upsertEntry, updateGarment, garments, todayEntry, TODAY_ISO]);
 
   // ── Summary card when already logged ────────────────────────────────────────
   if (logged && todayEntry) {
@@ -199,9 +248,15 @@ export default function TodayPanel() {
             </div>
           )}
 
-          {todayEntry.outfitPhoto && (
-            <img src={todayEntry.outfitPhoto} alt="outfit"
-              style={{ width: "100%", borderRadius: 10, marginTop: 12, objectFit: "cover", maxHeight: 300 }} />
+          {(todayEntry.outfitPhotos?.length || todayEntry.outfitPhoto) && (
+            <div style={{ marginTop: 12, display: "grid",
+                          gridTemplateColumns: (todayEntry.outfitPhotos?.length ?? 1) > 1 ? "repeat(2, 1fr)" : "1fr",
+                          gap: 6 }}>
+              {(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : [])).map((src, i) => (
+                <img key={i} src={src} alt={`outfit ${i + 1}`}
+                  style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 300, display: "block" }} />
+              ))}
+            </div>
           )}
 
           {todayEntry.notes && (
@@ -209,9 +264,19 @@ export default function TodayPanel() {
           )}
         </div>
 
-        <SelfiePanel context={todayEntry?.context ?? "smart-casual"} />
+        <SelfiePanel context={todayEntry?.context ?? "smart-casual"} watchId={todayEntry?.watchId ?? null} />
 
-        <button onClick={() => setLogged(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 10,
+        <button onClick={() => {
+          // Reload form state from the logged entry before switching to edit mode
+          if (todayEntry) {
+            setSelected(new Set(todayEntry.garmentIds ?? []));
+            setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
+            setContext(todayEntry.context ?? "smart-casual");
+            setNotes(todayEntry.notes ?? "");
+            setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
+          }
+          setLogged(false);
+        }} style={{ width: "100%", padding: "12px 0", borderRadius: 10,
           border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 13, cursor: "pointer" }}>
           Edit today's log
         </button>
@@ -318,13 +383,15 @@ export default function TodayPanel() {
       {/* Outfit photo */}
       <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase",
-                      letterSpacing: "0.06em", marginBottom: 10 }}>Outfit Photo (optional)</div>
-        <div style={{ display: "flex", gap: 8 }}>
+                      letterSpacing: "0.06em", marginBottom: 10 }}>
+          Outfit Photos (optional){extraImgs.length > 0 && <span style={{ color: "#3b82f6", marginLeft: 6 }}>{extraImgs.length}</span>}
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: extraImgs.length ? 10 : 0 }}>
           <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px dashed ${border}`,
                           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                           cursor: "pointer", color: muted, fontSize: 13 }}>
             📁 Gallery
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleCamera} />
+            <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleCamera} />
           </label>
           <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px dashed ${border}`,
                           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -333,12 +400,19 @@ export default function TodayPanel() {
             <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleCamera} />
           </label>
         </div>
-        {extraImg && (
-          <div style={{ marginTop: 10, position: "relative" }}>
-            <img src={extraImg} alt="outfit" style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 260 }} />
-            <button onClick={() => setExtraImg(null)}
-              style={{ position: "absolute", top: 6, right: 6, background: "#ef4444", color: "#fff",
-                       border: "none", borderRadius: "50%", width: 24, height: 24, fontSize: 13, cursor: "pointer" }}>×</button>
+        {extraImgs.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+            {extraImgs.map((src, i) => (
+              <div key={i} style={{ position: "relative", borderRadius: 8, overflow: "hidden", aspectRatio: "1/1" }}>
+                <img src={src} alt={`outfit ${i + 1}`}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <button onClick={() => setExtraImgs(prev => prev.filter((_, j) => j !== i))}
+                  style={{ position: "absolute", top: 4, right: 4, background: "#ef4444", color: "#fff",
+                           border: "none", borderRadius: "50%", width: 20, height: 20,
+                           fontSize: 11, cursor: "pointer", lineHeight: 1, display: "flex",
+                           alignItems: "center", justifyContent: "center" }}>×</button>
+              </div>
+            ))}
           </div>
         )}
       </div>

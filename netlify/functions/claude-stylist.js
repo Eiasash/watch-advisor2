@@ -1,3 +1,4 @@
+import { callClaude } from "./_claudeClient.js";
 /**
  * Netlify serverless function — Claude AI Stylist.
  * Validates/improves the engine's outfit pick around the selected watch.
@@ -118,26 +119,12 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
   "explanation": "<2-3 sentences: why these pieces work with the specific watch, dial color, and context. Be direct and specific — mention the dial color, strap, and any formality trade-offs.>"
 }`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
+    const data = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 600,
         messages: [{ role: "user", content: prompt }],
-      }),
-    });
+      });
 
-
-    if (!response.ok) {
-      const err = await response.text();
-      return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
-    }
-    const data = await response.json();
     const text = data?.content?.[0]?.text ?? "";
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -155,8 +142,9 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
       body: JSON.stringify({ shirt: null, pants: null, shoes: null, jacket: null, explanation: text }),
     };
   } catch (err) {
+    const isClaudeError = err.message?.startsWith("Claude API error");
     return {
-      statusCode: 500,
+      statusCode: isClaudeError ? 502 : 500,
       headers: { "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({ error: err.message }),
     };
