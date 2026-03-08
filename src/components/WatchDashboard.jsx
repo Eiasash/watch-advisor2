@@ -141,6 +141,7 @@ export default function WatchDashboard() {
   const [watchRecLoading, setWatchRecLoading] = useState(false);
   const [watchRecResult, setWatchRecResult] = useState(null);
   const [outfitLogged, setOutfitLogged] = useState(false);
+  const [overrideOutfit, setOverrideOutfit] = useState(null);
 
   useEffect(() => {
     if (!activeWatch && watches.length > 0) {
@@ -155,6 +156,12 @@ export default function WatchDashboard() {
   }, []);
 
   const selectedWatch = activeWatch ?? watches[0] ?? null;
+
+  // Clear AI override outfit when watch changes
+  useEffect(() => {
+    setOverrideOutfit(null);
+    setAiSuggestion(null);
+  }, [selectedWatch?.id]);
 
   // Enrich watch with the ACTIVE strap — overrides static seed value
   // All engine consumers (buildOutfit, generateOutfit, explainOutfitChoice, getAISuggestion)
@@ -181,10 +188,13 @@ export default function WatchDashboard() {
     return generateOutfit(enrichedWatch, garments, weatherObj, {}, history);
   }, [enrichedWatch, garments, weatherObj, history]); // buildOutfit/generateOutfit filter accessories internally
 
+  // When AI suggestion is applied, show it; otherwise show engine outfit
+  const displayOutfit = overrideOutfit ?? outfit;
+
   const explanation = useMemo(() => {
     if (!enrichedWatch) return "";
-    return explainOutfitChoice(enrichedWatch, outfit, weather);
-  }, [enrichedWatch, outfit, weather]);
+    return explainOutfitChoice(enrichedWatch, displayOutfit, weather);
+  }, [enrichedWatch, displayOutfit, weather]);
 
   const weatherText = formatWeatherText(weather);
   const layerRec = weather ? getLayerRecommendation(weather.tempC) : null;
@@ -289,8 +299,8 @@ export default function WatchDashboard() {
             <WatchCard watch={selectedWatch} label="Selected" accent="#3b82f6" isDark={isDark} />
           </div>
 
-          <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Outfit built around this watch
+          <div style={{ fontSize: 13, color: overrideOutfit ? "#8b5cf6" : "#6b7280", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            {overrideOutfit ? "AI Stylist outfit" : "Outfit built around this watch"}
           </div>
           <style>{`
             .wa-outfit-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:16px; }
@@ -298,19 +308,32 @@ export default function WatchDashboard() {
           `}</style>
           <div className="wa-outfit-grid">
             {["shirt", "sweater", "pants", "shoes", "jacket"].map(slot => {
-              if (slot === "sweater" && !outfit.sweater) return null;
-              return <OutfitSlot key={slot} slot={slot} garment={outfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />;
+              if (slot === "sweater" && !displayOutfit.sweater) return null;
+              return <OutfitSlot key={slot} slot={slot} garment={displayOutfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />;
             })}
           </div>
+          {overrideOutfit && (
+            <button
+              onClick={() => setOverrideOutfit(null)}
+              style={{
+                width: "100%", marginBottom: 8, padding: "6px 0", borderRadius: 6,
+                border: `1px solid ${isDark ? "#4b5563" : "#d1d5db"}`,
+                background: "transparent", color: isDark ? "#8b93a7" : "#6b7280",
+                fontSize: 11, cursor: "pointer",
+              }}
+            >
+              ↩ Back to engine outfit
+            </button>
+          )}
 
           <button
             onClick={() => {
               const slots = ["shirt","sweater","pants","shoes","jacket"];
-              const garmentIds = slots.map(s => outfit[s]?.id).filter(Boolean);
+              const garmentIds = slots.map(s => displayOutfit[s]?.id).filter(Boolean);
               if (garmentIds.length === 0) return;
               // Store slot→id map so diversityBonus + rejectStore can reference it
               const outfitMap = {};
-              for (const s of slots) { if (outfit[s]?.id) outfitMap[s] = outfit[s].id; }
+              for (const s of slots) { if (displayOutfit[s]?.id) outfitMap[s] = displayOutfit[s].id; }
               const addEntry = useHistoryStore.getState().addEntry;
               addEntry({
                 id: `dash-${Date.now()}`,
@@ -408,6 +431,28 @@ export default function WatchDashboard() {
                   );
                 })}
               </div>
+              <button
+                onClick={() => {
+                  const built = {};
+                  for (const slot of ["shirt", "pants", "shoes", "jacket"]) {
+                    const gName = aiSuggestion[slot];
+                    if (gName) {
+                      const g = garments.find(x => x.name === gName);
+                      if (g) built[slot] = g;
+                    }
+                  }
+                  // Preserve sweater from engine outfit if present
+                  if (outfit.sweater) built.sweater = outfit.sweater;
+                  if (Object.keys(built).length > 0) setOverrideOutfit(built);
+                }}
+                style={{
+                  width: "100%", marginTop: 10, padding: "8px 0", borderRadius: 7,
+                  border: "none", background: "#8b5cf6", color: "#fff",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                Apply This Outfit
+              </button>
             </div>
           )}
         </>
@@ -423,9 +468,9 @@ export default function WatchDashboard() {
             try {
               // Use the current engine-built outfit, not all garments
               const recOutfit = {
-                layers: [outfit.shirt, outfit.sweater].filter(Boolean),
-                bottom: outfit.pants ?? null,
-                shoes:  outfit.shoes ?? null,
+                layers: [displayOutfit.shirt, displayOutfit.sweater].filter(Boolean),
+                bottom: displayOutfit.pants ?? null,
+                shoes:  displayOutfit.shoes ?? null,
               };
               const res = await fetch("/.netlify/functions/watch-rec", {
                 method: "POST",
@@ -462,7 +507,7 @@ export default function WatchDashboard() {
           <button onClick={() => {
             if (!selectedWatch) return;
             const garmentIds = ["shirt","sweater","pants","shoes","jacket"]
-              .map(s => outfit[s]?.id).filter(Boolean);
+              .map(s => displayOutfit[s]?.id).filter(Boolean);
             if (garmentIds.length === 0) return;
             addRejection(selectedWatch.id, garmentIds, "smart-casual");
           }}
