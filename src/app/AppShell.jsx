@@ -18,6 +18,7 @@ import OccasionPanel  from "../components/OccasionPanel.jsx";
 import OccasionPlanner from "../components/OccasionPlanner.jsx";
 import SelfiePanel    from "../components/SelfiePanel.jsx";
 import WatchIDPanel   from "../components/WatchIDPanel.jsx";
+import OutfitHistory  from "../components/OutfitHistory.jsx";
 import CommandPalette from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
@@ -28,6 +29,7 @@ const TABS = [
   { key:"wardrobe", label:"Wardrobe", icon:"👔" },
   { key:"rotation", label:"Rotation", icon:"⌚" },
   { key:"stats",    label:"Stats",    icon:"📊" },
+  { key:"history",  label:"History",  icon:"📅" },
   { key:"audit",    label:"Audit",    icon:"🔍" },
   { key:"occasion", label:"Plan",     icon:"✨" },
   { key:"selfie",   label:"Check",    icon:"📸" },
@@ -164,6 +166,9 @@ function AppContent() {
               <WeekPlanner />
             </Suspense>
           )}
+
+          {/* History tab */}
+          {tab === "history" && <OutfitHistory />}
 
           {/* Audit tab */}
           {tab === "audit" && <><AuditPanel /><PhotoVerifierPanel /></>}

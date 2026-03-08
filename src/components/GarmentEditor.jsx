@@ -8,11 +8,14 @@ import { useThemeStore } from "../stores/themeStore.js";
 
 const CATEGORIES = [
   "shirt","pants","shoes","jacket","sweater",
-  "belt","sunglasses","hat","scarf","bag","accessory",
+  "belt","sunglasses","hat","scarf","bag","accessory","outfit-photo",
 ];
 const COLORS = [
   "black","white","navy","blue","grey","brown","tan","beige",
   "olive","green","red","burgundy","cream","orange","yellow","purple","pink",
+  "charcoal","khaki","teal","camel","rust","maroon","ivory","slate",
+  "mint","lavender","sage","wine","taupe","cognac","sand","denim",
+  "coral","dark brown","light blue","multicolor",
 ];
 const FORMALITY_LABELS = {
   1:"Very casual",2:"Casual",3:"Relaxed",4:"Smart casual light",5:"Smart casual",

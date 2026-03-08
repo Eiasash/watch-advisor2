@@ -190,7 +190,7 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
             alt={item.name}
             loading="lazy"
             decoding="async"
-            onClick={e => { e.stopPropagation(); if (!selectMode) onLightbox(item); }}
+            onClick={e => { if (selectMode) return; e.stopPropagation(); onLightbox(item); }}
             style={{ width:"100%", height:145, objectFit:"cover", display:"block", flexShrink:0 }}
           />
         ) : (
