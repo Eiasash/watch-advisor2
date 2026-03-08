@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
 import { pushGarment, deleteGarment, deleteStoragePhoto, uploadAngle } from "../services/supabaseSync.js";
@@ -164,7 +164,6 @@ export default function GarmentEditor({ garment, onClose }) {
   const isDark        = mode === "dark";
 
   // ── Form state ──────────────────────────────────────────────────────────────
-  const [name,       setName]       = useState(garment.name       ?? "");
   const [typeRaw,    setTypeRaw]    = useState(garment.type       ?? garment.category ?? "shirt");
   const [color,      setColor]      = useState(garment.color      ?? "grey");
   const [color2,     setColor2]     = useState(garment.accentColor ?? "");
@@ -176,6 +175,32 @@ export default function GarmentEditor({ garment, onClose }) {
   const [seasons,    setSeasons]    = useState(garment.seasons    ?? []);
   const [contexts,   setContexts]   = useState(garment.contexts   ?? []);
   const [angleIdx,   setAngleIdx]   = useState(0);
+
+  // Auto-name: compute from params, track if user has manually overridden it
+  function buildAutoName(t, c, p, b) {
+    const parts = [];
+    if (c && c !== "multicolor") parts.push(c.charAt(0).toUpperCase() + c.slice(1));
+    if (p && p !== "solid") parts.push(p.charAt(0).toUpperCase() + p.slice(1));
+    parts.push(t.charAt(0).toUpperCase() + t.slice(1));
+    if (b) parts.push(`(${b})`);
+    return parts.join(" ");
+  }
+  const initAuto = buildAutoName(
+    garment.type ?? garment.category ?? "shirt",
+    garment.color ?? "grey",
+    garment.pattern ?? "solid",
+    garment.brand ?? ""
+  );
+  const [name,         setName]         = useState(garment.name ?? initAuto);
+  const [nameManual,   setNameManual]   = useState(
+    !!garment.name && garment.name !== initAuto
+  );
+
+  // Keep name in sync when params change, unless user has manually edited it
+  useEffect(() => {
+    if (nameManual) return;
+    setName(buildAutoName(typeRaw, color, pattern, brand));
+  }, [typeRaw, color, pattern, brand, nameManual]);
 
   const [aiChecking, setAiChecking] = useState(false);
   const [aiResult,   setAiResult]   = useState(null);
@@ -355,8 +380,32 @@ export default function GarmentEditor({ garment, onClose }) {
 
           {/* Name */}
           <Section label="Name">
-            <input value={name} onChange={e => setName(e.target.value)} style={inp}
-              placeholder="e.g. Navy Cable Knit Crewneck" />
+            <div style={{ position:"relative" }}>
+              <input
+                value={name}
+                onChange={e => { setName(e.target.value); setNameManual(true); }}
+                style={{ ...inp, paddingRight: nameManual ? 70 : 10 }}
+                placeholder="e.g. Navy Cable Knit Crewneck"
+              />
+              {nameManual && (
+                <button
+                  onClick={() => { setNameManual(false); setName(buildAutoName(typeRaw, color, pattern, brand)); }}
+                  title="Reset to auto-generated name"
+                  style={{
+                    position:"absolute", right:6, top:"50%", transform:"translateY(-50%)",
+                    background:"#1d4ed822", border:"1px solid #3b82f644", borderRadius:6,
+                    color:"#60a5fa", fontSize:10, fontWeight:700, padding:"3px 7px",
+                    cursor:"pointer", whiteSpace:"nowrap",
+                  }}>
+                  ↺ Auto
+                </button>
+              )}
+            </div>
+            {!nameManual && (
+              <div style={{ fontSize:10, color: isDark?"#4b5563":"#9ca3af", marginTop:3 }}>
+                Auto-generated · type to override
+              </div>
+            )}
           </Section>
 
           {/* Type */}
