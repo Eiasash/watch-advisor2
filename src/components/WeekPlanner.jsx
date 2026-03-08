@@ -430,7 +430,7 @@ export default function WeekPlanner() {
       for (let round = 0; round <= shuffleSeed; round++) {
         const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory);
         const hasItems = Object.values(adv).some(Boolean);
-        outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, {}, iterHistory);
+        outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, { context: day.ctx }, iterHistory);
         if (round < shuffleSeed) {
           // Poison this round's picks so next iteration picks runner-up
           for (const slot of OUTFIT_SLOTS) {

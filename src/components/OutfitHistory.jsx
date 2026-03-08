@@ -5,9 +5,10 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 
 export default function OutfitHistory() {
-  const entries  = useHistoryStore(s => s.entries);
-  const watches  = useWatchStore(s => s.watches);
-  const garments = useWardrobeStore(s => s.garments);
+  const entries      = useHistoryStore(s => s.entries);
+  const removeEntry  = useHistoryStore(s => s.removeEntry);
+  const watches      = useWatchStore(s => s.watches);
+  const garments     = useWardrobeStore(s => s.garments);
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
 
@@ -84,6 +85,12 @@ export default function OutfitHistory() {
                   {entry.context}
                 </span>
               )}
+              <button
+                onClick={() => { if (window.confirm(`Delete log for ${dayName}?`)) removeEntry(entry.id); }}
+                style={{ marginLeft: "auto", background: "none", border: "none",
+                         color: isDark ? "#4b5563" : "#d1d5db", fontSize: 16,
+                         cursor: "pointer", padding: "2px 6px", lineHeight: 1 }}
+                title="Delete this log">✕</button>
             </div>
 
             {/* Watch */}
