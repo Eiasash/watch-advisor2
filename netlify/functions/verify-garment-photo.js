@@ -121,6 +121,7 @@ Rules:
       body: JSON.stringify({ garmentId, ...parsed }),
     };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    const isClaudeError = err.message?.startsWith("Claude API error");
+    return { statusCode: isClaudeError ? 502 : 500, body: JSON.stringify({ error: err.message }) };
   }
 }

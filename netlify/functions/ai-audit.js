@@ -37,6 +37,7 @@ export async function handler(event) {
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify(parsed) };
   } catch (e) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: String(e.message ?? e) }) };
+    const isClaudeError = String(e.message ?? e).startsWith("Claude API error");
+    return { statusCode: isClaudeError ? 502 : 500, headers: CORS, body: JSON.stringify({ error: String(e.message ?? e) }) };
   }
 }

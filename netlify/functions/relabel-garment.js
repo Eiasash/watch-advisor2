@@ -82,8 +82,9 @@ Respond ONLY with valid JSON, no markdown:
       body: JSON.stringify(result),
     };
   } catch (err) {
+    const isClaudeError = err.message?.startsWith("Claude API error");
     return {
-      statusCode: 500,
+      statusCode: isClaudeError ? 502 : 500,
       headers: { "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({ error: err.message }),
     };
