@@ -26,7 +26,7 @@ import { useStrapStore } from "../stores/strapStore.js";
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = []) {
-  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null };
+  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null };
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today
   const activeStrapObj = useStrapStore.getState().getActiveStrap?.(watch.id);
@@ -67,10 +67,12 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     outfit[slotName] = scored[0].garment;
   }
 
-  // Sweater layer — separate from shirt, added when cold
+  // ── Multilayer logic ────────────────────────────────────────────────────────
+  // sweater: primary mid-layer (temp < 22°C)
+  // layer:   second mid-layer  (temp < 12°C) — e.g. vest, cardigan, hoodie
   outfit.sweater = null;
+  outfit.layer   = null;
 
-  // Sweater layer — pick best sweater when cold
   {
     const temp = weather?.tempC ?? 22;
     if (temp < 22) {
@@ -84,6 +86,11 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
         });
         scored.sort((a, b) => b.score - a.score);
         outfit.sweater = scored[0].garment;
+
+        // Second layer — pick a different sweater/knitwear item when very cold
+        if (temp < 12 && scored.length >= 2) {
+          outfit.layer = scored[1].garment;
+        }
       }
     }
   }
@@ -140,6 +147,8 @@ export function explainOutfitChoice(watch, outfit, weather) {
   ];
 
   if (outfit.shirt) parts.push(`${outfit.shirt.name} (${outfit.shirt.color}) pairs with the ${watch.dial} dial.`);
+  if (outfit.sweater) parts.push(`${outfit.sweater.name} layered for warmth.`);
+  if (outfit.layer) parts.push(`${outfit.layer.name} as second layer for extra warmth.`);
   if (outfit.pants) parts.push(`${outfit.pants.name} complements the formality level.`);
   if (outfit.shoes) parts.push(`${outfit.shoes.name} ground the outfit.`);
   if (outfit.jacket && weather?.tempC != null) {

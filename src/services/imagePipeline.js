@@ -70,11 +70,17 @@ async function processViaCanvas(file) {
   const img = await loadImage(dataURL);
   console.log("[pipeline] Canvas draw start:", file.name, img.naturalWidth, "x", img.naturalHeight);
 
-  // Thumbnail 240×240
+  // Thumbnail 240×240 (for display)
   const tc = document.createElement("canvas");
   tc.width = 240; tc.height = 240;
   tc.getContext("2d").drawImage(img, 0, 0, 240, 240);
   const thumbnail = tc.toDataURL("image/jpeg", 0.82);
+
+  // Hi-res 512×512 (for AI classification — better color/detail detection)
+  const hrc = document.createElement("canvas");
+  hrc.width = 512; hrc.height = 512;
+  hrc.getContext("2d").drawImage(img, 0, 0, 512, 512);
+  const hiRes = hrc.toDataURL("image/jpeg", 0.88);
 
   // dHash 8×8
   const hc = document.createElement("canvas");
@@ -87,8 +93,8 @@ async function processViaCanvas(file) {
     for (let x = 0; x < 8; x++)
       hash += px[(y * 9 + x) * 4] > px[(y * 9 + x + 1) * 4] ? "1" : "0";
 
-  console.log("[pipeline] done:", file.name, "thumb len:", thumbnail.length, "hash:", hash);
-  return { thumbnail, hash };
+  console.log("[pipeline] done:", file.name, "thumb len:", thumbnail.length, "hiRes len:", hiRes.length, "hash:", hash);
+  return { thumbnail, hiRes, hash };
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

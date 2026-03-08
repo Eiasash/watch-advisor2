@@ -65,7 +65,7 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
 }
 
 function OutfitSlot({ slot, garment, isDark, onSelect }) {
-  const ICONS = { shirt: "\u{1F454}", sweater: "\u{1FAA2}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
+  const ICONS = { shirt: "\u{1F454}", sweater: "\u{1FAA2}", layer: "\u{1F9E3}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
   const border = isDark ? "#2b3140" : "#d1d5db";
   const photo = garment?.thumbnail || garment?.photoUrl;
 
@@ -307,8 +307,8 @@ export default function WatchDashboard() {
             @media (max-width:400px) { .wa-outfit-grid { grid-template-columns:1fr; } }
           `}</style>
           <div className="wa-outfit-grid">
-            {["shirt", "sweater", "pants", "shoes", "jacket"].map(slot => {
-              if (slot === "sweater" && !displayOutfit.sweater) return null;
+            {["shirt", "sweater", "layer", "pants", "shoes", "jacket"].map(slot => {
+              if ((slot === "sweater" || slot === "layer") && !displayOutfit[slot]) return null;
               return <OutfitSlot key={slot} slot={slot} garment={displayOutfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />;
             })}
           </div>
@@ -328,7 +328,7 @@ export default function WatchDashboard() {
 
           <button
             onClick={() => {
-              const slots = ["shirt","sweater","pants","shoes","jacket"];
+              const slots = ["shirt","sweater","layer","pants","shoes","jacket"];
               const garmentIds = slots.map(s => displayOutfit[s]?.id).filter(Boolean);
               if (garmentIds.length === 0) return;
               // Store slot→id map so diversityBonus + rejectStore can reference it
@@ -468,7 +468,7 @@ export default function WatchDashboard() {
             try {
               // Use the current engine-built outfit, not all garments
               const recOutfit = {
-                layers: [displayOutfit.shirt, displayOutfit.sweater].filter(Boolean),
+                layers: [displayOutfit.shirt, displayOutfit.sweater, displayOutfit.layer].filter(Boolean),
                 bottom: displayOutfit.pants ?? null,
                 shoes:  displayOutfit.shoes ?? null,
               };
@@ -506,7 +506,7 @@ export default function WatchDashboard() {
           {/* Reject current suggestion */}
           <button onClick={() => {
             if (!selectedWatch) return;
-            const garmentIds = ["shirt","sweater","pants","shoes","jacket"]
+            const garmentIds = ["shirt","sweater","layer","pants","shoes","jacket"]
               .map(s => displayOutfit[s]?.id).filter(Boolean);
             if (garmentIds.length === 0) return;
             addRejection(selectedWatch.id, garmentIds, "smart-casual");

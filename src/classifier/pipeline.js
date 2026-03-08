@@ -49,8 +49,8 @@ export async function runClassifierPipeline(file, existingGarments = []) {
 
   const id = `g_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-  // Step 1: Process image (thumbnail + hash)
-  const { thumbnail, hash } = await processImage(file);
+  // Step 1: Process image (thumbnail + hiRes + hash)
+  const { thumbnail, hiRes, hash } = await processImage(file);
 
   // Step 2: Run pixel classifier
   const tags = await classify(file.name, thumbnail, hash, existingGarments);
@@ -72,10 +72,12 @@ export async function runClassifierPipeline(file, existingGarments = []) {
   }
 
   // Step 4: Claude Vision fallback when confidence is low
+  // Uses hi-res 512×512 image for better AI color/detail detection
   if (tags._typeSource === "ambiguous" || tags._typeSource === "blind") {
-    console.log("[pipeline] low confidence — trying Claude Vision fallback");
-    if (thumbnail) {
-      const base64 = thumbnail.replace(/^data:image\/[^;]+;base64,/, "");
+    console.log("[pipeline] low confidence — trying Claude Vision fallback (512px)");
+    const aiImage = hiRes ?? thumbnail;
+    if (aiImage) {
+      const base64 = aiImage.replace(/^data:image\/[^;]+;base64,/, "");
       const vision = await claudeVisionFallback(base64);
       if (vision?.type) {
         tags.type = normalizeType(vision.type);
