@@ -124,7 +124,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **939+ tests across 47+ files** — run `npm test` to see current count
+- **1087+ tests across 57+ files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -136,17 +136,20 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (47 files)
+### Test file inventory (57 files)
 ```
 tests/
   additionalStores.test.js   rejectStore, styleLearnStore, prefStore, themeStore
   aiDupeDetection.test.js    AI duplicate detection function
   auditPanel.test.js         AuditPanel component
   backgroundQueue.test.js    IDB task queue
+  backgroundQueueEdge.test.js  FIFO ordering, failure isolation, retry, no-handler
   backupService.test.js      backup service
   blobCache.test.js          Netlify Blobs cache
+  bootstrap.test.js          boot sequence data wipe guard + blob cleanup + state restore
   calendarWatchRotation.test.js  calendar-aware watch selection
   classifier.test.js         pixel classifier
+  classifierBoundary.test.js  pants total/topF boundaries, flat-lay zoneSpread/botF, shoes terminal
   classifierPipeline.test.js master import pipeline
   claudeStylist.test.js      AI stylist function
   colorDetection.test.js     color extraction
@@ -158,8 +161,12 @@ tests/
   getWeather.test.js         weather API
   imagePipeline.test.js      thumbnail + dHash pipeline
   importPipeline.test.js     import panel logic
+  integrationImportFlow.test.js   classify → normalize → store → sync chain
+  integrationOutfitGeneration.test.js  dayProfile → pickWatch → scoreGarment end-to-end
+  integrationRejectRelearn.test.js    reject → isRejected → styleLearn → preferenceMultiplier
   isOutfitPhoto.test.js      outfit photo detection
   localCache.test.js         IndexedDB cache
+  localCacheEdge.test.js     IDB error resilience, corrupt data, concurrent writes
   netlifyfunctions.test.js   Netlify function handlers (1)
   netlifyfunctions2.test.js  Netlify function handlers (2)
   normalizeType.test.js      type normalization
@@ -172,10 +179,13 @@ tests/
   scoring.test.js            garment scoring
   stores.test.js             wardrobeStore, watchStore, historyStore
   strapStore.test.js         strap store
-  supabaseSync.test.js       Supabase sync
+  supabaseSync.test.js       Supabase sync (pull, push)
+  supabaseSyncCrud.test.js   uploadPhoto, deleteGarment, fuzzy/semantic search, subscribeSyncState
   wardrobeInsights.test.js   wardrobe insights
+  wardrobeStoreActions.test.js  setGarments, setWeekCtx, setOnCallDates, navigation, select mode
   watchRotationEngine.test.js  pickWatch, pickWatchPair
   watchSeed.test.js          watch seed validation
+  watchStore.test.js         setWatches, setActiveWatch
   watchStyles.test.js        watch styles
   weatherRules.test.js       weather rules
   weatherService.test.js     weather service
@@ -234,9 +244,9 @@ tests/
 |--------|-------|
 | Source files | 68 |
 | Source LOC | ~10,200 |
-| Test files | 47 |
-| Test LOC | ~7,300 |
-| Tests | 939+ |
+| Test files | 57 |
+| Test LOC | ~8,800 |
+| Tests | 1087+ |
 | Test pass rate | 100% |
 | Netlify functions | 14 |
 | Components | 23 JSX |
