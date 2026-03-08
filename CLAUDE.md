@@ -124,7 +124,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **932+ tests across 47+ files** — run `npm test` to see current count
+- **939+ tests across 47+ files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -236,7 +236,7 @@ tests/
 | Source LOC | ~10,200 |
 | Test files | 47 |
 | Test LOC | ~7,300 |
-| Tests | 932+ |
+| Tests | 939+ |
 | Test pass rate | 100% |
 | Netlify functions | 14 |
 | Components | 23 JSX |
@@ -259,7 +259,7 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (932+ tests)
+- `npm test` → vitest (939+ tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`

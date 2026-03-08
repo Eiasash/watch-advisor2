@@ -5,6 +5,7 @@ import { useHistoryStore } from "../stores/historyStore.js";
 import { useStrapStore }   from "../stores/strapStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
+import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 import { generateOutfit } from "../engine/outfitEngine.js";
 import { setCachedState } from "../services/localCache.js";
 import { fetchWeatherForecast, getLayerRecommendation } from "../weather/weatherService.js";
@@ -57,11 +58,52 @@ function WatchMini({ watch, label, isDark, isOnCall }) {
   );
 }
 
-// ── Outfit Slot Chip — tap to swap garment ──────────────────────────────────
+// ── Photo Lightbox — full-screen zoom on tap ────────────────────────────────
+function PhotoLightbox({ src, alt, onClose }) {
+  if (!src) return null;
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.88)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 16, cursor: "zoom-out",
+      }}
+    >
+      <img
+        src={src}
+        alt={alt ?? ""}
+        style={{
+          maxWidth: "92vw", maxHeight: "85vh",
+          borderRadius: 12, objectFit: "contain",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+        }}
+      />
+      <div style={{
+        position: "absolute", top: 16, right: 20,
+        color: "#fff", fontSize: 28, fontWeight: 300,
+        cursor: "pointer", lineHeight: 1,
+        padding: "4px 10px",
+      }}>{"\u00D7"}</div>
+      {alt && (
+        <div style={{
+          position: "absolute", bottom: 24, left: 0, right: 0, textAlign: "center",
+          color: "#e2e8f0", fontSize: 14, fontWeight: 600,
+          textShadow: "0 1px 4px rgba(0,0,0,0.7)",
+        }}>{alt}</div>
+      )}
+    </div>
+  );
+}
+
+// ── Outfit Slot Chip — tap to swap garment, long-press photo to zoom ────────
 function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates }) {
   const [open, setOpen] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
   const icon = SLOT_ICONS[slot] ?? "\u2022";
   const sub = isDark ? "#6b7280" : "#9ca3af";
+  const photo = garment?.thumbnail || garment?.photoUrl;
 
   return (
     <div style={{ position: "relative" }}>
@@ -76,8 +118,13 @@ function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates }) {
           minHeight: 36,
         }}
       >
-        {garment?.thumbnail ? (
-          <img src={garment.thumbnail} alt="" style={{ width: 28, height: 28, borderRadius: 5, objectFit: "cover" }} />
+        {photo ? (
+          <img
+            src={photo}
+            alt={garment.name ?? ""}
+            onClick={e => { e.stopPropagation(); setLightbox({ src: photo, alt: `${garment.color ?? ""} ${garment.type ?? ""}`.trim() }); }}
+            style={{ width: 28, height: 28, borderRadius: 5, objectFit: "cover", cursor: "zoom-in" }}
+          />
         ) : (
           <span style={{ fontSize: 16, width: 28, textAlign: "center" }}>{icon}</span>
         )}
@@ -105,33 +152,42 @@ function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates }) {
           border: `1px solid ${border}`, borderRadius: 8,
           boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
         }}>
-          {candidates.map(c => (
-            <div key={c.id}
-              onClick={() => { onSwap(slot, c); setOpen(false); }}
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "6px 10px", cursor: "pointer",
-                background: c.id === garment?.id ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
-                borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
-              }}
-            >
-              {c.thumbnail ? (
-                <img src={c.thumbnail} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
-              ) : (
-                <span style={{ fontSize: 14, width: 24, textAlign: "center" }}>{icon}</span>
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1f2937",
-                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {c.color} {c.type}
+          {candidates.map(c => {
+            const cPhoto = c.thumbnail || c.photoUrl;
+            return (
+              <div key={c.id}
+                onClick={() => { onSwap(slot, c); setOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "6px 10px", cursor: "pointer",
+                  background: c.id === garment?.id ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
+                  borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+                }}
+              >
+                {cPhoto ? (
+                  <img
+                    src={cPhoto}
+                    alt={c.name ?? ""}
+                    onClick={e => { e.stopPropagation(); setLightbox({ src: cPhoto, alt: `${c.color ?? ""} ${c.type ?? ""}`.trim() }); }}
+                    style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover", cursor: "zoom-in" }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 14, width: 24, textAlign: "center" }}>{icon}</span>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1f2937",
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {c.color} {c.type}
+                  </div>
+                  {c.brand && <div style={{ fontSize: 10, color: sub }}>{c.brand}</div>}
                 </div>
-                {c.brand && <div style={{ fontSize: 10, color: sub }}>{c.brand}</div>}
+                {c.id === garment?.id && <span style={{ color: "#3b82f6", fontWeight: 700, fontSize: 12 }}>{"\u2713"}</span>}
               </div>
-              {c.id === garment?.id && <span style={{ color: "#3b82f6", fontWeight: 700, fontSize: 12 }}>{"\u2713"}</span>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+      {lightbox && <PhotoLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
     </div>
   );
 }
@@ -255,6 +311,8 @@ export default function WeekPlanner() {
   const [showOutfits, setShowOutfits]   = useState(true);
   const [watchOverrides, setWatchOverrides] = useState({});
   const [strapOverrides, setStrapOverrides] = useState({});
+  // Shuffle seeds: per-day counter that forces re-scoring with randomized tie-breaking
+  const [shuffleSeeds, setShuffleSeeds]   = useState({});
   const [pickingDay, setPickingDay]         = useState(null);
   // Per-day per-slot garment overrides: { [offset]: { shirt: garmentId, ... } }
   const [outfitOverrides, setOutfitOverrides] = useState(() => {
@@ -327,8 +385,14 @@ export default function WeekPlanner() {
   }, [wearable]);
 
   // Generate outfits per day — uses watch + strap, weather forecast, and diversity penalty
+  // Cross-day diversity: track per-slot garment usage across the week to avoid
+  // wearing the same shirt/pants/shoes on consecutive days. Each day's fake history
+  // injects previously-picked garments with correct slot placement so the diversity
+  // penalty (-0.12 per appearance) triggers naturally in the scoring engine.
   const weekOutfits = useMemo(() => {
-    const usedGarmentIds = new Set();
+    const usedPerSlot = {}; // { shirt: [g1, g2], pants: [...], ... }
+    for (const slot of OUTFIT_SLOTS) usedPerSlot[slot] = [];
+
     return rotation.map(day => {
       if (!day.watch) return {};
       const dayForecast = forecast.find(f => f.date === day.date);
@@ -347,13 +411,37 @@ export default function WeekPlanner() {
         enrichedWatch = { ...day.watch, strap: strapStr };
       }
 
-      // Augment history with garments already assigned earlier this week for diversity
+      // Build proper per-slot fake history so diversity penalty fires per-slot
+      // Each fake entry places the used garment ID in the correct slot only
       const fakeHistory = [...history];
-      for (const gId of usedGarmentIds) {
-        fakeHistory.unshift({ outfit: { shirt: gId, pants: gId, shoes: gId, jacket: gId } });
+      for (const slot of OUTFIT_SLOTS) {
+        for (const gId of usedPerSlot[slot]) {
+          fakeHistory.unshift({ outfit: { [slot]: gId } });
+        }
       }
 
-      const outfit = generateOutfit(enrichedWatch, wearable, weather, {}, fakeHistory);
+      // Shuffle: each shuffle press adds heavy fake-history entries for previous picks,
+      // forcing the scoring engine to penalize them and surface alternatives.
+      // shuffleSeed N means "skip the top N combinations" — each increment adds
+      // 5 fake appearances per slot, enough to push -0.60 penalty and force next-best.
+      const shuffleSeed = shuffleSeeds[day.offset] ?? 0;
+      let iterHistory = [...fakeHistory];
+      let outfit = {};
+      for (let round = 0; round <= shuffleSeed; round++) {
+        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory);
+        const hasItems = Object.values(adv).some(Boolean);
+        outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, {}, iterHistory);
+        if (round < shuffleSeed) {
+          // Poison this round's picks so next iteration picks runner-up
+          for (const slot of OUTFIT_SLOTS) {
+            if (outfit[slot]?.id) {
+              for (let i = 0; i < 5; i++) {
+                iterHistory.unshift({ outfit: { [slot]: outfit[slot].id } });
+              }
+            }
+          }
+        }
+      }
 
       // Apply manual overrides
       const overrides = outfitOverrides[day.offset] ?? {};
@@ -364,14 +452,14 @@ export default function WeekPlanner() {
         }
       }
 
-      // Track used garments for cross-day diversity
+      // Track used garments per-slot for cross-day diversity
       for (const slot of OUTFIT_SLOTS) {
-        if (outfit[slot]?.id) usedGarmentIds.add(outfit[slot].id);
+        if (outfit[slot]?.id) usedPerSlot[slot].push(outfit[slot].id);
       }
 
       return outfit;
     });
-  }, [rotation, wearable, garments, history, forecast, outfitOverrides, watchOverrides, strapOverrides, straps, activeStrap]);
+  }, [rotation, wearable, garments, history, forecast, outfitOverrides, watchOverrides, strapOverrides, straps, activeStrap, shuffleSeeds]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -398,7 +486,12 @@ export default function WeekPlanner() {
     }));
   }, []);
 
+  const handleShuffle = useCallback((offset) => {
+    setShuffleSeeds(prev => ({ ...prev, [offset]: ((prev[offset] ?? 0) + 1) % 6 }));
+  }, []);
+
   const handleResetOutfit = useCallback((offset) => {
+    setShuffleSeeds(prev => { const n = { ...prev }; delete n[offset]; return n; });
     setOutfitOverrides(prev => {
       const next = { ...prev };
       delete next[offset];
@@ -571,13 +664,23 @@ export default function WeekPlanner() {
                     <div style={{ fontSize: 10, color: sub, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       OUTFIT
                     </div>
-                    {hasOverrides && (
-                      <button onClick={() => handleResetOutfit(day.offset)}
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={() => handleShuffle(day.offset)}
+                        title="Shuffle for alternative outfit"
                         style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                                  border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
-                        Reset outfit
+                                  border: `1px solid ${isDark ? "#4f46e5" : "#6366f1"}`,
+                                  background: shuffleSeeds[day.offset] ? "#6366f122" : "transparent",
+                                  color: isDark ? "#818cf8" : "#6366f1", fontWeight: 600 }}>
+                        {"\u{1F500}"} Shuffle{shuffleSeeds[day.offset] ? ` (${shuffleSeeds[day.offset]})` : ""}
                       </button>
-                    )}
+                      {(hasOverrides || shuffleSeeds[day.offset]) && (
+                        <button onClick={() => handleResetOutfit(day.offset)}
+                          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                                    border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
+                          Reset
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <style>{`
                     .wa-week-outfit-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }

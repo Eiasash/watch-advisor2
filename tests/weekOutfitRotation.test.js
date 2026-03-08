@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { generateOutfit } from "../src/engine/outfitEngine.js";
+import { describe, it, expect, vi } from "vitest";
+import { generateOutfit, garmentScore } from "../src/engine/outfitEngine.js";
 
 const MOCK_WATCH = {
   id: "w1", brand: "Omega", model: "Speedmaster",
@@ -99,5 +99,91 @@ describe("generateOutfit for weekly rotation", () => {
     expect(outfit.pants).toBeNull();
     expect(outfit.shoes).toBeNull();
     expect(outfit.jacket).toBeNull();
+  });
+});
+
+describe("shuffle-style diversity via heavy fake history", () => {
+  it("heavy history penalty forces different shirt pick", () => {
+    // First pick with no history
+    const outfit1 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, []);
+    const firstShirt = outfit1.shirt?.id;
+    expect(firstShirt).toBeTruthy();
+
+    // Now build heavy history that poisons the first shirt pick (5 entries)
+    const poisonHistory = [];
+    for (let i = 0; i < 5; i++) {
+      poisonHistory.push({ outfit: { shirt: firstShirt } });
+    }
+
+    const outfit2 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, poisonHistory);
+    // With 3 shirt options, poisoning the top pick should force a different one
+    expect(outfit2.shirt).toBeTruthy();
+    expect(outfit2.shirt.id).not.toBe(firstShirt);
+  });
+
+  it("per-slot fake history only affects the correct slot", () => {
+    // Poison shirt slot only — pants should remain the same
+    const outfit1 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, []);
+    const shirtHistory = [];
+    for (let i = 0; i < 5; i++) {
+      shirtHistory.push({ outfit: { shirt: outfit1.shirt?.id } });
+    }
+
+    const outfit2 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, shirtHistory);
+    // Shirt should change but pants should remain (only shirt was poisoned)
+    expect(outfit2.shirt?.id).not.toBe(outfit1.shirt?.id);
+    expect(outfit2.pants?.id).toBe(outfit1.pants?.id);
+  });
+
+  it("iterative poisoning surfaces different picks on double shuffle", () => {
+    // Round 0: get top pick
+    const r0 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, []);
+    // Round 1: heavily poison top pick to force 2nd best
+    const h1 = [];
+    for (let i = 0; i < 5; i++) h1.push({ outfit: { shirt: r0.shirt?.id } });
+    const r1 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, h1);
+
+    // At least 2nd pick should differ from 1st (diversity penalty in action)
+    expect(r1.shirt?.id).not.toBe(r0.shirt?.id);
+
+    // Round 2: poison both top picks — may surface 3rd or cycle back
+    const h2 = [...h1];
+    for (let i = 0; i < 5; i++) h2.push({ outfit: { shirt: r1.shirt?.id } });
+    const r2 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, h2);
+    // Should differ from at least the most-recent poisoned pick
+    expect(r2.shirt?.id).not.toBe(r1.shirt?.id);
+  });
+
+  it("sweater layer appears in cold weather", () => {
+    const outfit = generateOutfit(MOCK_WATCH, [
+      ...MOCK_GARMENTS,
+      { id: "sw1", type: "sweater", color: "grey", formality: 5, name: "Grey Sweater" },
+    ], { tempC: 8 }, {}, []);
+    expect(outfit.sweater).toBeTruthy();
+    expect(outfit.sweater.id).toBe("sw1");
+  });
+
+  it("sweater layer absent in warm weather", () => {
+    const outfit = generateOutfit(MOCK_WATCH, [
+      ...MOCK_GARMENTS,
+      { id: "sw1", type: "sweater", color: "grey", formality: 5, name: "Grey Sweater" },
+    ], { tempC: 28 }, {}, []);
+    expect(outfit.sweater).toBeNull();
+  });
+
+  it("strap-shoe coordination: brown leather penalizes black shoes", () => {
+    const brownStrapWatch = { ...MOCK_WATCH, strap: "brown leather" };
+    const scoreBlack = garmentScore(brownStrapWatch, MOCK_GARMENTS.find(g => g.id === "sh1"), { tempC: 18 }, []);
+    const scoreBrown = garmentScore(brownStrapWatch, MOCK_GARMENTS.find(g => g.id === "sh2"), { tempC: 18 }, []);
+    // Brown shoes should score higher than black with brown strap
+    expect(scoreBrown).toBeGreaterThan(scoreBlack);
+  });
+
+  it("bracelet strap does not penalize any shoe color", () => {
+    const braceletWatch = { ...MOCK_WATCH, strap: "bracelet" };
+    const scoreBlack = garmentScore(braceletWatch, MOCK_GARMENTS.find(g => g.id === "sh1"), { tempC: 18 }, []);
+    const scoreBrown = garmentScore(braceletWatch, MOCK_GARMENTS.find(g => g.id === "sh2"), { tempC: 18 }, []);
+    // Both should be similar (no hard veto)
+    expect(Math.abs(scoreBlack - scoreBrown)).toBeLessThan(0.3);
   });
 });
