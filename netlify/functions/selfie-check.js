@@ -9,6 +9,7 @@
  *            better_watch, watch_confidence, watch_details, items_detected[] }
  */
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
+import { callClaude } from "./_claudeClient.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -87,18 +88,13 @@ Return ONLY valid JSON, no markdown:
   "items_detected": [{"type":"Top|Bottom|Shoes|Watch|Accessory","color":"","description":""}]
 }`;
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
+        const res = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
         messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
-      }),
-    });
+      });
+    const data = res;
 
-    if (!res.ok) { const err = await res.text(); return { statusCode:502, headers:CORS, body:JSON.stringify({ error:`Claude API error: ${res.status}`, detail:err }) }; }
-    const data  = await res.json();
     const raw   = data.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);

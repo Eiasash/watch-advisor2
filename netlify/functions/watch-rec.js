@@ -3,6 +3,7 @@
  * Returns { top_pick, top_pick_why, strap_rec, runner_up, runner_up_why, avoid, color_logic }
  */
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
+import { callClaude } from "./_claudeClient.js";
 const CORS = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"POST,OPTIONS" };
 
 export async function handler(event) {
@@ -51,14 +52,9 @@ RULES:
 Return ONLY valid JSON, no markdown:
 {"top_pick":"exact watch brand + model","top_pick_why":"2-3 sentences on color/formality/strap logic","strap_rec":"which strap and why (1 sentence), or null if bracelet-only","runner_up":"second best watch name","runner_up_why":"1 sentence on why it's the alternative","avoid":"watch to avoid and why (1 sentence) or null","color_logic":"how dial+strap interact with outfit palette (1-2 sentences)"}`;
 
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{"x-api-key":apiKey,"anthropic-version":"2023-06-01","content-type":"application/json"},
-      body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:700,
-        messages:[{role:"user",content:prompt}] }),
-    });
-    if (!res.ok) { const err = await res.text(); return { statusCode:502, headers:CORS, body:JSON.stringify({ error:`Claude API error: ${res.status}`, detail:err }) }; }
-    const data = await res.json();
+        const res = await callClaude(apiKey, { model:"claude-sonnet-4-20250514", max_tokens:700,
+    const data = res;
+        messages:[{role:"user",content:prompt}] });
     const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}");
     cacheSet(ck, parsed);
     return { statusCode:200, headers:{...CORS,"X-Cache":"MISS"}, body:JSON.stringify(parsed) };

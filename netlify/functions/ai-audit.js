@@ -1,3 +1,4 @@
+import { callClaude } from "./_claudeClient.js";
 /**
  * Netlify function — AI Wardrobe Audit
  * POST body: { prompt: string }
@@ -19,26 +20,17 @@ export async function handler(event) {
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key":         apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type":      "application/json",
-      },
-      body: JSON.stringify({
+        const res = await callClaude(apiKey, {
+    const data = res;
         model:      "claude-sonnet-4-20250514",
         max_tokens: 2000,
         messages:   [{ role: "user", content: prompt }],
-      }),
-    });
+      });
 
-    if (!res.ok) {
       const err = await res.text();
       return { statusCode: 502, headers: CORS, body: JSON.stringify({ error: err }) };
     }
 
-    const data = await res.json();
     const raw  = data.content?.[0]?.text ?? "{}";
     // Strip markdown fences if present
     const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();

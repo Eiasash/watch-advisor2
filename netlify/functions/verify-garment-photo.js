@@ -10,6 +10,7 @@
  */
 
 import { cacheGet, cacheSet } from "./_blobCache.js";
+import { callClaude } from "./_claudeClient.js";
 
 const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat","scarf","bag","accessory","watch","outfit-photo"];
 const VALID_COLORS = ["black","white","navy","blue","grey","brown","tan","beige","cream","ecru",
@@ -98,26 +99,17 @@ Rules:
 - isDuplicate=true when photos are near-identical (same angle, same lighting, same garment).
 - Use the hash values: if two items have very similar hashes, they are likely the same photo.`;
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
+        const res = await callClaude(apiKey, {
+    const data = res;
         model: "claude-sonnet-4-20250514",
         max_tokens: 256,
         messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
-      }),
-    });
+      });
 
-    if (!res.ok) {
       const err = await res.text();
       return { statusCode: 502, body: JSON.stringify({ error: `Claude API error: ${res.status}`, detail: err }) };
     }
 
-    const data = await res.json();
     const raw  = data.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);

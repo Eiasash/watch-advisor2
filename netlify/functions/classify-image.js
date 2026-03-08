@@ -1,3 +1,4 @@
+import { callClaude } from "./_claudeClient.js";
 /**
  * Netlify serverless function — Claude Vision fallback classifier.
  * Only called when the pixel classifier has low confidence.
@@ -28,14 +29,8 @@ export async function handler(event) {
       };
     }
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
+        const response = await callClaude(apiKey, {
+    const data = response;
         model: "claude-sonnet-4-20250514",
         max_tokens: 200,
         messages: [
@@ -57,15 +52,12 @@ export async function handler(event) {
             ],
           },
         ],
-      }),
-    });
+      });
 
-    if (!response.ok) {
       const err = await response.text();
       return { statusCode: 502, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: `Claude API error: ${response.status}`, detail: err }) };
     }
 
-    const data = await response.json();
 
     return {
       statusCode: 200,
