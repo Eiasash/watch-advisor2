@@ -88,12 +88,21 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
   }
 
-  // Weather-based jacket recommendation
+  // Weather-based jacket recommendation — score and pick best, not just first
   if (weather?.tempC != null && !outfit.jacket) {
     const temp = weather.tempC;
     if (temp < 22) {
+      const rejectState = useRejectStore.getState();
       const jackets = wearable.filter(g => (g.type ?? g.category) === "jacket");
-      if (jackets[0]) outfit.jacket = jackets[0];
+      if (jackets.length) {
+        const scored = jackets.map(g => {
+          let score = scoreGarment(watchWithStrap, g, weather) + diversityBonus(g, history);
+          if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
+          return { garment: g, score };
+        });
+        scored.sort((a, b) => b.score - a.score);
+        outfit.jacket = scored[0].garment;
+      }
     }
   }
 
@@ -102,12 +111,17 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
 
 /**
  * Diversity penalty — avoid repeating garments from recent history.
+ * Checks both outfit slot map (slot→id) and garmentIds array formats.
  */
 function diversityBonus(garment, history) {
   const recent = (history ?? []).slice(-5);
   const usedCount = recent.filter(e => {
+    // Format 1: outfit is { shirt: id, pants: id, ... } slot map
     const o = e.outfit ?? e.payload?.outfit ?? {};
-    return Object.values(o).includes(garment.id);
+    if (Object.values(o).includes(garment.id)) return true;
+    // Format 2: garmentIds flat array (logged via TodayPanel / WatchDashboard)
+    const ids = e.garmentIds ?? e.payload?.garmentIds ?? [];
+    return ids.includes(garment.id);
   }).length;
   return usedCount > 0 ? -0.12 * Math.min(usedCount, 5) : 0;
 }

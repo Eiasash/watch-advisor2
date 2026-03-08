@@ -305,15 +305,19 @@ export default function WatchDashboard() {
 
           <button
             onClick={() => {
-              const garmentIds = ["shirt","sweater","pants","shoes","jacket"]
-                .map(s => outfit[s]?.id).filter(Boolean);
+              const slots = ["shirt","sweater","pants","shoes","jacket"];
+              const garmentIds = slots.map(s => outfit[s]?.id).filter(Boolean);
               if (garmentIds.length === 0) return;
+              // Store slot→id map so diversityBonus + rejectStore can reference it
+              const outfitMap = {};
+              for (const s of slots) { if (outfit[s]?.id) outfitMap[s] = outfit[s].id; }
               const addEntry = useHistoryStore.getState().addEntry;
               addEntry({
                 id: `dash-${Date.now()}`,
                 date: new Date().toISOString().slice(0,10),
                 watchId: selectedWatch.id,
                 garmentIds,
+                outfit: outfitMap,
                 context: "smart-casual",
                 loggedAt: new Date().toISOString(),
               });
@@ -417,15 +421,16 @@ export default function WatchDashboard() {
             setWatchRecLoading(true);
             setWatchRecResult(null);
             try {
-              const outfit = {
-                layers: garments.filter(g => g.type === "shirt" || g.type === "sweater"),
-                bottom: garments.find(g => g.type === "pants" || g.type === "jeans"),
-                shoes:  garments.find(g => g.type === "shoes"),
+              // Use the current engine-built outfit, not all garments
+              const recOutfit = {
+                layers: [outfit.shirt, outfit.sweater].filter(Boolean),
+                bottom: outfit.pants ?? null,
+                shoes:  outfit.shoes ?? null,
               };
               const res = await fetch("/.netlify/functions/watch-rec", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ outfit, watches, context: "smart-casual" }),
+                body: JSON.stringify({ outfit: recOutfit, watches, context: "smart-casual" }),
               });
               const data = await res.json();
               if (!data.error) setWatchRecResult(data);
