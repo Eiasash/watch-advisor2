@@ -353,7 +353,7 @@ export default function WeekPlanner() {
         fakeHistory.unshift({ outfit: { shirt: gId, pants: gId, shoes: gId, jacket: gId } });
       }
 
-      const outfit = generateOutfit(enrichedWatch, wearable, weather, {}, fakeHistory);
+      const outfit = generateOutfit(enrichedWatch, wearable, weather, { context: day.ctx }, fakeHistory);
 
       // Apply manual overrides
       const overrides = outfitOverrides[day.offset] ?? {};

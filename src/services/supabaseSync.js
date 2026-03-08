@@ -32,7 +32,7 @@ export async function pullCloudState() {
   try {
     const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
       supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,photo_angles,brand,notes,created_at").order("created_at", { ascending: true }).limit(500),
-      supabase.from("history").select("*").order("date", { ascending: false }).limit(60),
+      supabase.from("history").select("*").order("date", { ascending: false }).limit(365),
     ]);
 
     if (gErr) throw new Error(gErr.message);
@@ -298,5 +298,15 @@ export async function pushHistoryEntry(entry) {
     console.warn("[supabaseSync] pushHistoryEntry failed:", e.message);
   } finally {
     setSyncState({ queued: Math.max(0, syncState.queued - 1) });
+  }
+}
+
+export async function deleteHistoryEntry(id) {
+  if (IS_PLACEHOLDER) return;
+  try {
+    const { error } = await supabase.from("history").delete().eq("id", id);
+    if (error) console.warn("[supabaseSync] deleteHistoryEntry error:", error.message);
+  } catch (e) {
+    console.warn("[supabaseSync] deleteHistoryEntry failed:", e.message);
   }
 }

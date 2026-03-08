@@ -23,10 +23,10 @@ const ALL_FILTERS = [
 
 const TYPE_FILTER = {
   all:     () => true,
-  tops:    g => ["shirt","sweater"].includes(g.type),
-  bottoms: g => g.type === "pants",
-  shoes:   g => g.type === "shoes",
-  layers:  g => g.type === "jacket",
+  tops:    g => ["shirt","sweater","polo","tee","flannel","crewneck","cardigan","hoodie","overshirt"].includes(g.type),
+  bottoms: g => ["pants","jeans","chinos","shorts","joggers","corduroy"].includes(g.type),
+  shoes:   g => ["shoes","boots","sneakers","loafers","sandals"].includes(g.type),
+  layers:  g => ["jacket","coat","blazer","bomber","vest"].includes(g.type),
   extras:  g => ["belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type),
   review:  g => g.needsReview,
 };
@@ -42,75 +42,13 @@ const COLOR_SWATCHES = {
   burgundy:"#6b1a2a", cream:"#e8e0cc", orange:"#c45c20", purple:"#5a2a7a",
 };
 
-// ── Lightbox ──────────────────────────────────────────────────────────────────
-function Lightbox({ garment, onClose, isDark }) {
-  const angles = [garment.thumbnail || garment.photoUrl].concat(garment.photoAngles ?? []).filter(Boolean);
-  const [idx, setIdx] = useState(0);
-  const hasAngles = angles.length > 1;
-
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight" && hasAngles) setIdx(i => (i + 1) % angles.length);
-      if (e.key === "ArrowLeft"  && hasAngles) setIdx(i => (i - 1 + angles.length) % angles.length);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, angles.length, hasAngles]);
-
-  return (
-    <div onClick={onClose} style={{
-      position:"fixed", inset:0, background:"rgba(0,0,0,0.88)", zIndex:2000,
-      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{ maxWidth:"92vw", maxHeight:"88vh", position:"relative" }}>
-        <img src={angles[idx]} alt={garment.name} style={{
-          maxWidth:"92vw", maxHeight:"75vh", objectFit:"contain", borderRadius:12,
-        }} />
-        {hasAngles && (
-          <>
-            <button onClick={() => setIdx(i => (i-1+angles.length)%angles.length)} style={{
-              position:"absolute", left:-20, top:"50%", transform:"translateY(-50%)",
-              background:"rgba(0,0,0,0.6)", border:"none", color:"#fff", fontSize:22,
-              borderRadius:"50%", width:40, height:40, cursor:"pointer",
-            }}>‹</button>
-            <button onClick={() => setIdx(i => (i+1)%angles.length)} style={{
-              position:"absolute", right:-20, top:"50%", transform:"translateY(-50%)",
-              background:"rgba(0,0,0,0.6)", border:"none", color:"#fff", fontSize:22,
-              borderRadius:"50%", width:40, height:40, cursor:"pointer",
-            }}>›</button>
-          </>
-        )}
-      </div>
-      <div style={{ marginTop:12, color:"#e2e8f0", fontWeight:700, fontSize:15 }}>{garment.name}</div>
-      <div style={{ color:"#8b93a7", fontSize:13, marginTop:4 }}>{garment.color} {garment.type}{hasAngles ? ` · ${idx+1}/${angles.length} angles` : ""}</div>
-      {hasAngles && (
-        <div style={{ display:"flex", gap:8, marginTop:10 }}>
-          {angles.map((a,i) => (
-            <button key={i} onClick={() => setIdx(i)} style={{
-              width:36, height:36, border:`2px solid ${i===idx?"#3b82f6":"#374151"}`,
-              borderRadius:6, overflow:"hidden", padding:0, cursor:"pointer",
-            }}>
-              <img src={a} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-            </button>
-          ))}
-        </div>
-      )}
-      <button onClick={onClose} style={{
-        marginTop:16, background:"rgba(255,255,255,0.12)", border:"none",
-        color:"#e2e8f0", borderRadius:8, padding:"6px 18px", cursor:"pointer", fontSize:13,
-      }}>Close</button>
-    </div>
-  );
-}
-
 // ── Card Cell ─────────────────────────────────────────────────────────────────
 const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
   const index = rowIndex * data.columns + columnIndex;
   const item  = data.items[index];
   if (!item) return <div style={style} />;
 
-  const { isDark, selectMode, selectedIds, onSelect, onLongPress, onEdit, onLightbox, selectedGarmentId, history } = data;
+  const { isDark, selectMode, selectedIds, onSelect, onLongPress, onEdit, selectedGarmentId, history } = data;
   const isSelected   = selectedIds.has(item.id) || selectedGarmentId === item.id;
   const isLinked     = selectedGarmentId === item.id;
   const swatch       = COLOR_SWATCHES[item.color] ?? "#333";
@@ -325,7 +263,7 @@ export default function WardrobeGrid() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [query, setQuery]       = useState("");
   const [editing, setEditing]   = useState(null);
-  const [lightbox, setLightbox] = useState(null);
+  
   const [gridWidth, setGridWidth] = useState(
     typeof window !== "undefined" ? Math.min(window.innerWidth - 40, 840) : 840
   );
@@ -396,7 +334,7 @@ export default function WardrobeGrid() {
   }, [enterSelectMode, toggleSelect]);
 
   const handleEdit = useCallback(item => { if (!selectMode) setEditing(item); }, [selectMode]);
-  const handleLightbox = useCallback(item => setLightbox(item), []);
+  
 
   function handleBatchDelete() {
     const deletedIds = Array.from(selectedIds);
@@ -489,7 +427,7 @@ export default function WardrobeGrid() {
               items: filtered, columns: COLUMN_COUNT, isDark,
               selectMode, selectedIds, selectedGarmentId,
               onSelect: toggleSelect, onLongPress: handleLongPress,
-              onEdit: handleEdit, onLightbox: handleLightbox,
+              onEdit: handleEdit,
               selectedRef, history,
             }}
           >
@@ -499,7 +437,6 @@ export default function WardrobeGrid() {
       </div>
 
       {editing && <GarmentEditor garment={editing} onClose={() => setEditing(null)} />}
-      {lightbox && <Lightbox garment={lightbox} onClose={() => setLightbox(null)} isDark={isDark} />}
       {selectMode && (
         <BatchToolbar
           count={selectedIds.size}
