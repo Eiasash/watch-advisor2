@@ -19,7 +19,7 @@ export function genWeekRotation(watches, history = [], weekCtx = [], onCallDates
 
   // Build recent-wear set to favour unworn pieces
   const recentIds = new Set(
-    history.slice(0, 14).map(h => h.watchId).filter(Boolean)
+    history.slice(-14).map(h => h.watchId).filter(Boolean)
   );
 
   const today  = new Date();

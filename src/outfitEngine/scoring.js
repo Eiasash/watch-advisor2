@@ -126,9 +126,12 @@ function _styleLearnMult(garment) {
   } catch (_) { return 1.0; }
 }
 
-export function scoreGarment(watch, garment, weather = {}) {
+export function scoreGarment(watch, garment, weather = {}, outfitFormality = null) {
   const cm = colorMatchScore(watch, garment);
-  const fm = formalityMatchScore(watch, garment);
+  // When a slot is pinned by the user, outfitFormality anchors scoring for other slots
+  const fm = outfitFormality != null
+    ? Math.max(0, 1 - Math.abs(outfitFormality - (garment.formality ?? 5)) / 5)
+    : formalityMatchScore(watch, garment);
   const wc = watchCompatibilityScore(watch, garment);
   const wl = weatherLayerScore(garment, weather);
   const ss = strapShoeScore(watch, garment); // 0.0 on strap-shoe mismatch for shoes
