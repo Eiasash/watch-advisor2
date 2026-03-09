@@ -1,9 +1,9 @@
 import React from "react";
 
-export default function WatchSelector({ watches, activeWatch, onChange }) {
+export default function WatchSelector({ watches, activeWatch, onChange, isDark = false }) {
   return (
     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-      <label style={{ fontSize:12, fontWeight:600, color:"#8b93a7", whiteSpace:"nowrap" }}>Watch</label>
+      <label style={{ fontSize:12, fontWeight:600, color: isDark ? "#8b93a7" : "#6b7280", whiteSpace:"nowrap" }}>Watch</label>
       <select
         value={activeWatch?.id ?? ""}
         onChange={e => {
@@ -11,8 +11,10 @@ export default function WatchSelector({ watches, activeWatch, onChange }) {
           if (watch) onChange(watch);
         }}
         style={{
-          background:"#0f131a", color:"#e2e8f0",
-          border:"1px solid #2b3140", borderRadius:8,
+          background: isDark ? "#0f131a" : "#ffffff",
+          color:      isDark ? "#e2e8f0" : "#111827",
+          border:     `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
+          borderRadius:8,
           padding:"6px 10px", fontSize:12, cursor:"pointer",
           maxWidth:180,
         }}

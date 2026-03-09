@@ -377,6 +377,7 @@ export default function WardrobeGrid() {
     background: active ? "#1d4ed822" : "transparent",
     color: active ? "#3b82f6" : (isDark ? "#8b93a7" : "#6b7280"),
     whiteSpace:"nowrap",
+    flexShrink:0,
   });
 
   return (

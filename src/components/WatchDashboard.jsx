@@ -402,6 +402,7 @@ export default function WatchDashboard() {
               watches={watches}
               activeWatch={selectedWatch}
               onChange={setActiveWatch}
+              isDark={isDark}
             />
           )}
         </div>

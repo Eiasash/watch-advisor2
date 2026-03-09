@@ -245,8 +245,7 @@ tests/
 - Main bundle ~525 kB (151 kB gzipped) — WeekPlanner lazy-loaded
 
 ### UI bugs (unfixed)
-- **WatchSelector hardcoded dark mode** — `src/features/watch/WatchSelector.jsx:8-12` uses hardcoded dark-theme colors (`#0f131a`, `#e2e8f0`, `#2b3140`). In light mode the select renders as a dark box on a light background. Fix: pass `isDark` prop from WatchDashboard and conditionally style.
-- **WardrobeGrid filter tabs squish on narrow screens** — `src/components/WardrobeGrid.jsx:408` filter tab buttons inside the flex scroll container lack `flexShrink:0`. On very narrow viewports, buttons compress instead of triggering horizontal scroll. Fix: add `flexShrink:0` to `tabStyle`.
+- None currently.
 
 ### No TODOs or FIXMEs in source
 - The codebase has no inline TODO/FIXME/HACK/XXX comments
