@@ -1,11 +1,24 @@
 /**
  * Outfit scoring system.
- * Scores garments using: colorMatch, formalityMatch, watchCompatibility, weatherLayer.
+ * Scores garments using: colorMatch, formalityMatch, watchCompatibility, weatherLayer, contextFormality.
  *
- * score = colorMatch * 2 + formalityMatch * 3 + watchCompatibility * 3 + weatherLayer
+ * score = colorMatch * 2 + formalityMatch * 2.5 + watchCompatibility * 2 + weatherLayer + contextFormality * 2.5
  */
 
 import { STYLE_FORMALITY_TARGET } from "./watchStyles.js";
+
+// Context → formality floor and target.
+// Garments below `min` are hard-excluded; `target` biases scoring.
+export const CONTEXT_FORMALITY = {
+  "hospital-smart-casual": { min: 5, target: 7 },
+  "clinic":                { min: 5, target: 7 },
+  "formal":                { min: 6, target: 8 },
+  "smart-casual":          { min: 3, target: 6 },
+  "casual":                { min: 1, target: 4 },
+  "date-night":            { min: 4, target: 7 },
+  "riviera":               { min: 3, target: 5 },
+  "shift":                 { min: 5, target: 7 },
+};
 
 // Dial color → compatible garment colors
 const DIAL_COLOR_MAP = {
@@ -112,8 +125,19 @@ export function strapShoeScore(watch, garment) {
   if (isBlackStrap) return ["black"].includes(shoeColor) ? 1.0 : 0.0;
   if (isBrownStrap) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;
 
-  // Non-standard leather color (teal, olive, navy, etc.) — soft preference for white sneakers
-  return ["white", "brown", "tan", "black"].includes(shoeColor) ? 0.85 : 0.5;
+  // Non-standard leather color — navy, grey, teal, olive, green
+  // Navy strap → black shoes or white sneakers. Brown = hard fail.
+  // Grey strap → black or white preferred, brown tolerated.
+  // Teal/olive/green → white sneakers preferred.
+  const isNavyStrap = strap.includes("navy");
+  const isGreyStrap = strap.includes("grey") || strap.includes("gray");
+  const isTealGreenStrap = strap.includes("teal") || strap.includes("olive") || strap.includes("green");
+
+  if (isNavyStrap) return ["black", "white"].includes(shoeColor) ? 1.0 : 0.0;
+  if (isGreyStrap) return ["black", "white", "grey"].includes(shoeColor) ? 1.0 : 0.3;
+  if (isTealGreenStrap) return ["white", "black"].includes(shoeColor) ? 1.0 : 0.3;
+
+  return ["white", "black"].includes(shoeColor) ? 0.85 : 0.5;
 }
 
 
@@ -131,7 +155,21 @@ function _styleLearnMult(garment) {
   } catch (_) { return 1.0; }
 }
 
-export function scoreGarment(watch, garment, weather = {}, outfitFormality = null) {
+/**
+ * Score how well a garment's formality matches the context target.
+ * Returns 0-1. Returns 0.75 (neutral) when no context is set.
+ */
+export function contextFormalityScore(garment, context) {
+  const ctx = CONTEXT_FORMALITY[context];
+  if (!ctx) return 0.75; // no context or unknown — neutral
+  const gf = garment.formality ?? 5;
+  // Hard floor: garments below minimum score 0
+  if (gf < ctx.min) return 0.0;
+  const diff = Math.abs(ctx.target - gf);
+  return Math.max(0, 1 - diff / 5);
+}
+
+export function scoreGarment(watch, garment, weather = {}, outfitFormality = null, context = null) {
   const cm = colorMatchScore(watch, garment);
   // When a slot is pinned by the user, outfitFormality anchors scoring for other slots
   const fm = outfitFormality != null
@@ -140,8 +178,12 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   const wc = watchCompatibilityScore(watch, garment);
   const wl = weatherLayerScore(garment, weather);
   const ss = strapShoeScore(watch, garment); // 0.0 on strap-shoe mismatch for shoes
+  const cf = contextFormalityScore(garment, context);
 
-  const base = cm * 2 + fm * 3 + wc * 3 + wl;
+  // Context formality of 0.0 means garment is below context minimum — hard exclude
+  if (cf === 0.0) return 0.0;
+
+  const base = cm * 2 + fm * 2.5 + wc * 2 + wl + cf * 2.5;
   // Style-learning bias: gentle multiplier from preference profile (0.85–1.15)
   const prefMult = _styleLearnMult(garment);
   // For shoes: strap-shoe is a hard multiplier — a 0.0 effectively removes the shoe from contention

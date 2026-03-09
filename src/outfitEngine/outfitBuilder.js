@@ -25,14 +25,44 @@ import { useStrapStore } from "../stores/strapStore.js";
  */
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
-export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}) {
+// Subtype keywords for sweater differentiation.
+// Pullovers layer under zip-ups; two pullovers stacked = structural failure.
+const OVER_LAYER_KEYWORDS = ["zip", "cardigan", "hoodie", "vest", "gilet"];
+
+function _isPulloverType(name) {
+  if (!name) return true; // default: assume pullover (safer — prevents unknown stacking)
+  const n = name.toLowerCase();
+  // Explicit over-layer keywords → NOT a pullover
+  if (OVER_LAYER_KEYWORDS.some(k => n.includes(k))) return false;
+  // Everything else (cable knit, crewneck, waffle, or generic "sweater") = pullover
+  return true;
+}
+
+// Casual-coded jackets that should never appear in clinic/formal contexts.
+const CASUAL_JACKET_KEYWORDS = ["bomber", "hoodie", "sweatshirt", "jogger", "fleece", "windbreaker", "anorak", "parka"];
+
+function _isCasualJacket(name) {
+  if (!name) return false;
+  return CASUAL_JACKET_KEYWORDS.some(k => name.includes(k));
+}
+
+export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}, context = null) {
   if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null };
 
-  // Inject active strap label so strapShoeScore uses the real strap being worn today
+  // Inject active strap label so strapShoeScore uses the real strap being worn today.
+  // Fallback chain: strapStore override → watch.straps[0].label → constructed string → watch.strap.
+  // Without this, single-strap watches like the Reverso ("leather") lose their
+  // actual strap color ("Navy alligator") and strap-shoe scoring gets garbage input.
   const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(watch.id);
-  const watchWithStrap = activeStrapObj
-    ? { ...watch, strap: activeStrapObj.label ?? activeStrapObj.color ?? watch.strap }
-    : watch;
+  let resolvedStrap = watch.strap;
+  if (activeStrapObj) {
+    resolvedStrap = activeStrapObj.label ?? activeStrapObj.color ?? watch.strap;
+  } else if (watch.straps?.[0]) {
+    const s0 = watch.straps[0];
+    // Prefer full label ("Navy alligator"); else construct "color type" ("brown leather")
+    resolvedStrap = s0.label ?? (s0.color && s0.type ? `${s0.color} ${s0.type}` : s0.color ?? watch.strap);
+  }
+  const watchWithStrap = { ...watch, strap: resolvedStrap };
 
   // Strip accessories, outfit photos and excluded items from outfit consideration
   const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
@@ -69,7 +99,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     // Score and sort — with rejection penalty
     const rejectState = useRejectStore.getState();
     const scored = candidates.map(g => {
-      let score = scoreGarment(watchWithStrap, g, weather, outfitFormality) + diversityBonus(g, history);
+      let score = scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history);
       // Apply -0.3 penalty if this watch+garment combo was recently rejected
       if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
       return { garment: g, score };
@@ -81,7 +111,8 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
 
   // ── Multilayer logic ────────────────────────────────────────────────────────
   // sweater: primary mid-layer (temp < 22°C)
-  // layer:   second mid-layer  (temp < 12°C) — e.g. vest, cardigan, hoodie
+  // layer:   second mid-layer  (temp < 12°C) — must be a DIFFERENT subtype
+  //          e.g. if sweater = crewneck, layer = zip/cardigan/hoodie (not another crewneck)
   outfit.sweater = null;
   outfit.layer   = null;
 
@@ -89,39 +120,87 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const temp = weather?.tempC ?? 22;
     if (temp < 22) {
       const rejectState = useRejectStore.getState();
-      const sweaters = wearable.filter(g => (g.type ?? g.category) === "sweater");
+      const isFormalCtx = context === "formal" || context === "clinic"
+        || context === "hospital-smart-casual" || context === "shift";
+      const sweaters = wearable.filter(g => {
+        if ((g.type ?? g.category) !== "sweater") return false;
+        // In formal/clinic: exclude casual-coded sweaters (hoodies, jogger pieces)
+        if (isFormalCtx) {
+          const n = (g.name ?? "").toLowerCase();
+          if (n.includes("hoodie") || n.includes("jogger") || n.includes("sweatshirt")) return false;
+        }
+        return true;
+      });
       if (sweaters.length) {
         const scored = sweaters.map(g => {
-          let score = scoreGarment(watchWithStrap, g, weather, outfitFormality) + diversityBonus(g, history);
+          let score = scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history);
           if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
           return { garment: g, score };
         });
         scored.sort((a, b) => b.score - a.score);
-        outfit.sweater = pinnedSlots.sweater ?? scored[0].garment;
 
-        // Second layer when cold enough and more than one sweater available
-        if (temp < 12 && sweaters.length >= 2) {
-          const secondBest = scored.find(s => s.garment.id !== outfit.sweater.id);
-          if (secondBest) outfit.layer = pinnedSlots.layer ?? secondBest.garment;
+        // Color dedup: skip sweaters that match shirt color
+        const shirtColor = (outfit.shirt?.color ?? "").toLowerCase();
+        const bestSweater = scored.find(s =>
+          s.score > 0 && (s.garment.color ?? "").toLowerCase() !== shirtColor
+        ) ?? scored[0];
+        outfit.sweater = pinnedSlots.sweater ?? (bestSweater?.score > 0 ? bestSweater.garment : null);
+
+        // Second layer when cold enough — MUST be a different subtype than primary sweater.
+        // Pullover subtypes (cable knit, crewneck, waffle) must not layer on each other.
+        // Only zip-ups, cardigans, hoodies, vests qualify as layers over a pullover.
+        if (temp < 12 && sweaters.length >= 2 && outfit.sweater) {
+          // Pinned layer always wins — user override bypasses subtype guard
+          if (pinnedSlots.layer) {
+            outfit.layer = pinnedSlots.layer;
+          } else {
+            const sweaterColor = (outfit.sweater.color ?? "").toLowerCase();
+            const primaryName = (outfit.sweater.name ?? "").toLowerCase();
+            const isPrimaryPullover = _isPulloverType(primaryName);
+
+            const secondBest = scored.find(s => {
+              if (s.garment.id === outfit.sweater.id) return false;
+              if (s.score <= 0) return false;
+              const c = (s.garment.color ?? "").toLowerCase();
+              if (c === sweaterColor || c === shirtColor) return false;
+              // Subtype guard: if primary is pullover, layer must be zip/cardigan/hoodie
+              const layerName = (s.garment.name ?? "").toLowerCase();
+              if (isPrimaryPullover && _isPulloverType(layerName)) return false;
+              return true;
+            });
+            if (secondBest) outfit.layer = secondBest.garment;
+          }
         }
       }
     }
   }
 
-  // Weather-based jacket recommendation — score and pick best, not just first
+  // Weather-based jacket recommendation — score and pick best, not just first.
+  // In clinic/formal contexts, exclude casual-coded jackets (bomber, hoodie, jogger).
   if (weather?.tempC != null && !outfit.jacket) {
     const temp = weather.tempC;
     if (temp < 22) {
       const rejectState = useRejectStore.getState();
-      const jackets = wearable.filter(g => (g.type ?? g.category) === "jacket");
+      const isFormalCtx = context === "formal" || context === "clinic"
+        || context === "hospital-smart-casual" || context === "shift";
+      const jackets = wearable.filter(g => {
+        if ((g.type ?? g.category) !== "jacket") return false;
+        // In formal/clinic: exclude casual-coded jackets by name
+        if (isFormalCtx) {
+          const n = (g.name ?? "").toLowerCase();
+          if (_isCasualJacket(n)) return false;
+        }
+        return true;
+      });
       if (jackets.length) {
         const scored = jackets.map(g => {
-          let score = scoreGarment(watchWithStrap, g, weather) + diversityBonus(g, history);
+          let score = scoreGarment(watchWithStrap, g, weather, null, context) + diversityBonus(g, history);
           if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
           return { garment: g, score };
         });
         scored.sort((a, b) => b.score - a.score);
-        outfit.jacket = scored[0].garment;
+        // Only pick if it passes context formality floor
+        if (scored[0]?.score > 0) outfit.jacket = scored[0].garment;
       }
     }
   }
@@ -170,3 +249,6 @@ export function explainOutfitChoice(watch, outfit, weather) {
 
   return parts.join(" ");
 }
+
+// Exported for testing
+export { _isPulloverType, _isCasualJacket };

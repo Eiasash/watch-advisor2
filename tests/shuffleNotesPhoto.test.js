@@ -31,7 +31,7 @@ const wardrobe = [
   { id: "s2",  type: "shoes",   name: "Black Eccos",      color: "black",  formality: 7 },
   { id: "j1",  type: "jacket",  name: "Camel Coat",       color: "camel",  formality: 7 },
   { id: "sw1", type: "sweater", name: "Black Cable Knit", color: "black",  formality: 7 },
-  { id: "sw2", type: "sweater", name: "Ecru Cable Knit",  color: "ecru",   formality: 6 },
+  { id: "sw2", type: "sweater", name: "Ecru Zip Cardigan", color: "ecru",   formality: 6 },
   { id: "sw3", type: "sweater", name: "Navy Cable Knit",  color: "navy",   formality: 6 },
 ];
 

@@ -25,6 +25,7 @@ const fullWardrobe = [
   { id: "j1", type: "jacket",  name: "Camel Coat",    color: "beige",  formality: 7 },
   { id: "sw1",type: "sweater", name: "Navy Sweater",  color: "navy",   formality: 6 },
   { id: "sw2",type: "sweater", name: "Grey Sweater",  color: "grey",   formality: 5 },
+  { id: "sw3",type: "sweater", name: "Olive Half-Zip", color: "olive",  formality: 5 },
 ];
 
 // ─── buildOutfit — pinnedSlots ──────────────────────────────────────────────
@@ -118,15 +119,17 @@ describe("buildOutfit — excludedPerSlot", () => {
 // ─── buildOutfit — second sweater layer selection ───────────────────────────
 
 describe("buildOutfit — second sweater layer at tempC < 12", () => {
-  it("picks second-best sweater as layer when temp < 12", () => {
+  it("picks zip-up as layer over pullover primary when temp < 12", () => {
     const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 5 });
     expect(outfit.sweater).toBeTruthy();
     expect(outfit.layer).toBeTruthy();
     expect(outfit.sweater.id).not.toBe(outfit.layer.id);
+    // Layer must be the zip-up, not another pullover
+    expect(outfit.layer.name).toMatch(/zip/i);
   });
 
   it("no second layer when only one sweater available", () => {
-    const oneSweater = fullWardrobe.filter(g => g.id !== "sw2");
+    const oneSweater = fullWardrobe.filter(g => g.id !== "sw2" && g.id !== "sw3");
     const outfit = buildOutfit(snowflake, oneSweater, { tempC: 5 });
     expect(outfit.sweater).toBeTruthy();
     expect(outfit.layer).toBeNull();
@@ -142,6 +145,13 @@ describe("buildOutfit — second sweater layer at tempC < 12", () => {
     const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 11 });
     expect(outfit.sweater).toBeTruthy();
     expect(outfit.layer).toBeTruthy();
+  });
+
+  it("no layer when all sweaters are pullovers (prevents double-crewneck)", () => {
+    const pulloversOnly = fullWardrobe.filter(g => g.id !== "sw3"); // remove the zip
+    const outfit = buildOutfit(snowflake, pulloversOnly, { tempC: 5 });
+    expect(outfit.sweater).toBeTruthy();
+    expect(outfit.layer).toBeNull(); // no zip candidate → no layer
   });
 });
 

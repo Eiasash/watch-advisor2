@@ -116,8 +116,14 @@ function strapScore(watch, garment) {
     );
     if (isBlack) return shoeColor === "black" ? 1.0 : 0.0;
     if (isBrown) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;
-    // Non-standard leather color (teal, olive etc.)
-    return ["white", "brown", "tan"].includes(shoeColor) ? 0.85 : 0.5;
+    // Non-standard leather color — navy, grey, teal, olive, green
+    const isNavy = strap.includes("navy");
+    const isGrey = strap.includes("grey") || strap.includes("gray");
+    const isTealGreen = strap.includes("teal") || strap.includes("olive") || strap.includes("green");
+    if (isNavy) return ["black", "white"].includes(shoeColor) ? 1.0 : 0.0;
+    if (isGrey) return ["black", "white", "grey"].includes(shoeColor) ? 1.0 : 0.3;
+    if (isTealGreen) return ["white", "black"].includes(shoeColor) ? 1.0 : 0.3;
+    return ["white", "black"].includes(shoeColor) ? 0.85 : 0.5;
   }
   return 0.7;
 }
