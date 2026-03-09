@@ -4,7 +4,7 @@ import { callClaude } from "./_claudeClient.js";
  * Validates/improves the engine's outfit pick around the selected watch.
  * Enforces strap-shoe rule, dial color coordination, formality match.
  *
- * POST body: { garments, watch, weather, engineOutfit, dayProfile }
+ * POST body: { garments, watch, weather, engineOutfit, dayProfile, pinnedSlots }
  * Returns: { shirt, pants, shoes, jacket, explanation, strapShoeOk }
  */
 
@@ -25,7 +25,7 @@ export async function handler(event) {
   }
 
   try {
-    const { garments = [], watch, weather, engineOutfit = {}, dayProfile = "smart-casual" } = JSON.parse(event.body);
+    const { garments = [], watch, weather, engineOutfit = {}, dayProfile = "smart-casual", pinnedSlots = {} } = JSON.parse(event.body);
 
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) {
@@ -43,14 +43,20 @@ export async function handler(event) {
       })
       .join("\n");
 
-    // Describe the engine's current picks
-    const engineLines = ["shirt", "pants", "shoes", "jacket"]
+    // Describe the engine's current picks, marking pinned (user-chosen) slots
+    const engineLines = ["shirt", "sweater", "pants", "shoes", "jacket"]
       .map(slot => {
         const g = engineOutfit[slot];
+        const isPinned = !!pinnedSlots[slot];
         if (!g) return `  ${slot}: (none available)`;
-        return `  ${slot}: ID:${g.name} — ${g.color ?? ""} ${g.type ?? ""}`;
+        return `  ${slot}: ID:${g.name} — ${g.color ?? ""} ${g.type ?? ""}${isPinned ? " [PINNED — user chose this, keep it]" : ""}`;
       })
       .join("\n");
+
+    const hasPinned = Object.keys(pinnedSlots).length > 0;
+    const pinnedInstruction = hasPinned
+      ? `\nIMPORTANT: Slots marked [PINNED] are the user's deliberate choice — do NOT change them. Only suggest improvements for unpinned slots to best complement the pinned items.`
+      : "";
 
     // watch.strap = active strap string enriched by WatchDashboard (e.g. "brown leather", "teal leather", "bracelet")
     // watch._activeStrapLabel = human label (e.g. "Dark teal Buttero leather", "Steel bracelet")
@@ -98,30 +104,32 @@ WEATHER: ${weather?.tempC != null ? `${weather.tempC}°C, ${weather.description 
 
 ENGINE'S CURRENT OUTFIT PICK:
 ${engineLines}
+${pinnedInstruction}
 
 FULL WARDROBE (ID — description):
 ${garmentLines}
 
 TASK:
-1. Evaluate whether the engine's outfit is well-matched to the watch dial color, formality level, and strap rule.
-2. If it's good, keep those items and explain why.
-3. If a slot can be improved, swap to a specific better item from the wardrobe and explain the reason.
-4. Check the strap-shoe rule strictly — if violated, flag it and fix it.
-5. Return IDs exactly as they appear (the "ID:XXXXX" values, without the "ID:" prefix).
+1. Respect ALL [PINNED] slots — return their exact ID unchanged.
+2. For unpinned slots: evaluate the engine's pick against dial color, formality, strap rule, and pinned items. Improve if a clearly better match exists in the wardrobe.
+3. Enforce the strap-shoe rule strictly — fix violations in unpinned shoe slot only.
+4. Return IDs exactly as they appear (the "ID:XXXXX" values, without the "ID:" prefix).
+5. In the explanation, specifically mention dial color coordination and any pinned-item logic you used.
 
 Return ONLY valid JSON, no markdown, no commentary outside the JSON:
 {
   "shirt": "<garment ID or null>",
+  "sweater": "<garment ID or null>",
   "pants": "<garment ID or null>",
   "shoes": "<garment ID or null>",
   "jacket": "<garment ID or null>",
   "strapShoeOk": true or false,
-  "explanation": "<2-3 sentences: why these pieces work with the specific watch, dial color, and context. Be direct and specific — mention the dial color, strap, and any formality trade-offs.>"
+  "explanation": "<2-3 sentences: why these pieces work with the specific watch, dial color, context and pinned choices. Direct and specific.>"
 }`;
 
     const data = await callClaude(apiKey, {
         model: "claude-sonnet-4-20250514",
-        max_tokens: 600,
+        max_tokens: 800,
         messages: [{ role: "user", content: prompt }],
       });
 

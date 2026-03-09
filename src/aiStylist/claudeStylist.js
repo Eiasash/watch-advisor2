@@ -3,7 +3,7 @@
  * Sends engine's current outfit to the Netlify function for validation/improvement.
  */
 
-export async function getAISuggestion(garments, watch, weather, engineOutfit = {}, dayProfile = "smart-casual") {
+export async function getAISuggestion(garments, watch, weather, engineOutfit = {}, dayProfile = "smart-casual", pinnedSlots = {}) {
   try {
     const res = await fetch("/.netlify/functions/claude-stylist", {
       method: "POST",
@@ -20,11 +20,15 @@ export async function getAISuggestion(garments, watch, weather, engineOutfit = {
         watch,
         weather,
         engineOutfit: {
-          shirt:  engineOutfit.shirt  ? { name: engineOutfit.shirt.name,  type: engineOutfit.shirt.type,  color: engineOutfit.shirt.color  } : null,
-          pants:  engineOutfit.pants  ? { name: engineOutfit.pants.name,  type: engineOutfit.pants.type,  color: engineOutfit.pants.color  } : null,
-          shoes:  engineOutfit.shoes  ? { name: engineOutfit.shoes.name,  type: engineOutfit.shoes.type,  color: engineOutfit.shoes.color  } : null,
-          jacket: engineOutfit.jacket ? { name: engineOutfit.jacket.name, type: engineOutfit.jacket.type, color: engineOutfit.jacket.color } : null,
+          shirt:   engineOutfit.shirt   ? { name: engineOutfit.shirt.name,   type: engineOutfit.shirt.type,   color: engineOutfit.shirt.color   } : null,
+          sweater: engineOutfit.sweater ? { name: engineOutfit.sweater.name, type: engineOutfit.sweater.type, color: engineOutfit.sweater.color } : null,
+          pants:   engineOutfit.pants   ? { name: engineOutfit.pants.name,   type: engineOutfit.pants.type,   color: engineOutfit.pants.color   } : null,
+          shoes:   engineOutfit.shoes   ? { name: engineOutfit.shoes.name,   type: engineOutfit.shoes.type,   color: engineOutfit.shoes.color   } : null,
+          jacket:  engineOutfit.jacket  ? { name: engineOutfit.jacket.name,  type: engineOutfit.jacket.type,  color: engineOutfit.jacket.color  } : null,
         },
+        pinnedSlots: Object.fromEntries(
+          Object.entries(pinnedSlots).map(([k, g]) => [k, g ? { name: g.name, type: g.type, color: g.color } : null])
+        ),
         dayProfile,
       }),
     });

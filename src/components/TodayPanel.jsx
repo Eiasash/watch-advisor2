@@ -11,6 +11,9 @@ import { useStrapStore }    from "../stores/strapStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
 import { scoreWatchForDay } from "../engine/dayProfile.js";
+import { getAISuggestion }  from "../aiStylist/claudeStylist.js";
+import { buildOutfit }      from "../outfitEngine/outfitBuilder.js";
+import { fetchWeather }     from "../weather/weatherService.js";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 
@@ -162,7 +165,14 @@ export default function TodayPanel() {
   );
   const [logged,   setLogged]     = useState(!!todayEntry);
   const [filter,   setFilter]     = useState("all");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiHint,    setAiHint]    = useState(null); // { explanation, strapShoeOk }
+  const [weather,   setWeather]   = useState(null);
   const cameraRef = useRef();
+
+  useEffect(() => {
+    fetchWeather().then(setWeather).catch(() => {});
+  }, []);
 
   // Sync form state when todayEntry hydrates from Supabase after initial render
   const prevEntryId = useRef(todayEntry?.id);
@@ -215,6 +225,58 @@ export default function TodayPanel() {
     setExtraImgs(prev => [...prev, ...thumbs]);
     e.target.value = "";
   }, []);
+
+  const handleAIOutfit = useCallback(async () => {
+    if (!watchId) return;
+    const watch = watches.find(w => w.id === watchId);
+    if (!watch) return;
+    setAiLoading(true);
+    setAiHint(null);
+    try {
+      // Build engine outfit as base for AI to work from
+      const wearableGarments = garments.filter(g =>
+        !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type ?? g.category)
+        && !g.excludeFromWardrobe
+      );
+      const engineOutfit = buildOutfit(watch, wearableGarments, weather ? { tempC: weather.tempC } : {}, [], [], {});
+      // Pinned = currently user-selected garments
+      const pinnedSlots = {};
+      for (const g of wearableGarments) {
+        if (selected.has(g.id)) {
+          const slot = g.type ?? g.category;
+          if (["shirt","sweater","pants","shoes","jacket"].includes(slot)) {
+            pinnedSlots[slot] = g;
+          }
+        }
+      }
+      const suggestion = await getAISuggestion(
+        wearableGarments, watch, weather ? { tempC: weather.tempC } : null,
+        engineOutfit, context, pinnedSlots
+      );
+      if (suggestion) {
+        // Apply suggested garments to selection
+        const slotKeys = ["shirt","sweater","pants","shoes","jacket"];
+        const newSelected = new Set(selected);
+        for (const slot of slotKeys) {
+          const gName = suggestion[slot];
+          if (!gName) continue;
+          const g = wearableGarments.find(x => x.name === gName);
+          if (g && !pinnedSlots[slot]) {
+            // Remove any existing garment of this type, add suggested
+            for (const existing of wearableGarments) {
+              if ((existing.type ?? existing.category) === slot) newSelected.delete(existing.id);
+            }
+            newSelected.add(g.id);
+          }
+        }
+        setSelected(newSelected);
+        setAiHint({ explanation: suggestion.explanation, strapShoeOk: suggestion.strapShoeOk });
+      }
+    } catch (err) {
+      console.warn("[TodayPanel AI] failed:", err.message);
+    }
+    setAiLoading(false);
+  }, [watchId, watches, garments, selected, context, weather]);
 
   const handleLog = useCallback(async () => {
     if (!watchId) return;
@@ -346,6 +408,53 @@ export default function TodayPanel() {
           ))}
         </div>
       </div>
+
+      {/* AI Outfit Generator */}
+      {watchId && (
+        <div style={{ marginBottom: 14 }}>
+          <button
+            onClick={handleAIOutfit}
+            disabled={aiLoading}
+            style={{
+              width: "100%", padding: "11px 16px", borderRadius: 10,
+              border: "1px solid #8b5cf6",
+              background: aiLoading ? (isDark ? "#1e1040" : "#ede9fe") : (isDark ? "#0f131a" : "#f5f3ff"),
+              color: "#8b5cf6", fontSize: 13, fontWeight: 600,
+              cursor: aiLoading ? "wait" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
+          >
+            {aiLoading ? (
+              <>
+                <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid #8b5cf6",
+                               borderTopColor: "transparent", borderRadius: "50%",
+                               animation: "spin 0.7s linear infinite" }} />
+                Building outfit…
+              </>
+            ) : "✦ AI Build Outfit"}
+          </button>
+          <style>{"@keyframes spin { to { transform: rotate(360deg); } }"}</style>
+          {aiHint && (
+            <div style={{
+              marginTop: 8, padding: "10px 12px", borderRadius: 10,
+              background: isDark ? "#0f131a" : "#f5f3ff",
+              borderLeft: "3px solid #8b5cf6", fontSize: 12, color: isDark ? "#c4b5fd" : "#5b21b6",
+              lineHeight: 1.6,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#8b5cf6", textTransform: "uppercase", letterSpacing: "0.06em" }}>AI Stylist</span>
+                {aiHint.strapShoeOk === false && (
+                  <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#7f1d1d", color: "#fca5a5" }}>⚠ Strap-shoe check</span>
+                )}
+                {aiHint.strapShoeOk === true && (
+                  <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#14532d", color: "#86efac" }}>✓ Strap-shoe ok</span>
+                )}
+              </div>
+              {aiHint.explanation}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* AI Watch Recommendation */}
       {watches.length > 0 && (() => {

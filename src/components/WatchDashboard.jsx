@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
@@ -226,6 +226,8 @@ export default function WatchDashboard() {
   const [shuffleSeed, setShuffleSeed] = useState(0);
   // Per-slot manual overrides: { shirt: garmentObj, pants: garmentObj, ... }
   const [slotOverrides, setSlotOverrides] = useState({});
+  // Debounce timer ref for auto AI re-trigger
+  const aiDebounceRef = useRef(null);
 
   useEffect(() => {
     if (!activeWatch && watches.length > 0) {
@@ -317,12 +319,11 @@ export default function WatchDashboard() {
   const weatherText = formatWeatherText(weather);
   const layerRec = weather ? getLayerRecommendation(weather.tempC) : null;
 
-  const handleAIStylist = useCallback(async () => {
+  const handleAIStylist = useCallback(async (overridePinned) => {
     if (!enrichedWatch || garments.length === 0) return;
     setAiLoading(true);
     setAiSuggestion(null);
     try {
-      // Derive day profile from today's context in week planner (not from watch style)
       const todayIso = new Date().toISOString().slice(0, 10);
       const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
       const weekCtx = useWardrobeStore.getState().weekCtx ?? [];
@@ -333,13 +334,27 @@ export default function WatchDashboard() {
         : baseCtx === "formal" ? "formal"
         : baseCtx === "casual" ? "casual"
         : "smart-casual";
-      const suggestion = await getAISuggestion(garments, enrichedWatch, weather, outfit, contextProfile);
+      // Use provided pinned overrides (from auto-retrigger) or current slotOverrides
+      const pinned = overridePinned ?? slotOverrides;
+      const suggestion = await getAISuggestion(garments, enrichedWatch, weather, mergedOutfit, contextProfile, pinned);
       setAiSuggestion(suggestion);
     } catch (err) {
       console.warn("[aiStylist] failed:", err.message);
     }
     setAiLoading(false);
-  }, [enrichedWatch, garments, weather, outfit]);
+  }, [enrichedWatch, garments, weather, mergedOutfit, slotOverrides]);
+
+  // Auto re-trigger AI when user manually swaps a slot (debounced 800ms)
+  // Only fires if AI was already active (aiSuggestion exists or aiLoading)
+  useEffect(() => {
+    if (Object.keys(slotOverrides).length === 0) return;
+    if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
+    aiDebounceRef.current = setTimeout(() => {
+      handleAIStylist(slotOverrides);
+    }, 800);
+    return () => clearTimeout(aiDebounceRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotOverrides]);
 
   return (
     <div style={{
@@ -574,7 +589,7 @@ export default function WatchDashboard() {
                 <div style={{ marginBottom: 8, color: isDark ? "#a1a9b8" : "#4b5563" }}>{aiSuggestion.explanation}</div>
               )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {["shirt", "pants", "shoes", "jacket"].map(slot => {
+                {["shirt", "sweater", "pants", "shoes", "jacket"].map(slot => {
                   const gName = aiSuggestion[slot];
                   if (!gName) return null;
                   const g = garments.find(x => x.name === gName);
@@ -599,7 +614,7 @@ export default function WatchDashboard() {
               <button
                 onClick={() => {
                   const built = {};
-                  for (const slot of ["shirt", "pants", "shoes", "jacket"]) {
+                  for (const slot of ["shirt", "sweater", "pants", "shoes", "jacket"]) {
                     const gName = aiSuggestion[slot];
                     if (gName) {
                       const g = garments.find(x => x.name === gName);
