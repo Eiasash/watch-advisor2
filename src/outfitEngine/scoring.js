@@ -190,3 +190,78 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   const scored = (garment.type ?? garment.category) === "shoes" ? base * ss : base;
   return scored * prefMult;
 }
+
+// ── Palette coherence — post-build scoring ──────────────────────────────────
+
+const WARM_COLORS = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive"]);
+const COOL_COLORS = new Set(["black","navy","grey","slate","charcoal","indigo"]);
+// "white" is neutral — works with either palette
+
+function _colorTone(color) {
+  const c = (color ?? "").toLowerCase();
+  if (WARM_COLORS.has(c)) return "warm";
+  if (COOL_COLORS.has(c)) return "cool";
+  // partial matches: "dark brown" → warm, "light blue" → cool
+  if (c.includes("brown") || c.includes("tan") || c.includes("khaki") || c.includes("cream") || c.includes("beige")) return "warm";
+  if (c.includes("grey") || c.includes("navy") || c.includes("charcoal") || c.includes("slate")) return "cool";
+  return "neutral";
+}
+
+/**
+ * Score how well pants and shoes work together tonally.
+ * Warm pants (stone, khaki, cream) + black shoes = jarring visual break at ankle.
+ * Cool pants (grey, slate, navy) + brown shoes = warm/cool clash.
+ * Returns 0-1.
+ */
+export function pantsShoeHarmony(pants, shoes) {
+  if (!pants || !shoes) return 0.7;
+  const pantsTone = _colorTone(pants.color);
+  const shoeTone = _colorTone(shoes.color);
+
+  // white shoes or white pants = neutral, always OK
+  const pc = (pants.color ?? "").toLowerCase();
+  const sc = (shoes.color ?? "").toLowerCase();
+  if (sc === "white" || pc === "white") return 0.9;
+
+  // Same tone family → great
+  if (pantsTone === shoeTone) return 1.0;
+  // Neutral on either side → acceptable
+  if (pantsTone === "neutral" || shoeTone === "neutral") return 0.8;
+  // Warm pants + cool shoes → jarring ankle break
+  if (pantsTone === "warm" && shoeTone === "cool") return 0.3;
+  // Cool pants + warm shoes → mild clash
+  if (pantsTone === "cool" && shoeTone === "warm") return 0.5;
+  return 0.7;
+}
+
+/**
+ * Pick the best belt from available belts to match shoe color.
+ * Returns the best belt garment or null.
+ */
+export function pickBelt(shoes, belts) {
+  if (!shoes || !belts?.length) return null;
+  const sc = (shoes.color ?? "").toLowerCase();
+
+  // White sneakers → no belt preference (any works)
+  if (sc === "white") return belts[0] ?? null;
+
+  // Score each belt by shoe-color match
+  const scored = belts.map(belt => {
+    const bc = (belt.color ?? "").toLowerCase();
+    // Exact match
+    if (bc === sc) return { belt, score: 1.0 };
+    // Tone-family match: brown family
+    const brownFamily = ["brown", "tan", "cognac", "dark brown"];
+    if (brownFamily.includes(bc) && brownFamily.includes(sc)) {
+      // Closer shade bonus: colors sharing a root word score higher
+      const sharesRoot = bc.includes("brown") && sc.includes("brown");
+      return { belt, score: sharesRoot ? 0.95 : 0.85 };
+    }
+    // Black to black
+    if (bc === "black" && sc === "black") return { belt, score: 1.0 };
+    // Mismatch
+    return { belt, score: 0.1 };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0]?.score > 0.1 ? scored[0].belt : (belts[0] ?? null);
+}

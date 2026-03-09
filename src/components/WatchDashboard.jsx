@@ -508,6 +508,20 @@ export default function WatchDashboard() {
                 />
               );
             })}
+
+            {/* Belt — auto-derived from shoes, not swappable */}
+            {mergedOutfit.belt && (
+              <div style={{
+                display:"flex", alignItems:"center", gap:8, padding:"4px 8px",
+                borderRadius:6, border:`1px solid ${isDark?"#374151":"#e5e7eb"}`,
+                background:isDark?"#1f2937":"#f9fafb", fontSize:12, marginTop:2,
+                color:isDark?"#9ca3af":"#6b7280",
+              }}>
+                <span style={{fontSize:14}}>🪢</span>
+                <span>{mergedOutfit.belt.name}</span>
+                <span style={{marginLeft:"auto",opacity:0.6,fontSize:11}}>matches shoes</span>
+              </div>
+            )}
           </div>
           {overrideOutfit && (
             <button
@@ -525,7 +539,7 @@ export default function WatchDashboard() {
 
           <button
             onClick={() => {
-              const slots = ["shirt","sweater","layer","pants","shoes","jacket"];
+              const slots = ["shirt","sweater","layer","pants","shoes","jacket","belt"];
               const garmentIds = slots.map(s => mergedOutfit[s]?.id).filter(Boolean);
               if (garmentIds.length === 0) return;
               // Store slot→id map so diversityBonus + rejectStore can reference it

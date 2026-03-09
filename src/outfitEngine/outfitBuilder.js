@@ -10,7 +10,7 @@
  */
 
 import { STYLE_TO_SLOTS } from "./watchStyles.js";
-import { scoreGarment } from "./scoring.js";
+import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore } from "./scoring.js";
 import { useRejectStore } from "../stores/rejectStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
 
@@ -47,7 +47,7 @@ function _isCasualJacket(name) {
 }
 
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}, context = null) {
-  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null };
+  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null, belt: null };
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today.
   // Fallback chain: strapStore override → watch.straps[0].label → constructed string → watch.strap.
@@ -205,6 +205,48 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
   }
 
+  // ── Belt slot — auto-match to shoes ──────────────────────────────────────────
+  outfit.belt = null;
+  if (outfit.shoes && !pinnedSlots.belt) {
+    const belts = wardrobe.filter(g => (g.type ?? g.category) === "belt");
+    outfit.belt = pickBelt(outfit.shoes, belts);
+  } else if (pinnedSlots.belt) {
+    outfit.belt = pinnedSlots.belt;
+  }
+
+  // ── Pants-shoe palette coherence ───────────────────────────────────────────
+  // If warm pants + black shoes (harmony < 0.4), try swapping pants to a cooler option.
+  // Only auto-swap if strap forces black shoes (can't swap shoes instead).
+  if (outfit.pants && outfit.shoes && !pinnedSlots.pants && !pinnedSlots.shoes) {
+    const harmony = pantsShoeHarmony(outfit.pants, outfit.shoes);
+    if (harmony <= 0.4) {
+      // Check if strap constrains us to these shoes (leather strap → can't change shoes)
+      const strapLocked = strapShoeScore(watchWithStrap, outfit.shoes) === 1.0
+        && watchWithStrap.strap !== "bracelet" && watchWithStrap.strap !== "integrated";
+
+      if (strapLocked) {
+        // Can't change shoes → find better pants for these shoes
+        const rejectState = useRejectStore.getState();
+        const shoeTone = (outfit.shoes.color ?? "").toLowerCase();
+        const altPants = wearable
+          .filter(g => (g.type ?? g.category) === "pants" && g.id !== outfit.pants.id)
+          .map(g => ({
+            garment: g,
+            score: scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history),
+            harmony: pantsShoeHarmony(g, outfit.shoes),
+          }))
+          .filter(p => p.score > 0 && p.harmony >= 0.7)
+          .sort((a, b) => (b.score + b.harmony) - (a.score + a.harmony));
+        if (altPants.length) {
+          outfit.pants = altPants[0].garment;
+          // Re-pick belt for consistency
+          const belts = wardrobe.filter(g => (g.type ?? g.category) === "belt");
+          outfit.belt = pickBelt(outfit.shoes, belts);
+        }
+      }
+    }
+  }
+
   return outfit;
 }
 
@@ -243,8 +285,19 @@ export function explainOutfitChoice(watch, outfit, weather) {
   if (outfit.layer) parts.push(`${outfit.layer.name} as second layer for extra warmth.`);
   if (outfit.pants) parts.push(`${outfit.pants.name} complements the formality level.`);
   if (outfit.shoes) parts.push(`${outfit.shoes.name} ground the outfit.`);
+  if (outfit.belt) {
+    const beltShoeMatch = (outfit.belt.color ?? "").toLowerCase() === (outfit.shoes?.color ?? "").toLowerCase();
+    parts.push(`${outfit.belt.name} ${beltShoeMatch ? "matches" : "coordinates with"} the shoes.`);
+  }
   if (outfit.jacket && weather?.tempC != null) {
     parts.push(`${outfit.jacket.name} added for ${weather.tempC}°C weather.`);
+  }
+
+  // Palette note
+  if (outfit.pants && outfit.shoes) {
+    const h = pantsShoeHarmony(outfit.pants, outfit.shoes);
+    if (h >= 0.9) parts.push("Pants and shoes are in perfect tonal harmony.");
+    else if (h <= 0.5) parts.push("Note: pants-shoe tone transition is a stretch — consider swapping.");
   }
 
   return parts.join(" ");

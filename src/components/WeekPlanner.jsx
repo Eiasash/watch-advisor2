@@ -19,8 +19,8 @@ const CONTEXTS = [
   { key:"shift",                   label:"On-Call Shift" },
 ];
 
-const OUTFIT_SLOTS = ["shirt", "sweater", "layer", "pants", "shoes", "jacket"];
-const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", layer:"\u{1F9E3}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}" };
+const OUTFIT_SLOTS = ["shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
+const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", layer:"\u{1F9E3}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}", belt:"\u{1FAA2}" };
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 const WEATHER_ICONS = {
