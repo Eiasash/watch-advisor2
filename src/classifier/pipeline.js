@@ -19,17 +19,19 @@ import { buildGarmentName } from "../features/wardrobe/garmentNamer.js";
 
 /**
  * Claude Vision fallback — called when pixel classifier has low confidence.
+ * classify-image function returns parsed JSON directly: { type, color, material, pattern, formality, confidence }
  */
-async function claudeVisionFallback(imageBase64) {
+async function claudeVisionFallback(imageBase64, hash) {
   try {
     const res = await fetch("/.netlify/functions/classify-image", {
       method: "POST",
-      body: JSON.stringify({ image: imageBase64 }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageBase64, hash }),
     });
+    if (!res.ok) return null;
     const data = await res.json();
-    const text = data?.content?.[0]?.text ?? "";
-    const match = text.match(/\{[^}]+\}/);
-    if (match) return JSON.parse(match[0]);
+    // Function returns parsed JSON directly — type/color/material at top level
+    if (data?.type) return data;
     return null;
   } catch (err) {
     console.warn("[claudeFallback] failed:", err.message);
@@ -77,15 +79,15 @@ export async function runClassifierPipeline(file, existingGarments = []) {
     console.log("[pipeline] low confidence — trying Claude Vision fallback (512px)");
     const aiImage = hiRes ?? thumbnail;
     if (aiImage) {
-      const base64 = aiImage.replace(/^data:image\/[^;]+;base64,/, "");
-      const vision = await claudeVisionFallback(base64);
+      const vision = await claudeVisionFallback(aiImage, hash);
       if (vision?.type) {
         tags.type = normalizeType(vision.type);
         tags.color = vision.color ?? tags.color;
         tags.formality = vision.formality ?? tags.formality;
+        tags.material = vision.material ?? tags.material;
         tags._typeSource = "claude-vision";
         tags.needsReview = false;
-        console.log("[pipeline] Claude Vision override:", tags.type, tags.color);
+        console.log("[pipeline] Claude Vision override:", tags.type, tags.color, vision.material);
       }
     }
   }

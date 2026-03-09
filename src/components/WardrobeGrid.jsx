@@ -355,8 +355,20 @@ export default function WardrobeGrid() {
     updated.filter(g => selectedIds.has(g.id)).forEach(g => pushGarment(g).catch(() => {}));
   }
   function handleBatchMerge() {
+    const ids = Array.from(selectedIds);
+    const [primaryId, ...rest] = ids;
     batchMergeAngles();
-    // cache update happens inside store
+    // Push primary (now with merged angles) + delete the absorbed garments
+    const primary = garments.find(g => g.id === primaryId);
+    if (primary) pushGarment(primary).catch(() => {});
+    rest.forEach(id => {
+      deleteGarment(id).catch(() => {});
+      deleteStoragePhoto(id).catch(() => {});
+    });
+    const updated = garments
+      .filter(g => !rest.includes(g.id))
+      .map(g => g.id === primaryId ? { ...g, photoAngles: [...(g.photoAngles??[]), ...rest.flatMap(rid => { const r = garments.find(x=>x.id===rid); return [r?.thumbnail, ...(r?.photoAngles??[])].filter(Boolean); }).slice(0,4)] } : g);
+    setCachedState({ watches, garments: updated, history }).catch(() => {});
   }
 
   const tabStyle = active => ({

@@ -36,8 +36,9 @@ export async function handler(event) {
     if (!apiKey) return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
     // ── Cache check ──────────────────────────────────────────────────────────
-    // Key by garment hash (dHash of photo) — same image = same result forever.
-    const cacheKey = hash ? `verify:${hash}` : null;
+    // Key includes angle count — adding new angles invalidates old cache entry
+    const angleCount = (allAngles ?? []).length;
+    const cacheKey = hash ? `verify:${hash}:a${angleCount}` : null;
     if (cacheKey) {
       const cached = await cacheGet(cacheKey);
       if (cached) {
@@ -123,7 +124,8 @@ Rules:
 
     const raw  = res.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
+    let parsed;
+    try { parsed = JSON.parse(clean); } catch { parsed = { ok: false, confidence: 0, reason: "AI parse error" }; }
 
     // ── Cache write ──────────────────────────────────────────────────────────
     if (cacheKey) {

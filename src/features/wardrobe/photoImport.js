@@ -6,19 +6,18 @@ import { normalizeType } from "./normalizeType.js";
 
 /**
  * Claude Vision fallback — only called when pixel classifier has low confidence.
- * Requires the Netlify function to be deployed with CLAUDE_API_KEY.
+ * classify-image function returns parsed JSON directly: { type, color, material, ... }
  */
-async function claudeFallback(imageBase64) {
+async function claudeFallback(imageDataUrl, hash) {
   try {
     const res = await fetch("/.netlify/functions/classify-image", {
       method: "POST",
-      body: JSON.stringify({ image: imageBase64 }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageDataUrl, hash }),
     });
+    if (!res.ok) return null;
     const data = await res.json();
-    // Parse Claude's response — extract JSON from the text content
-    const text = data?.content?.[0]?.text ?? "";
-    const match = text.match(/\{[^}]+\}/);
-    if (match) return JSON.parse(match[0]);
+    if (data?.type) return data;
     return null;
   } catch (err) {
     console.warn("[claudeFallback] failed:", err.message);
@@ -57,14 +56,14 @@ export async function runPhotoImport(file, existingGarments = []) {
     console.log("[import] low confidence — trying Claude Vision fallback (512px)");
     const aiImage = hiRes ?? thumbnail;
     if (aiImage) {
-      const base64 = aiImage.replace(/^data:image\/[^;]+;base64,/, "");
-      const vision = await claudeFallback(base64);
+      const vision = await claudeFallback(aiImage, hash);
       if (vision?.type) {
         tags.type = normalizeType(vision.type);
         tags.color = vision.color ?? tags.color;
+        tags.material = vision.material ?? tags.material;
         tags._typeSource = "claude-vision";
         tags.needsReview = false;
-        console.log("[import] Claude Vision override:", tags.type, tags.color);
+        console.log("[import] Claude Vision override:", tags.type, tags.color, vision.material);
       }
     }
   }
@@ -78,6 +77,7 @@ export async function runPhotoImport(file, existingGarments = []) {
     name:       baseName || "Imported Garment",
     type:       normalizeType(tags.type),
     color:      tags.color,
+    material:   tags.material ?? null,
     formality:  tags.formality,
     photoType:  tags.photoType,
     needsReview: tags.needsReview,
