@@ -5,22 +5,22 @@
 
 // Dial color → compatible garment colors (unified with outfitEngine/scoring.js)
 const DIAL_COLOR_MAP = {
-  "silver-white": ["black", "navy", "gray", "grey", "white", "beige", "slate"],
-  "green":        ["olive", "beige", "brown", "gray", "grey", "khaki", "cream"],
-  "grey":         ["black", "white", "navy", "gray", "grey", "stone", "beige"],
-  "blue":         ["navy", "gray", "grey", "white", "beige", "stone", "black"],
-  "navy":         ["gray", "grey", "white", "black", "beige", "stone", "cream"],
-  "white":        ["black", "navy", "gray", "grey", "beige", "stone", "brown"],
-  "black-red":    ["black", "gray", "grey", "white", "red"],
-  "black":        ["black", "white", "gray", "grey", "navy", "olive", "brown"],
-  "white-teal":   ["gray", "grey", "white", "black", "navy", "teal"],
+  "silver-white": ["black", "navy", "gray", "grey", "white", "beige", "slate", "charcoal", "blue"],
+  "green":        ["olive", "beige", "brown", "gray", "grey", "khaki", "cream", "tan", "green", "charcoal"],
+  "grey":         ["black", "white", "navy", "gray", "grey", "stone", "beige", "charcoal", "blue", "burgundy"],
+  "blue":         ["navy", "gray", "grey", "white", "beige", "stone", "black", "charcoal", "blue"],
+  "navy":         ["gray", "grey", "white", "black", "beige", "stone", "cream", "charcoal", "blue"],
+  "white":        ["black", "navy", "gray", "grey", "beige", "stone", "brown", "charcoal", "blue", "green"],
+  "black-red":    ["black", "gray", "grey", "white", "red", "charcoal", "burgundy"],
+  "black":        ["black", "white", "gray", "grey", "navy", "olive", "brown", "charcoal", "blue", "green"],
+  "white-teal":   ["gray", "grey", "white", "black", "navy", "teal", "charcoal"],
   // Replica dial colors
-  "teal":         ["grey", "white", "black", "navy", "olive", "khaki"],
-  "burgundy":     ["grey", "white", "navy", "black", "beige", "stone"],
-  "purple":       ["grey", "black", "navy", "white", "stone"],
-  "turquoise":    ["white", "beige", "stone", "navy", "cream"],
-  "red":          ["black", "grey", "white", "navy"],
-  "meteorite":    ["black", "grey", "navy", "white", "brown"],
+  "teal":         ["grey", "white", "black", "navy", "olive", "khaki", "charcoal", "green"],
+  "burgundy":     ["grey", "white", "navy", "black", "beige", "stone", "charcoal", "cream"],
+  "purple":       ["grey", "black", "navy", "white", "stone", "charcoal"],
+  "turquoise":    ["white", "beige", "stone", "navy", "cream", "charcoal"],
+  "red":          ["black", "grey", "white", "navy", "charcoal"],
+  "meteorite":    ["black", "grey", "navy", "white", "brown", "charcoal", "olive"],
 };
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);

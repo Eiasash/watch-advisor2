@@ -39,17 +39,24 @@ const TYPE_RULES = [
 ];
 
 const COLOR_RULES = [
-  { color: "black",  kws: ["black","noir","ebony","onyx","jet"] },
-  { color: "white",  kws: ["white","ivory","cream","ecru","off-white","offwhite","optical"] },
-  { color: "navy",   kws: ["navy","midnight","ink","marine"] },
-  { color: "blue",   kws: ["blue","cobalt","denim","indigo","sky","royal","cornflower"] },
-  { color: "grey",   kws: ["grey","gray","slate","charcoal","melange","ash","silver","marl","heather"] },
-  { color: "brown",  kws: ["brown","chocolate","cognac","mocha","espresso","walnut","tobacco","mahogany"] },
-  { color: "tan",    kws: ["tan","camel","khaki","sand","wheat","biscuit","nude","taupe","buff"] },
-  { color: "beige",  kws: ["beige","stone","oat","parchment","mushroom","greige"] },
-  { color: "olive",  kws: ["olive","army","military","sage","moss","khaki-green","od green"] },
-  { color: "green",  kws: ["green","emerald","forest","hunter","teal","mint","pine","bottle"] },
-  { color: "red",    kws: ["red","burgundy","wine","maroon","brick","rust","crimson","bordeaux","claret"] },
+  { color: "black",    kws: ["black","noir","ebony","onyx","jet"] },
+  { color: "white",    kws: ["white","ivory","off-white","offwhite","optical"] },
+  { color: "cream",    kws: ["cream","ecru"] },
+  { color: "navy",     kws: ["navy","midnight","ink","marine"] },
+  { color: "blue",     kws: ["blue","cobalt","denim","indigo","sky","royal","cornflower"] },
+  { color: "grey",     kws: ["grey","gray","melange","ash","silver","marl","heather"] },
+  { color: "charcoal", kws: ["charcoal","anthracite"] },
+  { color: "slate",    kws: ["slate"] },
+  { color: "brown",    kws: ["brown","chocolate","cognac","mocha","espresso","walnut","tobacco","mahogany"] },
+  { color: "tan",      kws: ["tan","camel","sand","wheat","biscuit","nude","taupe","buff"] },
+  { color: "khaki",    kws: ["khaki"] },
+  { color: "beige",    kws: ["beige","oat","parchment","mushroom","greige"] },
+  { color: "stone",    kws: ["stone"] },
+  { color: "olive",    kws: ["olive","army","military","sage","moss","khaki-green","od green"] },
+  { color: "green",    kws: ["green","emerald","forest","hunter","mint","pine","bottle"] },
+  { color: "teal",     kws: ["teal"] },
+  { color: "red",      kws: ["red","brick","rust","crimson"] },
+  { color: "burgundy", kws: ["burgundy","wine","maroon","bordeaux","claret"] },
 ];
 
 const FORMALITY_MAP = {
@@ -108,17 +115,24 @@ export function classifyFromFilename(filename) {
 // ─── Pixel helpers ────────────────────────────────────────────────────────────
 
 const PALETTE = [
-  { name: "black",  r: 18,  g: 18,  b: 18  },
-  { name: "white",  r: 242, g: 242, b: 242 },
-  { name: "grey",   r: 128, g: 128, b: 128 },
-  { name: "navy",   r: 20,  g: 35,  b: 85  },
-  { name: "blue",   r: 45,  g: 95,  b: 195 },
-  { name: "brown",  r: 95,  g: 55,  b: 25  },
-  { name: "tan",    r: 175, g: 140, b: 95  },
-  { name: "beige",  r: 215, g: 198, b: 165 },
-  { name: "olive",  r: 95,  g: 105, b: 45  },
-  { name: "green",  r: 35,  g: 125, b: 55  },
-  { name: "red",    r: 175, g: 35,  b: 35  },
+  { name: "black",    r: 18,  g: 18,  b: 18  },
+  { name: "white",    r: 242, g: 242, b: 242 },
+  { name: "grey",     r: 128, g: 128, b: 128 },
+  { name: "navy",     r: 20,  g: 35,  b: 85  },
+  { name: "blue",     r: 45,  g: 95,  b: 195 },
+  { name: "brown",    r: 95,  g: 55,  b: 25  },
+  { name: "tan",      r: 175, g: 140, b: 95  },
+  { name: "beige",    r: 215, g: 198, b: 165 },
+  { name: "olive",    r: 95,  g: 105, b: 45  },
+  { name: "green",    r: 35,  g: 125, b: 55  },
+  { name: "red",      r: 175, g: 35,  b: 35  },
+  { name: "cream",    r: 245, g: 235, b: 210 },
+  { name: "khaki",    r: 160, g: 150, b: 110 },
+  { name: "stone",    r: 185, g: 175, b: 155 },
+  { name: "slate",    r: 95,  g: 105, b: 115 },
+  { name: "teal",     r: 0,   g: 128, b: 128 },
+  { name: "burgundy", r: 128, g: 0,   b: 32  },
+  { name: "charcoal", r: 54,  g: 54,  b: 54  },
 ];
 
 function colorDist(r1, g1, b1, r2, g2, b2) {

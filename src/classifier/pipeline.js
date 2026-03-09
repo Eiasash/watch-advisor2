@@ -18,6 +18,46 @@ import { shouldExcludeAsOutfitPhoto } from "./personFilter.js";
 import { buildGarmentName } from "../features/wardrobe/garmentNamer.js";
 
 /**
+ * Normalize AI-returned colors to scoring-compatible palette names.
+ * Maps 41+ AI color names down to the ~18 colors the scoring engine recognizes.
+ */
+const AI_COLOR_NORMALIZE = {
+  // Already canonical — no mapping needed for: black, white, navy, blue, grey, brown, tan,
+  // beige, olive, green, red, cream, khaki, stone, slate, teal, burgundy, charcoal
+  "gray": "grey",
+  "dark brown": "brown",
+  "dark green": "olive",
+  "dark navy": "navy",
+  "denim": "blue",
+  "light blue": "blue",
+  "ecru": "cream",
+  "ivory": "cream",
+  "camel": "tan",
+  "sand": "tan",
+  "taupe": "tan",
+  "cognac": "brown",
+  "rust": "brown",
+  "maroon": "burgundy",
+  "wine": "burgundy",
+  "sage": "olive",
+  "mint": "green",
+  "gold": "tan",
+  "silver": "grey",
+  "coral": "red",
+  "pink": "red",
+  "orange": "red",
+  "lavender": "grey",
+  "yellow": "cream",
+  "multicolor": "grey",
+};
+
+function normalizeAIColor(aiColor) {
+  if (!aiColor) return null;
+  const lower = aiColor.toLowerCase().trim();
+  return AI_COLOR_NORMALIZE[lower] ?? lower;
+}
+
+/**
  * Claude Vision fallback — called when pixel classifier has low confidence.
  * classify-image function returns parsed JSON directly: { type, color, material, pattern, formality, confidence }
  */
@@ -82,12 +122,14 @@ export async function runClassifierPipeline(file, existingGarments = []) {
       const vision = await claudeVisionFallback(aiImage, hash);
       if (vision?.type) {
         tags.type = normalizeType(vision.type);
-        tags.color = vision.color ?? tags.color;
+        tags.color = normalizeAIColor(vision.color) ?? tags.color;
         tags.formality = vision.formality ?? tags.formality;
         tags.material = vision.material ?? tags.material;
+        tags.pattern = vision.pattern ?? tags.pattern;
+        tags.colorAlternatives = (vision.color_alternatives ?? []).map(normalizeAIColor).filter(Boolean);
         tags._typeSource = "claude-vision";
         tags.needsReview = false;
-        console.log("[pipeline] Claude Vision override:", tags.type, tags.color, vision.material);
+        console.log("[pipeline] Claude Vision override:", tags.type, tags.color, vision.material, vision.pattern);
       }
     }
   }
@@ -110,6 +152,9 @@ export async function runClassifierPipeline(file, existingGarments = []) {
     type: category,
     category,
     color: tags.color,
+    ...(tags.colorAlternatives?.length ? { colorAlternatives: tags.colorAlternatives } : {}),
+    ...(tags.material ? { material: tags.material } : {}),
+    ...(tags.pattern ? { pattern: tags.pattern } : {}),
     formality: tags.formality,
     photoType: tags.photoType,
     needsReview: tags.needsReview,
