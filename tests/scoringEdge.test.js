@@ -10,17 +10,17 @@ import {
 
 // ─── strapShoeScore — non-standard leather colors ──────────────────────────
 
-describe("strapShoeScore — alligator strap always treated as brown family", () => {
-  it("navy alligator + brown shoes → 1.0 (alligator keyword triggers brown match)", () => {
-    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "brown" })).toBe(1.0);
+describe("strapShoeScore — colored alligator straps are non-standard leather", () => {
+  it("navy alligator + brown shoes → 0.85 (navy alligator = non-standard, not brown family)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "brown" })).toBe(0.85);
   });
 
-  it("navy alligator + black shoes → 0.0 (alligator = brown family)", () => {
-    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "black" })).toBe(0.0);
+  it("navy alligator + black shoes → 0.85 (navy alligator = non-standard leather)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "black" })).toBe(0.85);
   });
 
-  it("grey alligator + tan shoes → 1.0 (alligator = brown family)", () => {
-    expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "tan" })).toBe(1.0);
+  it("grey alligator + tan shoes → 0.85 (grey alligator = non-standard, not brown family)", () => {
+    expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "tan" })).toBe(0.85);
   });
 
   it("olive leather + black shoes → 0.85 (non-standard leather color)", () => {

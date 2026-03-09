@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateOutfit } from "../src/features/outfits/generateOutfit.js";
+import { generateOutfit } from "../src/engine/outfitEngine.js";
 
 const shirt   = { id: "s1", type: "shirt", color: "white" };
 const pants   = { id: "p1", type: "pants", color: "navy" };
@@ -59,21 +59,22 @@ describe("generateOutfit", () => {
     expect(result.sweater).not.toBeNull();
   });
 
-  it("temp >= 22 → no jacket, no sweater", () => {
+  it("temp >= 22 → jacket still scored as core slot, no sweater", () => {
     const result = generateOutfit(watch, garments, { tempC: 25 });
-    expect(result.jacket).toBeNull();
+    // Jacket is a core outfit slot — always filled if available (weather only gates sweater/layer)
+    expect(result.jacket).not.toBeNull();
     expect(result.sweater).toBeNull();
   });
 
-  it("null weather → no jacket, no sweater", () => {
+  it("null weather → jacket filled, no sweater (tempC defaults to 22)", () => {
     const result = generateOutfit(watch, garments, null);
-    expect(result.jacket).toBeNull();
+    expect(result.jacket).not.toBeNull();
     expect(result.sweater).toBeNull();
   });
 
-  it("undefined weather → no jacket, no sweater", () => {
+  it("undefined weather → jacket filled, no sweater (tempC defaults to 22)", () => {
     const result = generateOutfit(watch, garments, undefined);
-    expect(result.jacket).toBeNull();
+    expect(result.jacket).not.toBeNull();
     expect(result.sweater).toBeNull();
   });
 
