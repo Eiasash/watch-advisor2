@@ -19,8 +19,8 @@ const CONTEXTS = [
   { key:"shift",                   label:"On-Call Shift" },
 ];
 
-const OUTFIT_SLOTS = ["shirt", "sweater", "pants", "shoes", "jacket"];
-const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}" };
+const OUTFIT_SLOTS = ["shirt", "sweater", "layer", "pants", "shoes", "jacket"];
+const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", layer:"\u{1F9E3}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}" };
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 const WEATHER_ICONS = {
@@ -32,7 +32,20 @@ const WEATHER_ICONS = {
   "Thunderstorm": "\u26C8\uFE0F",
 };
 
-function WatchMini({ watch, label, isDark, isOnCall }) {
+/** Compute days since a watch was last worn */
+function daysSinceWorn(watchId, history) {
+  const today = new Date().toISOString().slice(0, 10);
+  for (let i = 0; i < history.length; i++) {
+    if (history[i].watchId === watchId) {
+      const d = history[i].date;
+      if (!d) continue;
+      return Math.round((new Date(today) - new Date(d)) / 86400000);
+    }
+  }
+  return null;
+}
+
+function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
   if (!watch) return <div style={{ color:"#4b5563", fontSize:12, fontStyle:"italic" }}>No watches</div>;
   const accent = isOnCall ? "#f97316" : "#3b82f6";
   return (
@@ -46,7 +59,7 @@ function WatchMini({ watch, label, isDark, isOnCall }) {
       }}>
         {watch.emoji ?? "\u231A"}
       </div>
-      <div>
+      <div style={{ flex:1 }}>
         <div style={{ fontSize:11, fontWeight:700, color:isDark?"#e2e8f0":"#111827", lineHeight:1.2 }}>
           {watch.brand ?? ""} {watch.model ?? watch.name ?? "Watch"}
         </div>
@@ -55,6 +68,85 @@ function WatchMini({ watch, label, isDark, isOnCall }) {
           {label && <span style={{ color:accent, marginLeft:4 }}>{label}</span>}
         </div>
       </div>
+      {daysSince !== undefined && daysSince !== null && (
+        <div style={{ fontSize:10, fontWeight:700, flexShrink:0,
+                      color: daysSince >= 7 ? "#22c55e" : daysSince <= 2 ? "#ef4444" : (isDark?"#6b7280":"#9ca3af") }}>
+          {daysSince === 0 ? "today" : `${daysSince}d`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Rotation insights: variety score + most/least worn */
+function RotationInsights({ rotation, history, isDark }) {
+  if (!rotation.length) return null;
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const text = isDark ? "#e2e8f0" : "#1f2937";
+  const sub = isDark ? "#6b7280" : "#9ca3af";
+
+  // Count unique watches in the 7-day plan
+  const weekWatchIds = new Set(rotation.map(d => d.watch?.id).filter(Boolean));
+  const varietyScore = weekWatchIds.size;
+
+  // Wear frequency in last 30 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffIso = cutoff.toISOString().slice(0, 10);
+  const recentHistory = history.filter(e => e.date >= cutoffIso && e.watchId);
+  const wearCounts = {};
+  for (const e of recentHistory) {
+    wearCounts[e.watchId] = (wearCounts[e.watchId] ?? 0) + 1;
+  }
+
+  // Most and least worn from the week's watches
+  const weekWatches = rotation.map(d => d.watch).filter(Boolean);
+  const uniqueWeek = [...new Map(weekWatches.map(w => [w.id, w])).values()];
+  let mostWorn = null, leastWorn = null;
+  for (const w of uniqueWeek) {
+    const c = wearCounts[w.id] ?? 0;
+    if (!mostWorn || c > (wearCounts[mostWorn.id] ?? 0)) mostWorn = w;
+    if (!leastWorn || c < (wearCounts[leastWorn.id] ?? 0)) leastWorn = w;
+  }
+
+  // Style streak detection: same watch style 3+ consecutive days
+  let streak = 1, maxStreak = 1, streakStyle = null;
+  for (let i = 1; i < rotation.length; i++) {
+    if (rotation[i].watch?.style && rotation[i].watch?.style === rotation[i - 1].watch?.style) {
+      streak++;
+      if (streak > maxStreak) { maxStreak = streak; streakStyle = rotation[i].watch.style; }
+    } else {
+      streak = 1;
+    }
+  }
+
+  return (
+    <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+      <div style={{ padding:"6px 12px", borderRadius:8, background:isDark?"#0f131a":"#f3f4f6",
+                    border:`1px solid ${border}`, fontSize:11, color:text }}>
+        <span style={{ fontWeight:700, color: varietyScore >= 5 ? "#22c55e" : varietyScore >= 3 ? "#f59e0b" : "#ef4444" }}>
+          {varietyScore}
+        </span>
+        <span style={{ color:sub }}> unique watches this week</span>
+      </div>
+      {mostWorn && (wearCounts[mostWorn.id] ?? 0) > 0 && (
+        <div style={{ padding:"6px 12px", borderRadius:8, background:isDark?"#0f131a":"#f3f4f6",
+                      border:`1px solid ${border}`, fontSize:11, color:sub }}>
+          Most worn: <span style={{ fontWeight:700, color:text }}>{mostWorn.model}</span> ({wearCounts[mostWorn.id] ?? 0}x/30d)
+        </div>
+      )}
+      {leastWorn && leastWorn.id !== mostWorn?.id && (
+        <div style={{ padding:"6px 12px", borderRadius:8, background:isDark?"#0f131a":"#f3f4f6",
+                      border:`1px solid ${border}`, fontSize:11, color:sub }}>
+          Rested: <span style={{ fontWeight:700, color:"#22c55e" }}>{leastWorn.model}</span> ({wearCounts[leastWorn.id] ?? 0}x/30d)
+        </div>
+      )}
+      {maxStreak >= 3 && (
+        <div style={{ padding:"6px 12px", borderRadius:8, background:"#7f1d1d22",
+                      border:"1px solid #ef444444", fontSize:11, color:"#ef4444" }}>
+          {"\u26A0"} {streakStyle} streak: {maxStreak} days in a row
+        </div>
+      )}
     </div>
   );
 }
@@ -541,6 +633,8 @@ export default function WeekPlanner() {
         </div>
       </div>
 
+      <RotationInsights rotation={rotation} history={history} isDark={isDark} />
+
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {rotation.map((day, dayIdx) => {
           const isToday = day.date === today;
@@ -588,7 +682,8 @@ export default function WeekPlanner() {
 
               {/* Watch */}
               <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall}
-                label={day.isOverridden ? "overridden" : null} />
+                label={day.isOverridden ? "overridden" : null}
+                daysSince={day.watch ? daysSinceWorn(day.watch.id, history) : null} />
 
               {/* Watch override picker */}
               <div style={{ marginTop: 8, display: "flex", gap: 6, alignItems: "center" }}>
@@ -746,7 +841,8 @@ export default function WeekPlanner() {
               {day.backup && (
                 <div style={{ marginTop:6, paddingTop:6, borderTop:`1px solid ${border}` }}>
                   <div style={{ fontSize:10, color:sub, marginBottom:3 }}>Backup</div>
-                  <WatchMini watch={day.backup} isDark={isDark} isOnCall={false} />
+                  <WatchMini watch={day.backup} isDark={isDark} isOnCall={false}
+                    daysSince={day.backup ? daysSinceWorn(day.backup.id, history) : null} />
                 </div>
               )}
             </div>

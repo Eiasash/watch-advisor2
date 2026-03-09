@@ -10,6 +10,7 @@ import { useWatchStore }    from "../stores/watchStore.js";
 import { useStrapStore }    from "../stores/strapStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
+import { scoreWatchForDay } from "../engine/dayProfile.js";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 
@@ -42,6 +43,47 @@ const CONTEXT_OPTIONS = [
 ];
 // Normalised to lowercase to match garment.type values (DB stores lowercase)
 const GARMENT_PRIORITY = ["shoes", "pants", "shirt", "sweater", "jacket", "coat"];
+
+/** Compute days since a watch was last worn, or null if never */
+function daysSinceWorn(watchId, history) {
+  const today = new Date().toISOString().slice(0, 10);
+  for (let i = 0; i < history.length; i++) {
+    if (history[i].watchId === watchId) {
+      const d = history[i].date;
+      if (!d) continue;
+      const diff = Math.round((new Date(today) - new Date(d)) / 86400000);
+      return diff;
+    }
+  }
+  return null;
+}
+
+/** Get top AI-recommended watches for today's context with scores */
+function getWatchRecommendations(watches, history, context) {
+  if (!watches.length) return [];
+  const scored = watches.map(w => ({
+    watch: w,
+    score: scoreWatchForDay(w, context, history),
+    daysSince: daysSinceWorn(w.id, history),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 3);
+}
+
+/** Explain why a watch is recommended */
+function explainRecommendation(rec, context) {
+  const parts = [];
+  const w = rec.watch;
+  if (w.style) parts.push(`${w.style} style`);
+  if (w.formality) parts.push(`formality ${w.formality}/10`);
+  if (rec.daysSince === null) parts.push("never worn");
+  else if (rec.daysSince >= 7) parts.push(`rested ${rec.daysSince}d`);
+  else if (rec.daysSince <= 2) parts.push(`worn ${rec.daysSince}d ago`);
+  if (w.replica && ["hospital-smart-casual", "formal", "shift"].includes(context)) {
+    parts.push("replica \u2014 consider genuine");
+  }
+  return parts.join(" \u00B7 ");
+}
 
 function resizeImage(file, maxPx = 480) {
   return new Promise(resolve => {
@@ -305,24 +347,79 @@ export default function TodayPanel() {
         </div>
       </div>
 
+      {/* AI Watch Recommendation */}
+      {watches.length > 0 && (() => {
+        const recs = getWatchRecommendations(watches, entries, context);
+        const top = recs[0];
+        if (!top) return null;
+        return (
+          <div style={{ background: card, borderRadius: 14, border: `1px solid #8b5cf644`, padding: 16, marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#8b5cf6", textTransform: "uppercase",
+                          letterSpacing: "0.06em", marginBottom: 10 }}>AI Pick for {CONTEXT_OPTIONS.find(c => c.key === context)?.label ?? context}</div>
+            {recs.slice(0, 3).map((rec, i) => {
+              const w = rec.watch;
+              const isTop = i === 0;
+              const dsw = rec.daysSince;
+              return (
+                <div key={w.id} onClick={() => setWatchId(w.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10,
+                           border: `1px solid ${isTop ? "#8b5cf6" : border}`, cursor: "pointer", marginBottom: 6,
+                           background: isTop ? (isDark ? "#1a0f3a" : "#f5f3ff") : "transparent" }}>
+                  <div style={{ fontSize: 22 }}>{w.emoji ?? "\u231A"}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: text }}>
+                      {isTop && <span style={{ color: "#8b5cf6", marginRight: 4 }}>#1</span>}
+                      {!isTop && <span style={{ color: muted, marginRight: 4 }}>#{i + 1}</span>}
+                      {w.brand} {w.model}
+                    </div>
+                    <div style={{ fontSize: 10, color: muted }}>{explainRecommendation(rec, context)}</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    {dsw !== null ? (
+                      <div style={{ fontSize: 10, fontWeight: 700,
+                                    color: dsw >= 7 ? "#22c55e" : dsw <= 2 ? "#ef4444" : muted }}>
+                        {dsw === 0 ? "today" : `${dsw}d ago`}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#22c55e" }}>new</div>
+                    )}
+                    <div style={{ fontSize: 9, color: muted }}>
+                      {Math.round(rec.score * 100)}%
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* Watch picker */}
       <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase",
                       letterSpacing: "0.06em", marginBottom: 10 }}>Watch</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {watches.map(w => (
+          {watches.map(w => {
+            const dsw = daysSinceWorn(w.id, entries);
+            return (
             <div key={w.id} onClick={() => setWatchId(w.id)}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10,
                        border: `2px solid ${watchId === w.id ? "#3b82f6" : border}`, cursor: "pointer",
                        background: watchId === w.id ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent" }}>
-              <div style={{ fontSize: 22 }}>{w.emoji ?? "⌚"}</div>
+              <div style={{ fontSize: 22 }}>{w.emoji ?? "\u231A"}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{w.brand} {w.model}</div>
-                <div style={{ fontSize: 11, color: muted }}>{w.dial} dial{w.replica ? " · replica" : " · genuine"}</div>
+                <div style={{ fontSize: 11, color: muted }}>{w.dial} dial{w.replica ? " \u00B7 replica" : " \u00B7 genuine"}</div>
               </div>
-              {watchId === w.id && <div style={{ color: "#3b82f6", fontWeight: 700, fontSize: 16 }}>✓</div>}
+              {dsw !== null && (
+                <div style={{ fontSize: 10, fontWeight: 600, color: dsw >= 7 ? "#22c55e" : dsw <= 2 ? "#ef4444" : muted }}>
+                  {dsw === 0 ? "today" : `${dsw}d`}
+                </div>
+              )}
+              {watchId === w.id && <div style={{ color: "#3b82f6", fontWeight: 700, fontSize: 16 }}>{"\u2713"}</div>}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Strap picker for selected watch */}
