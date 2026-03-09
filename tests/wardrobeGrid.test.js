@@ -4,10 +4,10 @@ import { describe, it, expect } from "vitest";
 
 const TYPE_FILTER = {
   all:     () => true,
-  tops:    g => ["shirt","sweater","polo","tee","flannel","crewneck","cardigan","hoodie","overshirt"].includes(g.type),
-  bottoms: g => ["pants","jeans","chinos","shorts","joggers","corduroy"].includes(g.type),
-  shoes:   g => ["shoes","boots","sneakers","loafers","sandals"].includes(g.type),
-  layers:  g => ["jacket","coat","blazer","bomber","vest"].includes(g.type),
+  tops:    g => g.type === "shirt",
+  bottoms: g => g.type === "pants",
+  shoes:   g => g.type === "shoes",
+  layers:  g => g.type === "jacket" || g.type === "sweater",
   extras:  g => ["belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type),
   review:  g => g.needsReview,
 };
@@ -30,29 +30,33 @@ function g(type, extra = {}) { return { type, ...extra }; }
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("WardrobeGrid — TYPE_FILTER", () => {
-  describe("tops filter", () => {
+  describe("tops filter — canonical types only", () => {
     it("includes shirt", () => {
       expect(TYPE_FILTER.tops(g("shirt"))).toBe(true);
     });
 
-    it("includes sweater, polo, tee, flannel, crewneck, cardigan, hoodie, overshirt", () => {
-      const topTypes = ["sweater","polo","tee","flannel","crewneck","cardigan","hoodie","overshirt"];
-      topTypes.forEach(t => {
-        expect(TYPE_FILTER.tops(g(t))).toBe(true);
-      });
+    it("excludes sweater (now in layers)", () => {
+      expect(TYPE_FILTER.tops(g("sweater"))).toBe(false);
     });
 
     it("excludes pants", () => {
       expect(TYPE_FILTER.tops(g("pants"))).toBe(false);
     });
+
+    it("excludes non-canonical polo/tee (normalized to shirt before reaching filter)", () => {
+      expect(TYPE_FILTER.tops(g("polo"))).toBe(false);
+      expect(TYPE_FILTER.tops(g("tee"))).toBe(false);
+    });
   });
 
-  describe("bottoms filter", () => {
-    it("includes pants, jeans, chinos, shorts, joggers, corduroy", () => {
-      const bottomTypes = ["pants","jeans","chinos","shorts","joggers","corduroy"];
-      bottomTypes.forEach(t => {
-        expect(TYPE_FILTER.bottoms(g(t))).toBe(true);
-      });
+  describe("bottoms filter — canonical types only", () => {
+    it("includes pants (canonical type)", () => {
+      expect(TYPE_FILTER.bottoms(g("pants"))).toBe(true);
+    });
+
+    it("excludes non-canonical jeans/chinos (normalized to pants before reaching filter)", () => {
+      expect(TYPE_FILTER.bottoms(g("jeans"))).toBe(false);
+      expect(TYPE_FILTER.bottoms(g("chinos"))).toBe(false);
     });
 
     it("excludes shirt", () => {
@@ -60,21 +64,29 @@ describe("WardrobeGrid — TYPE_FILTER", () => {
     });
   });
 
-  describe("shoes filter", () => {
-    it("includes shoes, boots, sneakers, loafers, sandals", () => {
-      const shoeTypes = ["shoes","boots","sneakers","loafers","sandals"];
-      shoeTypes.forEach(t => {
-        expect(TYPE_FILTER.shoes(g(t))).toBe(true);
-      });
+  describe("shoes filter — canonical type only", () => {
+    it("includes shoes", () => {
+      expect(TYPE_FILTER.shoes(g("shoes"))).toBe(true);
+    });
+
+    it("excludes non-canonical boots/sneakers (normalized to shoes)", () => {
+      expect(TYPE_FILTER.shoes(g("boots"))).toBe(false);
+      expect(TYPE_FILTER.shoes(g("sneakers"))).toBe(false);
     });
   });
 
-  describe("layers filter", () => {
-    it("includes jacket, coat, blazer, bomber, vest", () => {
-      const layerTypes = ["jacket","coat","blazer","bomber","vest"];
-      layerTypes.forEach(t => {
-        expect(TYPE_FILTER.layers(g(t))).toBe(true);
-      });
+  describe("layers filter — jacket and sweater", () => {
+    it("includes jacket", () => {
+      expect(TYPE_FILTER.layers(g("jacket"))).toBe(true);
+    });
+
+    it("includes sweater", () => {
+      expect(TYPE_FILTER.layers(g("sweater"))).toBe(true);
+    });
+
+    it("excludes non-canonical coat/blazer (normalized to jacket)", () => {
+      expect(TYPE_FILTER.layers(g("coat"))).toBe(false);
+      expect(TYPE_FILTER.layers(g("blazer"))).toBe(false);
     });
   });
 

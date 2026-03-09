@@ -276,11 +276,15 @@ export default function WatchDashboard() {
     [garments]
   );
   const slotCandidates = useMemo(() => {
-    const slots = ["shirt","sweater","layer","pants","shoes","jacket"];
     const res = {};
-    for (const slot of slots) {
-      res[slot] = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === slot);
-    }
+    res.shirt = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "shirt");
+    res.pants = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "pants");
+    res.shoes = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "shoes");
+    res.jacket = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "jacket");
+    // sweater and layer slots both draw from sweater-type garments
+    const sweaters = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "sweater");
+    res.sweater = sweaters;
+    res.layer = sweaters;
     return res;
   }, [wearable]);
 
@@ -290,8 +294,10 @@ export default function WatchDashboard() {
     // so diversityBonus slice(-5) penalises every slot, not just the last one.
     let iterHistory = [...history];
     let result = {};
+    // Pass slotOverrides as pinnedSlots so engine adapts other slots to manual picks
+    const hasPins = Object.keys(slotOverrides).length > 0;
     for (let round = 0; round <= shuffleSeed; round++) {
-      const built = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory);
+      const built = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {});
       const hasItems = Object.values(built).some(Boolean);
       result = hasItems ? built : generateOutfit(enrichedWatch, garments, weatherObj, {}, iterHistory);
       if (round < shuffleSeed) {
@@ -303,7 +309,7 @@ export default function WatchDashboard() {
       }
     }
     return result;
-  }, [enrichedWatch, garments, weatherObj, history, shuffleSeed]);
+  }, [enrichedWatch, garments, weatherObj, history, shuffleSeed, slotOverrides]);
 
   // Merge: engine base + per-slot manual overrides
   const mergedOutfit = useMemo(() => {

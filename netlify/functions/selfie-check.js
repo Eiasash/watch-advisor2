@@ -90,7 +90,7 @@ Return ONLY valid JSON, no markdown:
 }`;
 
         const res = await callClaude(apiKey, {
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1000,
         messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
       });

@@ -117,7 +117,7 @@ Rules:
     const contentBlocks = [imageBlock, ...angleBlocks, { type: "text", text: prompt }];
 
     const res = await callClaude(apiKey, {
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 400,
       messages: [{ role: "user", content: contentBlocks }],
     });

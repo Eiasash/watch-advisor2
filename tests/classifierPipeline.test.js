@@ -223,3 +223,49 @@ describe("runClassifierPipeline — AI material + pattern propagation", () => {
     expect(garment.colorAlternatives).toBeUndefined();
   });
 });
+
+// ─── Pipeline — sweater classification ──────────────────────────────────────
+
+describe("runClassifierPipeline — sweater vs shirt classification", () => {
+  it("sweater_olive.jpg → type sweater (not shirt)", async () => {
+    const garment = await runClassifierPipeline(makeFile("sweater_olive.jpg"));
+    expect(garment.type).toBe("sweater");
+    expect(garment.color).toBe("olive");
+  });
+
+  it("hoodie_grey.jpg → type sweater", async () => {
+    const garment = await runClassifierPipeline(makeFile("hoodie_grey.jpg"));
+    expect(garment.type).toBe("sweater");
+  });
+
+  it("crewneck_navy.jpg → type sweater", async () => {
+    const garment = await runClassifierPipeline(makeFile("crewneck_navy.jpg"));
+    expect(garment.type).toBe("sweater");
+  });
+
+  it("shirt_white.jpg → type shirt (not sweater)", async () => {
+    const garment = await runClassifierPipeline(makeFile("shirt_white.jpg"));
+    expect(garment.type).toBe("shirt");
+  });
+
+  it("polo_navy.jpg → type shirt", async () => {
+    const garment = await runClassifierPipeline(makeFile("polo_navy.jpg"));
+    expect(garment.type).toBe("shirt");
+  });
+});
+
+// ─── normalizeAIColor export ────────────────────────────────────────────────
+
+import { normalizeAIColor } from "../src/classifier/pipeline.js";
+
+describe("normalizeAIColor — maps AI colors to scoring palette", () => {
+  it("maps denim → blue", () => expect(normalizeAIColor("denim")).toBe("blue"));
+  it("maps camel → tan", () => expect(normalizeAIColor("camel")).toBe("tan"));
+  it("maps ivory → cream", () => expect(normalizeAIColor("ivory")).toBe("cream"));
+  it("maps rust → brown", () => expect(normalizeAIColor("rust")).toBe("brown"));
+  it("maps maroon → burgundy", () => expect(normalizeAIColor("maroon")).toBe("burgundy"));
+  it("maps gray → grey", () => expect(normalizeAIColor("gray")).toBe("grey"));
+  it("passes canonical colors through", () => expect(normalizeAIColor("navy")).toBe("navy"));
+  it("returns null for null input", () => expect(normalizeAIColor(null)).toBe(null));
+  it("handles case insensitivity", () => expect(normalizeAIColor("DENIM")).toBe("blue"));
+});

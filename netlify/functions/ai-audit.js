@@ -21,7 +21,7 @@ export async function handler(event) {
     if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
     const res = await callClaude(apiKey, {
-        model:      "claude-sonnet-4-20250514",
+        model:      "claude-sonnet-4-6",
         max_tokens: 2000,
         messages:   [{ role: "user", content: prompt }],
       });

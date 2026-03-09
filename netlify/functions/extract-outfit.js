@@ -55,7 +55,7 @@ Focus on: top layer (shirt/sweater/jacket), bottom (pants), shoes. Omit accessor
 
   try {
     const resp = await callClaude(apiKey, {
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 400,
       messages: [{
         role: "user",

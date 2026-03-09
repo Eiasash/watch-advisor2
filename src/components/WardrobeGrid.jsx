@@ -27,10 +27,10 @@ const ALL_FILTERS = [
 
 const TYPE_FILTER = {
   all:     () => true,
-  tops:    g => ["shirt","sweater","polo","tee","flannel","crewneck","cardigan","hoodie","overshirt"].includes(g.type),
-  bottoms: g => ["pants","jeans","chinos","shorts","joggers","corduroy"].includes(g.type),
-  shoes:   g => ["shoes","boots","sneakers","loafers","sandals"].includes(g.type),
-  layers:  g => ["jacket","coat","blazer","bomber","vest"].includes(g.type),
+  tops:    g => g.type === "shirt",
+  bottoms: g => g.type === "pants",
+  shoes:   g => g.type === "shoes",
+  layers:  g => g.type === "jacket" || g.type === "sweater",
   extras:  g => ["belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type),
   review:  g => g.needsReview,
 };
@@ -135,7 +135,12 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
             onError={e => {
               const url = e.currentTarget.src;
               if (url) _brokenImgUrls.add(url);
-              e.currentTarget.style.display = "none";
+              // Replace broken img with fallback icon via DOM
+              const parent = e.currentTarget.parentNode;
+              const fallback = document.createElement("div");
+              fallback.style.cssText = `width:100%;height:145px;display:flex;align-items:center;justify-content:center;font-size:38px;background:${isDark?"#171a21":"#f3f4f6"};flex-shrink:0;`;
+              fallback.textContent = isOutfitShot ? "\uD83E\uDE9E" : (TYPE_ICONS[item.type] ?? "\uD83D\uDC55");
+              parent.replaceChild(fallback, e.currentTarget);
             }}
             onClick={e => { if (selectMode) return; e.stopPropagation(); onEdit(item); }}
             style={{ width:"100%", height:145, objectFit:"cover", display:"block", flexShrink:0 }}
