@@ -268,10 +268,12 @@ export default function GarmentEditor({ garment, onClose }) {
     if (c.type)     setTypeRaw(c.type);
     if (c.color)    setColor(c.color);
     if (c.name)     setName(c.name);
+    if (c.material) setMaterial(c.material);
     if (c.formality != null) setFormality(c.formality);
     const updates = {
       name: c.name ?? name, type: canonicalType(c.type ?? typeRaw),
       color: c.color ?? color,
+      material: c.material ?? (material || undefined),
       formality: c.formality ?? formality, needsReview: false,
     };
     updateGarment(garment.id, updates);

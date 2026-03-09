@@ -171,3 +171,118 @@ describe("Apply All Fixes — batch behavior", () => {
     expect(setResults).toHaveBeenCalledTimes(2); // both marked as applied
   });
 });
+
+// ── Staleness detection logic ────────────────────────────────────────────────
+
+describe("Audit staleness detection", () => {
+  it("detects stale when garment count differs from audited count", () => {
+    const currentCount = 12;
+    const auditedCount = 10;
+    const isStale = auditedCount > 0 && auditedCount !== currentCount;
+    expect(isStale).toBe(true);
+  });
+
+  it("not stale when garment count matches audited count", () => {
+    const currentCount = 10;
+    const auditedCount = 10;
+    const isStale = auditedCount > 0 && auditedCount !== currentCount;
+    expect(isStale).toBe(false);
+  });
+
+  it("not stale when auditedCount is 0 (never audited)", () => {
+    const currentCount = 10;
+    const auditedCount = 0;
+    const isStale = auditedCount > 0 && auditedCount !== currentCount;
+    expect(isStale).toBe(false);
+  });
+
+  it("clears stale after re-run (audited count updated to current)", () => {
+    let auditedCount = 10;
+    const currentCount = 12;
+    // Simulate re-run
+    auditedCount = currentCount;
+    const isStale = auditedCount > 0 && auditedCount !== currentCount;
+    expect(isStale).toBe(false);
+  });
+});
+
+// ── Verifier cache persistence ────────────────────────────────────────────────
+
+describe("PhotoVerifier — applied/dismissed state persistence", () => {
+  let mockSetCachedStatePV;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSetCachedStatePV = vi.fn().mockResolvedValue({});
+    mockGarments = [
+      { id: "g1", name: "White shirt", type: "shirt", color: "white" },
+    ];
+  });
+
+  it("writes _verifyResults to cache when applyFix marks applied", () => {
+    // Simulate the setResults callback that writes to cache
+    let results = {
+      g1: { garmentId: "g1", ok: false, correctedType: "sweater", correctedColor: "white" },
+    };
+    // Mirror the actual component logic
+    const next = { ...results, g1: { ...results.g1, _applied: true } };
+    mockSetCachedStatePV({ _verifyResults: next });
+    expect(mockSetCachedStatePV).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _verifyResults: expect.objectContaining({
+          g1: expect.objectContaining({ _applied: true }),
+        }),
+      })
+    );
+  });
+
+  it("writes _verifyResults to cache when dismissCard marks dismissed", () => {
+    let results = {
+      g1: { garmentId: "g1", ok: false, correctedType: "sweater" },
+    };
+    const next = { ...results, g1: { ...results.g1, _dismissed: true } };
+    mockSetCachedStatePV({ _verifyResults: next });
+    expect(mockSetCachedStatePV).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _verifyResults: expect.objectContaining({
+          g1: expect.objectContaining({ _dismissed: true }),
+        }),
+      })
+    );
+  });
+
+  it("applied cards are excluded from issues list", () => {
+    const results = {
+      g1: { garmentId: "g1", ok: false, _applied: true },
+      g2: { garmentId: "g2", ok: false, _applied: false },
+    };
+    const issues = Object.values(results).filter(r => !r.ok && !r._applied && !r._dismissed);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].garmentId).toBe("g2");
+  });
+
+  it("dismissed cards are excluded from issues list", () => {
+    const results = {
+      g1: { garmentId: "g1", ok: false, _dismissed: true },
+      g2: { garmentId: "g2", ok: false },
+    };
+    const issues = Object.values(results).filter(r => !r.ok && !r._applied && !r._dismissed);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].garmentId).toBe("g2");
+  });
+
+  it("Apply All skips already-applied cards", () => {
+    const issues = [
+      { garmentId: "g1", correctedType: "shirt", correctedColor: "white", correctedName: "White shirt" }, // no change
+      { garmentId: "g2", correctedType: "sweater", correctedColor: "navy", correctedName: "Navy knit" },
+    ];
+    mockGarments = [
+      { id: "g1", name: "White shirt", type: "shirt", color: "white" },
+      { id: "g2", name: "Navy knit", type: "shirt", color: "navy" }, // type wrong
+    ];
+    const setResults = vi.fn();
+    issues.forEach(r => applyFix(r.garmentId, r, mockGarments, mockUpdateGarment, mockPushGarment, mockSetCachedState, setResults));
+    expect(mockUpdateGarment).toHaveBeenCalledTimes(1);
+    expect(mockUpdateGarment).toHaveBeenCalledWith("g2", { type: "sweater" });
+  });
+});

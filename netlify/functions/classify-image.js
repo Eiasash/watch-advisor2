@@ -12,6 +12,13 @@ import { cacheGet, cacheSet } from "./_blobCache.js";
 const VALID_TYPES = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat",
                      "scarf","bag","accessory","watch","outfit-photo","outfit-shot"];
 
+const VALID_COLORS = [
+  "beige","black","blue","brown","burgundy","camel","charcoal","cognac","coral","cream",
+  "dark brown","dark green","dark navy","denim","ecru","gold","green","grey","ivory","khaki",
+  "lavender","light blue","maroon","mint","multicolor","navy","olive","orange","pink","purple",
+  "red","rust","sage","sand","silver","slate","stone","tan","taupe","teal","white","wine","yellow",
+];
+
 export async function handler(event) {
   const CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -63,7 +70,7 @@ export async function handler(event) {
               text: `Identify this clothing item precisely. Return ONLY valid JSON with no markdown:
 {
   "type": one of: ${VALID_TYPES.join("|")},
-  "color": <most accurate primary color — one of: beige|black|blue|brown|burgundy|camel|charcoal|cognac|coral|cream|dark brown|dark green|dark navy|denim|ecru|gold|green|grey|ivory|khaki|lavender|light blue|maroon|mint|multicolor|navy|olive|orange|pink|purple|red|rust|sage|sand|silver|slate|stone|tan|taupe|teal|white|wine|yellow>,
+  "color": <most accurate primary color — one of: ${VALID_COLORS.join("|")}>,
   "color_alternatives": [<2nd most likely color>, <3rd most likely color>, <4th most likely color>],
   "material": "wool"|"cotton"|"linen"|"denim"|"leather"|"suede"|"synthetic"|"cashmere"|"knit"|"corduroy"|"tweed"|"flannel"|"canvas"|"rubber"|"mesh"|"unknown",
   "pattern": "solid"|"striped"|"plaid"|"checked"|"cable knit"|"ribbed"|"textured"|"printed"|"houndstooth"|"herringbone",

@@ -31,7 +31,7 @@ export async function pullCloudState() {
   setSyncState({ status: "pulling" });
   try {
     const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
-      supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,photo_angles,brand,notes,material,created_at").order("created_at", { ascending: true }).limit(500),
+      supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,photo_angles,brand,notes,material,pattern,seasons,contexts,price,accent_color,created_at").order("created_at", { ascending: true }).limit(500),
       supabase.from("history").select("*").order("date", { ascending: false }).limit(365),
     ]);
 
@@ -53,6 +53,11 @@ export async function pullCloudState() {
         duplicateOf: row.duplicate_of ?? undefined,
         photoAngles: row.photo_angles ?? [],
         material:    row.material ?? null,
+        pattern:     row.pattern ?? null,
+        seasons:     row.seasons ?? [],
+        contexts:    row.contexts ?? [],
+        price:       row.price ?? null,
+        accentColor: row.accent_color ?? null,
       })),
       history: (history ?? []).map(row => ({
         id:         row.id,
@@ -100,6 +105,11 @@ export async function pushGarment(garment) {
       brand:        garment.brand ?? null,
       notes:        garment.notes ?? null,
       material:     garment.material ?? null,
+      pattern:      garment.pattern ?? null,
+      seasons:      garment.seasons ?? [],
+      contexts:     garment.contexts ?? [],
+      price:        garment.price ?? null,
+      accent_color: garment.accentColor ?? null,
     }, { onConflict: "id" });
     if (error) {
       console.warn("[supabaseSync] pushGarment error:", error.message);

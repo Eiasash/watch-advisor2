@@ -140,6 +140,7 @@ describe("classify-image handler", () => {
   });
 
   it("returns classification result on success", async () => {
+    // classify-image returns parsed JSON directly (not wrapped in content[])
     const apiResponse = {
       content: [{ text: '{"type": "shirt", "color": "navy", "formality": 7}' }],
     };
@@ -153,7 +154,11 @@ describe("classify-image handler", () => {
     });
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    expect(body.content).toBeDefined();
+    // Function calls callClaude which returns {content:[{text:'...'}]}, then parses the text
+    // So the response body is the parsed garment data: { type, color, formality, ... }
+    expect(body.type).toBe("shirt");
+    expect(body.color).toBe("navy");
+    expect(body.formality).toBe(7);
   });
 
   it("returns 500 on fetch error", async () => {

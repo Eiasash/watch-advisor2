@@ -42,7 +42,8 @@ vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
 
 // Mock global fetch for Claude Vision fallback
 global.fetch = vi.fn().mockResolvedValue({
-  json: () => Promise.resolve({ content: [{ text: '{"type": "belt", "color": "brown"}' }] }),
+  ok: true,
+  json: () => Promise.resolve({ type: "belt", color: "brown", formality: 5, confidence: 0.9 }),
 });
 
 import { runClassifierPipeline } from "../src/classifier/pipeline.js";

@@ -155,7 +155,8 @@ describe("runPhotoImport", () => {
   it("calls Claude Vision fallback when classifier has low confidence (default source)", async () => {
     classify.mockResolvedValue({ type: "accessory", color: null, formality: 5, _typeSource: "default", needsReview: true });
     fetch.mockResolvedValue({
-      json: () => Promise.resolve({ content: [{ text: '{"type":"belt","color":"brown"}' }] }),
+      ok: true,
+      json: () => Promise.resolve({ type: "belt", color: "brown", formality: 4, confidence: 0.92 }),
     });
     normalizeType.mockImplementation(t => t);
     const file = { name: "IMG_0042.jpg", type: "image/jpeg", size: 5000 };
@@ -168,7 +169,8 @@ describe("runPhotoImport", () => {
   it("calls Claude Vision fallback for ambiguous source", async () => {
     classify.mockResolvedValue({ type: "accessory", color: null, formality: 5, _typeSource: "ambiguous", needsReview: true });
     fetch.mockResolvedValue({
-      json: () => Promise.resolve({ content: [{ text: '{"type":"sunglasses","color":"black"}' }] }),
+      ok: true,
+      json: () => Promise.resolve({ type: "sunglasses", color: "black", formality: 5, confidence: 0.88 }),
     });
     normalizeType.mockImplementation(t => t);
     const file = { name: "item.jpg", type: "image/jpeg", size: 5000 };
