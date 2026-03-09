@@ -11,6 +11,10 @@ import GarmentEditor from "./GarmentEditor.jsx";
 const CELL_HEIGHT = 272;
 const GRID_HEIGHT = 580;
 
+// Module-level set — broken Supabase Storage URLs that 404/400'd this session.
+// Prevents React from re-fetching them on every re-render of the grid.
+const _brokenImgUrls = new Set();
+
 const ALL_FILTERS = [
   { label: "All",     key: "all" },
   { label: "Tops",    key: "tops" },
@@ -122,12 +126,17 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
         )}
 
         {/* Photo */}
-        {(item.thumbnail || item.photoUrl) ? (
+        {(() => { const _src = item.thumbnail || item.photoUrl; return _src && !_brokenImgUrls.has(_src); })() ? (
           <img
             src={item.thumbnail || item.photoUrl}
             alt={item.name}
             loading="lazy"
             decoding="async"
+            onError={e => {
+              const url = e.currentTarget.src;
+              if (url) _brokenImgUrls.add(url);
+              e.currentTarget.style.display = "none";
+            }}
             onClick={e => { if (selectMode) return; e.stopPropagation(); onEdit(item); }}
             style={{ width:"100%", height:145, objectFit:"cover", display:"block", flexShrink:0 }}
           />
