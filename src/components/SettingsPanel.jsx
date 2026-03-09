@@ -5,9 +5,29 @@ import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { isPushSupported, getSubscriptionStatus, subscribePush, unsubscribePush } from "../services/pushService.js";
 
+function saveBackup(garments, watches, history) {
+  const ts = new Date();
+  const label = ts.toISOString().slice(0, 16).replace("T", "-").replace(":", "");
+  const data = {
+    _backup: true,
+    _version: 2,
+    _savedAt: ts.toISOString(),
+    _counts: { garments: garments.length, history: history.length, watches: watches.length },
+    watches,
+    garments: garments.map(g => ({ ...g })), // full — includes thumbnail base64, photoAngles, material, etc.
+    history,
+  };
+  const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `wa2-backup-${label}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function exportData(garments, watches, history) {
   const data = {
-    exportedAt: new Date().toISOString(),
     version: 2,
     watches,
     garments: garments.map(g => ({
@@ -60,6 +80,7 @@ export default function SettingsPanel({ onClose }) {
     () => typeof localStorage !== "undefined" ? localStorage.getItem("wa-supabase-key") || "" : ""
   );
   const [saved, setSaved] = useState(false);
+  const [backupSaved, setBackupSaved] = useState(false);
   const [pushStatus, setPushStatus] = useState("loading"); // loading|unsupported|unsubscribed|subscribed|denied
   const [pushLoading, setPushLoading] = useState(false);
 
@@ -193,6 +214,29 @@ export default function SettingsPanel({ onClose }) {
           </button>
           <div style={{ fontSize: 11, color: mutedColor, marginTop: 6 }}>
             Credentials are saved to localStorage. Reload the page after saving to connect.
+          </div>
+        </Section>
+
+        {/* Backup */}
+        <Section title="Backup" isDark={isDark}>
+          <button
+            onClick={() => {
+              saveBackup(garments, watches, history);
+              setBackupSaved(true);
+              setTimeout(() => setBackupSaved(false), 2500);
+            }}
+            style={{
+              width: "100%", padding: "10px 16px", borderRadius: 8, border: "none",
+              background: backupSaved ? "#22c55e" : (isDark ? "#1e293b" : "#0f172a"),
+              color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              transition: "background 0.2s",
+            }}
+          >
+            {backupSaved ? "✓ Saved to Downloads" : "⬇ Save Backup"}
+          </button>
+          <div style={{ fontSize: 11, color: mutedColor, marginTop: 6 }}>
+            Full backup — garments, photos, history, watches. {garments.length}g · {history.length} log entries
           </div>
         </Section>
 
