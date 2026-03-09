@@ -165,6 +165,7 @@ export default function GarmentEditor({ garment, onClose }) {
   const [typeRaw,    setTypeRaw]    = useState(garment.type       ?? garment.category ?? "shirt");
   const [color,      setColor]      = useState(garment.color      ?? "grey");
   const [color2,     setColor2]     = useState(garment.accentColor ?? "");
+  const [material,   setMaterial]   = useState(garment.material   ?? "");
   const [pattern,    setPattern]    = useState(garment.pattern    ?? "solid");
   const [formality,  setFormality]  = useState(garment.formality  ?? 5);
   const [brand,      setBrand]      = useState(garment.brand      ?? "");
@@ -173,6 +174,7 @@ export default function GarmentEditor({ garment, onClose }) {
   const [seasons,    setSeasons]    = useState(garment.seasons    ?? []);
   const [contexts,   setContexts]   = useState(garment.contexts   ?? []);
   const [angleIdx,   setAngleIdx]   = useState(0);
+  const [aiColorAlts, setAiColorAlts] = useState([]); // color alternatives from AI scan
 
   // Auto-name: compute from params, track if user has manually overridden it
   function buildAutoName(t, c, p, b) {
@@ -218,6 +220,7 @@ export default function GarmentEditor({ garment, onClose }) {
     const updates = {
       name, type: canonicalType(typeRaw), color,
       accentColor: color2 || undefined,
+      material: material || undefined,
       pattern, formality,
       brand: brand || undefined,
       price: price ? parseFloat(price) : undefined,
@@ -238,13 +241,23 @@ export default function GarmentEditor({ garment, onClose }) {
   const handleAiCheck = useCallback(async () => {
     const photo = garment.thumbnail || garment.photoUrl;
     if (!photo) return;
-    setAiChecking(true); setAiResult(null);
+    setAiChecking(true); setAiResult(null); setAiColorAlts([]);
     try {
       const res = await fetch("/.netlify/functions/relabel-garment", {
         method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ image: photo, current: { type: typeRaw, color, name, formality } }),
+        body: JSON.stringify({
+          image: photo,
+          current: { type: typeRaw, color, name, formality },
+          allAngles: (garment.photoAngles ?? []).slice(0, 3),
+        }),
       });
-      setAiResult(await res.json());
+      const data = await res.json();
+      setAiResult(data);
+      if (Array.isArray(data?.corrections?.color_alternatives)) {
+        setAiColorAlts(data.corrections.color_alternatives.filter(Boolean));
+      } else if (Array.isArray(data?.color_alternatives)) {
+        setAiColorAlts(data.color_alternatives.filter(Boolean));
+      }
     } catch (e) { setAiResult({ error: e.message }); }
     setAiChecking(false);
   }, [garment, typeRaw, color, name, formality]);
@@ -470,6 +483,32 @@ export default function GarmentEditor({ garment, onClose }) {
               ))}
             </div>
             <div style={{ fontSize:11, color:sub, marginTop:2 }}>Selected: <strong style={{ color:text }}>{color}</strong></div>
+            {aiColorAlts.length > 0 && (
+              <div style={{ marginTop:8, padding:"8px 10px", borderRadius:8, background: isDark?"#0f131a":"#f5f3ff", border:"1px solid #8b5cf644" }}>
+                <div style={{ fontSize:10, fontWeight:700, color:"#8b5cf6", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>
+                  AI color alternatives
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6, alignItems:"center" }}>
+                  {aiColorAlts.map(alt => {
+                    const c = COLOR_PALETTE.find(x => x.name === alt);
+                    return (
+                      <button key={alt} onClick={() => setColor(alt)}
+                        title={alt}
+                        style={{
+                          display:"flex", alignItems:"center", gap:5,
+                          padding:"3px 8px 3px 5px", borderRadius:6, cursor:"pointer",
+                          border: color===alt ? "2px solid #3b82f6" : "1px solid #4b5563",
+                          background: color===alt ? (isDark?"#0c1f3f":"#eff6ff") : "transparent",
+                          fontSize:11, color:text, fontWeight: color===alt ? 700 : 400,
+                        }}>
+                        {c && <span style={{ width:14, height:14, borderRadius:3, background:c.hex, flexShrink:0, border: c.border?"1px solid #d1d5db":"none" }} />}
+                        {alt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Section>
 
           {/* Accent color */}
@@ -485,6 +524,15 @@ export default function GarmentEditor({ garment, onClose }) {
               ))}
             </div>
             {color2 && <div style={{ fontSize:11, color:sub }}>Accent: <strong style={{ color:text }}>{color2}</strong></div>}
+          </Section>
+
+          {/* Material */}
+          <Section label="Material / Fabric">
+            <ChipPicker
+              options={["wool","cotton","linen","denim","leather","suede","synthetic","cashmere","knit","corduroy","tweed","flannel","canvas","rubber","mesh"]}
+              value={material} multi={false} onChange={setMaterial} isDark={isDark}
+            />
+            {material && <div style={{ fontSize:11, color:sub, marginTop:4 }}>Material: <strong style={{ color:text }}>{material}</strong></div>}
           </Section>
 
           {/* Pattern */}

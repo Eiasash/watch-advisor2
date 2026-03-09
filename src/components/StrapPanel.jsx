@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback } from "react";
 import { useStrapStore } from "../stores/strapStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { uploadPhoto } from "../services/supabaseSync.js";
 
 const TYPE_COLOR  = { bracelet:"#3b82f6", leather:"#92400e", canvas:"#65a30d", nato:"#0891b2", rubber:"#7c3aed", integrated:"#6b7280" };
@@ -227,6 +228,58 @@ export default function StrapPanel({ watch, isDark: isDarkProp }) {
   const currentActiveId = activeStrap[watch.id];
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
+  const garments = useWardrobeStore(s => s.garments);
+  const [aiStrapLoading, setAiStrapLoading] = useState(false);
+  const [aiStrapHint, setAiStrapHint] = useState(null);
+
+  const handleStrapAI = useCallback(async () => {
+    if (!watch) return;
+    setAiStrapLoading(true); setAiStrapHint(null);
+    try {
+      const wearable = garments.filter(g =>
+        !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type)
+        && !g.excludeFromWardrobe
+      ).slice(0, 15).map(g => ({ name: g.name, type: g.type, color: g.color }));
+      const strapList = watchStraps.map(s => ({
+        id: s.id, label: s.label, type: s.type, color: s.color,
+        isActive: currentActiveId === s.id,
+      }));
+      const prompt = `You are a watch strap advisor. Given a watch and wardrobe, recommend the best strap for today.
+
+WATCH: ${watch.brand} ${watch.model} — ${watch.dial} dial — formality ${watch.formality ?? 6}/10
+
+AVAILABLE STRAPS:
+${strapList.map(s => `- ${s.label} (${s.type}, ${s.color})${s.isActive ? " [CURRENT]" : ""}`).join("\n")}
+
+WARDROBE CONTEXT (recent pieces):
+${wearable.map(g => `- ${g.color} ${g.type}`).join("\n")}
+
+STRAP-SHOE RULE: If strap is leather/alligator/canvas, shoes must match strap color. Metal/rubber = exempt.
+
+Return ONLY valid JSON:
+{
+  "recommended_label": "exact strap label string",
+  "reason": "2 sentences: why this strap works with the dial color, formality, and wardrobe context",
+  "shoe_required": "black" | "brown" | null
+}`;
+
+      const res = await fetch("/.netlify/functions/ai-audit", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      setAiStrapHint(data);
+      // Auto-select the recommended strap
+      if (data.recommended_label) {
+        const matched = watchStraps.find(s =>
+          s.label.toLowerCase().includes(data.recommended_label.toLowerCase()) ||
+          data.recommended_label.toLowerCase().includes(s.label.toLowerCase())
+        );
+        if (matched) setActive(watch.id, matched.id);
+      }
+    } catch { /* silent */ }
+    setAiStrapLoading(false);
+  }, [watch, watchStraps, garments, currentActiveId, setActive]);
 
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${border}` }}>
@@ -235,12 +288,34 @@ export default function StrapPanel({ watch, isDark: isDarkProp }) {
                       textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Straps — {watchStraps.length}
         </div>
-        <button onClick={() => setModal({ mode: "add" })}
-          style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: "#3b82f6",
-                   color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-          + Add strap
-        </button>
+        <div style={{ display:"flex", gap:6 }}>
+          {watchStraps.length > 0 && (
+            <button onClick={handleStrapAI} disabled={aiStrapLoading}
+              style={{ padding:"5px 10px", borderRadius:8, border:"1px solid #8b5cf6",
+                       background:"transparent", color:"#8b5cf6", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+              {aiStrapLoading ? "…" : "✦ AI Pick"}
+            </button>
+          )}
+          <button onClick={() => setModal({ mode: "add" })}
+            style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: "#3b82f6",
+                     color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            + Add strap
+          </button>
+        </div>
       </div>
+      {aiStrapHint && !aiStrapHint.error && (
+        <div style={{ marginBottom:10, padding:"8px 12px", borderRadius:9,
+                      background:isDark?"#0f131a":"#f5f3ff", borderLeft:"3px solid #8b5cf6",
+                      fontSize:12, color:isDark?"#c4b5fd":"#5b21b6", lineHeight:1.6 }}>
+          <strong>✦ {aiStrapHint.recommended_label}</strong> — {aiStrapHint.reason}
+          {aiStrapHint.shoe_required && (
+            <span style={{ marginLeft:8, fontSize:11, padding:"1px 6px", borderRadius:4,
+                           background:isDark?"#1e293b":"#f1f5f9", color:"#94a3b8" }}>
+              → {aiStrapHint.shoe_required} shoes
+            </span>
+          )}
+        </div>
+      )}
 
       {watchStraps.length === 0 ? (
         <div style={{ textAlign: "center", padding: "20px 0", color: isDark ? "#4b5563" : "#9ca3af", fontSize: 13 }}>

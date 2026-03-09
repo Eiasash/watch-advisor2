@@ -222,7 +222,23 @@ export default function StatsPanel() {
   const maxGarment = Math.max(...garmentFreq.map(x => x.n), 1);
   const maxCtx     = Math.max(...contextFreq.map(x => x[1]), 1);
 
-  // ── CPW leaderboard ─────────────────────────────────────────────────────────
+  // ── Cold bench: garments not worn in 30+ days ───────────────────────────────
+  const coldBench = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    return garments
+      .filter(g => !g.excludeFromWardrobe && !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type))
+      .map(g => {
+        const worn = entries.filter(e => (e.garmentIds ?? []).includes(g.id));
+        const lastWorn = worn.length > 0 ? worn.sort((a,b) => b.date.localeCompare(a.date))[0].date : null;
+        const daysSince = lastWorn ? Math.floor((Date.now() - new Date(lastWorn).getTime()) / 864e5) : 999;
+        return { g, lastWorn, daysSince, wears: worn.length };
+      })
+      .filter(x => x.daysSince >= 30)
+      .sort((a, b) => b.daysSince - a.daysSince)
+      .slice(0, 8);
+  }, [garments, entries]);
   const cpwItems = useMemo(() => {
     return garments
       .filter(g => g.price > 0)
@@ -324,6 +340,39 @@ export default function StatsPanel() {
               {garmentFreq.map(({ id, n, garment: g }) => (
                 <BarRow key={id} label={g.name ?? "Garment"} count={n} max={maxGarment} color="#8b5cf6" isDark={isDark} />
               ))}
+            </Section>
+          )}
+
+          {/* Cold Bench — items not worn in 30+ days */}
+          {coldBench.length > 0 && (
+            <Section title={`Cold Bench — ${coldBench.length} piece${coldBench.length !== 1 ? "s" : ""} sitting unused`} isDark={isDark}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(72px,1fr))", gap:8, marginBottom:8 }}>
+                {coldBench.map(({ g, daysSince, wears }) => (
+                  <div key={g.id} style={{ textAlign:"center" }}>
+                    <div style={{ borderRadius:10, overflow:"hidden",
+                                  border:`1px solid ${daysSince >= 60 ? "#ef4444" : "#f59e0b"}44`,
+                                  marginBottom:4, position:"relative" }}>
+                      {(g.thumbnail || g.photoUrl) ? (
+                        <img src={g.thumbnail || g.photoUrl}
+                          style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", display:"block", opacity:0.75 }} />
+                      ) : (
+                        <div style={{ width:"100%", aspectRatio:"3/4", display:"flex", alignItems:"center",
+                                      justifyContent:"center", background:isDark?"#0f131a":"#f3f4f6", fontSize:20 }}>👕</div>
+                      )}
+                      <div style={{ position:"absolute", top:4, right:4,
+                                    background: daysSince >= 60 ? "#ef4444" : "#f59e0b",
+                                    color:"#fff", borderRadius:20, fontSize:9, fontWeight:700, padding:"1px 5px" }}>
+                        {daysSince >= 999 ? "never" : `${daysSince}d`}
+                      </div>
+                    </div>
+                    <div style={{ fontSize:9, color:muted, lineHeight:1.3 }}>{g.name?.slice(0,13)}</div>
+                    <div style={{ fontSize:9, color:isDark?"#4b5563":"#9ca3af" }}>{wears}× total</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize:11, color:muted }}>
+                🔴 Red = 60+ days idle &nbsp; 🟡 Yellow = 30–59 days
+              </div>
             </Section>
           )}
 

@@ -800,6 +800,23 @@ export default function WeekPlanner() {
           const dayOutfit = weekOutfits[dayIdx] ?? {};
           const hasOverrides = !!outfitOverrides[day.offset];
 
+          // Repeat warning: check if this outfit's watch was worn in last 3 history entries
+          const dayWatchId = (watchOverrides[day.offset] ?? rotation[dayIdx]?.watch?.id);
+          const recentEntries = history.filter(e => e.date < day.date).slice(-7);
+          const recentWatchDates = recentEntries.filter(e => e.watchId === dayWatchId).map(e => e.date);
+          const watchRepeated = recentWatchDates.length > 0;
+          const lastWornDays = recentWatchDates.length > 0
+            ? Math.round((new Date(day.date) - new Date(recentWatchDates[recentWatchDates.length - 1])) / 864e5)
+            : null;
+
+          // Outfit similarity check: are 3+ garments identical to any recent history entry?
+          const dayGarmentIds = new Set(OUTFIT_SLOTS.map(s => dayOutfit[s]?.id).filter(Boolean));
+          const outfitRepeated = recentEntries.some(e => {
+            const prev = new Set(e.garmentIds ?? []);
+            const overlap = [...dayGarmentIds].filter(id => prev.has(id)).length;
+            return overlap >= 3;
+          });
+
           return (
             <div key={day.offset} style={{
               borderRadius:12, padding:"12px 14px",
@@ -815,6 +832,16 @@ export default function WeekPlanner() {
                   {day.isOnCall && (
                     <span style={{ fontSize:10, fontWeight:700, padding:"1px 6px", borderRadius:4,
                                    background:"#f97316", color:"#fff" }}>ON-CALL</span>
+                  )}
+                  {outfitRepeated && (
+                    <span title="Similar outfit worn recently" style={{ fontSize:10, fontWeight:700, padding:"1px 6px", borderRadius:4,
+                                   background:"#7c3aed", color:"#fff" }}>↺ Repeat</span>
+                  )}
+                  {!outfitRepeated && watchRepeated && lastWornDays !== null && lastWornDays <= 4 && (
+                    <span title={`Watch worn ${lastWornDays}d ago`} style={{ fontSize:10, padding:"1px 6px", borderRadius:4,
+                                   background:isDark?"#1e293b":"#f1f5f9", color:"#94a3b8", border:"1px solid #334155" }}>
+                      ⌚ {lastWornDays}d ago
+                    </span>
                   )}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>

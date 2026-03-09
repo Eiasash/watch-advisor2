@@ -18,6 +18,7 @@ const VALID_COLORS = ["black","white","navy","blue","grey","brown","tan","beige"
                       "yellow","purple","charcoal","dark brown","light blue","dark navy","coral",
                       "multicolor","camel","rust","maroon","ivory","slate","mint","lavender",
                       "sage","wine","taupe","cognac","sand","pewter","silver","gold","denim"];
+const VALID_MATERIALS = ["wool","cotton","linen","denim","leather","suede","synthetic","cashmere","knit","corduroy","tweed","flannel","canvas","rubber","mesh","unknown"];
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
@@ -29,7 +30,7 @@ export async function handler(event) {
   }
 
   try {
-    const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors } = JSON.parse(event.body ?? "{}");
+    const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors, allAngles = [] } = JSON.parse(event.body ?? "{}");
 
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
@@ -71,21 +72,33 @@ export async function handler(event) {
       ? `\nNEARBY GARMENTS (same hash neighborhood — check for duplicates/angles):\n${neighbors.map(n => `- [${n.id}] "${n.name}" type=${n.type} color=${n.color} hash=${n.hash ?? "none"}`).join("\n")}\n`
       : "";
 
+    // Build additional angle image blocks (up to 3 extra angles)
+    const angleBlocks = [];
+    for (const angleB64 of (allAngles ?? []).slice(0, 3)) {
+      const b64 = angleB64.replace(/^data:image\/\w+;base64,/, "");
+      angleBlocks.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: b64 } });
+    }
+    const angleNote = angleBlocks.length > 0
+      ? `\nADDITIONAL ANGLES: ${angleBlocks.length} extra photo(s) of this garment follow. Use ALL angles to assess color, material, and texture more accurately.\n`
+      : "";
+
     const prompt = `You are a wardrobe AI classifying garment photos. Current labels for this item:
 - Type: ${currentType ?? "unknown"}
 - Color: ${currentColor ?? "unknown"}
 - Name: ${currentName ?? "unknown"}
 - Hash: ${hash ?? "none"}
-${neighborCtx}
-Look at the photo carefully and respond with ONLY a JSON object (no markdown, no extra text):
+${neighborCtx}${angleNote}
+Examine all provided photos carefully. Return ONLY a JSON object (no markdown, no extra text):
 
 {
   "ok": true/false,
   "correctedType": "${currentType ?? "shirt"}" (use current if correct, else one of: ${VALID_TYPES.join(", ")}),
-  "correctedColor": "${currentColor ?? "black"}" (use current if correct, else one of: ${VALID_COLORS.join(", ")}),
+  "correctedColor": "${currentColor ?? "black"}" (MOST accurate primary color — one of: ${VALID_COLORS.join(", ")}),
+  "color_alternatives": ["2nd most likely color", "3rd most likely color", "4th most likely color"],
+  "material": "detected fabric/material" (one of: ${VALID_MATERIALS.join(", ")}),
   "correctedName": "${currentName ?? ""}" (short descriptive name, max 5 words),
   "confidence": 0.0-1.0,
-  "reason": "one sentence: what you see and whether labels match",
+  "reason": "one sentence: what you see across all angles and whether labels match",
   "isAngleShot": false (true if this looks like a different angle of the same garment as a neighbor),
   "angleOfId": null (if isAngleShot=true, the neighbor ID this is an angle of),
   "isDuplicate": false (true if this is an exact or near-exact duplicate photo of a neighbor),
@@ -95,16 +108,18 @@ Look at the photo carefully and respond with ONLY a JSON object (no markdown, no
 Rules:
 - Set ok=true ONLY if type AND color are both correct.
 - Set ok=false if type or color is wrong.
-- isAngleShot=true when the photo shows the SAME garment from a different angle (e.g. front vs back, folded vs flat).
-- isDuplicate=true when photos are near-identical (same angle, same lighting, same garment).
-- Use the hash values: if two items have very similar hashes, they are likely the same photo.`;
+- color_alternatives: list 3 plausible alternative color names from the vocabulary (navy≠black, cream≠white, olive≠khaki).
+- material: examine texture, sheen, weight cues across all angles.
+- isAngleShot=true when photo shows the SAME garment from a different angle (front vs back, folded vs flat).
+- isDuplicate=true when photos are near-identical (same angle, same lighting, same garment).`;
+
+    const contentBlocks = [imageBlock, ...angleBlocks, { type: "text", text: prompt }];
 
     const res = await callClaude(apiKey, {
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 256,
-        messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
-      });
-
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 400,
+      messages: [{ role: "user", content: contentBlocks }],
+    });
 
     const raw  = res.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();

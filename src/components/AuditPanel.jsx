@@ -86,6 +86,8 @@ Provide a precise, critical wardrobe audit. Reference specific items. Return ONL
   "declutter": ["up to 4 redundant or low-utility items to consider removing"],
   "invest": ["up to 4 specific items worth buying with color and price tier"],
   "style_identity": "Style archetype this wardrobe represents (1 sentence)",
+  "seasonal_audit": "Current season readiness: which season is underserved, what's missing, what's over-represented (2 sentences)",
+  "cold_bench_verdict": "Verdict on neglected items — worth rotating back in, retiring, or fine as-is (1-2 sentences)",
   "pro_tip": "One advanced watch-wardrobe coordination insight specific to this collection (1-2 sentences)"
 }`;
 
@@ -258,6 +260,20 @@ export default function AuditPanel() {
             <div style={{ marginBottom:10 }}>
               <div style={{ fontSize:12, fontWeight:700, color:sub, textTransform:"uppercase", marginBottom:3 }}>Style Identity</div>
               <p style={{ margin:0, fontSize:13, color:isDark?"#a1a9b8":"#4b5563", fontStyle:"italic" }}>{result.style_identity}</p>
+            </div>
+          )}
+          {result.seasonal_audit && (
+            <div style={{ marginBottom:10, padding:"10px 12px", borderRadius:9,
+                          background:isDark?"#0f131a":"#f0f9ff",
+                          borderLeft:"3px solid #38bdf8", fontSize:13, color:isDark?"#7dd3fc":"#0369a1", lineHeight:1.6 }}>
+              🌤 <strong>Seasonal readiness: </strong>{result.seasonal_audit}
+            </div>
+          )}
+          {result.cold_bench_verdict && (
+            <div style={{ marginBottom:10, padding:"10px 12px", borderRadius:9,
+                          background:isDark?"#0f131a":"#fefce8",
+                          borderLeft:"3px solid #f59e0b", fontSize:13, color:isDark?"#fcd34d":"#92400e", lineHeight:1.6 }}>
+              🧊 <strong>Cold bench: </strong>{result.cold_bench_verdict}
             </div>
           )}
           {result.pro_tip && (
