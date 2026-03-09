@@ -151,6 +151,145 @@ function RotationInsights({ rotation, history, isDark }) {
   );
 }
 
+// ── Image resize helper ──────────────────────────────────────────────────────
+function resizeImage(file, maxPx = 600) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        c.width  = Math.round(img.width  * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Log Confirm Modal — notes + photo before committing "Wear This Outfit" ───
+function LogConfirmModal({ isDark, onConfirm, onCancel }) {
+  const [notes,    setNotes]    = useState("");
+  const [photos,   setPhotos]   = useState([]);
+  const bg     = isDark ? "#171a21" : "#fff";
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const text   = isDark ? "#e2e8f0" : "#1f2937";
+  const muted  = isDark ? "#6b7280" : "#9ca3af";
+
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const thumbs = await Promise.all(files.map(f => resizeImage(f, 600)));
+    setPhotos(prev => [...prev, ...thumbs]);
+    e.target.value = "";
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9000,
+      background: "rgba(0,0,0,0.6)",
+      display: "flex", alignItems: "flex-end", justifyContent: "center",
+      padding: "0 0 env(safe-area-inset-bottom,0)",
+    }}>
+      <div style={{
+        width: "100%", maxWidth: 480,
+        background: bg, borderRadius: "20px 20px 0 0",
+        border: `1px solid ${border}`, padding: "20px 16px 28px",
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: text, marginBottom: 14 }}>
+          Log Outfit
+        </div>
+
+        {/* Notes */}
+        <textarea
+          placeholder="Notes (optional) — e.g. coat buttoned, clinic day…"
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          rows={2}
+          style={{
+            width: "100%", background: isDark ? "#0f131a" : "#f9fafb",
+            border: `1px solid ${border}`, borderRadius: 10,
+            padding: "10px 12px", color: text, fontSize: 13,
+            resize: "none", fontFamily: "inherit", boxSizing: "border-box",
+            outline: "none", marginBottom: 12,
+          }}
+        />
+
+        {/* Photo buttons */}
+        <div style={{ display: "flex", gap: 8, marginBottom: photos.length ? 10 : 0 }}>
+          <label style={{
+            flex: 1, padding: "9px 0", borderRadius: 10,
+            border: `1px dashed ${border}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 6, cursor: "pointer", color: muted, fontSize: 12,
+          }}>
+            📁 Gallery
+            <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleFiles} />
+          </label>
+          <label style={{
+            flex: 1, padding: "9px 0", borderRadius: 10,
+            border: `1px dashed ${border}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 6, cursor: "pointer", color: muted, fontSize: 12,
+          }}>
+            📷 Camera
+            <input type="file" accept="image/*" capture="user" style={{ display: "none" }} onChange={handleFiles} />
+          </label>
+        </div>
+
+        {/* Photo previews */}
+        {photos.length > 0 && (
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))",
+            gap: 6, marginBottom: 12,
+          }}>
+            {photos.map((src, i) => (
+              <div key={i} style={{ position: "relative", borderRadius: 8, overflow: "hidden", aspectRatio: "1/1" }}>
+                <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <button
+                  onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                  style={{
+                    position: "absolute", top: 3, right: 3,
+                    background: "#ef4444", color: "#fff",
+                    border: "none", borderRadius: "50%", width: 18, height: 18,
+                    fontSize: 11, cursor: "pointer", lineHeight: 1,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: "11px 0", borderRadius: 10,
+              border: `1px solid ${border}`, background: "transparent",
+              color: muted, fontSize: 13, fontWeight: 600, cursor: "pointer",
+            }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm({ notes: notes.trim() || null, photos })}
+            style={{
+              flex: 2, padding: "11px 0", borderRadius: 10,
+              border: "none", background: "#22c55e",
+              color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}>
+            ✓ Log It
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Photo Lightbox — full-screen zoom on tap ────────────────────────────────
 function PhotoLightbox({ src, alt, onClose }) {
   if (!src) return null;
@@ -391,6 +530,7 @@ export default function WeekPlanner() {
   const watches    = useWatchStore(s => s.watches);
   const history    = useHistoryStore(s => s.entries);
   const addEntry   = useHistoryStore(s => s.addEntry);
+  const upsertEntry = useHistoryStore(s => s.upsertEntry);
   const weekCtx    = useWardrobeStore(s => s.weekCtx);
   const onCallDates= useWardrobeStore(s => s.onCallDates);
   const setWeekCtx = useWardrobeStore(s => s.setWeekCtx);
@@ -406,6 +546,8 @@ export default function WeekPlanner() {
   const [strapOverrides, setStrapOverrides] = useState({});
   // Shuffle seeds: per-day counter that forces re-scoring with randomized tie-breaking
   const [shuffleSeeds, setShuffleSeeds]   = useState({});
+  // pendingLog: holds the day offset + pre-built garmentIds while modal is open
+  const [pendingLog, setPendingLog] = useState(null);
   const [pickingDay, setPickingDay]         = useState(null);
   // Per-day per-slot garment overrides: { [offset]: { shirt: garmentId, ... } }
   const [outfitOverrides, setOutfitOverrides] = useState(() => {
@@ -823,21 +965,14 @@ export default function WeekPlanner() {
                 </div>
               )}
 
-              {/* Wear This Outfit — save to history (today only) */}
+              {/* Wear This Outfit — opens notes+photo modal before logging */}
               {showOutfits && isToday && day.watch && (
                 <button
                   onClick={() => {
                     const garmentIds = OUTFIT_SLOTS
                       .map(s => dayOutfit[s]?.id)
                       .filter(Boolean);
-                    addEntry({
-                      id: `rotation-${Date.now()}`,
-                      date: day.date,
-                      watchId: day.watch.id,
-                      garmentIds,
-                      context: day.ctx,
-                      loggedAt: new Date().toISOString(),
-                    });
+                    setPendingLog({ day, garmentIds });
                   }}
                   style={{
                     width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8,
@@ -866,6 +1001,29 @@ export default function WeekPlanner() {
           onCallDates={onCallDates}
           onToggle={handleToggleOnCall}
           isDark={isDark}
+        />
+      )}
+
+      {/* Notes + photo modal */}
+      {pendingLog && (
+        <LogConfirmModal
+          isDark={isDark}
+          onCancel={() => setPendingLog(null)}
+          onConfirm={({ notes, photos }) => {
+            const { day, garmentIds } = pendingLog;
+            addEntry({
+              id: `rotation-${Date.now()}`,
+              date: day.date,
+              watchId: day.watch.id,
+              garmentIds,
+              context: day.ctx,
+              notes: notes ?? null,
+              outfitPhoto: photos[0] ?? null,
+              outfitPhotos: photos.length ? photos : null,
+              loggedAt: new Date().toISOString(),
+            });
+            setPendingLog(null);
+          }}
         />
       )}
     </div>
