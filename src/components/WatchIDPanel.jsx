@@ -4,8 +4,9 @@
  */
 import React, { useState } from "react";
 import { useThemeStore } from "../stores/themeStore.js";
+import { useWatchStore } from "../stores/watchStore.js";
 
-function resizeImage(file, maxPx = 900) {
+function resizeImage(file, maxPx = 1200) {
   return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -34,6 +35,7 @@ const DIAL_SWATCH = {
 export default function WatchIDPanel({ onIdentified }) {
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
+  const watches  = useWatchStore(s => s.watches);
   const [image,   setImage]   = useState(null);
   const [result,  setResult]  = useState(null);
   const [loading, setLoading] = useState(false);
@@ -57,7 +59,15 @@ export default function WatchIDPanel({ onIdentified }) {
       const res = await fetch("/.netlify/functions/watch-id", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl }),
+        body: JSON.stringify({
+          image: dataUrl,
+          collection: watches.map(w => ({
+            brand: w.brand,
+            model: w.model,
+            ref:   w.ref ?? w.reference ?? null,
+            dial:  w.dial ?? w.dialColor ?? null,
+          })),
+        }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);

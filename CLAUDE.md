@@ -21,16 +21,19 @@ src/                          68 files, ~10,200 LOC
     ImportPanel.jsx        gallery/camera import, dHash dedup, angle grouping
     GarmentEditor.jsx      edit garment: type, color, brand, notes, angles, patterns, seasons
     WeekPlanner.jsx        7-day rotation + on-call calendar
-    AuditPanel.jsx         AI wardrobe audit
+    AuditPanel.jsx         AI wardrobe audit + PhotoVerifierPanel (type filter pills)
     SelfiePanel.jsx        selfie/outfit extraction
     OccasionPanel.jsx      occasion-based outfit suggestions
     OccasionPlanner.jsx    occasion planning flow
     StrapPanel.jsx         strap management + wrist shots
     WatchCompare.jsx       side-by-side watch comparison
-    WatchIDPanel.jsx       watch identification from photos
+    WatchIDPanel.jsx       watch identification from photos (passes collection context)
     StatsPanel.jsx         wardrobe statistics
-    SettingsPanel.jsx      app settings
+    SettingsPanel.jsx      app settings + AI Garment Tagger section
     OutfitHistory.jsx      past outfit log
+    OutfitGallery.jsx      outfit/selfie photo gallery (All / Logged / Standalone filters)
+    BulkTaggerPanel.jsx    bulk AI tagger (seasons/contexts/material/pattern, batches of 8)
+    InstallPrompt.jsx      PWA install prompt (intercepts beforeinstallprompt)
     Header.jsx, SyncBar.jsx, ToastProvider.jsx, CommandPalette.jsx,
     LoadingSkeleton.jsx, ScrollToTop.jsx, TodayPanel.jsx
   engine/         scoring, rotation, day profiles — pure functions
@@ -72,9 +75,10 @@ src/                          68 files, ~10,200 LOC
     watchSeed.js  ← NEVER REPLACE. 23 watches (13 genuine, 10 replica). Sacred.
   aiStylist/      claudeStylist.js — builds prompt + calls Netlify function
   workers/        photoWorker.js — image processing worker (USE_WORKER=false currently)
-netlify/functions/           14 serverless functions, ~1,160 LOC
+netlify/functions/           15 serverless functions, ~1,350 LOC
   _claudeClient.js     Claude API client helper (shared)
   _blobCache.js        Netlify Blobs caching layer (shared)
+  bulk-tag.js          bulk garment tagger — seasons/contexts/material/pattern (Haiku)
   claude-stylist.js    AI outfit critique via Claude API
   classify-image.js    Claude Vision fallback for low-confidence garments
   ai-audit.js          full wardrobe audit via Claude API
@@ -85,7 +89,7 @@ netlify/functions/           14 serverless functions, ~1,160 LOC
   relabel-garment.js   AI garment re-labeling
   selfie-check.js      validate selfie photos
   verify-garment-photo.js  validate garment photos
-  watch-id.js          identify watches from photos
+  watch-id.js          identify watches from photos (collection context + fixed cache key)
   watch-rec.js         watch recommendations
 supabase/
   schema.sql      garments, watches, history tables
@@ -98,7 +102,7 @@ supabase/
 ### Data model
 - **Garment canonical types:** `shirt | pants | shoes | jacket | sweater | belt | sunglasses | hat | scarf | bag | accessory | outfit-photo`
 - **Outfit slot types (only these appear in outfit):** `shirt, pants, shoes, jacket` — accessories never slot in
-- **Sweater layer:** separate from shirt slot, only added when `tempC < 22`
+- **Sweater layer:** separate from shirt slot, added when `tempC < 22`. Second `layer` slot added when `tempC < 12` (picks second-best sweater-type garment)
 - **Leather coordination rule (non-negotiable):** brown strap → brown shoes; black strap → black shoes; metal bracelet → any footwear
 - **watchSeed.js is immutable.** Never touch it.
 
