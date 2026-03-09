@@ -26,7 +26,7 @@ import { useStrapStore } from "../stores/strapStore.js";
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}) {
-  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null };
+  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null };
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today
   const activeStrapObj = useStrapStore.getState().getActiveStrap?.(watch.id);
@@ -98,6 +98,12 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
         });
         scored.sort((a, b) => b.score - a.score);
         outfit.sweater = pinnedSlots.sweater ?? scored[0].garment;
+
+        // Second layer when cold enough and more than one sweater available
+        if (temp < 12 && sweaters.length >= 2) {
+          const secondBest = scored.find(s => s.garment.id !== outfit.sweater.id);
+          if (secondBest) outfit.layer = pinnedSlots.layer ?? secondBest.garment;
+        }
       }
     }
   }
