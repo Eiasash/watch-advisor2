@@ -51,7 +51,7 @@ const AI_COLOR_NORMALIZE = {
   "multicolor": "grey",
 };
 
-function normalizeAIColor(aiColor) {
+export function normalizeAIColor(aiColor) {
   if (!aiColor) return null;
   const lower = aiColor.toLowerCase().trim();
   return AI_COLOR_NORMALIZE[lower] ?? lower;

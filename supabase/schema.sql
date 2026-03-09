@@ -28,6 +28,17 @@ create table if not exists garments (
   photo_type text,
   needs_review boolean default false,
   duplicate_of text,
+  exclude_from_wardrobe boolean default false,
+  photo_angles jsonb default '[]'::jsonb,
+  brand text,
+  notes text,
+  material text,
+  pattern text,
+  seasons jsonb default '[]'::jsonb,
+  contexts jsonb default '[]'::jsonb,
+  price numeric,
+  accent_color text,
+  type text,
   created_at timestamptz default now()
 );
 

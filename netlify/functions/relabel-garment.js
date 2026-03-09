@@ -83,7 +83,7 @@ Respond ONLY with valid JSON, no markdown:
     const contentBlocks = [primaryBlock, ...angleBlocks, { type: "text", text: prompt }];
 
     const data = await callClaude(apiKey, {
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 500,
       messages: [{ role: "user", content: contentBlocks }],
     });

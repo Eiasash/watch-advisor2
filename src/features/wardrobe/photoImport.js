@@ -3,6 +3,7 @@ import { enqueueOriginalCache } from "../../services/photoQueue.js";
 import { classify } from "./classifier.js";
 import { isOutfitPhoto } from "./isOutfitPhoto.js";
 import { normalizeType } from "./normalizeType.js";
+import { normalizeAIColor } from "../../classifier/pipeline.js";
 
 /**
  * Claude Vision fallback — only called when pixel classifier has low confidence.
@@ -52,18 +53,20 @@ export async function runPhotoImport(file, existingGarments = []) {
 
   // ── Claude Vision fallback when confidence is low ──────────────────────────
   // Uses hi-res 512×512 image for better AI color/detail detection
-  if (tags._typeSource === "default" || tags._typeSource === "ambiguous" || tags._typeSource === "blind") {
+  if (tags._typeSource === "ambiguous" || tags._typeSource === "blind") {
     console.log("[import] low confidence — trying Claude Vision fallback (512px)");
     const aiImage = hiRes ?? thumbnail;
     if (aiImage) {
       const vision = await claudeFallback(aiImage, hash);
       if (vision?.type) {
         tags.type = normalizeType(vision.type);
-        tags.color = vision.color ?? tags.color;
+        tags.color = normalizeAIColor(vision.color) ?? tags.color;
+        tags.formality = vision.formality ?? tags.formality;
         tags.material = vision.material ?? tags.material;
+        tags.pattern = vision.pattern ?? tags.pattern;
         tags._typeSource = "claude-vision";
         tags.needsReview = false;
-        console.log("[import] Claude Vision override:", tags.type, tags.color, vision.material);
+        console.log("[import] Claude Vision override:", tags.type, tags.color, vision.material, vision.pattern);
       }
     }
   }

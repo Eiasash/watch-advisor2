@@ -152,8 +152,8 @@ describe("runPhotoImport", () => {
 
   // ── Claude Vision fallback ───────────────────────────────────────────────
 
-  it("calls Claude Vision fallback when classifier has low confidence (default source)", async () => {
-    classify.mockResolvedValue({ type: "accessory", color: null, formality: 5, _typeSource: "default", needsReview: true });
+  it("calls Claude Vision fallback when classifier has low confidence (blind source)", async () => {
+    classify.mockResolvedValue({ type: "accessory", color: null, formality: 5, _typeSource: "blind", needsReview: true });
     fetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ type: "belt", color: "brown", formality: 4, confidence: 0.92 }),

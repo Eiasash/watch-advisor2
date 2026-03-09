@@ -104,8 +104,13 @@ describe("classifyFromFilename — jacket", () => {
 
 describe("classifyFromFilename — shirt", () => {
   ["shirt_white.jpg","polo_navy.jpg","tee_black.jpg","knit_cream.jpg",
-   "sweater_olive.jpg","hoodie_grey.jpg","flannel_plaid.jpg","crewneck_navy.jpg"
+   "flannel_plaid.jpg"
   ].forEach(f => it(f, () => expect(classifyFromFilename(f).type).toBe("shirt")));
+});
+
+describe("classifyFromFilename — sweater", () => {
+  ["sweater_olive.jpg","hoodie_grey.jpg","crewneck_navy.jpg"
+  ].forEach(f => it(f, () => expect(classifyFromFilename(f).type).toBe("sweater")));
 });
 
 // ─── Color ────────────────────────────────────────────────────────────────────

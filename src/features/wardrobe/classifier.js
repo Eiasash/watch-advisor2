@@ -28,8 +28,9 @@ import { findDuplicate } from "../../classifier/duplicateDetection.js";
 const TYPE_RULES = [
   { type: "shoes",       kws: ["shoe","shoes","sneaker","sneakers","trainer","trainers","loafer","loafers","derby","derbies","boot","boots","chelsea","brogue","brogues","sandal","sandals","mule","slipper","oxford shoe","oxfords","pump","pumps","heel","heels"] },
   { type: "pants",       kws: ["pant","pants","trouser","trousers","chino","chinos","jean","jeans","jogger","joggers","slack","slacks","shorts","cargo","legging","leggings","culottes"] },
-  { type: "jacket",      kws: ["jacket","blazer","coat","overcoat","bomber","parka","anorak","gilet","cardigan","zip-up","zipup","overshirt","fleece","windbreaker","raincoat","peacoat"] },
-  { type: "shirt",       kws: ["shirt","tee","tshirt","t-shirt","polo","ocbd","knit","sweater","pullover","hoodie","sweatshirt","sweat","flannel","blouse","top","henley","jersey","crewneck"] },
+  { type: "jacket",      kws: ["jacket","blazer","coat","overcoat","bomber","parka","anorak","gilet","cardigan","zip-up","zipup","overshirt","windbreaker","raincoat","peacoat"] },
+  { type: "sweater",     kws: ["sweater","pullover","hoodie","sweatshirt","crewneck","fleece","knitwear","turtleneck","quarter-zip","half-zip"] },
+  { type: "shirt",       kws: ["shirt","tee","tshirt","t-shirt","polo","ocbd","knit","sweat","flannel","blouse","top","henley","jersey"] },
   { type: "belt",        kws: ["belt","belts"] },
   { type: "sunglasses",  kws: ["sunglass","sunglasses","shades","eyewear","glasses"] },
   { type: "hat",         kws: ["hat","cap","beanie","baseball cap","fedora","bucket hat","beret"] },
@@ -101,7 +102,7 @@ export function classifyFromFilename(filename) {
   for (const word of words) {
     if (FORMALITY_MAP[word] != null) { formality = FORMALITY_MAP[word]; break; }
   }
-  if (formality == null) formality = { shirt: 5, pants: 5, shoes: 5, jacket: 7 }[type] ?? 5;
+  if (formality == null) formality = { shirt: 5, pants: 5, shoes: 5, jacket: 7, sweater: 5 }[type] ?? 5;
 
   const isSelfieFilename = SELFIE_KWS.some(k => lower.includes(k));
   const isCameraRoll = /^(img|dsc|dscn|photo|pic|pxl|screenshot|wp|cam|capture)[\s_]?\d{3,}/i.test(
@@ -186,9 +187,11 @@ export async function extractDominantColor(thumbnailDataURL) {
         const i = (y * SIZE + x) * 4;
         const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
         if (a < 100) continue;
-        if (isBgPixel(r,g,b)) continue;
         const dist = Math.sqrt((x-CENTER)**2 + (y-CENTER)**2);
-        const weight = dist > (CENTER - EDGE_ZONE) ? 1 : 3;
+        const isCenter = dist <= (CENTER - EDGE_ZONE);
+        // Only filter background pixels at the edges — center pixels are the garment
+        if (!isCenter && isBgPixel(r,g,b)) continue;
+        const weight = isCenter ? 3 : 1;
         const name = nearestPalette(r,g,b);
         tally[name] = (tally[name] ?? 0) + weight;
         counted += weight;

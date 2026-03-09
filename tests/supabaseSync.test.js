@@ -118,6 +118,40 @@ describe("pullCloudState", () => {
     expect(result.garments).toEqual([]);
   });
 
+  it("maps exclude_from_wardrobe to excludeFromWardrobe", async () => {
+    garmentQueryResult = {
+      data: [
+        { id: "g1", name: "Outfit selfie", type: "outfit-photo", category: "outfit-photo", color: null,
+          photo_url: null, thumbnail_url: null, photo_type: "outfit-shot",
+          needs_review: false, exclude_from_wardrobe: true, photo_angles: [], created_at: "2026-01-01" },
+        { id: "g2", name: "Navy shirt", type: "shirt", category: "shirt", color: "navy",
+          photo_url: null, thumbnail_url: null, photo_type: "garment",
+          needs_review: false, exclude_from_wardrobe: false, photo_angles: [], created_at: "2026-01-01" },
+      ],
+      error: null,
+    };
+    historyQueryResult = { data: [], error: null };
+
+    const result = await pullCloudState();
+    expect(result.garments[0].excludeFromWardrobe).toBe(true);
+    expect(result.garments[1].excludeFromWardrobe).toBe(false);
+  });
+
+  it("defaults excludeFromWardrobe to false when column missing", async () => {
+    garmentQueryResult = {
+      data: [
+        { id: "g1", name: "Shirt", type: "shirt", category: "shirt", color: "navy",
+          photo_url: null, thumbnail_url: null, photo_type: "garment",
+          needs_review: false, photo_angles: [], created_at: "2026-01-01" },
+      ],
+      error: null,
+    };
+    historyQueryResult = { data: [], error: null };
+
+    const result = await pullCloudState();
+    expect(result.garments[0].excludeFromWardrobe).toBe(false);
+  });
+
   it("handles null data arrays gracefully", async () => {
     garmentQueryResult = { data: null, error: null };
     historyQueryResult = { data: null, error: null };
@@ -167,6 +201,25 @@ describe("pushGarment", () => {
     const row = upsertCalls[0][0];
     expect(row.photo_url).toBe("https://storage.supabase.co/photo.jpg");
     expect(row.thumbnail_url).toBeNull(); // null because valid photo_url takes precedence
+  });
+
+  it("persists excludeFromWardrobe as exclude_from_wardrobe", async () => {
+    await pushGarment({
+      id: "g1", name: "Outfit selfie", type: "outfit-photo", color: null,
+      excludeFromWardrobe: true, photoType: "outfit-shot",
+    });
+
+    const row = upsertCalls[0][0];
+    expect(row.exclude_from_wardrobe).toBe(true);
+  });
+
+  it("defaults exclude_from_wardrobe to false when excludeFromWardrobe absent", async () => {
+    await pushGarment({
+      id: "g1", name: "Shirt", type: "shirt", color: "navy",
+    });
+
+    const row = upsertCalls[0][0];
+    expect(row.exclude_from_wardrobe).toBe(false);
   });
 
   it("filters data: URLs from photo_angles", async () => {

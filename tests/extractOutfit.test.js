@@ -184,4 +184,33 @@ describe("extract-outfit handler", () => {
     expect(r.statusCode).toBe(502);
     expect(JSON.parse(r.body).error).toContain("Claude API error");
   });
+
+  it("includes CORS headers on all error paths", async () => {
+    // 405 path
+    const r405 = await handler({ httpMethod: "GET" });
+    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("*");
+
+    // 500 missing API key
+    vi.stubEnv("CLAUDE_API_KEY", "");
+    const r500 = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ image: "abc", garments: [] }),
+    });
+    expect(r500.headers["Access-Control-Allow-Origin"]).toBe("*");
+
+    // 400 missing image
+    vi.stubEnv("CLAUDE_API_KEY", "test-key");
+    const r400 = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ garments: [] }),
+    });
+    expect(r400.headers["Access-Control-Allow-Origin"]).toBe("*");
+
+    // 400 invalid JSON
+    const r400b = await handler({
+      httpMethod: "POST",
+      body: "not json{{{",
+    });
+    expect(r400b.headers["Access-Control-Allow-Origin"]).toBe("*");
+  });
 });
