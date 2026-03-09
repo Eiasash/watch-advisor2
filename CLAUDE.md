@@ -124,7 +124,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **1087+ tests across 57+ files** — run `npm test` to see current count
+- **1306+ tests across 74+ files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -136,7 +136,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (57 files)
+### Test file inventory (74 files)
 ```
 tests/
   additionalStores.test.js   rejectStore, styleLearnStore, prefStore, themeStore
@@ -151,11 +151,14 @@ tests/
   classifier.test.js         pixel classifier
   classifierBoundary.test.js  pants total/topF boundaries, flat-lay zoneSpread/botF, shoes terminal
   classifierPipeline.test.js master import pipeline
+  claudeClient.test.js       shared Claude API client (retry, backoff, error handling)
   claudeStylist.test.js      AI stylist function
   colorDetection.test.js     color extraction
+  commandPalette.test.js     search/filter logic, deduplication, result merging
   dayProfile.test.js         day profile inference + scoring
   duplicateDetection.test.js dHash duplicate detection
-  extractOutfit.test.js      outfit extraction from selfies
+  extractOutfit.test.js      outfit extraction from selfies (scoring, dedup, confidence)
+  garmentEditor.test.js      canonicalType mapping, buildAutoName generation
   garmentNamer.test.js       garment naming
   generateOutfit.test.js     outfit generation
   getWeather.test.js         weather API
@@ -164,11 +167,13 @@ tests/
   integrationImportFlow.test.js   classify → normalize → store → sync chain
   integrationOutfitGeneration.test.js  dayProfile → pickWatch → scoreGarment end-to-end
   integrationRejectRelearn.test.js    reject → isRejected → styleLearn → preferenceMultiplier
+  integrationStrapShoeVeto.test.js    strap → shoe scoring → outfit veto integration
+  integrationWeatherOutfit.test.js    weather → outfit engine → sweater layer integration
   isOutfitPhoto.test.js      outfit photo detection
   localCache.test.js         IndexedDB cache
   localCacheEdge.test.js     IDB error resilience, corrupt data, concurrent writes
   netlifyfunctions.test.js   Netlify function handlers (1)
-  netlifyfunctions2.test.js  Netlify function handlers (2)
+  netlifyfunctions2.test.js  Netlify function handlers (2) + hardened error paths
   normalizeType.test.js      type normalization
   outfitBuilder.test.js      outfit builder
   outfitEngine.test.js       outfit engine
@@ -176,11 +181,18 @@ tests/
   personFilter.test.js       person/selfie filter
   photoImport.test.js        photo import
   photoQueue.test.js         photo queue
+  pushBrief.test.js          push-brief scheduled function (brief generation, delivery, stale cleanup)
+  pushService.test.js        client push service (subscribe, unsubscribe, permission)
+  pushSubscribe.test.js      push-subscribe function (POST/DELETE, validation)
   scoring.test.js            garment scoring
+  settingsPanel.test.js      backup/export serialization (JSON, CSV, backup format)
+  statsPanel.test.js         stats computation (frequency, streak, cold bench, CPW)
   stores.test.js             wardrobeStore, watchStore, historyStore
   strapStore.test.js         strap store
   supabaseSync.test.js       Supabase sync (pull, push)
   supabaseSyncCrud.test.js   uploadPhoto, deleteGarment, fuzzy/semantic search, subscribeSyncState
+  todayPanel.test.js         daysSinceWorn, garment type ordering
+  wardrobeGrid.test.js       TYPE_FILTER predicates, search filtering
   wardrobeInsights.test.js   wardrobe insights
   wardrobeStoreActions.test.js  setGarments, setWeekCtx, setOnCallDates, navigation, select mode
   watchRotationEngine.test.js  pickWatch, pickWatchPair
@@ -190,6 +202,7 @@ tests/
   weatherRules.test.js       weather rules
   weatherService.test.js     weather service
   weekOutfitRotation.test.js week outfit rotation
+  weekPlannerLogic.test.js   outfit slots, accessory types, wearable garment filtering
   weekRotation.test.js       genWeekRotation
   dayProfileEdge.test.js     day profile keyword + scoring boundaries
   outfitBuilderEdge.test.js  outfit builder edge cases + sweater threshold
@@ -244,9 +257,9 @@ tests/
 |--------|-------|
 | Source files | 68 |
 | Source LOC | ~10,200 |
-| Test files | 57 |
-| Test LOC | ~8,800 |
-| Tests | 1087+ |
+| Test files | 74 |
+| Test LOC | ~11,000 |
+| Tests | 1306+ |
 | Test pass rate | 100% |
 | Netlify functions | 14 |
 | Components | 23 JSX |

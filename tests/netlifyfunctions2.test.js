@@ -239,6 +239,44 @@ describe("relabel-garment handler", () => {
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body).confirmed).toBe(true);
   });
+
+  it("returns 502 on Claude API error", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: () => Promise.resolve("rate limited"),
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        image: "data:image/jpeg;base64,abc123",
+        current: { type: "shirt", color: "navy", name: "Navy polo" },
+      }),
+    });
+    expect(result.statusCode).toBe(502);
+  });
+
+  it("handles multiple angles", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        content: [{ text: '{"confirmed":true,"confidence":0.92,"reason":"Consistent across angles","corrections":{"type":null,"color":null,"name":null,"formality":null}}' }],
+      }),
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        image: "data:image/jpeg;base64,mainPhoto",
+        current: { type: "shirt", color: "navy", name: "Navy polo" },
+        allAngles: [
+          "data:image/jpeg;base64,angle1",
+          "data:image/jpeg;base64,angle2",
+        ],
+      }),
+    });
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body).confirmed).toBe(true);
+  });
 });
 
 // ─── occasion-planner ───────────────────────────────────────────────────────
@@ -293,6 +331,33 @@ describe("occasion-planner handler", () => {
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body).occasion_tips).toBe("Dress smart");
   });
+
+  it("returns 500 on API error", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve("server error"),
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ occasion: "wedding", garments: [], watches: [] }),
+    });
+    expect(result.statusCode).toBe(500);
+  });
+
+  it("returns cache hit when available", async () => {
+    const { cacheGet } = await import("../netlify/functions/_blobCache.js");
+    cacheGet.mockResolvedValue({ occasion_tips: "Cached tips", outfits: [], avoid: "Jeans", power_move: "Pocket square" });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ occasion: "wedding", garments: [], watches: [] }),
+    });
+    expect(result.statusCode).toBe(200);
+    const headers = result.headers;
+    expect(headers["X-Cache"]).toBe("HIT");
+    const body = JSON.parse(result.body);
+    expect(body.occasion_tips).toBe("Cached tips");
+  });
 });
 
 // ─── watch-rec ──────────────────────────────────────────────────────────────
@@ -334,6 +399,36 @@ describe("watch-rec handler", () => {
     });
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body).top_pick).toBe("JLC Reverso");
+  });
+
+  it("returns 405 for non-POST", async () => {
+    const result = await handler({ httpMethod: "GET" });
+    expect(result.statusCode).toBe(405);
+  });
+
+  it("returns 500 on API error", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve("internal server error"),
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ outfit: { top: { color: "navy" } }, watches: [{ id: "w1", brand: "Rolex", model: "Sub" }] }),
+    });
+    expect(result.statusCode).toBe(500);
+  });
+
+  it("returns 500 on unparseable JSON response", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ content: [{ text: "not json at all" }] }),
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ outfit: { top: { color: "navy" } }, watches: [{ id: "w1", brand: "Rolex", model: "Sub" }] }),
+    });
+    expect(result.statusCode).toBe(500);
   });
 });
 
@@ -385,6 +480,29 @@ describe("watch-id handler", () => {
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body).brand).toBe("Rolex");
   });
+
+  it("returns 500 on API error", async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("network failure"));
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ image: "data:image/jpeg;base64,abc" }),
+    });
+    expect(result.statusCode).toBe(500);
+  });
+
+  it("returns cache hit when available", async () => {
+    const { cacheGet } = await import("../netlify/functions/_blobCache.js");
+    cacheGet.mockResolvedValue({ brand: "Omega", model: "Speedmaster", confidence: 9 });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ image: "data:image/jpeg;base64,abc" }),
+    });
+    expect(result.statusCode).toBe(200);
+    const headers = result.headers;
+    expect(headers["X-Cache"]).toBe("HIT");
+    const body = JSON.parse(result.body);
+    expect(body.brand).toBe("Omega");
+  });
 });
 
 // ─── selfie-check ───────────────────────────────────────────────────────────
@@ -434,6 +552,32 @@ describe("selfie-check handler", () => {
     });
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body).impact).toBe(8);
+  });
+
+  it("returns 502 on API error", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: () => Promise.resolve("rate limited"),
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ image: "data:image/jpeg;base64,abc", watches: [] }),
+    });
+    expect(result.statusCode).toBe(502);
+  });
+
+  it("returns cache hit when available", async () => {
+    const { cacheGet } = await import("../netlify/functions/_blobCache.js");
+    cacheGet.mockResolvedValue({ impact: 9, vision: "Cached vision", works: "Great" });
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ image: "data:image/jpeg;base64,abc", watches: [] }),
+    });
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body);
+    expect(body._cached).toBe(true);
+    expect(body.impact).toBe(9);
   });
 });
 
