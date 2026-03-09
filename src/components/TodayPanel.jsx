@@ -244,7 +244,7 @@ export default function TodayPanel() {
       for (const g of wearableGarments) {
         if (selected.has(g.id)) {
           const slot = g.type ?? g.category;
-          if (["shirt","sweater","pants","shoes","jacket"].includes(slot)) {
+          if (["shirt","sweater","layer","pants","shoes","jacket"].includes(slot)) {
             pinnedSlots[slot] = g;
           }
         }
@@ -255,7 +255,7 @@ export default function TodayPanel() {
       );
       if (suggestion) {
         // Apply suggested garments to selection
-        const slotKeys = ["shirt","sweater","pants","shoes","jacket"];
+        const slotKeys = ["shirt","sweater","layer","pants","shoes","jacket"];
         const newSelected = new Set(selected);
         for (const slot of slotKeys) {
           const gName = suggestion[slot];

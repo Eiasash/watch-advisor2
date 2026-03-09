@@ -101,8 +101,13 @@ export function strapShoeScore(watch, garment) {
 
   const shoeColor = (garment.color ?? "").toLowerCase();
   const isBlackStrap = strap.includes("black");
-  const isBrownStrap = strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
-    || strap.includes("cognac") || strap.includes("caramel") || strap.includes("alligator");
+  // Brown: must explicitly name a warm color — "grey alligator" is NOT brown
+  const isBrownStrap = !isBlackStrap && (
+    strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
+    || strap.includes("cognac") || strap.includes("caramel")
+    || (strap.includes("alligator") && !strap.includes("grey") && !strap.includes("gray")
+        && !strap.includes("navy") && !strap.includes("green") && !strap.includes("teal"))
+  );
 
   if (isBlackStrap) return ["black"].includes(shoeColor) ? 1.0 : 0.0;
   if (isBrownStrap) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;

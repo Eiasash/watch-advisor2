@@ -358,8 +358,8 @@ export default function WardrobeGrid() {
     const ids = Array.from(selectedIds);
     const [primaryId, ...rest] = ids;
     batchMergeAngles();
-    // Push primary (now with merged angles) + delete the absorbed garments
-    const primary = garments.find(g => g.id === primaryId);
+    // Read primary from store AFTER batchMergeAngles has updated it (Zustand set is sync)
+    const primary = useWardrobeStore.getState().garments.find(g => g.id === primaryId);
     if (primary) pushGarment(primary).catch(() => {});
     rest.forEach(id => {
       deleteGarment(id).catch(() => {});

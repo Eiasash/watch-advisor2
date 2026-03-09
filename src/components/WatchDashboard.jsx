@@ -514,14 +514,18 @@ export default function WatchDashboard() {
               // Store slot→id map so diversityBonus + rejectStore can reference it
               const outfitMap = {};
               for (const s of slots) { if (mergedOutfit[s]?.id) outfitMap[s] = mergedOutfit[s].id; }
-              const addEntry = useHistoryStore.getState().addEntry;
-              addEntry({
-                id: `dash-${Date.now()}`,
-                date: new Date().toISOString().slice(0,10),
+              // Use upsertEntry (not addEntry) to avoid duplicate rows if TodayPanel already logged today
+              const upsertEntry = useHistoryStore.getState().upsertEntry;
+              const todayIso = new Date().toISOString().slice(0,10);
+              const existingToday = useHistoryStore.getState().entries.find(e => e.date === todayIso);
+              upsertEntry({
+                id: existingToday?.id ?? `dash-${Date.now()}`,
+                date: todayIso,
                 watchId: selectedWatch.id,
                 garmentIds,
                 outfit: outfitMap,
-                context: "smart-casual",
+                context: existingToday?.context ?? "smart-casual",
+                notes: existingToday?.notes ?? null,
                 loggedAt: new Date().toISOString(),
               });
               setOutfitLogged(true);

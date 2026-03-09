@@ -43,6 +43,7 @@ const CONTEXT_COMPAT = {
   "date-night":             ["date-night","smart-casual","riviera"],
   "riviera":                ["riviera","casual","smart-casual"],
   "formal":                 ["formal","clinic"],
+  "shift":                  ["clinic","formal","smart-casual"], // on-call = clinic-level
 };
 
 const SEASON_NOW = (() => {
