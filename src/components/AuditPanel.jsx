@@ -375,6 +375,7 @@ export function PhotoVerifierPanel() {
   const [done,      setDone]      = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [bgPending, setBgPending] = useState(0);
+  const [typeFilter, setTypeFilter] = useState("all"); // "all" | specific type
   // Lightbox
   const [lightbox, setLightbox]   = useState(null); // { src, garmentId }
   // Per-card edit overrides: { [garmentId]: { type, color, name } }
@@ -406,12 +407,23 @@ export function PhotoVerifierPanel() {
   const card   = isDark ? "#0f131a" : "#f9fafb";
   const inputBg = isDark ? "#1a1f2b" : "#ffffff";
 
-  const withPhoto = garments.filter(g =>
+  const allWithPhoto = garments.filter(g =>
     g.type !== "outfit-photo" && !g.excludeFromWardrobe && (g.thumbnail || g.photoUrl)
   );
 
+  // Type counts for filter pills
+  const typeCounts = allWithPhoto.reduce((acc, g) => {
+    const t = g.type ?? "other";
+    acc[t] = (acc[t] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const withPhoto = typeFilter === "all"
+    ? allWithPhoto
+    : allWithPhoto.filter(g => (g.type ?? "other") === typeFilter);
+
   async function runVerification() {
-    setRunning(true); setDone(false); setResults({}); setProgress(0); setOverrides({});
+    setRunning(true); setDone(false); setResults({}); setProgress(0); setOverrides({}); setTypeFilter("all");
     const out = {};
     for (let i = 0; i < withPhoto.length; i++) {
       const g = withPhoto[i];
@@ -527,6 +539,27 @@ export function PhotoVerifierPanel() {
           {running ? `Checking… ${progress}%` : done ? "Re-verify" : "Verify Photos"}
         </button>
       </div>
+
+      {/* Type filter pills */}
+      {Object.keys(typeCounts).length > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          {[["all", allWithPhoto.length], ...Object.entries(typeCounts).sort((a,b) => b[1]-a[1])].map(([t, n]) => (
+            <button
+              key={t}
+              onClick={() => { setTypeFilter(t); }}
+              style={{
+                padding: "4px 10px", borderRadius: 20,
+                border: `1px solid ${typeFilter === t ? "#8b5cf6" : border}`,
+                background: typeFilter === t ? "#8b5cf622" : "transparent",
+                color: typeFilter === t ? "#8b5cf6" : sub,
+                fontSize: 11, fontWeight: 600, cursor: "pointer",
+                textTransform: "capitalize",
+              }}>
+              {t} <span style={{ opacity: 0.65 }}>({n})</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {running && (
         <div style={{ height: 4, borderRadius: 2, background: isDark ? "#1a1f2b" : "#e5e7eb", overflow: "hidden", marginBottom: 12 }}>

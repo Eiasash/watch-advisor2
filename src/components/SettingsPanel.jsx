@@ -4,6 +4,7 @@ import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { isPushSupported, getSubscriptionStatus, subscribePush, unsubscribePush } from "../services/pushService.js";
+import BulkTaggerPanel from "./BulkTaggerPanel.jsx";
 
 function saveBackup(garments, watches, history) {
   const ts = new Date();
@@ -238,6 +239,11 @@ export default function SettingsPanel({ onClose }) {
           <div style={{ fontSize: 11, color: mutedColor, marginTop: 6 }}>
             Full backup — garments, photos, history, watches. {garments.length}g · {history.length} log entries
           </div>
+        </Section>
+
+        {/* AI Bulk Tagger */}
+        <Section title="AI Garment Tagger" isDark={isDark}>
+          <BulkTaggerPanel isDark={isDark} />
         </Section>
 
         {/* Export */}
