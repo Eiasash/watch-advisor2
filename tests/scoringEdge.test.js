@@ -10,25 +10,37 @@ import {
 
 // ─── strapShoeScore — non-standard leather colors ──────────────────────────
 
-describe("strapShoeScore — colored alligator straps treated as non-standard leather", () => {
-  it("navy alligator + brown shoes → 0.85 (navy prefix excludes from brown family)", () => {
-    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "brown" })).toBe(0.85);
+describe("strapShoeScore — colored alligator straps have specific shoe rules", () => {
+  it("navy alligator + brown shoes → 0.0 (navy strap rejects brown — hard fail)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "brown" })).toBe(0.0);
   });
 
-  it("navy alligator + black shoes → 0.85 (navy alligator = non-standard leather)", () => {
-    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "black" })).toBe(0.85);
+  it("navy alligator + black shoes → 1.0 (navy strap + black shoes = correct)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "black" })).toBe(1.0);
   });
 
-  it("grey alligator + tan shoes → 0.85 (grey alligator = non-standard, not brown family)", () => {
-    expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "tan" })).toBe(0.85);
+  it("navy alligator + white shoes → 1.0 (navy strap + white sneakers = correct)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "white" })).toBe(1.0);
   });
 
-  it("olive leather + black shoes → 0.85 (non-standard leather color)", () => {
-    expect(strapShoeScore({ strap: "olive leather" }, { type: "shoes", color: "black" })).toBe(0.85);
+  it("grey alligator + tan shoes → 0.3 (grey strap tolerates non-ideal shoes)", () => {
+    expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "tan" })).toBe(0.3);
   });
 
-  it("teal leather + white shoes → 0.85 (non-standard leather color)", () => {
-    expect(strapShoeScore({ strap: "teal leather" }, { type: "shoes", color: "white" })).toBe(0.85);
+  it("grey alligator + black shoes → 1.0 (grey strap + black shoes = preferred)", () => {
+    expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "black" })).toBe(1.0);
+  });
+
+  it("olive leather + black shoes → 1.0 (teal/olive/green strap + black = preferred)", () => {
+    expect(strapShoeScore({ strap: "olive leather" }, { type: "shoes", color: "black" })).toBe(1.0);
+  });
+
+  it("teal leather + white shoes → 1.0 (teal/olive/green strap + white = preferred)", () => {
+    expect(strapShoeScore({ strap: "teal leather" }, { type: "shoes", color: "white" })).toBe(1.0);
+  });
+
+  it("teal leather + brown shoes → 0.3 (teal strap tolerates non-ideal shoes)", () => {
+    expect(strapShoeScore({ strap: "teal leather" }, { type: "shoes", color: "brown" })).toBe(0.3);
   });
 });
 

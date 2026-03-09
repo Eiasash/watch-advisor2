@@ -5,7 +5,7 @@ vi.mock("../src/stores/rejectStore.js", () => ({
   useRejectStore: { getState: () => ({ isRecentlyRejected: () => false }) },
 }));
 vi.mock("../src/stores/strapStore.js", () => ({
-  useStrapStore: { getState: () => ({ getActiveStrap: () => null }) },
+  useStrapStore: { getState: () => ({ getActiveStrapObj: () => null }) },
 }));
 
 import { strapShoeScore } from "../src/outfitEngine/scoring.js";

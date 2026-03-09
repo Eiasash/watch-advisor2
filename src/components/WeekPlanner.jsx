@@ -680,7 +680,7 @@ export default function WeekPlanner() {
       for (const slot of OUTFIT_SLOTS) shuffleExcluded[slot] = new Set();
 
       for (let round = 0; round <= shuffleSeed; round++) {
-        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments, shuffleExcluded);
+        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments, shuffleExcluded, day.ctx);
         const hasItems = Object.values(adv).some(Boolean);
         outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, { context: day.ctx }, iterHistory);
         if (round < shuffleSeed) {

@@ -268,6 +268,16 @@ export default function WatchDashboard() {
 
   const weatherObj = useMemo(() => ({ tempC: weather?.tempC ?? 22 }), [weather]);
 
+  // Determine today's context from weekCtx / onCallDates
+  const todayContext = useMemo(() => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
+    const weekCtx = useWardrobeStore.getState().weekCtx ?? [];
+    const todayDayIdx = new Date().getDay(); // 0=Sun
+    const baseCtx = weekCtx[todayDayIdx] ?? "smart-casual";
+    return onCallDates.includes(todayIso) ? "shift" : baseCtx;
+  }, []);
+
   // Candidates per slot — used by the inline swap pickers
   // normalizeType maps polo→shirt, jeans→pants, sneakers→shoes, blazer→jacket etc.
   const ACCESSORY_EXCL = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
@@ -297,9 +307,9 @@ export default function WatchDashboard() {
     // Pass slotOverrides as pinnedSlots so engine adapts other slots to manual picks
     const hasPins = Object.keys(slotOverrides).length > 0;
     for (let round = 0; round <= shuffleSeed; round++) {
-      const built = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {});
+      const built = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, {}, todayContext);
       const hasItems = Object.values(built).some(Boolean);
-      result = hasItems ? built : generateOutfit(enrichedWatch, garments, weatherObj, {}, iterHistory);
+      result = hasItems ? built : generateOutfit(enrichedWatch, garments, weatherObj, { context: todayContext }, iterHistory);
       if (round < shuffleSeed) {
         const combined = { outfit: {} };
         for (const slot of ["shirt","sweater","pants","shoes","jacket"]) {
@@ -309,7 +319,7 @@ export default function WatchDashboard() {
       }
     }
     return result;
-  }, [enrichedWatch, garments, weatherObj, history, shuffleSeed, slotOverrides]);
+  }, [enrichedWatch, garments, weatherObj, history, shuffleSeed, slotOverrides, todayContext]);
 
   // Merge: engine base + per-slot manual overrides
   const mergedOutfit = useMemo(() => {
