@@ -10,23 +10,23 @@ export async function handler(event) {
     return { statusCode: 204, headers: { "Access-Control-Allow-Origin": "*" } };
   }
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   const apiKey = process.env.CLAUDE_API_KEY;
   if (!apiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
+    return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
   }
 
   let image, garments;
   try {
     ({ image, garments } = JSON.parse(event.body));
   } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON body" }) };
+    return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Invalid JSON body" }) };
   }
 
   if (!image) {
-    return { statusCode: 400, body: JSON.stringify({ error: "Missing image" }) };
+    return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Missing image" }) };
   }
 
   // Strip data URL prefix if present

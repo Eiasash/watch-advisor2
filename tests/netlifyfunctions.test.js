@@ -23,14 +23,40 @@ describe("ai-audit handler", () => {
     expect(result.statusCode).toBe(405);
   });
 
-  it("returns 500 when CLAUDE_API_KEY is missing", async () => {
+  it("returns 500 with CORS when CLAUDE_API_KEY is missing", async () => {
     vi.stubEnv("CLAUDE_API_KEY", "");
     const result = await handler({
       httpMethod: "POST",
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(result.statusCode).toBe(500);
+    expect(result.headers["Access-Control-Allow-Origin"]).toBe("*");
     expect(JSON.parse(result.body).error).toContain("CLAUDE_API_KEY");
+  });
+
+  it("includes CORS headers on all response paths", async () => {
+    // 405 path
+    const r405 = await handler({ httpMethod: "GET" });
+    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("*");
+
+    // 502 path (Claude API error)
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      text: () => Promise.resolve("rate limited"),
+    });
+    const r502 = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ prompt: "audit" }),
+    });
+    expect(r502.headers["Access-Control-Allow-Origin"]).toBe("*");
+
+    // 500 path (network error)
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("network down"));
+    const r500 = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ prompt: "audit" }),
+    });
+    expect(r500.headers["Access-Control-Allow-Origin"]).toBe("*");
   });
 
   it("returns parsed JSON on success", async () => {
