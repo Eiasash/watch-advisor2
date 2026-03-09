@@ -13,6 +13,7 @@ import StrapPanel from "./StrapPanel.jsx";
 import { useStrapStore } from "../stores/strapStore.js";
 import WatchIDPanel   from "./WatchIDPanel.jsx";
 import { useRejectStore } from "../stores/rejectStore.js";
+import { normalizeType } from "../classifier/normalizeType.js";
 
 const DIAL_SWATCH = {
   "silver-white": "#e8e8e0",
@@ -64,58 +65,138 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
   );
 }
 
-function OutfitSlot({ slot, garment, isDark, onSelect }) {
+function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, isOverridden }) {
+  const [open, setOpen] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
   const ICONS = { shirt: "\u{1F454}", sweater: "\u{1FAA2}", layer: "\u{1F9E3}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
   const border = isDark ? "#2b3140" : "#d1d5db";
+  const accentBorder = isOverridden ? "#8b5cf6" : (open ? "#3b82f6" : border);
   const photo = garment?.thumbnail || garment?.photoUrl;
 
   return (
-    <div
-      onClick={() => garment && onSelect && onSelect(garment.id)}
-      style={{
-        background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 12,
-        border: `1px solid ${border}`,
-        overflow: "hidden", cursor: garment ? "pointer" : "default",
-        transition: "border-color 0.15s",
-        minHeight: 90,
-      }}
-    >
-      {/* Photo area */}
-      {photo ? (
-        <img
-          src={photo}
-          alt={garment.name}
-          style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }}
-        />
-      ) : (
+    <div style={{ position: "relative" }}>
+      <div
+        onClick={() => { if (candidates.length > 0) setOpen(o => !o); }}
+        style={{
+          background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 12,
+          border: `1px solid ${accentBorder}`,
+          overflow: "hidden", cursor: candidates.length > 0 ? "pointer" : "default",
+          minHeight: 90, transition: "border-color 0.15s",
+          boxShadow: open ? `0 0 0 2px ${isDark ? "#3b82f622" : "#3b82f611"}` : "none",
+        }}
+      >
+        {photo ? (
+          <img
+            src={photo} alt={garment?.name ?? ""}
+            onClick={e => { e.stopPropagation(); setLightbox({ src: photo, alt: `${garment.color ?? ""} ${garment.type ?? ""}`.trim() }); }}
+            style={{ width: "100%", height: 110, objectFit: "cover", display: "block", cursor: "zoom-in" }}
+          />
+        ) : (
+          <div style={{
+            width: "100%", height: 80,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 28, background: isDark ? "#171a21" : "#e5e7eb",
+          }}>
+            {ICONS[slot] ?? "\u{2022}"}
+          </div>
+        )}
+        <div style={{ padding: "6px 10px 8px", display: "flex", alignItems: "flex-start", gap: 4 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>
+              {slot}{isOverridden ? " ✎" : ""}
+            </div>
+            {garment ? (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937",
+                              lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {garment.color} {garment.type}
+                </div>
+                {garment.brand && (
+                  <div style={{ fontSize: 11, color: "#8b93a7", marginTop: 1 }}>{garment.brand}</div>
+                )}
+              </>
+            ) : (
+              <div style={{ fontSize: 11, color: "#4b5563", fontStyle: "italic" }}>Empty</div>
+            )}
+          </div>
+          {candidates.length > 0 && (
+            <span style={{ fontSize: 10, color: "#6b7280", flexShrink: 0, marginTop: 2 }}>{open ? "▲" : "▼"}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Swap dropdown */}
+      {open && (
         <div style={{
-          width: "100%", height: 80,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28, background: isDark ? "#171a21" : "#e5e7eb",
+          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200,
+          maxHeight: 200, overflowY: "auto",
+          background: isDark ? "#171a21" : "#fff",
+          border: `1px solid ${border}`, borderRadius: 8, marginTop: 2,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
         }}>
-          {ICONS[slot] ?? "\u{2022}"}
+          {isOverridden && (
+            <div
+              onClick={() => { onSwap && onSwap(slot, null); setOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                cursor: "pointer", borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+                color: "#ef4444", fontSize: 11, fontWeight: 600,
+              }}
+            >
+              ↩ Reset to engine pick
+            </div>
+          )}
+          {candidates.map(c => {
+            const cPhoto = c.thumbnail || c.photoUrl;
+            const isCurrent = c.id === garment?.id;
+            return (
+              <div key={c.id}
+                onClick={() => { onSwap && onSwap(slot, c); setOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                  cursor: "pointer",
+                  background: isCurrent ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
+                  borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+                }}
+              >
+                {cPhoto ? (
+                  <img src={cPhoto} alt={c.name ?? ""}
+                    onClick={e => { e.stopPropagation(); setLightbox({ src: cPhoto, alt: `${c.color ?? ""} ${c.type ?? ""}`.trim() }); }}
+                    style={{ width: 28, height: 28, borderRadius: 5, objectFit: "cover", cursor: "zoom-in", flexShrink: 0 }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 16, width: 28, textAlign: "center", flexShrink: 0 }}>{ICONS[slot] ?? "\u{1F455}"}</span>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1f2937",
+                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {c.color} {c.type}
+                  </div>
+                  {c.brand && <div style={{ fontSize: 10, color: "#8b93a7" }}>{c.brand}</div>}
+                </div>
+                {isCurrent && <span style={{ color: "#3b82f6", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>✓</span>}
+              </div>
+            );
+          })}
+          {candidates.length === 0 && (
+            <div style={{ padding: "10px 12px", color: "#6b7280", fontSize: 11, fontStyle: "italic" }}>No other options</div>
+          )}
         </div>
       )}
 
-      {/* Label */}
-      <div style={{ padding: "8px 10px" }}>
-        <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase",
-                      letterSpacing: "0.07em", marginBottom: 2 }}>{slot}</div>
-        {garment ? (
-          <>
-            <div style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937",
-                          lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden",
-                          textOverflow: "ellipsis" }}>
-              {garment.color} {garment.type}
-            </div>
-            {garment.brand && (
-              <div style={{ fontSize: 11, color: "#8b93a7", marginTop: 1 }}>{garment.brand}</div>
-            )}
-          </>
-        ) : (
-          <div style={{ fontSize: 11, color: "#4b5563", fontStyle: "italic" }}>Empty</div>
-        )}
-      </div>
+      {/* Lightbox */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{
+          position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.88)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 16, cursor: "zoom-out",
+        }}>
+          <img src={lightbox.src} alt={lightbox.alt ?? ""} style={{
+            maxWidth: "92vw", maxHeight: "85vh", borderRadius: 12, objectFit: "contain",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+          }} />
+          <div style={{ position: "absolute", top: 16, right: 20, color: "#fff", fontSize: 28, fontWeight: 300, padding: "4px 10px" }}>{"\u00D7"}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -142,6 +223,9 @@ export default function WatchDashboard() {
   const [watchRecResult, setWatchRecResult] = useState(null);
   const [outfitLogged, setOutfitLogged] = useState(false);
   const [overrideOutfit, setOverrideOutfit] = useState(null);
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+  // Per-slot manual overrides: { shirt: garmentObj, pants: garmentObj, ... }
+  const [slotOverrides, setSlotOverrides] = useState({});
 
   useEffect(() => {
     if (!activeWatch && watches.length > 0) {
@@ -157,10 +241,12 @@ export default function WatchDashboard() {
 
   const selectedWatch = activeWatch ?? watches[0] ?? null;
 
-  // Clear AI override outfit when watch changes
+  // Clear AI override outfit and manual overrides when watch changes
   useEffect(() => {
     setOverrideOutfit(null);
     setAiSuggestion(null);
+    setSlotOverrides({});
+    setShuffleSeed(0);
   }, [selectedWatch?.id]);
 
   // Enrich watch with the ACTIVE strap — overrides static seed value
@@ -180,21 +266,53 @@ export default function WatchDashboard() {
 
   const weatherObj = useMemo(() => ({ tempC: weather?.tempC ?? 22 }), [weather]);
 
+  // Candidates per slot — used by the inline swap pickers
+  // normalizeType maps polo→shirt, jeans→pants, sneakers→shoes, blazer→jacket etc.
+  const ACCESSORY_EXCL = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
+  const wearable = useMemo(() =>
+    garments.filter(g => !ACCESSORY_EXCL.has(g.type ?? g.category) && !g.excludeFromWardrobe),
+    [garments]
+  );
+  const slotCandidates = useMemo(() => {
+    const slots = ["shirt","sweater","layer","pants","shoes","jacket"];
+    const res = {};
+    for (const slot of slots) {
+      res[slot] = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === slot);
+    }
+    return res;
+  }, [wearable]);
+
   const outfit = useMemo(() => {
     if (!enrichedWatch) return {};
-    const newOutfit = buildOutfit(enrichedWatch, garments, weatherObj, history);
-    const hasItems = Object.values(newOutfit).some(Boolean);
-    if (hasItems) return newOutfit;
-    return generateOutfit(enrichedWatch, garments, weatherObj, {}, history);
-  }, [enrichedWatch, garments, weatherObj, history]); // buildOutfit/generateOutfit filter accessories internally
+    // Shuffle: each increment poisons the previous pick for all slots simultaneously
+    // so diversityBonus slice(-5) penalises every slot, not just the last one.
+    let iterHistory = [...history];
+    let result = {};
+    for (let round = 0; round <= shuffleSeed; round++) {
+      const built = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory);
+      const hasItems = Object.values(built).some(Boolean);
+      result = hasItems ? built : generateOutfit(enrichedWatch, garments, weatherObj, {}, iterHistory);
+      if (round < shuffleSeed) {
+        const combined = { outfit: {} };
+        for (const slot of ["shirt","sweater","pants","shoes","jacket"]) {
+          if (result[slot]?.id) combined.outfit[slot] = result[slot].id;
+        }
+        for (let i = 0; i < 5; i++) iterHistory.push(combined);
+      }
+    }
+    return result;
+  }, [enrichedWatch, garments, weatherObj, history, shuffleSeed]);
 
-  // When AI suggestion is applied, show it; otherwise show engine outfit
-  const displayOutfit = overrideOutfit ?? outfit;
+  // Merge: engine base + per-slot manual overrides
+  const mergedOutfit = useMemo(() => {
+    const base = overrideOutfit ?? outfit;
+    return { ...base, ...slotOverrides };
+  }, [outfit, overrideOutfit, slotOverrides]);
 
   const explanation = useMemo(() => {
     if (!enrichedWatch) return "";
-    return explainOutfitChoice(enrichedWatch, displayOutfit, weather);
-  }, [enrichedWatch, displayOutfit, weather]);
+    return explainOutfitChoice(enrichedWatch, mergedOutfit, weather);
+  }, [enrichedWatch, mergedOutfit, weather]);
 
   const weatherText = formatWeatherText(weather);
   const layerRec = weather ? getLayerRecommendation(weather.tempC) : null;
@@ -299,8 +417,37 @@ export default function WatchDashboard() {
             <WatchCard watch={selectedWatch} label="Selected" accent="#3b82f6" isDark={isDark} />
           </div>
 
-          <div style={{ fontSize: 13, color: overrideOutfit ? "#8b5cf6" : "#6b7280", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {overrideOutfit ? "AI Stylist outfit" : "Outfit built around this watch"}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ fontSize: 13, color: overrideOutfit ? "#8b5cf6" : "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              {overrideOutfit ? "AI Stylist outfit" : "Outfit built around this watch"}
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <button
+                onClick={() => { setShuffleSeed(s => (s + 1) % 8); setSlotOverrides({}); setOverrideOutfit(null); setAiSuggestion(null); }}
+                title="Shuffle to next best outfit"
+                style={{
+                  fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
+                  border: `1px solid ${shuffleSeed > 0 ? "#6366f1" : (isDark ? "#2b3140" : "#d1d5db")}`,
+                  background: shuffleSeed > 0 ? "#6366f122" : "transparent",
+                  color: shuffleSeed > 0 ? "#818cf8" : (isDark ? "#6b7280" : "#9ca3af"),
+                  fontWeight: 600,
+                }}
+              >
+                🔀 Shuffle{shuffleSeed > 0 ? ` (${shuffleSeed})` : ""}
+              </button>
+              {(Object.keys(slotOverrides).length > 0 || shuffleSeed > 0 || overrideOutfit) && (
+                <button
+                  onClick={() => { setSlotOverrides({}); setShuffleSeed(0); setOverrideOutfit(null); setAiSuggestion(null); }}
+                  style={{
+                    fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
+                    border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
+                    background: "transparent", color: "#ef4444", fontWeight: 600,
+                  }}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
           <style>{`
             .wa-outfit-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:16px; }
@@ -308,8 +455,26 @@ export default function WatchDashboard() {
           `}</style>
           <div className="wa-outfit-grid">
             {["shirt", "sweater", "layer", "pants", "shoes", "jacket"].map(slot => {
-              if ((slot === "sweater" || slot === "layer") && !displayOutfit[slot]) return null;
-              return <OutfitSlot key={slot} slot={slot} garment={displayOutfit[slot]} isDark={isDark} onSelect={setSelectedGarmentId} />;
+              if ((slot === "sweater" || slot === "layer") && !mergedOutfit[slot]) return null;
+              return (
+                <OutfitSlot
+                  key={slot}
+                  slot={slot}
+                  garment={mergedOutfit[slot]}
+                  isDark={isDark}
+                  isOverridden={!!slotOverrides[slot]}
+                  candidates={slotCandidates[slot] ?? []}
+                  onSwap={(s, g) => {
+                    if (!g) {
+                      setSlotOverrides(prev => { const n = {...prev}; delete n[s]; return n; });
+                    } else {
+                      setSlotOverrides(prev => ({ ...prev, [s]: g }));
+                      setOverrideOutfit(null);
+                    }
+                  }}
+                  onSelect={setSelectedGarmentId}
+                />
+              );
             })}
           </div>
           {overrideOutfit && (
@@ -329,11 +494,11 @@ export default function WatchDashboard() {
           <button
             onClick={() => {
               const slots = ["shirt","sweater","layer","pants","shoes","jacket"];
-              const garmentIds = slots.map(s => displayOutfit[s]?.id).filter(Boolean);
+              const garmentIds = slots.map(s => mergedOutfit[s]?.id).filter(Boolean);
               if (garmentIds.length === 0) return;
               // Store slot→id map so diversityBonus + rejectStore can reference it
               const outfitMap = {};
-              for (const s of slots) { if (displayOutfit[s]?.id) outfitMap[s] = displayOutfit[s].id; }
+              for (const s of slots) { if (mergedOutfit[s]?.id) outfitMap[s] = mergedOutfit[s].id; }
               const addEntry = useHistoryStore.getState().addEntry;
               addEntry({
                 id: `dash-${Date.now()}`,
@@ -468,9 +633,9 @@ export default function WatchDashboard() {
             try {
               // Use the current engine-built outfit, not all garments
               const recOutfit = {
-                layers: [displayOutfit.shirt, displayOutfit.sweater, displayOutfit.layer].filter(Boolean),
-                bottom: displayOutfit.pants ?? null,
-                shoes:  displayOutfit.shoes ?? null,
+                layers: [mergedOutfit.shirt, mergedOutfit.sweater, mergedOutfit.layer].filter(Boolean),
+                bottom: mergedOutfit.pants ?? null,
+                shoes:  mergedOutfit.shoes ?? null,
               };
               const res = await fetch("/.netlify/functions/watch-rec", {
                 method: "POST",
@@ -507,7 +672,7 @@ export default function WatchDashboard() {
           <button onClick={() => {
             if (!selectedWatch) return;
             const garmentIds = ["shirt","sweater","layer","pants","shoes","jacket"]
-              .map(s => displayOutfit[s]?.id).filter(Boolean);
+              .map(s => mergedOutfit[s]?.id).filter(Boolean);
             if (garmentIds.length === 0) return;
             addRejection(selectedWatch.id, garmentIds, "smart-casual");
           }}
