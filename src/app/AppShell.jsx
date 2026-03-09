@@ -22,6 +22,7 @@ import OutfitHistory  from "../components/OutfitHistory.jsx";
 import CommandPalette from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
+import InstallPrompt from "../components/InstallPrompt.jsx";
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 const TABS = [
@@ -41,7 +42,11 @@ function AppContent() {
   const { mode }          = useThemeStore();
   const isDark            = mode === "dark";
 
-  const [tab, setTab]             = useState("today");
+  const [tab, setTab] = useState(() => {
+    const p = new URLSearchParams(window.location.search).get("tab");
+    const valid = TABS.map(t => t.key);
+    return (p && valid.includes(p)) ? p : "today";
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showPalette,  setShowPalette]  = useState(false);
   const toast = useToast();
@@ -192,6 +197,7 @@ function AppContent() {
       {showSettings  && <SettingsPanel onClose={() => setShowSettings(false)} />}
       {showPalette   && <CommandPalette onClose={() => setShowPalette(false)} onAction={handlePaletteAction} />}
       <ScrollToTop />
+      <InstallPrompt isDark={isDark} />
     </div>
   );
 }

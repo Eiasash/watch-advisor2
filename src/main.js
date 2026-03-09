@@ -8,9 +8,31 @@ createRoot(document.getElementById("root")).render(
 
 // ── Service Worker registration ───────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js", { scope: "/" })
-      .then(reg => console.log("[SW] registered, scope:", reg.scope))
-      .catch(err => console.warn("[SW] registration failed:", err));
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      console.log("[SW] registered, scope:", reg.scope);
+
+      // Detect when a new SW is waiting (app updated) — reload to activate it
+      reg.addEventListener("updatefound", () => {
+        const incoming = reg.installing;
+        if (!incoming) return;
+        incoming.addEventListener("statechange", () => {
+          if (incoming.state === "installed" && navigator.serviceWorker.controller) {
+            // New SW is ready — tell it to skip waiting, then reload
+            incoming.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+      });
+
+      // When SW controller changes (new SW took over), reload once
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!refreshing) { refreshing = true; window.location.reload(); }
+      });
+
+    } catch (err) {
+      console.warn("[SW] registration failed:", err);
+    }
   });
 }
