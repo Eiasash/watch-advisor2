@@ -10,8 +10,8 @@ import {
 
 // ─── strapShoeScore — non-standard leather colors ──────────────────────────
 
-describe("strapShoeScore — colored alligator straps are non-standard leather", () => {
-  it("navy alligator + brown shoes → 0.85 (navy alligator = non-standard, not brown family)", () => {
+describe("strapShoeScore — colored alligator straps treated as non-standard leather", () => {
+  it("navy alligator + brown shoes → 0.85 (navy prefix excludes from brown family)", () => {
     expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "brown" })).toBe(0.85);
   });
 

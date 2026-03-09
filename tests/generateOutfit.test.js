@@ -59,20 +59,19 @@ describe("generateOutfit", () => {
     expect(result.sweater).not.toBeNull();
   });
 
-  it("temp >= 22 → jacket still scored as core slot, no sweater", () => {
+  it("temp >= 22 → jacket still filled (always a base slot), no sweater", () => {
     const result = generateOutfit(watch, garments, { tempC: 25 });
-    // Jacket is a core outfit slot — always filled if available (weather only gates sweater/layer)
     expect(result.jacket).not.toBeNull();
     expect(result.sweater).toBeNull();
   });
 
-  it("null weather → jacket filled, no sweater (tempC defaults to 22)", () => {
+  it("null weather → jacket still filled, no sweater (tempC defaults to 22)", () => {
     const result = generateOutfit(watch, garments, null);
     expect(result.jacket).not.toBeNull();
     expect(result.sweater).toBeNull();
   });
 
-  it("undefined weather → jacket filled, no sweater (tempC defaults to 22)", () => {
+  it("undefined weather → jacket still filled, no sweater", () => {
     const result = generateOutfit(watch, garments, undefined);
     expect(result.jacket).not.toBeNull();
     expect(result.sweater).toBeNull();
