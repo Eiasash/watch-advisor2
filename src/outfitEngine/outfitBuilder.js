@@ -25,7 +25,7 @@ import { useStrapStore } from "../stores/strapStore.js";
  */
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
-export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}) {
+export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}) {
   if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null };
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today
@@ -56,7 +56,8 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const candidates = wearable.filter(g => {
       const gType = g.type ?? g.category;
       // shirt slot: only actual shirts (sweaters go to sweater layer)
-      if (type === "shirt") return gType === "shirt";
+      if (type === "shirt") return gType === "shirt" && !excludedPerSlot[slotName]?.has(g.id);
+      if (excludedPerSlot[slotName]?.has(g.id)) return false;
       return gType === type;
     });
 

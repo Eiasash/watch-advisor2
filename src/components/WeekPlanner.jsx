@@ -532,8 +532,13 @@ export default function WeekPlanner() {
       const shuffleSeed = shuffleSeeds[day.offset] ?? 0;
       let iterHistory = [...fakeHistory];
       let outfit = {};
+      // Track all previously shuffled garments per slot — prevents cycling back
+      // to an earlier pick once it falls outside diversityBonus's slice(-5) window.
+      const shuffleExcluded = {};
+      for (const slot of OUTFIT_SLOTS) shuffleExcluded[slot] = new Set();
+
       for (let round = 0; round <= shuffleSeed; round++) {
-        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments);
+        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments, shuffleExcluded);
         const hasItems = Object.values(adv).some(Boolean);
         outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, { context: day.ctx }, iterHistory);
         if (round < shuffleSeed) {
@@ -544,7 +549,11 @@ export default function WeekPlanner() {
           // Combined entries ensure all slots appear in every history entry.
           const combined = { outfit: {} };
           for (const slot of OUTFIT_SLOTS) {
-            if (outfit[slot]?.id) combined.outfit[slot] = outfit[slot].id;
+            if (outfit[slot]?.id) {
+              combined.outfit[slot] = outfit[slot].id;
+              // Also permanently exclude this pick from future shuffle rounds
+              shuffleExcluded[slot].add(outfit[slot].id);
+            }
           }
           for (let i = 0; i < 5; i++) iterHistory.push(combined);
         }
@@ -591,6 +600,8 @@ export default function WeekPlanner() {
       ...prev,
       [offset]: { ...(prev[offset] ?? {}), [slot]: garment.id },
     }));
+    // Reset shuffle seed so non-pinned slots find their best complement for the new pick
+    setShuffleSeeds(prev => { const n = { ...prev }; delete n[offset]; return n; });
   }, []);
 
   const handleShuffle = useCallback((offset) => {
