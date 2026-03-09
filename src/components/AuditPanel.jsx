@@ -142,16 +142,31 @@ export default function AuditPanel() {
   const [result,   setResult]   = useState(null);
   const [error,    setError]    = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [stale,    setStale]    = useState(false); // garments changed since last audit
 
-  // Restore cached audit result on mount
+  // Restore cached audit result on mount + check staleness
   useEffect(() => {
     getCachedState().then(cached => {
       if (cached._auditResult && cached._auditResult.grade) {
         setResult(cached._auditResult);
         setExpanded(false);
+        // Stale if garment count changed since last audit
+        const audited = cached._auditGarmentCount ?? 0;
+        const current = garments.filter(g => !g.excludeFromWardrobe).length;
+        if (audited > 0 && audited !== current) setStale(true);
       }
     }).catch(() => {});
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mark stale whenever garments change after an audit result exists
+  useEffect(() => {
+    if (!result) return;
+    getCachedState().then(cached => {
+      const audited = cached._auditGarmentCount ?? 0;
+      const current = garments.filter(g => !g.excludeFromWardrobe).length;
+      if (audited > 0 && audited !== current) setStale(true);
+    }).catch(() => {});
+  }, [garments, result]);
 
   async function handleAudit() {
     if (garments.length < 3) {
@@ -161,10 +176,12 @@ export default function AuditPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await runAudit(garments.filter(g => !g.excludeFromWardrobe), watches, history);
+      const filtered = garments.filter(g => !g.excludeFromWardrobe);
+      const res = await runAudit(filtered, watches, history);
       setResult(res);
       setExpanded(true);
-      setCachedState({ _auditResult: res }).catch(() => {});
+      setStale(false);
+      setCachedState({ _auditResult: res, _auditGarmentCount: filtered.length }).catch(() => {});
     } catch (e) {
       setError(e.message || "Audit failed");
     }
@@ -205,11 +222,23 @@ export default function AuditPanel() {
           padding:"10px 22px", borderRadius:10, border:"none",
           background: loading ? "#1e3a5f" : "#8b5cf6",
           color:"#fff", fontWeight:700, fontSize:13, cursor: loading ? "wait" : "pointer",
-          marginBottom:14,
+          marginBottom: stale ? 8 : 14,
         }}
       >
         {loading ? "Analysing wardrobe…" : result ? "Re-run Audit" : "Run AI Audit"}
       </button>
+
+      {stale && !loading && (
+        <div style={{
+          marginBottom:14, padding:"7px 12px", borderRadius:8, fontSize:12,
+          background: isDark ? "#1c1500" : "#fefce8",
+          border: "1px solid #f59e0b44",
+          color: isDark ? "#fcd34d" : "#92400e",
+          display:"flex", alignItems:"center", gap:6,
+        }}>
+          ⚠ Wardrobe changed since last audit — results may be outdated
+        </div>
+      )}
 
       {error && <div style={{ fontSize:13, color:"#ef4444", marginBottom:10 }}>{error}</div>}
 
@@ -424,12 +453,20 @@ export function PhotoVerifierPanel() {
       const updatedGarments = garments.map(x => x.id === garmentId ? updated : x);
       setCachedState({ watches, garments: updatedGarments, history }).catch(() => {});
     }
-    setResults(r2 => ({ ...r2, [garmentId]: { ...r2[garmentId], _applied: true } }));
+    setResults(r2 => {
+      const next = { ...r2, [garmentId]: { ...r2[garmentId], _applied: true } };
+      setCachedState({ _verifyResults: next }).catch(() => {}); // persist applied state
+      return next;
+    });
     setEditing(e => ({ ...e, [garmentId]: false }));
   }
 
   function dismissCard(garmentId) {
-    setResults(r => ({ ...r, [garmentId]: { ...r[garmentId], _dismissed: true } }));
+    setResults(r => {
+      const next = { ...r, [garmentId]: { ...r[garmentId], _dismissed: true } };
+      setCachedState({ _verifyResults: next }).catch(() => {}); // persist dismissed state
+      return next;
+    });
   }
 
   function deleteGarment(garmentId) {
