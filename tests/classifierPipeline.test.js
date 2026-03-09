@@ -179,3 +179,47 @@ describe("runClassifierPipeline — garment naming", () => {
     expect(garment.name).toContain("shirt");
   });
 });
+
+// ─── Pipeline — material/pattern/colorAlternatives propagation ──────────────
+
+describe("runClassifierPipeline — AI material + pattern propagation", () => {
+  it("propagates material and pattern from Claude Vision fallback", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        type: "sweater", color: "charcoal", material: "wool",
+        pattern: "cable knit", formality: 6, confidence: 0.92,
+        color_alternatives: ["dark green", "slate", "grey"],
+      }),
+    });
+    const garment = await runClassifierPipeline(makeFile("IMG_9999.jpg"));
+    expect(garment.type).toBe("sweater");
+    expect(garment.color).toBe("charcoal");
+    expect(garment.material).toBe("wool");
+    expect(garment.pattern).toBe("cable knit");
+  });
+
+  it("normalizes AI color alternatives to scoring palette", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        type: "pants", color: "denim", formality: 4, confidence: 0.85,
+        color_alternatives: ["dark navy", "ivory", "camel"],
+      }),
+    });
+    const garment = await runClassifierPipeline(makeFile("DSC_0042.jpg"));
+    expect(garment.color).toBe("blue"); // denim → blue
+    expect(garment.colorAlternatives).toEqual(["navy", "cream", "tan"]);
+  });
+
+  it("omits material/pattern when AI does not return them", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ type: "belt", color: "brown", formality: 5, confidence: 0.9 }),
+    });
+    const garment = await runClassifierPipeline(makeFile("IMG_5555.jpg"));
+    expect(garment.material).toBeUndefined();
+    expect(garment.pattern).toBeUndefined();
+    expect(garment.colorAlternatives).toBeUndefined();
+  });
+});
