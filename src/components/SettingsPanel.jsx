@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { isPushSupported, getSubscriptionStatus, subscribePush, unsubscribePush } from "../services/pushService.js";
 
 function exportData(garments, watches, history) {
   const data = {
@@ -59,6 +60,31 @@ export default function SettingsPanel({ onClose }) {
     () => typeof localStorage !== "undefined" ? localStorage.getItem("wa-supabase-key") || "" : ""
   );
   const [saved, setSaved] = useState(false);
+  const [pushStatus, setPushStatus] = useState("loading"); // loading|unsupported|unsubscribed|subscribed|denied
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    getSubscriptionStatus().then(setPushStatus).catch(() => setPushStatus("unsupported"));
+  }, []);
+
+  const handlePushToggle = useCallback(async () => {
+    setPushLoading(true);
+    try {
+      if (pushStatus === "subscribed") {
+        await unsubscribePush();
+        setPushStatus("unsubscribed");
+      } else {
+        const ua = navigator.userAgent;
+        const device = /iPhone|iPad/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" : "Desktop";
+        await subscribePush(`${device} (${new Date().toLocaleDateString()})`);
+        setPushStatus("subscribed");
+      }
+    } catch (e) {
+      if (e.message === "Permission denied") setPushStatus("denied");
+      console.warn("[push] toggle failed:", e.message);
+    }
+    setPushLoading(false);
+  }, [pushStatus]);
 
   const handleSaveLogin = useCallback(() => {
     try {
@@ -91,6 +117,42 @@ export default function SettingsPanel({ onClose }) {
             background: "none", border: "none", color: mutedColor, fontSize: 20, cursor: "pointer",
           }}>&times;</button>
         </div>
+
+        {/* Morning Brief Push Notifications */}
+        <Section title="Morning Brief" isDark={isDark}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: pushStatus === "subscribed" ? 8 : 0 }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:600 }}>Daily push notification</div>
+              <div style={{ fontSize:11, color: isDark ? "#6b7280" : "#9ca3af", marginTop:2 }}>
+                {pushStatus === "subscribed" && "✓ Active — 6:30am daily"}
+                {pushStatus === "unsubscribed" && "Watch + outfit pick sent at 6:30am"}
+                {pushStatus === "denied" && "⚠ Permission blocked — check browser settings"}
+                {pushStatus === "unsupported" && "Not supported on this browser"}
+                {pushStatus === "loading" && "Checking…"}
+              </div>
+            </div>
+            {pushStatus !== "unsupported" && pushStatus !== "denied" && pushStatus !== "loading" && (
+              <button
+                onClick={handlePushToggle}
+                disabled={pushLoading}
+                style={{
+                  padding:"6px 14px", borderRadius:8, border:"none", cursor: pushLoading ? "wait" : "pointer",
+                  background: pushStatus === "subscribed" ? "#ef4444" : "#8b5cf6",
+                  color:"#fff", fontSize:12, fontWeight:700, flexShrink:0, marginLeft:12,
+                }}
+              >
+                {pushLoading ? "…" : pushStatus === "subscribed" ? "Turn off" : "Enable"}
+              </button>
+            )}
+          </div>
+          {pushStatus === "subscribed" && (
+            <div style={{ fontSize:11, padding:"6px 10px", borderRadius:7,
+                          background: isDark?"#0f131a":"#f0fdf4", color: isDark?"#86efac":"#15803d",
+                          border:"1px solid #22c55e44" }}>
+              ⌚ You'll get today's watch + outfit pick every morning at 6:30am
+            </div>
+          )}
+        </Section>
 
         {/* Theme */}
         <Section title="Appearance" isDark={isDark}>

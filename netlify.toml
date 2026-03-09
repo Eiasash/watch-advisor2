@@ -7,3 +7,12 @@
   NODE_VERSION = "20"
   VITE_SUPABASE_URL = "https://oaojkanozbfpofbewtfq.supabase.co"
   VITE_SUPABASE_ANON_KEY = "sb_publishable_HvifswT9kzu3qUI3XbkNWg_aKtfYdUw"
+
+[functions."push-brief"]
+  schedule = "30 6 * * *"
+
+# Push notifications — set these in Netlify dashboard > Environment Variables:
+# VAPID_PUBLIC_KEY  = BBWi0RnrKdXH-CBLPn_KLUrX7prcp_mP8GrbV_MeOW4IG1ZX4SxZN9Kh4tXYDZy-GwibkLwD5Y3Ou5YUd8ObMGc
+# VAPID_PRIVATE_KEY = TRHC8EcX_nFNYVAnUOMUojiaBSuPd-9CVqjr96y8hNU
+# SUPABASE_URL      = https://oaojkanozbfpofbewtfq.supabase.co
+# SUPABASE_SERVICE_KEY = <get from Supabase dashboard > Settings > API > service_role key>
