@@ -56,7 +56,18 @@ export function useBootstrap() {
 
       // ── 2. Resume background tasks & run weekly backup ──────────────────
       registerHandler("push-garment", async (p) => { await pushGarmentSync(p.garment); });
-      registerHandler("upload-photo", async (p) => { await uploadPhotoSync(p.garmentId, p.source, p.kind); });
+      registerHandler("upload-photo", async (p) => {
+        const publicUrl = await uploadPhotoSync(p.garmentId, p.source, p.kind);
+        // Persist the CDN URL back to the garment so it displays from Storage, not base64 thumbnail
+        if (publicUrl && p.kind === "thumbnail") {
+          const { updateGarment, garments } = useWardrobeStore.getState();
+          const { history } = useHistoryStore.getState();
+          const { watches } = useWatchStore.getState();
+          updateGarment(p.garmentId, { photoUrl: publicUrl });
+          const updatedGarments = useWardrobeStore.getState().garments;
+          setCachedState({ garments: updatedGarments, watches, history }).catch(() => {});
+        }
+      });
       registerHandler("upload-angle", async (p) => { await uploadAngleSync(p.garmentId, p.index, p.source); });
       registerHandler("verify-photo", async (p) => {
         const res = await fetch("/.netlify/functions/verify-garment-photo", {

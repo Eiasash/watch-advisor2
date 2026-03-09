@@ -29,7 +29,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null };
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today
-  const activeStrapObj = useStrapStore.getState().getActiveStrap?.(watch.id);
+  const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(watch.id);
   const watchWithStrap = activeStrapObj
     ? { ...watch, strap: activeStrapObj.label ?? activeStrapObj.color ?? watch.strap }
     : watch;

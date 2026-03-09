@@ -107,11 +107,16 @@ function strapScore(watch, garment) {
   if (garment.type === "shoes") {
     const shoeColor = (garment.color ?? "").toLowerCase();
     const isBlack = strap.includes("black");
-    const isBrown = strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
-      || strap.includes("cognac") || strap.includes("caramel") || strap.includes("alligator");
+    // Brown only when strap explicitly names a warm tone — grey/navy/green alligator is NOT brown
+    const isBrown = !isBlack && (
+      strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
+      || strap.includes("cognac") || strap.includes("caramel")
+      || (strap.includes("alligator") && !strap.includes("grey") && !strap.includes("gray")
+          && !strap.includes("navy") && !strap.includes("green") && !strap.includes("teal"))
+    );
     if (isBlack) return shoeColor === "black" ? 1.0 : 0.0;
     if (isBrown) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;
-    // Non-standard leather (teal, olive etc.)
+    // Non-standard leather color (teal, olive etc.)
     return ["white", "brown", "tan"].includes(shoeColor) ? 0.85 : 0.5;
   }
   return 0.7;
@@ -127,8 +132,12 @@ function weatherScore(garment, weather) {
 function diversityPenalty(garment, history) {
   const recent = history.slice(-5);
   const usedCount = recent.filter(e => {
+    // Format 1: outfit is { shirt: id, pants: id, ... } slot map
     const outfit = e.outfit ?? e.payload?.outfit ?? {};
-    return Object.values(outfit).includes(garment.id);
+    if (Object.values(outfit).includes(garment.id)) return true;
+    // Format 2: garmentIds flat array (logged via TodayPanel / WatchDashboard)
+    const ids = e.garmentIds ?? e.payload?.garmentIds ?? [];
+    return ids.includes(garment.id);
   }).length;
   // -0.12 per appearance, capped at -0.6 so a 5× repeated garment loses 0.6 points
   return usedCount > 0 ? -0.12 * Math.min(usedCount, 5) : 0;
@@ -165,6 +174,7 @@ export function generateOutfit(watch, wardrobe, weather = {}, profile = {}, hist
 
   // Sweater layer — separate from shirt, added when temp < 22°C
   outfit.sweater = null;
+  outfit.layer   = null;
   const tempC = weather?.tempC ?? 22;
   if (tempC < 22) {
     const sweaters = wearable.filter(g => slotMatches(slotType(g), "sweater"));
@@ -174,6 +184,17 @@ export function generateOutfit(watch, wardrobe, weather = {}, profile = {}, hist
         garmentScore(watch, a, weather, history, dayProfile)
       );
       outfit.sweater = sweaters[0];
+    }
+  }
+  // Second layer (jacket/hoodie/vest) when very cold (< 12°C)
+  if (tempC < 12) {
+    const layers = wearable.filter(g => slotMatches(slotType(g), "sweater") && g !== outfit.sweater);
+    if (layers.length) {
+      layers.sort((a, b) =>
+        garmentScore(watch, b, weather, history, dayProfile) -
+        garmentScore(watch, a, weather, history, dayProfile)
+      );
+      outfit.layer = layers[0];
     }
   }
 
