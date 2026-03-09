@@ -22,13 +22,23 @@ const IS_PLACEHOLDER = !SUPABASE_URL
   || SUPABASE_URL.includes("example.supabase.co")
   || SUPABASE_URL.includes("your-project");
 
+let _pullInflight = null;
+
 export async function pullCloudState() {
   if (IS_PLACEHOLDER) {
     setSyncState({ status: "local-only" });
     return { watches: WATCH_COLLECTION, garments: [], history: [], _localOnly: true };
   }
 
+  // Deduplicate concurrent calls — return same promise if already in flight
+  if (_pullInflight) return _pullInflight;
+
   setSyncState({ status: "pulling" });
+  _pullInflight = _doPull().finally(() => { _pullInflight = null; });
+  return _pullInflight;
+}
+
+async function _doPull() {
   try {
     const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
       supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,photo_angles,brand,notes,material,pattern,seasons,contexts,price,accent_color,created_at").order("created_at", { ascending: true }).limit(500),
@@ -47,7 +57,8 @@ export async function pullCloudState() {
         type:        row.type ?? row.category,
         category:    row.type ?? row.category,
         photoUrl:    row.photo_url?.startsWith?.("blob:") ? undefined : (row.photo_url ?? null),
-        thumbnail:   (row.photo_url && !row.photo_url.startsWith("blob:")) ? row.photo_url : (row.thumbnail_url ?? null),
+        // Prefer thumbnail_url; fall back to photo_url only if thumbnail_url absent
+        thumbnail:   (row.thumbnail_url ?? null) || ((row.photo_url && !row.photo_url?.startsWith?.("blob:")) ? row.photo_url : null),
         photoType:   row.photo_type ?? null,
         needsReview: row.needs_review ?? false,
         duplicateOf: row.duplicate_of ?? undefined,

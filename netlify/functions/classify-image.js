@@ -77,7 +77,16 @@ export async function handler(event) {
   "formality": <1-10 integer>,
   "confidence": <0.0-1.0>
 }
-Rules: navy≠black, cream≠white, olive≠khaki. color_alternatives must use the same color vocabulary. material should reflect what the fabric visually appears to be.`,
+Color rules — be precise:
+- navy≠black (dark blue = navy), cream≠white (warm off-white = cream), olive≠khaki (green-brown = olive, yellow-brown = khaki)
+- charcoal = very dark grey, slate = blue-toned grey, stone = warm grey-beige
+- burgundy = dark red-purple, teal = blue-green
+- color_alternatives must use the same color vocabulary
+Material rules — look carefully at texture:
+- knit = visible knit texture (cable, ribbed, chunky), wool = woven wool (suits, coats), cotton = smooth woven/jersey
+- denim = jean material, flannel = brushed cotton with visible nap, tweed = rough woven with flecks
+- corduroy = visible ridges/wales, linen = slightly textured with natural slubs
+- If uncertain between similar materials, pick the most visually obvious one`,
             },
           ],
         },

@@ -19,7 +19,7 @@ describe("strapShoeScore — colored alligator straps treated as non-standard le
     expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "black" })).toBe(0.85);
   });
 
-  it("grey alligator + tan shoes → 0.85 (grey prefix excludes from brown family)", () => {
+  it("grey alligator + tan shoes → 0.85 (grey alligator = non-standard, not brown family)", () => {
     expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "tan" })).toBe(0.85);
   });
 
