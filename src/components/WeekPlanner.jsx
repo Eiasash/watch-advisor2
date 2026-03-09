@@ -3,6 +3,7 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useStrapStore }   from "../stores/strapStore.js";
+import { normalizeType } from "../classifier/normalizeType.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
 import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
@@ -372,13 +373,15 @@ export default function WeekPlanner() {
     [garments]
   );
 
-  // Candidates per slot type for swap dropdowns
+  // Candidates per slot type for swap dropdowns.
+  // normalizeType ensures polo→shirt, jeans→pants, sneakers→shoes,
+  // blazer→jacket, cardigan→sweater etc. are included in the right slot.
   const slotCandidates = useMemo(() => {
     const result = {};
     for (const slot of OUTFIT_SLOTS) {
       result[slot] = wearable.filter(g => {
-        const t = g.type ?? g.category;
-        return t === slot;
+        const rawType = g.type ?? g.category ?? "";
+        return normalizeType(rawType) === slot;
       });
     }
     return result;
@@ -442,14 +445,16 @@ export default function WeekPlanner() {
         const hasItems = Object.values(adv).some(Boolean);
         outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, { context: day.ctx }, iterHistory);
         if (round < shuffleSeed) {
-          // Poison this round's picks so next iteration picks runner-up
+          // Poison this round's picks so next iteration picks runner-up.
+          // IMPORTANT: must be ONE combined entry per push (not per-slot batches).
+          // diversityBonus checks slice(-5), so per-slot batches bury early slots
+          // outside the window — only jacket (last slot) would get penalized.
+          // Combined entries ensure all slots appear in every history entry.
+          const combined = { outfit: {} };
           for (const slot of OUTFIT_SLOTS) {
-            if (outfit[slot]?.id) {
-              for (let i = 0; i < 5; i++) {
-                iterHistory.push({ outfit: { [slot]: outfit[slot].id } });
-              }
-            }
+            if (outfit[slot]?.id) combined.outfit[slot] = outfit[slot].id;
           }
+          for (let i = 0; i < 5; i++) iterHistory.push(combined);
         }
       }
 
