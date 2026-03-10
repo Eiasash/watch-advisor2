@@ -11,6 +11,20 @@
 [functions."push-brief"]
   schedule = "30 6 * * *"
 
+# ── Lighthouse audit on every deploy ──────────────────────────────────────────
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+  [plugins.inputs]
+    # Fail deploy if performance drops below thresholds
+    output_path = "reports/lighthouse"
+
+  [plugins.inputs.thresholds]
+    performance = 0.6
+    accessibility = 0.8
+    best-practices = 0.8
+    seo = 0.7
+
 # Push notifications — set these in Netlify dashboard > Environment Variables:
 # VAPID_PUBLIC_KEY  = BBWi0RnrKdXH-CBLPn_KLUrX7prcp_mP8GrbV_MeOW4IG1ZX4SxZN9Kh4tXYDZy-GwibkLwD5Y3Ou5YUd8ObMGc
 # VAPID_PRIVATE_KEY = TRHC8EcX_nFNYVAnUOMUojiaBSuPd-9CVqjr96y8hNU
