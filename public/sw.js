@@ -7,13 +7,12 @@
  *   - Push notifications: same as before
  */
 
-const SHELL_CACHE  = "wa2-shell-v2";
-const IMAGE_CACHE  = "wa2-images-v2";
-const API_CACHE    = "wa2-api-v2";
+const SHELL_CACHE  = "wa2-shell-v3";
+const IMAGE_CACHE  = "wa2-images-v3";
+const API_CACHE    = "wa2-api-v3";
 const MAX_IMAGES   = 200;
 
 const SHELL_URLS = [
-  "/",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
@@ -59,8 +58,17 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // App shell / assets → Cache-First
+  // App shell — navigation (HTML) → Network-First (fixes stale deploys!)
+  // Hashed assets (JS/CSS with content hash) → Cache-First (immutable)
   if (url.origin === self.location.origin) {
+    // Navigation requests (HTML pages) — ALWAYS check network first.
+    // This is the critical fix: cache-first for HTML causes stale deploys
+    // because old index.html references old JS bundle hashes.
+    if (request.mode === "navigate" || url.pathname === "/") {
+      e.respondWith(networkFirst(request, SHELL_CACHE));
+      return;
+    }
+    // Vite hashed assets (e.g. index-DdlPpfe5.js) are immutable — cache-first is safe
     e.respondWith(cacheFirst(request, SHELL_CACHE));
     return;
   }

@@ -64,6 +64,41 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   }
   const watchWithStrap = { ...watch, strap: resolvedStrap };
 
+  // ── Dual-dial resolution (Reverso Duoface) — MUST run before scoring ──────
+  // Determines which dial face to score against. Affects colorMatchScore for ALL garments.
+  // Context-driven: clinic/formal → dark outfit likely → white dial (contrast).
+  // Casual/riviera → light outfit likely → navy dial (depth).
+  // Smart-casual → scan wearable garments for dominant color temperature.
+  let _dualDialRec = null;
+  if (watch.dualDial) {
+    const formalCtxs = new Set(["formal","clinic","hospital-smart-casual","shift"]);
+    const casualCtxs = new Set(["casual","riviera"]);
+    let useSideB = false; // sideB = white
+
+    if (context && formalCtxs.has(context)) {
+      useSideB = true; // formal contexts → dark clothes → white dial pops
+    } else if (context && casualCtxs.has(context)) {
+      useSideB = false; // casual → lighter clothes → navy dial adds depth
+    } else {
+      // Smart-casual or unknown: scan wardrobe for dark/light balance
+      const darkSet = new Set(["black","navy","charcoal","dark brown","indigo","slate"]);
+      const wearableColors = wardrobe
+        .filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe)
+        .filter(g => ["shirt","sweater","pants"].includes(g.type ?? g.category))
+        .map(g => (g.color ?? "").toLowerCase());
+      const darkPct = wearableColors.filter(c => darkSet.has(c)).length / (wearableColors.length || 1);
+      useSideB = darkPct > 0.4;
+    }
+
+    if (useSideB) {
+      watchWithStrap.dial = watch.dualDial.sideB; // "white"
+      _dualDialRec = { side: "B", dial: watch.dualDial.sideB, label: watch.dualDial.sideB_label };
+    } else {
+      watchWithStrap.dial = watch.dualDial.sideA; // "navy"
+      _dualDialRec = { side: "A", dial: watch.dualDial.sideA, label: watch.dualDial.sideA_label };
+    }
+  }
+
   // Strip accessories, outfit photos and excluded items from outfit consideration
   const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
 
@@ -247,23 +282,8 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
   }
 
-  // ── Dual-dial recommendation (Reverso Duoface) ─────────────────────────────
-  // If the watch has two dial sides, recommend which face to show based on
-  // outfit color temperature. Dark outfit → white dial (contrast). Light → navy (depth).
-  outfit._recommendedDial = null;
-  if (watch.dualDial) {
-    const outfitColors = [outfit.shirt, outfit.sweater, outfit.pants, outfit.jacket]
-      .filter(Boolean).map(g => (g.color ?? "").toLowerCase());
-    const darkColors = new Set(["black","navy","charcoal","dark brown","indigo","slate"]);
-    const darkCount = outfitColors.filter(c => darkColors.has(c)).length;
-    const totalCount = outfitColors.length || 1;
-    // >50% dark garments → white dial for contrast; otherwise → sideA (navy) for depth
-    if (darkCount / totalCount > 0.5) {
-      outfit._recommendedDial = { side: "B", dial: watch.dualDial.sideB, label: watch.dualDial.sideB_label };
-    } else {
-      outfit._recommendedDial = { side: "A", dial: watch.dualDial.sideA, label: watch.dualDial.sideA_label };
-    }
-  }
+  // ── Dual-dial recommendation — attach pre-computed result ───────────────────
+  outfit._recommendedDial = _dualDialRec;
 
   return outfit;
 }

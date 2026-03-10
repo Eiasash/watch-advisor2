@@ -69,6 +69,12 @@ export default function WatchIDPanel({ onIdentified }) {
           })),
         }),
       });
+      const ct = res.headers.get("content-type") ?? "";
+      if (!res.ok || !ct.includes("json")) {
+        throw new Error(res.status === 502 || res.status === 504
+          ? `Function timed out (${res.status}). Try again.`
+          : `Server error ${res.status}`);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);

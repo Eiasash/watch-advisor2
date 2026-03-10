@@ -38,6 +38,12 @@ export async function getAISuggestion(garments, watch, weather, engineOutfit = {
       return null;
     }
 
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("json")) {
+      console.warn("[aiStylist] non-JSON response:", ct);
+      return null;
+    }
+
     return await res.json();
   } catch (err) {
     console.warn("[aiStylist] error:", err.message);

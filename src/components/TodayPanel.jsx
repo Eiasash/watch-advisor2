@@ -518,7 +518,7 @@ export default function TodayPanel() {
               <div style={{ fontSize: 22 }}>{w.emoji ?? "\u231A"}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{w.brand} {w.model}</div>
-                <div style={{ fontSize: 11, color: muted }}>{w.dial} dial{w.replica ? " \u00B7 replica" : " \u00B7 genuine"}</div>
+                <div style={{ fontSize: 11, color: muted }}>{w.dualDial ? `${w.dualDial.sideA}/${w.dualDial.sideB}` : w.dial} dial{w.replica ? " \u00B7 replica" : " \u00B7 genuine"}</div>
               </div>
               {dsw !== null && (
                 <div style={{ fontSize: 10, fontWeight: 600, color: dsw >= 7 ? "#22c55e" : dsw <= 2 ? "#ef4444" : muted }}>

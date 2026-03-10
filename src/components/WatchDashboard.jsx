@@ -58,7 +58,11 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
         <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.2, color: isDark ? "#e2e8f0" : "#1f2937" }}>{watch.model}</div>
         <div style={{ fontSize: 13, color: "#8b93a7", marginTop: 2 }}>{watch.brand} &middot; {watch.ref}</div>
         <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>
-          {watch.dial} dial &middot; {watch.style} &middot; formality {watch.formality}/10
+          {watch.dualDial
+            ? <>{watch.dualDial.sideA} / {watch.dualDial.sideB} dial &middot; </>
+            : <>{watch.dial} dial &middot; </>
+          }
+          {watch.style} &middot; formality {watch.formality}/10
         </div>
       </div>
     </div>
@@ -709,6 +713,7 @@ export default function WatchDashboard() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ outfit: recOutfit, watches, context: "smart-casual" }),
               });
+              if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) throw new Error("bad response");
               const data = await res.json();
               if (!data.error) setWatchRecResult(data);
             } catch(e) {} finally { setWatchRecLoading(false); }

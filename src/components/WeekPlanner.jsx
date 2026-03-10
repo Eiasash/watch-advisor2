@@ -64,7 +64,7 @@ function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
           {watch.brand ?? ""} {watch.model ?? watch.name ?? "Watch"}
         </div>
         <div style={{ fontSize:10, color:isDark?"#6b7280":"#9ca3af" }}>
-          {watch.dial ?? ""} dial
+          {watch.dualDial ? `${watch.dualDial.sideA}/${watch.dualDial.sideB}` : (watch.dial ?? "")} dial
           {label && <span style={{ color:accent, marginLeft:4 }}>{label}</span>}
         </div>
       </div>
@@ -901,7 +901,7 @@ export default function WeekPlanner() {
                           <span style={{ fontSize: 16 }}>{w.emoji ?? "\u231A"}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: text }}>{w.brand} {w.model}</div>
-                            <div style={{ fontSize: 10, color: sub }}>{w.dial} {"\u00B7"} {w.replica ? "replica" : "genuine"}</div>
+                            <div style={{ fontSize: 10, color: sub }}>{w.dualDial ? `${w.dualDial.sideA}/${w.dualDial.sideB}` : w.dial} {"\u00B7"} {w.replica ? "replica" : "genuine"}</div>
                           </div>
                           {isSelected && <span style={{ color: "#3b82f6", fontWeight: 700 }}>{"\u2713"}</span>}
                         </div>

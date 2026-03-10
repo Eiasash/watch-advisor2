@@ -57,7 +57,7 @@ export default function CommandPalette({ onClose, onAction }) {
       out.push({ type: "header", label: "Watches" });
       matchedWatches.forEach(w => out.push({
         type: "watch", id: w.id, label: `${w.brand} ${w.model}`,
-        detail: `${w.ref} \u00B7 ${w.dial} dial \u00B7 ${w.style}`,
+        detail: `${w.ref} \u00B7 ${w.dualDial ? `${w.dualDial.sideA}/${w.dualDial.sideB}` : w.dial} dial \u00B7 ${w.style}`,
         icon: "\u231A", data: w,
       }));
     }

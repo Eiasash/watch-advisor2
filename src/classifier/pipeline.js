@@ -68,7 +68,7 @@ async function claudeVisionFallback(imageBase64, hash) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: imageBase64, hash }),
     });
-    if (!res.ok) return null;
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) return null;
     const data = await res.json();
     // Function returns parsed JSON directly — type/color/material at top level
     if (data?.type) return data;

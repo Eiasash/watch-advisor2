@@ -20,7 +20,9 @@ export default function WatchSelector({ watches, activeWatch, onChange, isDark =
         }}
       >
         {watches.map(w => (
-          <option key={w.id} value={w.id}>{w.model} — {w.dial}</option>
+          <option key={w.id} value={w.id}>
+            {w.model} — {w.dualDial ? `${w.dualDial.sideA} / ${w.dualDial.sideB}` : w.dial}
+          </option>
         ))}
       </select>
     </div>
