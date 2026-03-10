@@ -35,9 +35,10 @@ export async function handler(event) {
     const cached = await cacheGet(cacheKey);
     if (cached) return { statusCode: 200, headers: { ...CORS, "X-Cache": "HIT" }, body: JSON.stringify({ ...cached, _cached: true }) };
 
-    // Build image blocks — one per photo (max 5)
+    // Build image blocks — max 3 to stay under Netlify function timeout.
+    // More images = more Claude processing time. 3 angles is plenty.
     const imageBlocks = [];
-    for (const img of allImages.slice(0, 5)) {
+    for (const img of allImages.slice(0, 3)) {
       if (img.startsWith("data:image/")) {
         const b64 = img.replace(/^data:image\/\w+;base64,/, "");
         const mt  = img.startsWith("data:image/png") ? "image/png" : "image/jpeg";
@@ -61,13 +62,14 @@ export async function handler(event) {
     const confirmedLine = confirmed ? `CONFIRMED WATCH: ${confirmed.brand} ${confirmed.model}${confirmed.ref ? ` (Ref ${confirmed.ref})` : ""}\n` : "";
     const activeStrapLine = activeStrapLabel ? `ACTIVE STRAP TODAY: ${activeStrapLabel} — apply strap-shoe rule against this specific strap.\n` : "";
 
-    // Build wardrobe context so Claude references actual garment names
+    // Build wardrobe context — compact format, max 30 items to keep prompt lean
     const wardrobeItems = (garments ?? [])
       .filter(g => g.type !== "outfit-photo" && g.type !== "belt" && !g.excludeFromWardrobe)
-      .map(g => `${g.name ?? "?"} (${g.color ?? "?"} ${g.type ?? "?"})`)
+      .slice(0, 30)
+      .map(g => `${g.name ?? "?"}(${g.color ?? "?"})`)
       .join(", ");
     const wardrobeLine = wardrobeItems
-      ? `\nUSER'S WARDROBE: ${wardrobeItems}\nWhen identifying garments, reference the EXACT wardrobe item names above (e.g. "Gant Light Blue Cable Knit Crewneck" not just "light blue sweater").\n`
+      ? `\nWARDROBE: ${wardrobeItems}\nUse exact wardrobe item names when identifying garments.\n`
       : "";
 
     const multiNote = imageBlocks.length > 1

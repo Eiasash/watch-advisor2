@@ -17,7 +17,7 @@ const SELFIE_CACHE_KEY = "selfieHistory";
 
 function getTodayISO() { return new Date().toISOString().split("T")[0]; }
 
-function resizeImage(file, maxPx = 800) {
+function resizeImage(file, maxPx = 800, quality = 0.82) {
   return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -28,7 +28,7 @@ function resizeImage(file, maxPx = 800) {
         c.width  = Math.round(img.width * scale);
         c.height = Math.round(img.height * scale);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL("image/jpeg", 0.82));
+        resolve(c.toDataURL("image/jpeg", quality));
       };
       img.src = reader.result;
     };
@@ -77,12 +77,18 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
 
   const addPhotos = useCallback(async (files) => {
     const newPhotos = [];
+    const currentCount = photos.length;
+    const totalAfter = Math.min(currentCount + files.length, 3);
+    // Scale down when sending multiple images to prevent Netlify function timeout.
+    // 1 photo: 800px/0.82q. 2 photos: 640px/0.75q. 3 photos: 512px/0.68q.
+    const maxPx = totalAfter <= 1 ? 800 : totalAfter <= 2 ? 640 : 512;
+    const quality = totalAfter <= 1 ? 0.82 : totalAfter <= 2 ? 0.75 : 0.68;
     for (const file of files) {
-      const dataUrl = await resizeImage(file);
+      const dataUrl = await resizeImage(file, maxPx, quality);
       newPhotos.push({ id: Date.now() + Math.random(), dataUrl });
     }
-    setPhotos(prev => [...prev, ...newPhotos].slice(0, 5)); // max 5 photos
-  }, []);
+    setPhotos(prev => [...prev, ...newPhotos].slice(0, 3)); // max 3 photos — server cap for timeout
+  }, [photos.length]);
 
   const removePhoto = useCallback((id) => {
     setPhotos(prev => prev.filter(p => p.id !== id));
@@ -110,6 +116,15 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
           activeStrapLabel: activeStrapObj?.label ?? activeStrapObj?.color ?? activeWatch?.strap ?? null,
         }),
       });
+      // Guard: Netlify returns HTML error pages on 502/504 timeout
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!res.ok || !contentType.includes("json")) {
+        const status = res.status;
+        if (status === 502 || status === 504) {
+          throw new Error(`Function timed out (${status}). Try fewer photos or tap Check again.`);
+        }
+        throw new Error(`Server error ${status}. Try again.`);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
@@ -206,7 +221,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
                              cursor: "pointer", fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
                 </div>
               ))}
-              {photos.length < 5 && (
+              {photos.length < 3 && (
                 <label style={{ flexShrink: 0, width: 90, height: 120, borderRadius: 10,
                                 border: `2px dashed ${border}`, display: "flex", flexDirection: "column",
                                 alignItems: "center", justifyContent: "center", gap: 4,
