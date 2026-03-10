@@ -262,16 +262,16 @@ tests/
 
 | Metric | Value |
 |--------|-------|
-| Source files | 68 |
-| Source LOC | ~10,200 |
-| Test files | 85 |
-| Test LOC | ~12,000 |
-| Tests | 1568+ |
+| Source files | 71 |
+| Source LOC | ~8,600 |
+| Test files | 87 |
+| Test LOC | ~15,200 |
+| Tests | 1600+ |
 | Test pass rate | 100% |
-| Netlify functions | 15 |
-| Components | 23 JSX |
+| Netlify functions | 15 (+2 helpers) |
+| Components | 26 JSX |
 | Zustand stores | 8 |
-| Build output | 525 kB (151 kB gzip) |
+| Build output | 583 kB (168 kB gzip) |
 
 ---
 

@@ -5,28 +5,34 @@
  */
 import { callClaude } from "./_claudeClient.js";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: { "Access-Control-Allow-Origin": "*" } };
+    return { statusCode: 204, headers: CORS };
   }
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   const apiKey = process.env.CLAUDE_API_KEY;
   if (!apiKey) {
-    return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
   }
 
   let image, garments;
   try {
     ({ image, garments } = JSON.parse(event.body));
   } catch {
-    return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Invalid JSON body" }) };
+    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Invalid JSON body" }) };
   }
 
   if (!image) {
-    return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Missing image" }) };
+    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing image" }) };
   }
 
   // Strip data URL prefix if present
@@ -107,13 +113,13 @@ Focus on: top layer (shirt/sweater/jacket), bottom (pants), shoes. Omit accessor
 
     return {
       statusCode: 200,
-      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+      headers: { ...CORS, "Content-Type": "application/json" },
       body: JSON.stringify({ matches, detected }),
     };
   } catch (err) {
     return {
       statusCode: 502,
-      headers: { "Access-Control-Allow-Origin": "*" },
+      headers: CORS,
       body: JSON.stringify({ error: err.message }),
     };
   }

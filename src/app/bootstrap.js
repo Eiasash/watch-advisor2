@@ -89,18 +89,33 @@ export function useBootstrap() {
           const cloudGarments = (cloud.garments ?? []).map(g => ({
             ...g,
             photoUrl: g.photoUrl?.startsWith("blob:") ? undefined : g.photoUrl,
+            _cloudPulled: true, // marker: this garment originated from Supabase
           }));
           const h = cloud.history ?? [];
 
-          // Safety: never replace a non-empty local wardrobe with an empty cloud result.
+          // Safety: never replace a non-empty local wardrobe with an empty cloud result
+          // UNLESS the cloud previously had data (i.e. this isn't a first-time-ever user).
           // Read CURRENT state (not stale `cached`) to catch garments imported after boot.
           const currentGarments = useWardrobeStore.getState().garments ?? [];
           const localCount = currentGarments.length;
           if (cloudGarments.length === 0 && localCount > 0) {
-            // Cloud is empty but local has items — push local up to cloud instead
-            const { pushGarment } = await import("../services/supabaseSync.js");
+            // Cloud is empty but local has items.
+            // Check if any local items originated from cloud (have cloud-style IDs or timestamps).
+            // If ALL local items were imported in this session (no cloud origin), push them.
+            // Otherwise, cloud was intentionally cleared — do NOT re-push stale data.
+            const hasCloudOrigin = currentGarments.some(g =>
+              g._cloudPulled || (g.id && g.id.startsWith("w_"))
+            );
+            if (hasCloudOrigin) {
+              // Local data came from cloud originally — cloud was nuked intentionally.
+              // Accept empty cloud state. Clear local to match.
+              setGarments([]);
+              await setCachedState({ watches: w, garments: [], history: h });
+              return;
+            }
+            // Truly local-only data (new user, never synced) — push to cloud.
             for (const g of currentGarments) {
-              pushGarment(g).catch(() => {});
+              pushGarmentSync(g).catch(() => {});
             }
             return;
           }
