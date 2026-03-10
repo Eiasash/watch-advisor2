@@ -50,7 +50,7 @@ RECENT WATCH IDs WORN: ${recentWatches.join(", ") || "none"}
 RECENT CONTEXTS: ${recentContexts.join(", ") || "smart-casual"}
 WARDROBE: ${garmentSummary || "varied smart casual wardrobe"}
 
-COLLECTION: Grand Seiko Snowflake, Grand Seiko Rikka green, Cartier Pasha 41mm grey, Cartier Santos Large white/gold, GP Laureato 42mm blue, JLC Reverso Duoface, Tudor BB41, TAG Monaco, Omega Speedmaster, Rolex GMT-Master II, Hanhart Pioneer Flyback, Laco Flieger. Replicas: AP Royal Oak green, VC Overseas burgundy, IWC Perpetual blue, Rolex Day-Date turquoise, Rolex OP grape.
+COLLECTION (13 genuine): Grand Seiko Snowflake, Grand Seiko Rikka green, Cartier Pasha 41mm grey, Cartier Santos Large white/gold, Cartier Santos Octagon YG vintage, GP Laureato 42mm blue, JLC Reverso Duoface, Tudor BB41, TAG Monaco, Omega Speedmaster, Rolex GMT-Master II, Hanhart Pioneer Flyback, Laco Flieger. Replicas (10): AP Royal Oak green, VC Overseas burgundy, IWC Perpetual blue, IWC Ingenieur teal, Rolex Day-Date turquoise, Rolex OP grape, Rolex GMT Meteorite, Chopard Alpine Eagle red, Cartier Santos 35mm white, Breguet Tradition black.
 
 Generate a brief that feels like a smart friend texting you what to wear. Be direct, specific, no fluff.
 
