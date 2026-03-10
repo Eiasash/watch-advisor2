@@ -54,7 +54,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
   const [extracting,   setExtracting]   = useState(false);
   const [extractToast, setExtractToast] = useState(null); // {msg, ok}
   const [error,        setError]        = useState(null);
-  const [preview,      setPreview]      = useState(null);
+  const [photos,       setPhotos]       = useState([]); // [{id, dataUrl}]
   const [result,       setResult]       = useState(null);
   const [history,      setHistory]      = useState([]);
 
@@ -75,21 +75,32 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
   const border = isDark ? "#2b3140" : "#e5e7eb";
   const bg2    = isDark ? "#0f131a" : "#f3f4f6";
 
-  const check = useCallback(async (file) => {
-    if (!file) return;
+  const addPhotos = useCallback(async (files) => {
+    const newPhotos = [];
+    for (const file of files) {
+      const dataUrl = await resizeImage(file);
+      newPhotos.push({ id: Date.now() + Math.random(), dataUrl });
+    }
+    setPhotos(prev => [...prev, ...newPhotos].slice(0, 5)); // max 5 photos
+  }, []);
+
+  const removePhoto = useCallback((id) => {
+    setPhotos(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const check = useCallback(async () => {
+    if (!photos.length) return;
     setError(null);
     setResult(null);
-    const dataUrl = await resizeImage(file);
-    setPreview(dataUrl);
     setLoading(true);
     try {
-      // Pass active watch ID + active strap label so Claude can do accurate strap-shoe audit
       const activeWatch = watches.find(w => w.id === activeWatchId) ?? null;
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          image: dataUrl,
+          image: photos[0].dataUrl,
+          images: photos.map(p => p.dataUrl),
           watches,
           context,
           confirmedWatchId: activeWatchId,
@@ -99,10 +110,9 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
-      const entry = { id: Date.now(), ts: new Date().toISOString(), preview: dataUrl, result: data };
+      const entry = { id: Date.now(), ts: new Date().toISOString(), preview: photos[0].dataUrl, photos: photos.map(p => p.dataUrl), result: data };
       setHistory(prev => {
         const next = [entry, ...prev].slice(0, 20);
-        // Persist to IDB — survives Chrome Android refresh
         setCachedState({ [SELFIE_CACHE_KEY]: next }).catch(() => {});
         return next;
       });
@@ -111,13 +121,13 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
     } finally {
       setLoading(false);
     }
-  }, [watches, context, activeWatchId, activeStrapObj]);
+  }, [photos, watches, context, activeWatchId, activeStrapObj]);
 
-  const handleFile = useCallback(e => {
-    const f = e.target.files?.[0];
-    if (f) check(f);
+  const handleFiles = useCallback(e => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length) addPhotos(files);
     e.target.value = "";
-  }, [check]);
+  }, [addPhotos]);
 
   // ── Extract garments from photo → populate today's history entry ─────────
   const extractAndUse = useCallback(async (photoDataUrl) => {
@@ -163,7 +173,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
     }
   }, [garments, entries, activeWatchId, upsertEntry, updateGarment]);
 
-  const clear = () => { setPreview(null); setResult(null); setError(null); };
+  const clear = () => { setPhotos([]); setResult(null); setError(null); };
 
   return (
     <div style={{ padding: "0 0 80px" }}>
@@ -172,54 +182,86 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
         AI analyzes your full look — garments, watch, strap-shoe rule, color harmony.
       </div>
 
-      {/* Upload area */}
-      {!preview && (
-        <div style={{ background: card, borderRadius: 16, border: `1px dashed ${border}`, padding: 24, marginBottom: 16 }}>
-          <div style={{ textAlign: "center", marginBottom: 16, fontSize: 40 }}>🪞</div>
+      {/* Upload area — always visible when no result */}
+      {!result && (
+        <div style={{ background: card, borderRadius: 16, border: `1px dashed ${border}`, padding: 20, marginBottom: 16 }}>
+          {photos.length === 0 && (
+            <div style={{ textAlign: "center", marginBottom: 16, fontSize: 40 }}>🪞</div>
+          )}
+
+          {/* Photo strip preview */}
+          {photos.length > 0 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, overflowX: "auto", paddingBottom: 4 }}>
+              {photos.map(p => (
+                <div key={p.id} style={{ position: "relative", flexShrink: 0 }}>
+                  <img src={p.dataUrl} alt="outfit"
+                    style={{ width: 90, height: 120, objectFit: "cover", borderRadius: 10,
+                             border: `2px solid ${border}`, display: "block" }} />
+                  <button onClick={() => removePhoto(p.id)}
+                    style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff",
+                             border: "none", borderRadius: "50%", width: 20, height: 20, fontSize: 11,
+                             cursor: "pointer", fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
+                </div>
+              ))}
+              {photos.length < 5 && (
+                <label style={{ flexShrink: 0, width: 90, height: 120, borderRadius: 10,
+                                border: `2px dashed ${border}`, display: "flex", flexDirection: "column",
+                                alignItems: "center", justifyContent: "center", gap: 4,
+                                cursor: "pointer", color: muted, fontSize: 22 }}>
+                  +
+                  <span style={{ fontSize: 10, fontWeight: 600 }}>Add</span>
+                  <input type="file" accept="image/*" multiple
+                         style={{ display: "none" }} onChange={handleFiles} />
+                </label>
+              )}
+            </div>
+          )}
+
+          {/* Source buttons */}
           <div style={{ display: "flex", gap: 8 }}>
             <label style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${border}`,
                             display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                             cursor: "pointer", color: text, fontSize: 12, fontWeight: 600 }}>
               📷 Camera
               <input ref={cameraRef} type="file" accept="image/*" capture="environment"
-                     style={{ display: "none" }} onChange={handleFile} />
+                     style={{ display: "none" }} onChange={handleFiles} />
             </label>
             <label style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${border}`,
                             display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                             cursor: "pointer", color: text, fontSize: 12, fontWeight: 600 }}>
               🤳 Selfie
               <input ref={frontRef} type="file" accept="image/*" capture="user"
-                     style={{ display: "none" }} onChange={handleFile} />
+                     style={{ display: "none" }} onChange={handleFiles} />
             </label>
             <label style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${border}`,
                             display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                             cursor: "pointer", color: text, fontSize: 12, fontWeight: 600 }}>
               📁 Gallery
-              <input ref={galleryRef} type="file" accept="image/*"
-                     style={{ display: "none" }} onChange={handleFile} />
+              <input ref={galleryRef} type="file" accept="image/*" multiple
+                     style={{ display: "none" }} onChange={handleFiles} />
             </label>
           </div>
-        </div>
-      )}
 
-      {/* Preview + loading */}
-      {preview && (
-        <div style={{ position: "relative", marginBottom: 16 }}>
-          <img src={preview} alt="outfit"
-               style={{ width: "100%", maxHeight: 400, objectFit: "cover", borderRadius: 16, display: "block" }} />
-          {!loading && (
-            <button onClick={clear}
-              style={{ position: "absolute", top: 8, right: 8, background: "#ef4444", color: "#fff",
-                       border: "none", borderRadius: "50%", width: 28, height: 28, fontSize: 14,
-                       cursor: "pointer", fontWeight: 700 }}>×</button>
+          {/* Check button — visible when photos selected */}
+          {photos.length > 0 && !loading && (
+            <button onClick={check}
+              style={{ width: "100%", padding: "14px 0", borderRadius: 12, marginTop: 12,
+                       background: "linear-gradient(135deg,#1e3a5f,#1e1b4b)", border: "1px solid #3b82f644",
+                       color: "#93c5fd", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              ✨ Check Outfit {photos.length > 1 ? `(${photos.length} photos)` : ""}
+            </button>
           )}
+
+          {/* Loading overlay */}
           {loading && (
-            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", borderRadius: 16,
-                          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-              <div style={{ width: 36, height: 36, border: "3px solid rgba(255,255,255,0.2)",
-                            borderTopColor: "#fff", borderRadius: "50%",
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                          padding: "14px 0", marginTop: 12 }}>
+              <div style={{ width: 20, height: 20, border: "2px solid rgba(255,255,255,0.2)",
+                            borderTopColor: "#93c5fd", borderRadius: "50%",
                             animation: "spin 0.8s linear infinite" }} />
-              <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Analyzing outfit…</div>
+              <span style={{ color: "#93c5fd", fontSize: 13, fontWeight: 600 }}>
+                Analyzing {photos.length > 1 ? `${photos.length} angles` : "outfit"}…
+              </span>
             </div>
           )}
         </div>
@@ -235,6 +277,19 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
       {/* Result */}
       {result && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Photo strip in result */}
+          {photos.length > 0 && (
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+              {photos.map((p, i) => (
+                <img key={p.id ?? i} src={p.dataUrl} alt={`angle ${i + 1}`}
+                  style={{ width: photos.length === 1 ? "100%" : 140,
+                           height: photos.length === 1 ? "auto" : 180,
+                           maxHeight: photos.length === 1 ? 400 : 180,
+                           objectFit: "cover", borderRadius: 12, display: "block", flexShrink: 0 }} />
+              ))}
+            </div>
+          )}
 
           {/* Impact score */}
           <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 18 }}>
@@ -337,7 +392,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
 
           {/* Use as today's outfit */}
           <button
-            onClick={() => extractAndUse(preview)}
+            onClick={() => extractAndUse(photos[0]?.dataUrl)}
             disabled={extracting}
             style={{
               width: "100%", padding: "13px 0", borderRadius: 12,
@@ -367,7 +422,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
       )}
 
       {/* History */}
-      {!result && history.length > 0 && (
+      {!result && photos.length === 0 && history.length > 0 && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: muted, textTransform: "uppercase",
                         letterSpacing: "0.08em", marginBottom: 10, marginTop: 4 }}>Recent Checks</div>
@@ -376,7 +431,11 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
               <div key={h.id} style={{ borderRadius: 10, overflow: "hidden",
                                         border: `1px solid ${border}`, position: "relative" }}>
                 <div style={{ cursor: "pointer" }}
-                     onClick={() => { setPreview(h.preview); setResult(h.result); }}>
+                     onClick={() => {
+                       const restored = (h.photos ?? [h.preview]).map((u, i) => ({ id: i, dataUrl: u }));
+                       setPhotos(restored);
+                       setResult(h.result);
+                     }}>
                   <img src={h.preview} alt="past"
                        style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0,

@@ -22,27 +22,32 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
-    const { image, watches = [], context = "smart-casual", confirmedWatchId, activeStrapLabel } = JSON.parse(event.body ?? "{}");
+    const { image, images, watches = [], context = "smart-casual", confirmedWatchId, activeStrapLabel } = JSON.parse(event.body ?? "{}");
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
-    if (!image) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "image required" }) };
 
-    // Cache by image hash + context (selfie results are context-dependent)
-    const cacheKey = `selfie:${hashText(image.slice(-200) + context)}`;
+    // Support both single image and multi-image array
+    const allImages = images?.length ? images : image ? [image] : [];
+    if (!allImages.length) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "image required" }) };
+
+    // Cache by hash of all images + context
+    const cacheKey = `selfie:${hashText(allImages.map(i => i.slice(-100)).join("|") + context)}`;
     const cached = await cacheGet(cacheKey);
     if (cached) return { statusCode: 200, headers: { ...CORS, "X-Cache": "HIT" }, body: JSON.stringify({ ...cached, _cached: true }) };
 
-    // Build image block
-    let imageBlock;
-    if (image.startsWith("data:image/")) {
-      const b64 = image.replace(/^data:image\/\w+;base64,/, "");
-      const mt  = image.startsWith("data:image/png") ? "image/png" : "image/jpeg";
-      imageBlock = { type: "image", source: { type: "base64", media_type: mt, data: b64 } };
-    } else {
-      const r = await fetch(image);
-      const buf = await r.arrayBuffer();
-      const b64 = Buffer.from(buf).toString("base64");
-      imageBlock = { type: "image", source: { type: "base64", media_type: r.headers.get("content-type") || "image/jpeg", data: b64 } };
+    // Build image blocks — one per photo (max 5)
+    const imageBlocks = [];
+    for (const img of allImages.slice(0, 5)) {
+      if (img.startsWith("data:image/")) {
+        const b64 = img.replace(/^data:image\/\w+;base64,/, "");
+        const mt  = img.startsWith("data:image/png") ? "image/png" : "image/jpeg";
+        imageBlocks.push({ type: "image", source: { type: "base64", media_type: mt, data: b64 } });
+      } else {
+        const r = await fetch(img);
+        const buf = await r.arrayBuffer();
+        const b64 = Buffer.from(buf).toString("base64");
+        imageBlocks.push({ type: "image", source: { type: "base64", media_type: r.headers.get("content-type") || "image/jpeg", data: b64 } });
+      }
     }
 
     const watchList = watches.map(w => ({
@@ -56,8 +61,12 @@ export async function handler(event) {
     const confirmedLine = confirmed ? `CONFIRMED WATCH: ${confirmed.brand} ${confirmed.model}${confirmed.ref ? ` (Ref ${confirmed.ref})` : ""}\n` : "";
     const activeStrapLine = activeStrapLabel ? `ACTIVE STRAP TODAY: ${activeStrapLabel} — apply strap-shoe rule against this specific strap.\n` : "";
 
-    const prompt = `Elite men's luxury style advisor. Analyze this outfit photo completely.
+    const multiNote = imageBlocks.length > 1
+      ? `\nYou are seeing ${imageBlocks.length} photos of the SAME outfit from different angles. Combine all visual information for the most complete analysis.\n`
+      : "";
 
+    const prompt = `Elite men's luxury style advisor. Analyze this outfit photo completely.
+${multiNote}
 WATCH COLLECTION (${watchList.length} pieces):
 ${JSON.stringify(watchList, null, 0)}
 ${confirmedLine}${activeStrapLine}
@@ -92,7 +101,7 @@ Return ONLY valid JSON, no markdown:
         const res = await callClaude(apiKey, {
         model: "claude-sonnet-4-6",
         max_tokens: 2000,
-        messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
+        messages: [{ role: "user", content: [...imageBlocks, { type: "text", text: prompt }] }],
       });
     const data = res;
 
