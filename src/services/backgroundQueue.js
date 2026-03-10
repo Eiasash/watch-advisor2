@@ -144,6 +144,24 @@ export async function clearFinished() {
   await tx.done;
 }
 
+/** Flush all tasks of a given type (pending, running, failed). Used after cloud pull
+ *  to prevent stale push-garment tasks from re-uploading deleted data. */
+export async function flushTasksByType(type) {
+  const db = await dbPromise;
+  const all = await db.getAll(STORE);
+  const tx = db.transaction(STORE, "readwrite");
+  let flushed = 0;
+  for (const t of all) {
+    if (t.type === type) {
+      await tx.store.delete(t.id);
+      flushed++;
+    }
+  }
+  await tx.done;
+  if (flushed) console.info(`[backgroundQueue] flushed ${flushed} stale ${type} tasks`);
+  return flushed;
+}
+
 /** Resume pending tasks on app start — call from bootstrap */
 export async function resumePendingTasks() {
   const stats = await getQueueStats();

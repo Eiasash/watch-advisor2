@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync } from "../services/supabaseSync.js";
-import { registerHandler, resumePendingTasks } from "../services/backgroundQueue.js";
+import { registerHandler, resumePendingTasks, flushTasksByType } from "../services/backgroundQueue.js";
 import { checkAndBackup } from "../services/backupService.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
 import { useWatchStore }    from "../stores/watchStore.js";
@@ -82,6 +82,11 @@ export function useBootstrap() {
       // ── 3. Pull cloud state in background ────────────────────────────────
       setTimeout(async () => {
         try {
+          // Flush any stale push-garment tasks from previous sessions BEFORE pull.
+          // These are the root cause of junk re-syncing: old IDB tasks survive
+          // across sessions and push deleted garments back to Supabase.
+          await flushTasksByType("push-garment");
+
           const cloud = await pullCloudState();
           if (cloud._localOnly) return; // IS_PLACEHOLDER — never wipe local data
 
@@ -89,41 +94,34 @@ export function useBootstrap() {
           const cloudGarments = (cloud.garments ?? []).map(g => ({
             ...g,
             photoUrl: g.photoUrl?.startsWith("blob:") ? undefined : g.photoUrl,
-            _cloudPulled: true, // marker: this garment originated from Supabase
           }));
           const h = cloud.history ?? [];
 
-          // Safety: never replace a non-empty local wardrobe with an empty cloud result
-          // UNLESS the cloud previously had data (i.e. this isn't a first-time-ever user).
-          // Read CURRENT state (not stale `cached`) to catch garments imported after boot.
-          const currentGarments = useWardrobeStore.getState().garments ?? [];
-          const localCount = currentGarments.length;
-          if (cloudGarments.length === 0 && localCount > 0) {
-            // Cloud is empty but local has items.
-            // Check if any local items originated from cloud (have cloud-style IDs or timestamps).
-            // If ALL local items were imported in this session (no cloud origin), push them.
-            // Otherwise, cloud was intentionally cleared — do NOT re-push stale data.
-            const hasCloudOrigin = currentGarments.some(g =>
-              g._cloudPulled || (g.id && g.id.startsWith("w_"))
+          // Cloud is authoritative. Always accept cloud state.
+          // The ONLY exception: cloud returns 0 garments AND local has garments
+          // that were NEVER synced to cloud (brand new user, first import).
+          // We detect this by checking if any local garment has an id starting
+          // with "g_" (app-generated) and created_at within the last 5 minutes.
+          if (cloudGarments.length === 0) {
+            const currentGarments = useWardrobeStore.getState().garments ?? [];
+            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+            const freshLocalImports = currentGarments.filter(g =>
+              g.id?.startsWith("g_") && g.createdAt && new Date(g.createdAt).getTime() > fiveMinAgo
             );
-            if (hasCloudOrigin) {
-              // Local data came from cloud originally — cloud was nuked intentionally.
-              // Accept empty cloud state. Clear local to match.
-              setGarments([]);
-              await setCachedState({ watches: w, garments: [], history: h });
+            if (freshLocalImports.length > 0 && currentGarments.length === freshLocalImports.length) {
+              // All local items are fresh imports from THIS session — push them to cloud.
+              for (const g of freshLocalImports) {
+                pushGarmentSync(g).catch(() => {});
+              }
               return;
             }
-            // Truly local-only data (new user, never synced) — push to cloud.
-            for (const g of currentGarments) {
-              pushGarmentSync(g).catch(() => {});
-            }
-            return;
+            // Otherwise: cloud was intentionally emptied or user has stale IDB.
+            // Accept empty cloud. Clear local.
           }
 
           setWatches(w);
           setGarments(cloudGarments);
           setHistory(h);
-          // Preserve planner state from local (cloud doesn't sync these yet)
           await setCachedState({ watches: w, garments: cloudGarments, history: h });
         } catch (e) {
           console.warn("[bootstrap] cloud pull failed:", e.message);

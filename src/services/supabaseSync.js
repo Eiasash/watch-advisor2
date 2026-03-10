@@ -93,6 +93,17 @@ async function _doPull() {
 
 export async function pushGarment(garment) {
   if (IS_PLACEHOLDER) return;
+
+  // Guard: only push garments that exist in the current Zustand store.
+  // Prevents stale IDB background-queue tasks from re-uploading deleted garments.
+  try {
+    const { garments } = await import("../stores/wardrobeStore.js").then(m => m.useWardrobeStore.getState());
+    if (garments?.length > 0 && !garments.some(g => g.id === garment.id)) {
+      console.info("[supabaseSync] pushGarment blocked — garment not in current store:", garment.id);
+      return;
+    }
+  } catch (_) { /* store not ready yet — allow push */ }
+
   setSyncState({ queued: syncState.queued + 1 });
   try {
     const { error } = await supabase.from("garments").upsert({
