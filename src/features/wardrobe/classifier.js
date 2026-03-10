@@ -163,7 +163,9 @@ function isBgPixel(r, g, b) {
   if (r > 215 && g > 215 && b > 215) return true;                                            // near-white
   if (Math.max(r,g,b) - Math.min(r,g,b) < 15 && r > 185 && g > 185 && b > 185) return true; // light neutral
   if (r > 155 && r > g + 18 && r > b + 18 && g > 120 && b > 120) return true;                // pink/mauve bedding
-  if (r > 170 && g > 155 && b > 130 && Math.max(r,g,b) - Math.min(r,g,b) < 40) return true; // warm beige floor
+  // Warm beige floor — raised threshold to avoid eating stone/beige garments.
+  // Stone trousers are ~(185,175,155); only filter clearly lighter backgrounds.
+  if (r > 210 && g > 195 && b > 175 && Math.max(r,g,b) - Math.min(r,g,b) < 30) return true; // warm off-white bg
   return false;
 }
 

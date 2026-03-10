@@ -113,26 +113,53 @@ export async function runClassifierPipeline(file, existingGarments = []) {
     };
   }
 
-  // Step 4: Claude Vision fallback when confidence is low OR when flat-lay
-  // resolves to "shirt" — flat-lay shirts are often sweaters/crewnecks/cardigans
-  // that the pixel classifier can't distinguish from shirts.
-  // Flat-lay pants are left alone — botF > topF + 0.08 is reliable for trousers.
-  const flatLayAmbiguousShirt = tags._typeSource === "flat-lay" && tags.type === "shirt";
-  if (tags._typeSource === "ambiguous" || tags._typeSource === "blind" || flatLayAmbiguousShirt) {
-    console.log("[pipeline] low confidence — trying Claude Vision fallback (512px)", `(reason: ${tags._typeSource}${flatLayAmbiguousShirt ? " flat-lay-shirt" : ""})`);
+  // Step 4: Claude Vision fallback.
+  // Fires when:
+  //   a) pixel confidence is low (ambiguous/blind) — can't determine type at all
+  //   b) flat-lay detected — pixel classifier can't distinguish shirt/sweater/pants by texture,
+  //      and colour from extractDominantColor may be wrong for warm-toned garments.
+  //      Vision gives correct type (cable knit vs dress shirt vs chinos), colour, subtype, brand.
+  const needsVision = tags._typeSource === "ambiguous"
+    || tags._typeSource === "blind"
+    || tags._typeSource === "flat-lay";
+  if (needsVision) {
+    console.log("[pipeline] triggering Claude Vision fallback (512px)", `reason: ${tags._typeSource}`);
     const aiImage = hiRes ?? thumbnail;
     if (aiImage) {
       const vision = await claudeVisionFallback(aiImage, hash);
       if (vision?.type) {
-        tags.type = normalizeType(vision.type);
+        const visionType = normalizeType(vision.type);
+
+        // If Vision thinks this is an outfit/person photo, mark for exclusion
+        if (visionType === "outfit-photo") {
+          return {
+            id,
+            name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim(),
+            type: "outfit-photo",
+            category: "outfit-photo",
+            photoType: "outfit-shot",
+            excludeFromWardrobe: true,
+            thumbnail: thumbnail ?? null,
+            photoUrl: URL.createObjectURL(file),
+          };
+        }
+
+        tags.type = visionType;
         tags.color = normalizeAIColor(vision.color) ?? tags.color;
         tags.formality = vision.formality ?? tags.formality;
         tags.material = vision.material ?? tags.material;
         tags.pattern = vision.pattern ?? tags.pattern;
         tags.colorAlternatives = (vision.color_alternatives ?? []).map(normalizeAIColor).filter(Boolean);
+        // Use Vision's descriptive name for camera-roll filenames
+        if (vision.name) tags._visionName = vision.name;
+        if (vision.subtype) tags.subtype = vision.subtype;
+        if (vision.brand) tags.brand = vision.brand;
+        if (Array.isArray(vision.seasons) && vision.seasons.length) tags.seasons = vision.seasons;
+        if (Array.isArray(vision.contexts) && vision.contexts.length) tags.contexts = vision.contexts;
         tags._typeSource = "claude-vision";
         tags.needsReview = false;
-        console.log("[pipeline] Claude Vision override:", tags.type, tags.color, vision.material, vision.pattern);
+        console.log("[pipeline] Claude Vision override:", tags.type, tags.color,
+          vision.subtype ?? "", vision.material ?? "", vision.pattern ?? "");
       }
     }
   }
@@ -146,7 +173,8 @@ export async function runClassifierPipeline(file, existingGarments = []) {
   // Step 7: Cache original
   enqueueOriginalCache(id, file);
 
-  const descriptiveName = buildGarmentName(file.name, category, tags.color);
+  // Prefer Vision's descriptive name (e.g. "Navy Cable Knit Crewneck") over generic buildGarmentName
+  const descriptiveName = tags._visionName ?? buildGarmentName(file.name, category, tags.color);
 
   return {
     id,
@@ -158,6 +186,10 @@ export async function runClassifierPipeline(file, existingGarments = []) {
     ...(tags.colorAlternatives?.length ? { colorAlternatives: tags.colorAlternatives } : {}),
     ...(tags.material ? { material: tags.material } : {}),
     ...(tags.pattern ? { pattern: tags.pattern } : {}),
+    ...(tags.subtype ? { subtype: tags.subtype } : {}),
+    ...(tags.brand ? { brand: tags.brand } : {}),
+    ...(tags.seasons?.length ? { seasons: tags.seasons } : {}),
+    ...(tags.contexts?.length ? { contexts: tags.contexts } : {}),
     formality: tags.formality,
     photoType: tags.photoType,
     needsReview: tags.needsReview,

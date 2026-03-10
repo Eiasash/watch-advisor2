@@ -267,6 +267,11 @@ describe("runClassifierPipeline — sweater vs shirt classification", () => {
       json: () => Promise.resolve({
         type: "sweater", color: "navy", material: "knit",
         pattern: "cable knit", formality: 6, confidence: 0.93,
+        name: "Navy Cable Knit Crewneck",
+        subtype: "cable knit crewneck",
+        brand: "Gant",
+        seasons: ["autumn", "winter"],
+        contexts: ["smart-casual", "clinic"],
       }),
     });
     const garment = await runClassifierPipeline(makeFile("IMG_4521.jpg"));
@@ -274,20 +279,50 @@ describe("runClassifierPipeline — sweater vs shirt classification", () => {
     expect(garment.type).toBe("sweater");
     expect(garment.material).toBe("knit");
     expect(garment.pattern).toBe("cable knit");
-    expect(garment._typeSource ?? garment.color).toBeTruthy(); // result valid
+    expect(garment.name).toBe("Navy Cable Knit Crewneck"); // Vision name used
+    expect(garment.subtype).toBe("cable knit crewneck");
+    expect(garment.brand).toBe("Gant");
+    expect(garment.seasons).toContain("winter");
   });
 
-  it("flat-lay 'pants' result does NOT trigger Vision fallback", async () => {
+  it("flat-lay 'pants' result ALSO triggers Vision fallback — for correct color and subtype", async () => {
     const { classify } = await import("../src/features/wardrobe/classifier.js");
     classify.mockResolvedValueOnce({
       type: "pants", color: "stone", formality: 5,
       photoType: "garment", needsReview: false,
       _typeSource: "flat-lay",
     });
-    global.fetch = vi.fn();
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: () => Promise.resolve({
+        type: "pants", color: "stone", material: "cotton",
+        subtype: "chinos", formality: 5, confidence: 0.91,
+        name: "Stone Chinos",
+      }),
+    });
     const garment = await runClassifierPipeline(makeFile("IMG_4522.jpg"));
-    expect(fetch).not.toHaveBeenCalled(); // no Vision for flat-lay pants
+    expect(fetch).toHaveBeenCalled(); // Vision fires for flat-lay pants too
     expect(garment.type).toBe("pants");
+    expect(garment.name).toBe("Stone Chinos");
+    expect(garment.subtype).toBe("chinos");
+  });
+
+  it("Vision returning outfit-photo → garment excluded from wardrobe", async () => {
+    const { classify } = await import("../src/features/wardrobe/classifier.js");
+    classify.mockResolvedValueOnce({
+      type: "shirt", color: "grey", formality: 5,
+      photoType: "ambiguous", needsReview: true,
+      _typeSource: "ambiguous",
+    });
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: () => Promise.resolve({ type: "outfit-photo", confidence: 0.95 }),
+    });
+    const garment = await runClassifierPipeline(makeFile("IMG_8888.jpg"));
+    expect(garment.type).toBe("outfit-photo");
+    expect(garment.excludeFromWardrobe).toBe(true);
   });
 });
 

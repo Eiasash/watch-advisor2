@@ -10,7 +10,7 @@ import { cacheGet, cacheSet } from "./_blobCache.js";
  */
 
 const VALID_TYPES = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat",
-                     "scarf","bag","accessory","watch","outfit-photo","outfit-shot"];
+                     "scarf","bag","accessory"];
 
 const VALID_COLORS = [
   "beige","black","blue","brown","burgundy","camel","charcoal","cognac","coral","cream",
