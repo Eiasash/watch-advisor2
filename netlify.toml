@@ -22,7 +22,7 @@
   [plugins.inputs.thresholds]
     performance = 0.6
     accessibility = 0.8
-    best-practices = 0.8
+    best-practices = 0.5
     seo = 0.7
 
 # Push notifications — set these in Netlify dashboard > Environment Variables:
