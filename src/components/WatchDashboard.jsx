@@ -522,6 +522,23 @@ export default function WatchDashboard() {
                 <span style={{marginLeft:"auto",opacity:0.6,fontSize:11}}>matches shoes</span>
               </div>
             )}
+
+            {/* Dual-dial recommendation (Reverso) */}
+            {mergedOutfit._recommendedDial && (
+              <div style={{
+                display:"flex", alignItems:"center", gap:8, padding:"6px 10px",
+                borderRadius:8, marginTop:4,
+                border:`1px solid ${isDark?"#312e81":"#c7d2fe"}`,
+                background:isDark?"#1e1b4b":"#eef2ff", fontSize:12,
+                color:isDark?"#a5b4fc":"#4338ca",
+              }}>
+                <span style={{fontSize:14}}>🔄</span>
+                <span style={{fontWeight:600}}>Wear {mergedOutfit._recommendedDial.label}</span>
+                <span style={{marginLeft:"auto",opacity:0.7,fontSize:10}}>
+                  {mergedOutfit._recommendedDial.side === "B" ? "contrast" : "tonal depth"}
+                </span>
+              </div>
+            )}
           </div>
           {overrideOutfit && (
             <button

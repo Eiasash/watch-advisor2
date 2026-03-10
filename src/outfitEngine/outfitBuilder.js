@@ -247,6 +247,24 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
   }
 
+  // ── Dual-dial recommendation (Reverso Duoface) ─────────────────────────────
+  // If the watch has two dial sides, recommend which face to show based on
+  // outfit color temperature. Dark outfit → white dial (contrast). Light → navy (depth).
+  outfit._recommendedDial = null;
+  if (watch.dualDial) {
+    const outfitColors = [outfit.shirt, outfit.sweater, outfit.pants, outfit.jacket]
+      .filter(Boolean).map(g => (g.color ?? "").toLowerCase());
+    const darkColors = new Set(["black","navy","charcoal","dark brown","indigo","slate"]);
+    const darkCount = outfitColors.filter(c => darkColors.has(c)).length;
+    const totalCount = outfitColors.length || 1;
+    // >50% dark garments → white dial for contrast; otherwise → sideA (navy) for depth
+    if (darkCount / totalCount > 0.5) {
+      outfit._recommendedDial = { side: "B", dial: watch.dualDial.sideB, label: watch.dualDial.sideB_label };
+    } else {
+      outfit._recommendedDial = { side: "A", dial: watch.dualDial.sideA, label: watch.dualDial.sideA_label };
+    }
+  }
+
   return outfit;
 }
 
@@ -298,6 +316,12 @@ export function explainOutfitChoice(watch, outfit, weather) {
     const h = pantsShoeHarmony(outfit.pants, outfit.shoes);
     if (h >= 0.9) parts.push("Pants and shoes are in perfect tonal harmony.");
     else if (h <= 0.5) parts.push("Note: pants-shoe tone transition is a stretch — consider swapping.");
+  }
+
+  // Dual-dial recommendation
+  if (outfit._recommendedDial) {
+    const d = outfit._recommendedDial;
+    parts.push(`Reverso: wear ${d.label} side — ${d.side === "B" ? "white pops against dark outfit" : "navy adds depth to lighter palette"}.`);
   }
 
   return parts.join(" ");

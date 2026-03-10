@@ -8,14 +8,22 @@
  * @returns {{ tempC: number, description: string, weathercode: number }}
  */
 export async function fetchWeather() {
-  const position = await new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      timeout: 10000,
-      maximumAge: 300000,
+  let latitude, longitude;
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 10000,
+        maximumAge: 300000,
+      });
     });
-  });
+    latitude = position.coords.latitude;
+    longitude = position.coords.longitude;
+  } catch (_) {
+    // Geolocation denied or timed out — fallback to Jerusalem
+    latitude = 31.7683;
+    longitude = 35.2137;
+  }
 
-  const { latitude, longitude } = position.coords;
   const res = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
   );
@@ -58,14 +66,20 @@ export function getLayerRecommendation(tempC) {
  * Returns array of { date, tempC, tempMin, tempMax, description }
  */
 export async function fetchWeatherForecast() {
-  const position = await new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      timeout: 10000,
-      maximumAge: 300000,
+  let latitude, longitude;
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 10000,
+        maximumAge: 300000,
+      });
     });
-  });
-
-  const { latitude, longitude } = position.coords;
+    latitude = position.coords.latitude;
+    longitude = position.coords.longitude;
+  } catch (_) {
+    latitude = 31.7683;
+    longitude = 35.2137;
+  }
   const res = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
   );

@@ -5,6 +5,8 @@ import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { isPushSupported, getSubscriptionStatus, subscribePush, unsubscribePush } from "../services/pushService.js";
 import BulkTaggerPanel from "./BulkTaggerPanel.jsx";
+import BulkPhotoMatcher from "./BulkPhotoMatcher.jsx";
+import { clearCachedState } from "../services/localCache.js";
 
 function saveBackup(garments, watches, history) {
   const ts = new Date();
@@ -244,6 +246,41 @@ export default function SettingsPanel({ onClose }) {
         {/* AI Bulk Tagger */}
         <Section title="AI Garment Tagger" isDark={isDark}>
           <BulkTaggerPanel isDark={isDark} />
+        </Section>
+
+        {/* Bulk Photo Matcher */}
+        <Section title="Garment Photos" isDark={isDark}>
+          <BulkPhotoMatcher />
+        </Section>
+
+        {/* Clear App Data */}
+        <Section title="Reset App Data" isDark={isDark}>
+          <div style={{ fontSize: 12, color: mutedColor, marginBottom: 8 }}>
+            Clears local cache (IDB). Next load will pull fresh data from Supabase.
+            Use this if you see stale/duplicate garments.
+          </div>
+          <button
+            onClick={async () => {
+              if (!confirm("Clear all local app data? Will reload from Supabase on next boot.")) return;
+              try {
+                await clearCachedState();
+                // Also clear background queue tasks DB
+                const dbs = await indexedDB.databases?.() ?? [];
+                for (const d of dbs) {
+                  if (d.name === "watch-advisor2-tasks") indexedDB.deleteDatabase(d.name);
+                }
+                window.location.reload();
+              } catch (e) {
+                alert("Clear failed: " + e.message);
+              }
+            }}
+            style={{
+              padding: "10px 16px", borderRadius: 8, border: `1px solid #dc2626`,
+              background: isDark ? "#1c1917" : "#fef2f2", color: "#dc2626",
+              fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%",
+            }}>
+            🗑 Clear Local Cache & Reload
+          </button>
         </Section>
 
         {/* Export */}

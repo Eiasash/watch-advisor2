@@ -129,14 +129,28 @@ describe("fetchWeather", () => {
     }
   });
 
-  it("rejects when geolocation fails", async () => {
+  it("falls back to Jerusalem coords when geolocation fails", async () => {
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (_, reject) => reject(new Error("denied")),
       },
     });
+    vi.stubGlobal("fetch", vi.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve({
+          current_weather: { temperature: 15, weathercode: 3 },
+        }),
+      })
+    ));
 
-    await expect(fetchWeather()).rejects.toThrow("denied");
+    // Should not reject — falls back to Jerusalem lat/lng
+    const result = await fetchWeather();
+    expect(result.tempC).toBe(15);
+    expect(result.description).toBe("Partly cloudy");
+    // Verify fetch was called with Jerusalem coords
+    const url = fetch.mock.calls[0][0];
+    expect(url).toContain("31.7683");
+    expect(url).toContain("35.2137");
   });
 });
 

@@ -49,3 +49,13 @@ export async function evictOrphanImages(existingIds) {
   }
   await tx.done;
 }
+
+/** Nuke ALL cached state, images, and planner data. Forces fresh pull from Supabase on next boot. */
+export async function clearCachedState() {
+  const db = await dbPromise;
+  const tx = db.transaction(["state", "images", "planner"], "readwrite");
+  await tx.objectStore("state").clear();
+  await tx.objectStore("images").clear();
+  await tx.objectStore("planner").clear();
+  await tx.done;
+}

@@ -201,3 +201,50 @@ describe("Fix 4: casual sweaters excluded from clinic/formal", () => {
     expect(outfit.sweater.name).toBe("Burgundy Hoodie");
   });
 });
+
+// ─── Reverso dual-dial recommendation ───────────────────────────────────────
+
+describe("Reverso dual-dial recommendation", () => {
+  const reversoDD = {
+    id: "reverso", style: "dress", formality: 9, dial: "navy",
+    strap: "leather",
+    straps: [{ label: "Navy alligator", color: "navy", type: "leather" }],
+    dualDial: { sideA: "navy", sideA_label: "Navy dial", sideB: "white", sideB_label: "White Moon Phase" },
+  };
+
+  it("recommends white dial (side B) with dark outfit", () => {
+    const darkWardrobe = [
+      { id: "s1", type: "shirt", color: "black", formality: 7, name: "Shirt" },
+      { id: "p1", type: "pants", color: "charcoal", formality: 7, name: "Pants" },
+      { id: "sh1", type: "shoes", color: "black", formality: 8, name: "Shoes" },
+    ];
+    const outfit = buildOutfit(reversoDD, darkWardrobe, { tempC: 15 });
+    expect(outfit._recommendedDial).toBeTruthy();
+    expect(outfit._recommendedDial.side).toBe("B");
+    expect(outfit._recommendedDial.label).toBe("White Moon Phase");
+  });
+
+  it("recommends navy dial (side A) with light outfit", () => {
+    const lightWardrobe = [
+      { id: "s1", type: "shirt", color: "white", formality: 7, name: "Shirt" },
+      { id: "sw1", type: "sweater", color: "cream", formality: 6, name: "Sweater" },
+      { id: "p1", type: "pants", color: "stone", formality: 7, name: "Pants" },
+      { id: "sh1", type: "shoes", color: "black", formality: 8, name: "Shoes" },
+    ];
+    const outfit = buildOutfit(reversoDD, lightWardrobe, { tempC: 15 });
+    expect(outfit._recommendedDial).toBeTruthy();
+    expect(outfit._recommendedDial.side).toBe("A");
+    expect(outfit._recommendedDial.label).toBe("Navy dial");
+  });
+
+  it("non-dual-dial watch has null recommendation", () => {
+    const normalWatch = { id: "gmt", style: "sport", formality: 5, dial: "black", strap: "bracelet" };
+    const wardrobe = [
+      { id: "s1", type: "shirt", color: "white", formality: 5, name: "Shirt" },
+      { id: "p1", type: "pants", color: "grey", formality: 5, name: "Pants" },
+      { id: "sh1", type: "shoes", color: "black", formality: 5, name: "Shoes" },
+    ];
+    const outfit = buildOutfit(normalWatch, wardrobe, {});
+    expect(outfit._recommendedDial).toBeNull();
+  });
+});
