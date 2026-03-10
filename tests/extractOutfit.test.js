@@ -56,8 +56,8 @@ describe("extract-outfit handler", () => {
 
   it("returns matches when Claude responds with detected garments", async () => {
     const detected = [
-      { type: "shirt", color: "navy", confidence: 9 },
-      { type: "pants", color: "khaki", confidence: 8 },
+      { garmentId: "g1", confidence: 9, reason: "Navy shirt visible" },
+      { garmentId: "g2", confidence: 8, reason: "Khaki chinos visible" },
     ];
     callClaude.mockResolvedValue({ content: [{ text: JSON.stringify(detected) }] });
 
@@ -74,7 +74,7 @@ describe("extract-outfit handler", () => {
     const body = JSON.parse(r.body);
     expect(body.matches).toHaveLength(2);
     expect(body.matches[0].garmentId).toBe("g1");
-    expect(body.matches[0].score).toBe(9); // type 5 + color 4
+    expect(body.matches[0].confidence).toBe(9);
     expect(body.matches[1].garmentId).toBe("g2");
     expect(body.detected).toEqual(detected);
   });
@@ -126,9 +126,11 @@ describe("extract-outfit handler", () => {
   });
 
   it("prevents duplicate garment matches (same garment never matched twice)", async () => {
+    // Claude returns same garmentId twice with different confidence
     const detected = [
-      { type: "shirt", color: "navy", confidence: 9 },
-      { type: "shirt", color: "navy", confidence: 8 },
+      { garmentId: "g1", confidence: 9, reason: "Navy polo visible" },
+      { garmentId: "g1", confidence: 8, reason: "Also looks like navy polo" },
+      { garmentId: "g2", confidence: 7, reason: "Blue shirt underneath" },
     ];
     callClaude.mockResolvedValue({ content: [{ text: JSON.stringify(detected) }] });
 
@@ -143,21 +145,20 @@ describe("extract-outfit handler", () => {
     expect(r.statusCode).toBe(200);
     const body = JSON.parse(r.body);
     expect(body.matches).toHaveLength(2);
-    // First detection gets the best match (g1: exact type+color = 9)
+    // Dedup keeps highest confidence per garmentId
     expect(body.matches[0].garmentId).toBe("g1");
-    // Second detection cannot reuse g1, so it gets g2 (type match only = 5)
+    expect(body.matches[0].confidence).toBe(9);
     expect(body.matches[1].garmentId).toBe("g2");
     // Ensure no duplicates
     const ids = body.matches.map(m => m.garmentId);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("scores partial color matches with 2 points", async () => {
-    const detected = [{ type: "pants", color: "grey", confidence: 7 }];
+  it("Claude now matches by garmentId directly — returns valid ID matches", async () => {
+    // Claude returns garmentId directly, matching is done by Claude not the server
+    const detected = [{ garmentId: "g1", confidence: 7, reason: "Light grey chinos visible" }];
     callClaude.mockResolvedValue({ content: [{ text: JSON.stringify(detected) }] });
 
-    // "light grey" includes "grey" → partial color match (2pts) + exact type (5pts) = 7
-    // "navy" pants → exact type (5pts) only = 5
     const garments = [
       { id: "g1", type: "pants", color: "light grey", name: "Light grey chinos" },
       { id: "g2", type: "pants", color: "navy", name: "Navy pants" },
@@ -169,9 +170,8 @@ describe("extract-outfit handler", () => {
     expect(r.statusCode).toBe(200);
     const body = JSON.parse(r.body);
     expect(body.matches).toHaveLength(1);
-    // g1 should win because partial color match gives it higher score
     expect(body.matches[0].garmentId).toBe("g1");
-    expect(body.matches[0].score).toBe(7); // type 5 + partial color 2
+    expect(body.matches[0].confidence).toBe(7);
   });
 
   it("returns 502 on Claude API error", async () => {
