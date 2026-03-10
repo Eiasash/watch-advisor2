@@ -31,22 +31,24 @@ async function buildBrief(apiKey) {
   // Fetch recent history + garments from Supabase to inform suggestion
   const supabase = sb();
   const [{ data: history }, { data: garments }] = await Promise.all([
-    supabase.from("history").select("date,watch_id,context,garment_ids").order("date", { ascending: false }).limit(7),
-    supabase.from("garments").select("id,name,type,color,formality").limit(60),
+    supabase.from("history").select("date,watch_id,payload").order("date", { ascending: false }).limit(7),
+    supabase.from("garments").select("id,name,type,color,formality,brand").limit(60),
   ]);
 
   const recentWatches = (history ?? []).map(e => e.watch_id).filter(Boolean).slice(0, 5);
+  const recentContexts = (history ?? []).map(e => e.payload?.context).filter(Boolean).slice(0, 5);
   const garmentSummary = (garments ?? [])
     .filter(g => !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type))
-    .slice(0, 20)
-    .map(g => `${g.color} ${g.type} (f${g.formality})`)
+    .slice(0, 30)
+    .map(g => `${g.name ?? (g.color + " " + g.type)}${g.brand ? " (" + g.brand + ")" : ""}`)
     .join(", ");
 
   const prompt = `You are a concise morning style advisor. Generate a sharp, specific morning brief for a watch collector and physician.
 
 TODAY: ${dayName}, ${dateStr}
 RECENT WATCH IDs WORN: ${recentWatches.join(", ") || "none"}
-WARDROBE SAMPLE: ${garmentSummary || "varied smart casual wardrobe"}
+RECENT CONTEXTS: ${recentContexts.join(", ") || "smart-casual"}
+WARDROBE: ${garmentSummary || "varied smart casual wardrobe"}
 
 COLLECTION: Grand Seiko Snowflake, Grand Seiko Rikka green, Cartier Pasha 41mm grey, Cartier Santos Large white/gold, GP Laureato 42mm blue, JLC Reverso Duoface, Tudor BB41, TAG Monaco, Omega Speedmaster, Rolex GMT-Master II, Hanhart Pioneer Flyback, Laco Flieger. Replicas: AP Royal Oak green, VC Overseas burgundy, IWC Perpetual blue, Rolex Day-Date turquoise, Rolex OP grape.
 
