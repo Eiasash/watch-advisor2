@@ -113,10 +113,13 @@ export async function runClassifierPipeline(file, existingGarments = []) {
     };
   }
 
-  // Step 4: Claude Vision fallback when confidence is low
-  // Uses hi-res 512×512 image for better AI color/detail detection
-  if (tags._typeSource === "ambiguous" || tags._typeSource === "blind") {
-    console.log("[pipeline] low confidence — trying Claude Vision fallback (512px)");
+  // Step 4: Claude Vision fallback when confidence is low OR when flat-lay
+  // resolves to "shirt" — flat-lay shirts are often sweaters/crewnecks/cardigans
+  // that the pixel classifier can't distinguish from shirts.
+  // Flat-lay pants are left alone — botF > topF + 0.08 is reliable for trousers.
+  const flatLayAmbiguousShirt = tags._typeSource === "flat-lay" && tags.type === "shirt";
+  if (tags._typeSource === "ambiguous" || tags._typeSource === "blind" || flatLayAmbiguousShirt) {
+    console.log("[pipeline] low confidence — trying Claude Vision fallback (512px)", `(reason: ${tags._typeSource}${flatLayAmbiguousShirt ? " flat-lay-shirt" : ""})`);
     const aiImage = hiRes ?? thumbnail;
     if (aiImage) {
       const vision = await claudeVisionFallback(aiImage, hash);

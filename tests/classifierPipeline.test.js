@@ -252,6 +252,43 @@ describe("runClassifierPipeline — sweater vs shirt classification", () => {
     const garment = await runClassifierPipeline(makeFile("polo_navy.jpg"));
     expect(garment.type).toBe("shirt");
   });
+
+  it("flat-lay 'shirt' result triggers Vision fallback — crewneck correctly reclassified", async () => {
+    // Simulate pixel classifier producing flat-lay → shirt (as happens with folded crewnecks)
+    const { classify } = await import("../src/features/wardrobe/classifier.js");
+    classify.mockResolvedValueOnce({
+      type: "shirt", color: "navy", formality: 6,
+      photoType: "garment", needsReview: false,
+      _typeSource: "flat-lay",
+    });
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: () => Promise.resolve({
+        type: "sweater", color: "navy", material: "knit",
+        pattern: "cable knit", formality: 6, confidence: 0.93,
+      }),
+    });
+    const garment = await runClassifierPipeline(makeFile("IMG_4521.jpg"));
+    expect(fetch).toHaveBeenCalled(); // Vision fallback fired
+    expect(garment.type).toBe("sweater");
+    expect(garment.material).toBe("knit");
+    expect(garment.pattern).toBe("cable knit");
+    expect(garment._typeSource ?? garment.color).toBeTruthy(); // result valid
+  });
+
+  it("flat-lay 'pants' result does NOT trigger Vision fallback", async () => {
+    const { classify } = await import("../src/features/wardrobe/classifier.js");
+    classify.mockResolvedValueOnce({
+      type: "pants", color: "stone", formality: 5,
+      photoType: "garment", needsReview: false,
+      _typeSource: "flat-lay",
+    });
+    global.fetch = vi.fn();
+    const garment = await runClassifierPipeline(makeFile("IMG_4522.jpg"));
+    expect(fetch).not.toHaveBeenCalled(); // no Vision for flat-lay pants
+    expect(garment.type).toBe("pants");
+  });
 });
 
 // ─── normalizeAIColor export ────────────────────────────────────────────────
