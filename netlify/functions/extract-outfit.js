@@ -38,31 +38,39 @@ export async function handler(event) {
   // Strip data URL prefix if present
   const base64 = image.includes(",") ? image.split(",")[1] : image;
 
-  // Build colour + type vocabulary from the user's actual wardrobe
-  const colorVocab  = [...new Set((garments ?? []).map(g => g.color).filter(Boolean))];
-  const typeVocab   = [...new Set((garments ?? []).map(g => g.type).filter(Boolean))];
+  // Build garment list with names for Claude to match against directly
+  const garmentList = (garments ?? [])
+    .filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo")
+    .map(g => `  [${g.id}] ${g.name ?? "?"} — ${g.color ?? "?"} ${g.type ?? "?"} (formality ${g.formality ?? 5})`)
+    .join("\n");
 
-  const prompt = `You are analyzing an outfit photo to identify the visible garments.
+  const prompt = `You are analyzing an outfit photo to identify which SPECIFIC garments from the user's wardrobe are being worn.
 
-The user's wardrobe uses these EXACT type values: ${typeVocab.length ? typeVocab.join(", ") : "shirt, pants, shoes, jacket, sweater, coat"}
-The user's wardrobe uses these EXACT color values: ${colorVocab.length ? colorVocab.join(", ") : "navy, grey, black, white, brown, olive, khaki, beige, cream, teal, burgundy, green, blue"}
+USER'S WARDROBE (match against these EXACT items):
+${garmentList}
 
-For each clearly visible garment in the photo, return one JSON object.
-CRITICAL: type and color MUST be chosen from the vocabulary lists above — pick the closest match.
-If a garment is not clearly visible, omit it.
+TASK:
+1. Examine the photo carefully — identify every visible garment by type and color.
+2. For each visible garment, find the BEST match from the wardrobe list above.
+3. Match by: color match (most important), type match, and name clues (e.g. "cable knit" texture, "oxford" collar style).
+4. Only return matches with reasonable confidence. Skip items you can't identify.
 
-Return ONLY a JSON array, no markdown, no explanation:
+COLOR PRECISION:
+- navy ≠ black, cream ≠ white, olive ≠ khaki, charcoal ≠ black
+- Look at the actual color in the photo, not assumptions
+
+Return ONLY a JSON array, no markdown:
 [
-  { "type": "<exact type from vocab>", "color": "<exact color from vocab>", "confidence": <1-10> },
+  { "garmentId": "<exact ID from wardrobe list>", "confidence": <1-10>, "reason": "<what you see that matches>" },
   ...
 ]
 
-Focus on: top layer (shirt/sweater/jacket), bottom (pants), shoes. Omit accessories.`;
+Focus on: outermost top layer, mid-layer (sweater/knit), base shirt, pants, shoes, belt. Skip accessories.`;
 
   try {
     const resp = await callClaude(apiKey, {
       model: "claude-sonnet-4-6",
-      max_tokens: 400,
+      max_tokens: 600,
       messages: [{
         role: "user",
         content: [
@@ -81,40 +89,26 @@ Focus on: top layer (shirt/sweater/jacket), bottom (pants), shoes. Omit accessor
       detected = [];
     }
 
-    // Match each detected item to the best wardrobe garment
-    const matches = [];
-    const used = new Set();
+    // Claude returns garmentId directly — validate they exist in the wardrobe
+    const validIds = new Set((garments ?? []).map(g => g.id));
+    const matches = (Array.isArray(detected) ? detected : [])
+      .filter(d => d.garmentId && validIds.has(d.garmentId) && (d.confidence ?? 0) >= 4)
+      .map(d => ({ garmentId: d.garmentId, confidence: d.confidence, reason: d.reason }));
 
-    for (const det of detected) {
-      if (!Array.isArray(garments) || !garments.length) break;
-      if (det.confidence < 4) continue; // skip low-confidence detections
-
-      const pool = garments.filter(g => !used.has(g.id) && !g.excludeFromWardrobe);
-      if (!pool.length) break;
-
-      // Score: exact type match (5pts), exact color match (4pts), partial color match (2pts)
-      const scored = pool.map(g => {
-        let s = 0;
-        const gType  = (g.type  ?? "").toLowerCase();
-        const gColor = (g.color ?? "").toLowerCase();
-        const dType  = (det.type  ?? "").toLowerCase();
-        const dColor = (det.color ?? "").toLowerCase();
-        if (gType === dType)  s += 5;
-        if (gColor === dColor) s += 4;
-        else if (gColor.includes(dColor) || dColor.includes(gColor)) s += 2;
-        return { g, s };
-      }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
-
-      if (scored.length) {
-        used.add(scored[0].g.id);
-        matches.push({ garmentId: scored[0].g.id, detected: det, score: scored[0].s });
+    // Deduplicate — keep highest confidence per garmentId
+    const deduped = [];
+    const seen = new Set();
+    for (const m of matches.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))) {
+      if (!seen.has(m.garmentId)) {
+        seen.add(m.garmentId);
+        deduped.push(m);
       }
     }
 
     return {
       statusCode: 200,
       headers: { ...CORS, "Content-Type": "application/json" },
-      body: JSON.stringify({ matches, detected }),
+      body: JSON.stringify({ matches: deduped, detected }),
     };
   } catch (err) {
     return {

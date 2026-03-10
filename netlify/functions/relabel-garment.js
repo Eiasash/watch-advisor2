@@ -90,7 +90,19 @@ Respond ONLY with valid JSON, no markdown:
 
     const text = data?.content?.[0]?.text ?? "{}";
     const cleaned = text.replace(/```json|```/g, "").trim();
-    const result = JSON.parse(cleaned);
+    let result;
+    try {
+      result = JSON.parse(cleaned);
+    } catch (_) {
+      // Repair truncated JSON
+      let repaired = cleaned;
+      const ob = (repaired.match(/\{/g)||[]).length;
+      const cb = (repaired.match(/\}/g)||[]).length;
+      for (let i = 0; i < ob - cb; i++) repaired += "}";
+      repaired = repaired.replace(/,\s*([}\]])/g, "$1");
+      try { result = JSON.parse(repaired); result._repaired = true; }
+      catch (__) { result = { confirmed: false, confidence: 0, reason: "AI response parse error", _repaired: true }; }
+    }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify(result) };
   } catch (err) {

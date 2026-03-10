@@ -56,7 +56,7 @@ export async function handler(event) {
 
     const response = await callClaude(apiKey, {
       model: "claude-sonnet-4-6",
-      max_tokens: 350,
+      max_tokens: 500,
       messages: [
         {
           role: "user",
@@ -67,26 +67,51 @@ export async function handler(event) {
             },
             {
               type: "text",
-              text: `Identify this clothing item precisely. Return ONLY valid JSON with no markdown:
+              text: `Expert menswear classifier. Identify this clothing item with maximum precision.
+
+Return ONLY valid JSON, no markdown:
 {
   "type": one of: ${VALID_TYPES.join("|")},
   "color": <most accurate primary color — one of: ${VALID_COLORS.join("|")}>,
-  "color_alternatives": [<2nd most likely color>, <3rd most likely color>, <4th most likely color>],
-  "material": "wool"|"cotton"|"linen"|"denim"|"leather"|"suede"|"synthetic"|"cashmere"|"knit"|"corduroy"|"tweed"|"flannel"|"canvas"|"rubber"|"mesh"|"unknown",
-  "pattern": "solid"|"striped"|"plaid"|"checked"|"cable knit"|"ribbed"|"textured"|"printed"|"houndstooth"|"herringbone",
+  "color_alternatives": [<2nd>, <3rd>, <4th most likely color>],
+  "material": "wool"|"cotton"|"linen"|"denim"|"leather"|"suede"|"synthetic"|"cashmere"|"knit"|"corduroy"|"tweed"|"flannel"|"canvas"|"rubber"|"mesh"|"jersey"|"unknown",
+  "pattern": "solid"|"striped"|"plaid"|"checked"|"cable knit"|"ribbed"|"textured"|"printed"|"houndstooth"|"herringbone"|"waffle"|"pique",
   "formality": <1-10 integer>,
+  "brand": "<visible brand name from label/tag/logo, or null if not visible>",
+  "name": "<short descriptive name, max 5 words — e.g. 'Navy Cable Knit Crewneck', 'Tan Pebble Grain Derby'>",
+  "subtype": "<specific garment subtype — e.g. 'cable knit crewneck'|'half-zip'|'full-zip cardigan'|'hoodie'|'polo'|'oxford'|'flannel'|'dress shirt'|'chinos'|'dress trousers'|'jeans'|'joggers'|'derby'|'chelsea boots'|'sneakers'|'overcoat'|'bomber'|'blazer'|null>",
+  "seasons": ["spring","summer","autumn","winter"],
+  "contexts": ["clinic","formal","smart-casual","casual","date-night","riviera"],
   "confidence": <0.0-1.0>
 }
-Color rules — be precise:
+
+COLOR RULES — be precise:
 - navy≠black (dark blue = navy), cream≠white (warm off-white = cream), olive≠khaki (green-brown = olive, yellow-brown = khaki)
 - charcoal = very dark grey, slate = blue-toned grey, stone = warm grey-beige
-- burgundy = dark red-purple, teal = blue-green
-- color_alternatives must use the same color vocabulary
-Material rules — look carefully at texture:
-- knit = visible knit texture (cable, ribbed, chunky), wool = woven wool (suits, coats), cotton = smooth woven/jersey
-- denim = jean material, flannel = brushed cotton with visible nap, tweed = rough woven with flecks
-- corduroy = visible ridges/wales, linen = slightly textured with natural slubs
-- If uncertain between similar materials, pick the most visually obvious one`,
+- burgundy = dark red-purple, teal = blue-green, ecru = yellowish cream
+- Look at the ENTIRE garment, not just the center
+
+MATERIAL RULES — examine texture:
+- knit = visible knit texture (cable, ribbed, chunky), wool = woven wool (suits, coats)
+- cotton = smooth woven/jersey, jersey = stretchy knit t-shirt/polo material
+- denim = jean material, flannel = brushed cotton with visible nap
+- cashmere = very fine soft knit (often on tags), suede = napped leather
+
+BRAND DETECTION — look for:
+- Visible tags (hanging or sewn-in), collar labels, chest logos, button engravings
+- Common brands: Gant, Kiral, Massimo Dutti, Tommy Hilfiger, Nautica, Ecco, Blundstone, Timberland, Guess
+- If you see a tag/label but can't read it clearly, set brand to null
+
+SUBTYPE — classify precisely:
+- Sweaters: cable knit crewneck, half-zip, full-zip cardigan, hoodie, pullover, waffle knit, striped knit
+- Shirts: oxford, dress shirt, flannel, polo, jersey shirt, casual print, madras plaid
+- Pants: chinos, dress trousers, jeans (dark/medium/light), joggers, shorts
+- Shoes: derby, oxford, chelsea boots, lace-up boots, sneakers, canvas sneakers
+- Jackets: overcoat, bomber, blazer, parka, fleece, vest
+
+SEASON/CONTEXT — infer from weight and formality:
+- Lightweight cotton/linen → spring/summer. Heavy knit/wool → autumn/winter
+- Formal (7+): clinic, formal. Mid (4-6): smart-casual, date-night. Casual (1-3): casual, riviera`,
             },
           ],
         },

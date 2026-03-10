@@ -61,9 +61,25 @@ COMMON MISIDENTIFICATION TRAPS — read carefully:
 Return ONLY valid JSON, no markdown:
 {"brand":"Full brand name","model":"Model name","reference":"Reference number if identifiable or null","dial_color":"Primary dial color (Silver-White/Blue/Black/Teal/Burgundy/Green/White/Meteorite/Turquoise/Ivory/Purple/Grey)","dial_hex":"Hex color for dial","case_material":"steel/titanium/gold/rose-gold/two-tone","case_size":"Estimated mm or null","movement_type":"automatic/manual/quartz/spring-drive","lug_width":"Estimated mm (common: 18,19,20,21,22) or null","has_bracelet":true/false,"bracelet_type":"jubilee/oyster/integrated/sport/president or null","strap_type":"bracelet/leather/rubber/nato/canvas or null","strap_color":"strap color or null","complications":["chronograph","GMT","moon-phase","perpetual-calendar","date","flyback"],"style_category":"dress/sport/diver/pilot/chronograph/field/integrated","suggested_contexts":["formal","clinic","smart-casual","casual","date","weekend","riviera"],"temperature":"warm/cool/neutral/mixed","confidence":1-10,"emoji":"single emoji","notes":"Key visual cues used for identification — brand text seen on dial, case shape, bezel features (1 sentence)"}`;
 
-    const res = await callClaude(apiKey, { model:"claude-sonnet-4-6", max_tokens:700,
+    const res = await callClaude(apiKey, { model:"claude-sonnet-4-6", max_tokens:900,
         messages:[{role:"user",content:[imageBlock,{type:"text",text:prompt}]}] });
-    const parsed = JSON.parse(res.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}");
+    const raw = res.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}";
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (_) {
+      // Attempt repair on truncated JSON
+      let repaired = raw;
+      const opens = (repaired.match(/\[/g)||[]).length;
+      const closes = (repaired.match(/\]/g)||[]).length;
+      for (let i = 0; i < opens - closes; i++) repaired += "]";
+      const ob = (repaired.match(/\{/g)||[]).length;
+      const cb = (repaired.match(/\}/g)||[]).length;
+      for (let i = 0; i < ob - cb; i++) repaired += "}";
+      repaired = repaired.replace(/,\s*([}\]])/g, "$1");
+      try { parsed = JSON.parse(repaired); parsed._repaired = true; }
+      catch (__) { parsed = { brand: null, model: null, confidence: 0, notes: "JSON parse failed", _repaired: true }; }
+    }
     cacheSet(ck, parsed);
     return { statusCode:200, headers:{...CORS,"X-Cache":"MISS"}, body:JSON.stringify(parsed) };
   } catch(e) {

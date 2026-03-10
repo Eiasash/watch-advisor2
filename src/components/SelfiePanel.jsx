@@ -102,6 +102,9 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
           image: photos[0].dataUrl,
           images: photos.map(p => p.dataUrl),
           watches,
+          garments: garments
+            .filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo")
+            .map(g => ({ id: g.id, name: g.name, type: g.type, color: g.color, formality: g.formality })),
           context,
           confirmedWatchId: activeWatchId,
           activeStrapLabel: activeStrapObj?.label ?? activeStrapObj?.color ?? activeWatch?.strap ?? null,

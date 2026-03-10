@@ -46,7 +46,7 @@ export async function handler(event) {
 
     const data = await callClaude(apiKey, {
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 150,
+      max_tokens: 250,
       messages: [
         {
           role: "user",
@@ -55,7 +55,29 @@ export async function handler(event) {
             { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageB } },
             {
               type: "text",
-              text: 'Are these two photos of the SAME clothing item (possibly from different angles, lighting, or backgrounds)? Return ONLY JSON: {"isDuplicate": true/false, "confidence": "high"/"medium"/"low", "reason": "<brief reason>"}',
+              text: `Compare these two garment photos. Determine if they show the SAME physical clothing item.
+
+SAME ITEM criteria (ALL must match):
+- Same garment TYPE (both shirts, both sweaters, both pants, etc.)
+- Same PRIMARY COLOR (navy=navy, not navy vs black)
+- Same MATERIAL/TEXTURE (cable knit = cable knit, not cable knit vs ribbed)
+- Same PATTERN (solid = solid, striped = striped, plaid = plaid)
+- Same BRAND if visible on either photo
+
+DIFFERENT ITEM even if similar:
+- Same type but different color shade (navy vs black, cream vs white)
+- Same type and color but different texture/pattern (cable knit vs waffle knit)
+- Same type but different style (crewneck vs v-neck, half-zip vs pullover)
+
+ANGLE SHOT (same item, different view):
+- Front vs back, folded vs flat, close-up vs full, different lighting of SAME item
+
+Return ONLY JSON:
+{"isDuplicate": true/false, "isAngleShot": true/false, "confidence": "high"/"medium"/"low", "reason": "<1 sentence: what matched or differed — be specific about color, texture, pattern>"}
+
+isDuplicate = near-identical photo (same angle, same lighting).
+isAngleShot = same item from different angle/fold/lighting.
+Both false = different garments.`,
             },
           ],
         },

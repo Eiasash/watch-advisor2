@@ -22,7 +22,7 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
-    const { image, images, watches = [], context = "smart-casual", confirmedWatchId, activeStrapLabel } = JSON.parse(event.body ?? "{}");
+    const { image, images, watches = [], garments = [], context = "smart-casual", confirmedWatchId, activeStrapLabel } = JSON.parse(event.body ?? "{}");
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
@@ -61,6 +61,15 @@ export async function handler(event) {
     const confirmedLine = confirmed ? `CONFIRMED WATCH: ${confirmed.brand} ${confirmed.model}${confirmed.ref ? ` (Ref ${confirmed.ref})` : ""}\n` : "";
     const activeStrapLine = activeStrapLabel ? `ACTIVE STRAP TODAY: ${activeStrapLabel} — apply strap-shoe rule against this specific strap.\n` : "";
 
+    // Build wardrobe context so Claude references actual garment names
+    const wardrobeItems = (garments ?? [])
+      .filter(g => g.type !== "outfit-photo" && g.type !== "belt" && !g.excludeFromWardrobe)
+      .map(g => `${g.name ?? "?"} (${g.color ?? "?"} ${g.type ?? "?"})`)
+      .join(", ");
+    const wardrobeLine = wardrobeItems
+      ? `\nUSER'S WARDROBE: ${wardrobeItems}\nWhen identifying garments, reference the EXACT wardrobe item names above (e.g. "Gant Light Blue Cable Knit Crewneck" not just "light blue sweater").\n`
+      : "";
+
     const multiNote = imageBlocks.length > 1
       ? `\nYou are seeing ${imageBlocks.length} photos of the SAME outfit from different angles. Combine all visual information for the most complete analysis.\n`
       : "";
@@ -69,7 +78,7 @@ export async function handler(event) {
 ${multiNote}
 WATCH COLLECTION (${watchList.length} pieces):
 ${JSON.stringify(watchList, null, 0)}
-${confirmedLine}${activeStrapLine}
+${confirmedLine}${activeStrapLine}${wardrobeLine}
 CONTEXT: ${Array.isArray(context) ? context.join(" + ") : context}
 
 COLOR PAIRING RULES:
