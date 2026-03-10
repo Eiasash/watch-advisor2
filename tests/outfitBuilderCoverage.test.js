@@ -141,10 +141,16 @@ describe("buildOutfit — second sweater layer at tempC < 12", () => {
     expect(outfit.layer).toBeNull();
   });
 
-  it("second layer at temp 11 (just below boundary)", () => {
+  it("no second layer at temp 11 (coat+sweater is enough)", () => {
     const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 11 });
     expect(outfit.sweater).toBeTruthy();
-    expect(outfit.layer).toBeTruthy();
+    expect(outfit.layer).toBeNull(); // layer only below 8°C
+  });
+
+  it("second layer at temp 7 (below 8°C boundary)", () => {
+    const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 7 });
+    expect(outfit.sweater).toBeTruthy();
+    expect(outfit.layer).toBeTruthy(); // Arctic cold → double layer
   });
 
   it("no layer when all sweaters are pullovers (prevents double-crewneck)", () => {

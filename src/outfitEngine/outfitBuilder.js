@@ -46,6 +46,39 @@ function _isCasualJacket(name) {
   return CASUAL_JACKET_KEYWORDS.some(k => name.includes(k));
 }
 
+/**
+ * Cross-slot coherence — scores how well a candidate garment harmonizes with
+ * already-assigned outfit slots. Rewards palette coherence, penalizes exact
+ * color duplication and warm/cool clashes.
+ * Returns -0.4 to +0.25 bonus applied to total score.
+ */
+const _WARM = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive","brick","rust"]);
+const _COOL = new Set(["black","navy","grey","slate","charcoal","indigo","dark navy"]);
+function _crossSlotCoherence(candidate, filledColors) {
+  const cc = (candidate.color ?? "").toLowerCase();
+  if (!cc || !filledColors.length) return 0;
+
+  // Exact color match with another slot → avoid (monotone penalty)
+  if (filledColors.includes(cc)) return -0.4;
+
+  // Tone classification
+  const candidateTone = _WARM.has(cc) ? "warm" : _COOL.has(cc) ? "cool" : "neutral";
+  if (candidateTone === "neutral") return 0.1; // white works with anything
+
+  // Count warm vs cool in existing outfit
+  let warm = 0, cool = 0;
+  for (const c of filledColors) {
+    if (_WARM.has(c)) warm++;
+    else if (_COOL.has(c)) cool++;
+  }
+  const dominant = warm >= cool ? "warm" : "cool";
+
+  // Same tone as dominant → palette coherence bonus
+  if (candidateTone === dominant) return 0.25;
+  // Opposite tone → mild penalty (jarring mix)
+  return -0.15;
+}
+
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}, context = null) {
   if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null, belt: null };
 
@@ -64,39 +97,11 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   }
   const watchWithStrap = { ...watch, strap: resolvedStrap };
 
-  // ── Dual-dial resolution (Reverso Duoface) — MUST run before scoring ──────
-  // Determines which dial face to score against. Affects colorMatchScore for ALL garments.
-  // Context-driven: clinic/formal → dark outfit likely → white dial (contrast).
-  // Casual/riviera → light outfit likely → navy dial (depth).
-  // Smart-casual → scan wearable garments for dominant color temperature.
+  // ── Dual-dial: start with sideA (navy), will re-evaluate after outfit is built ──
   let _dualDialRec = null;
   if (watch.dualDial) {
-    const formalCtxs = new Set(["formal","clinic","hospital-smart-casual","shift"]);
-    const casualCtxs = new Set(["casual","riviera"]);
-    let useSideB = false; // sideB = white
-
-    if (context && formalCtxs.has(context)) {
-      useSideB = true; // formal contexts → dark clothes → white dial pops
-    } else if (context && casualCtxs.has(context)) {
-      useSideB = false; // casual → lighter clothes → navy dial adds depth
-    } else {
-      // Smart-casual or unknown: scan wardrobe for dark/light balance
-      const darkSet = new Set(["black","navy","charcoal","dark brown","indigo","slate"]);
-      const wearableColors = wardrobe
-        .filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe)
-        .filter(g => ["shirt","sweater","pants"].includes(g.type ?? g.category))
-        .map(g => (g.color ?? "").toLowerCase());
-      const darkPct = wearableColors.filter(c => darkSet.has(c)).length / (wearableColors.length || 1);
-      useSideB = darkPct > 0.4;
-    }
-
-    if (useSideB) {
-      watchWithStrap.dial = watch.dualDial.sideB; // "white"
-      _dualDialRec = { side: "B", dial: watch.dualDial.sideB, label: watch.dualDial.sideB_label };
-    } else {
-      watchWithStrap.dial = watch.dualDial.sideA; // "navy"
-      _dualDialRec = { side: "A", dial: watch.dualDial.sideA, label: watch.dualDial.sideA_label };
-    }
+    // Default to sideA for initial scoring — will re-evaluate using actual outfit colors
+    watchWithStrap.dial = watch.dualDial.sideA;
   }
 
   // Strip accessories, outfit photos and excluded items from outfit consideration
@@ -131,12 +136,17 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       continue;
     }
 
-    // Score and sort — with rejection penalty
+    // Score and sort — with rejection penalty and cross-slot coherence
     const rejectState = useRejectStore.getState();
+    const filledColors = Object.values(outfit).filter(Boolean).map(g => (g.color ?? "").toLowerCase());
     const scored = candidates.map(g => {
       let score = scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history);
       // Apply -0.3 penalty if this watch+garment combo was recently rejected
       if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
+      // Cross-slot coherence: bonus for palette harmony with already-filled slots
+      if (filledColors.length > 0) {
+        score += _crossSlotCoherence(g, filledColors);
+      }
       return { garment: g, score };
     });
     scored.sort((a, b) => b.score - a.score);
@@ -164,12 +174,20 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
           const n = (g.name ?? "").toLowerCase();
           if (n.includes("hoodie") || n.includes("jogger") || n.includes("sweatshirt")) return false;
         }
+        // Formality floor: sweater formality must be within 3 of watch formality.
+        // Prevents waffle knit (f3) from appearing with Reverso (f9).
+        const watchF = watchWithStrap.formality ?? 5;
+        const garmentF = g.formality ?? 5;
+        if (garmentF < watchF - 3) return false;
         return true;
       });
       if (sweaters.length) {
+        const swFilledColors = [outfit.shirt, outfit.pants, outfit.shoes, outfit.jacket]
+          .filter(Boolean).map(g => (g.color ?? "").toLowerCase());
         const scored = sweaters.map(g => {
           let score = scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history);
           if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
+          if (swFilledColors.length > 0) score += _crossSlotCoherence(g, swFilledColors);
           return { garment: g, score };
         });
         scored.sort((a, b) => b.score - a.score);
@@ -181,10 +199,9 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
         ) ?? scored[0];
         outfit.sweater = pinnedSlots.sweater ?? (bestSweater?.score > 0 ? bestSweater.garment : null);
 
-        // Second layer when cold enough — MUST be a different subtype than primary sweater.
-        // Pullover subtypes (cable knit, crewneck, waffle) must not layer on each other.
-        // Only zip-ups, cardigans, hoodies, vests qualify as layers over a pullover.
-        if (temp < 12 && sweaters.length >= 2 && outfit.sweater) {
+        // Second layer when VERY cold — coat + sweater already cover 8-16°C.
+        // Only add a second mid-layer below 8°C (Arctic layering).
+        if (temp < 8 && sweaters.length >= 2 && outfit.sweater) {
           // Pinned layer always wins — user override bypasses subtype guard
           if (pinnedSlots.layer) {
             outfit.layer = pinnedSlots.layer;
@@ -282,7 +299,21 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
   }
 
-  // ── Dual-dial recommendation — attach pre-computed result ───────────────────
+  // ── Dual-dial recommendation — evaluate ACTUAL outfit colors ────────────────
+  // Dark outfit → white dial (contrast/pop). Light outfit → navy dial (depth).
+  if (watch.dualDial) {
+    const darkSet = new Set(["black","navy","charcoal","dark brown","indigo","slate","dark navy"]);
+    const outfitColors = [outfit.shirt, outfit.sweater, outfit.layer, outfit.pants, outfit.jacket]
+      .filter(Boolean).map(g => (g.color ?? "").toLowerCase());
+    const darkCount = outfitColors.filter(c => darkSet.has(c)).length;
+    const totalCount = outfitColors.length || 1;
+
+    if (darkCount / totalCount >= 0.5) {
+      _dualDialRec = { side: "B", dial: watch.dualDial.sideB, label: watch.dualDial.sideB_label };
+    } else {
+      _dualDialRec = { side: "A", dial: watch.dualDial.sideA, label: watch.dualDial.sideA_label };
+    }
+  }
   outfit._recommendedDial = _dualDialRec;
 
   return outfit;
