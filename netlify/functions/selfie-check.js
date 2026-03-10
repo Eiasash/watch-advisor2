@@ -91,14 +91,52 @@ Return ONLY valid JSON, no markdown:
 
         const res = await callClaude(apiKey, {
         model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        max_tokens: 2000,
         messages: [{ role: "user", content: [imageBlock, { type: "text", text: prompt }] }],
       });
     const data = res;
 
     const raw   = data.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
+
+    // Robust JSON parse — Claude may truncate mid-string at max_tokens boundary.
+    // Try direct parse first; on failure, attempt to repair truncated JSON.
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch (_parseErr) {
+      // Attempt repair: close any open strings, arrays, and objects
+      let repaired = clean;
+      // If truncated inside a string value, close the string
+      const lastQuote = repaired.lastIndexOf('"');
+      const afterLast = repaired.slice(lastQuote + 1).trim();
+      if (afterLast === "" || afterLast.endsWith(":")) {
+        repaired = repaired.slice(0, lastQuote + 1);
+      }
+      // Close unclosed arrays and objects
+      const opens  = (repaired.match(/\[/g) || []).length;
+      const closes = (repaired.match(/\]/g) || []).length;
+      for (let i = 0; i < opens - closes; i++) repaired += "]";
+      const openB  = (repaired.match(/\{/g) || []).length;
+      const closeB = (repaired.match(/\}/g) || []).length;
+      for (let i = 0; i < openB - closeB; i++) repaired += "}";
+      // Remove trailing commas before ] or }
+      repaired = repaired.replace(/,\s*([}\]])/g, "$1");
+      try {
+        parsed = JSON.parse(repaired);
+        parsed._repaired = true;
+      } catch (_repairErr) {
+        // Last resort: extract whatever fields we can via regex
+        parsed = {
+          impact: parseInt((clean.match(/"impact"\s*:\s*(\d+)/) || [])[1]) || null,
+          vision: (clean.match(/"vision"\s*:\s*"([^"]*)"/) || [])[1] || "Analysis incomplete — response was truncated.",
+          works: (clean.match(/"works"\s*:\s*"([^"]*)"/) || [])[1] || null,
+          risk: (clean.match(/"risk"\s*:\s*"([^"]*)"/) || [])[1] || null,
+          _repaired: true,
+          _partial: true,
+        };
+      }
+    }
 
     cacheSet(cacheKey, parsed);
     return { statusCode: 200, headers: { ...CORS, "X-Cache": "MISS" }, body: JSON.stringify(parsed) };

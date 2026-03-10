@@ -129,7 +129,7 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
 
     const data = await callClaude(apiKey, {
         model: "claude-sonnet-4-6",
-        max_tokens: 800,
+        max_tokens: 1200,
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -137,11 +137,27 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return {
-        statusCode: 200,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify(JSON.parse(jsonMatch[0])),
-      };
+      try {
+        return {
+          statusCode: 200,
+          headers: { "Access-Control-Allow-Origin": "*" },
+          body: JSON.stringify(JSON.parse(jsonMatch[0])),
+        };
+      } catch (_) {
+        // Truncated JSON — attempt repair
+        let repaired = jsonMatch[0];
+        const opens = (repaired.match(/\{/g) || []).length;
+        const closes = (repaired.match(/\}/g) || []).length;
+        for (let i = 0; i < opens - closes; i++) repaired += "}";
+        repaired = repaired.replace(/,\s*([}\]])/g, "$1");
+        try {
+          return {
+            statusCode: 200,
+            headers: { "Access-Control-Allow-Origin": "*" },
+            body: JSON.stringify({ ...JSON.parse(repaired), _repaired: true }),
+          };
+        } catch (__) { /* fall through to text response */ }
+      }
     }
 
     return {
