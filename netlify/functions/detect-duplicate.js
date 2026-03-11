@@ -21,7 +21,7 @@ export async function handler(event) {
   }
 
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
@@ -30,7 +30,7 @@ export async function handler(event) {
     if (!imageA || !imageB) {
       return {
         statusCode: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
         body: JSON.stringify({ error: "Missing image data" }),
       };
     }
@@ -39,7 +39,7 @@ export async function handler(event) {
     if (!apiKey) {
       return {
         statusCode: 500,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
         body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }),
       };
     }
@@ -90,20 +90,20 @@ Both false = different garments.`,
     if (jsonMatch) {
       return {
         statusCode: 200,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
         body: JSON.stringify(JSON.parse(jsonMatch[0])),
       };
     }
 
     return {
       statusCode: 200,
-      headers: { "Access-Control-Allow-Origin": "*" },
+      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
       body: JSON.stringify({ isDuplicate: false, confidence: "low", reason: "Could not parse response" }),
     };
   } catch (err) {
     return {
       statusCode: 500,
-      headers: { "Access-Control-Allow-Origin": "*" },
+      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
       body: JSON.stringify({ error: err.message }),
     };
   }

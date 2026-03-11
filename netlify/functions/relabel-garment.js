@@ -9,6 +9,7 @@ export async function handler(event) {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json",
   };
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
 

@@ -118,14 +118,20 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
       });
       // Guard: Netlify returns HTML error pages on 502/504 timeout
       const contentType = res.headers.get("content-type") ?? "";
-      if (!res.ok || !contentType.includes("json")) {
+      if (!res.ok) {
         const status = res.status;
         if (status === 502 || status === 504) {
           throw new Error(`Function timed out (${status}). Try fewer photos or tap Check again.`);
         }
-        throw new Error(`Server error ${status}. Try again.`);
+        // Try to get error body even on error status
+        let errMsg = `Server error ${status}. Try again.`;
+        try { const e = await res.json(); if (e.error) errMsg = e.error; } catch (_) {}
+        throw new Error(errMsg);
       }
-      const data = await res.json();
+      // Status 200 but wrong content-type — still try to parse (Netlify may omit header)
+      const data = contentType.includes("json")
+        ? await res.json()
+        : await res.text().then(t => JSON.parse(t.replace(/```json|```/g, "").trim()));
       if (data.error) throw new Error(data.error);
       setResult(data);
       const entry = { id: Date.now(), ts: new Date().toISOString(), preview: photos[0].dataUrl, photos: photos.map(p => p.dataUrl), result: data };

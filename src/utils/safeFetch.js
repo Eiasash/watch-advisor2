@@ -11,16 +11,20 @@ export async function safeFetchJson(url, options) {
     if (res.status === 502 || res.status === 504) {
       throw new Error(`Function timed out (${res.status}). Try again.`);
     }
-    if (ct.includes("json")) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `Server error ${res.status}`);
-    }
-    throw new Error(`Server error ${res.status}`);
+    // Try JSON error body even if content-type header is missing
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `Server error ${res.status}`);
   }
 
-  if (!ct.includes("json")) {
+  // If content-type is set to JSON, use standard path
+  if (ct.includes("json")) return res.json();
+
+  // Status 200 but content-type missing/wrong — Netlify sometimes omits it.
+  // Attempt to parse body as JSON anyway before giving up.
+  const text = await res.text();
+  try {
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch (_) {
     throw new Error("Unexpected non-JSON response from server");
   }
-
-  return res.json();
 }
