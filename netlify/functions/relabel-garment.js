@@ -106,7 +106,7 @@ Respond ONLY with valid JSON, no markdown:
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify(result) };
   } catch (err) {
-    const isClaudeError = err.message?.startsWith("Claude API error");
+    const isClaudeError = err.message?.startsWith('Claude API error') || err.message?.startsWith('BILLING:');
     return {
       statusCode: isClaudeError ? 502 : 500,
       headers: { "Access-Control-Allow-Origin": "*" },

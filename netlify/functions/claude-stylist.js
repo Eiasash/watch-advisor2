@@ -166,7 +166,7 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
       body: JSON.stringify({ shirt: null, pants: null, shoes: null, jacket: null, explanation: text }),
     };
   } catch (err) {
-    const isClaudeError = err.message?.startsWith("Claude API error");
+    const isClaudeError = err.message?.startsWith('Claude API error') || err.message?.startsWith('BILLING:');
     return {
       statusCode: isClaudeError ? 502 : 500,
       headers: { "Access-Control-Allow-Origin": "*" },

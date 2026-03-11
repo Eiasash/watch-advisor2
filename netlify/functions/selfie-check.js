@@ -161,7 +161,7 @@ Return ONLY valid JSON, no markdown:
     cacheSet(cacheKey, parsed);
     return { statusCode: 200, headers: { ...CORS, "X-Cache": "MISS" }, body: JSON.stringify(parsed) };
   } catch (e) {
-    const isClaudeError = e.message?.startsWith("Claude API error");
+    const isClaudeError = e.message?.startsWith('Claude API error') || e.message?.startsWith('BILLING:');
     return { statusCode: isClaudeError ? 502 : 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
   }
 }

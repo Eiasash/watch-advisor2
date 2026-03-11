@@ -24,6 +24,12 @@
 [functions."occasion-planner"]
   timeout = 26
 
+[functions."selfie-check"]
+  timeout = 26
+
+[functions."claude-stylist"]
+  timeout = 26
+
 # ── Lighthouse audit on every deploy ──────────────────────────────────────────
 [[plugins]]
   package = "@netlify/plugin-lighthouse"
