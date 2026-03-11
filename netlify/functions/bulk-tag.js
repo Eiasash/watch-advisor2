@@ -92,6 +92,7 @@ Rules:
     return { statusCode: 200, headers: { ...CORS, "Content-Type": "application/json", "X-Cache": "MISS" }, body: JSON.stringify(payload) };
 
   } catch (err) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
+    const isBilling = err.message?.startsWith("BILLING:");
+    return { statusCode: isBilling ? 402 : 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
   }
 }

@@ -27,6 +27,10 @@ export async function callClaude(apiKey, payload) {
     }
     if (!res.ok) {
       const body = await res.text().catch(() => "");
+      // Surface billing errors distinctly — no point retrying these
+      if (res.status === 400 && body.includes("credit balance")) {
+        throw new Error("BILLING: API credits exhausted — top up at console.anthropic.com/settings/billing");
+      }
       throw new Error(`Claude API error: ${res.status}${body ? ` — ${body.slice(0, 200)}` : ""}`);
     }
     return await res.json();

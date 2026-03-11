@@ -57,7 +57,14 @@ export default function BulkTaggerPanel({ isDark }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ garments: batch }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const msg = body?.error ?? `HTTP ${res.status}`;
+          if (res.status === 402 || msg.startsWith("BILLING:") || msg.toLowerCase().includes("credit balance")) {
+            throw new Error("API credits exhausted — top up at console.anthropic.com/settings/billing");
+          }
+          throw new Error(msg.slice(0, 120));
+        }
         const { results = [] } = await res.json();
 
         for (const r of results) {
