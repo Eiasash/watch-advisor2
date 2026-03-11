@@ -6,6 +6,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { isPushSupported, getSubscriptionStatus, subscribePush, unsubscribePush } from "../services/pushService.js";
 import BulkTaggerPanel from "./BulkTaggerPanel.jsx";
 import BulkPhotoMatcher from "./BulkPhotoMatcher.jsx";
+import DebugConsole from "./DebugConsole.jsx";
 import { clearCachedState } from "../services/localCache.js";
 
 function saveBackup(garments, watches, history) {
@@ -316,6 +317,11 @@ export default function SettingsPanel({ onClose }) {
             Grid: react-window virtualized
           </div>
         </Section>
+        {/* Debug Console */}
+        <Section title="🪲 Debug Console" isDark={isDark}>
+          <DebugConsole isDark={isDark} />
+        </Section>
+
       </div>
     </div>
   );
