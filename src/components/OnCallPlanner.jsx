@@ -12,9 +12,11 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useStrapStore }    from "../stores/strapStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
+import { useHistoryStore }  from "../stores/historyStore.js";
 import { buildOutfit }      from "../outfitEngine/outfitBuilder.js";
 import { fetchWeatherForecast } from "../weather/weatherService.js";
 import { normalizeType }    from "../classifier/normalizeType.js";
+import { scoreWatchForDay } from "../engine/dayProfile.js";
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
@@ -149,6 +151,7 @@ export default function OnCallPlanner({ isDark: propDark }) {
 
   const garments   = useWardrobeStore(s => s.garments);
   const watches    = useWatchStore(s => s.watches);
+  const history    = useHistoryStore(s => s.entries);
   const strapStore = useStrapStore(s => s.straps);
   const activeStrap = useStrapStore(s => s.activeStrap);
 
@@ -168,11 +171,22 @@ export default function OnCallPlanner({ isDark: propDark }) {
     [garments]
   );
 
-  // Pick best genuine watch for shift (formality ≥ 6, genuine)
+  // Pick best genuine watch for shift using the same scoring engine as the rotation picker.
+  // Excludes style:"dress" watches (Reverso, etc.) — too fragile and formal for a 24hr shift.
   const shiftWatch = useMemo(() => {
-    const genuine = watches.filter(w => w.genuine !== false && (w.formality ?? 5) >= 6);
-    return genuine.sort((a, b) => (b.formality ?? 5) - (a.formality ?? 5))[0] ?? watches[0] ?? null;
-  }, [watches]);
+    const candidates = watches.filter(w =>
+      w.genuine !== false &&
+      w.style !== "dress" &&        // dress watches inappropriate for shift
+      (w.formality ?? 5) >= 6
+    );
+    if (!candidates.length) return watches.find(w => w.genuine !== false) ?? watches[0] ?? null;
+    const scored = candidates.map(w => ({
+      watch: w,
+      score: scoreWatchForDay(w, "shift", history),
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].watch;
+  }, [watches, history]);
 
   // Enrich watch with active strap
   const enrichedWatch = useMemo(() => {

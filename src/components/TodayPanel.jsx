@@ -83,6 +83,16 @@ function explainRecommendation(rec, context) {
   if (rec.daysSince === null) parts.push("never worn");
   else if (rec.daysSince >= 7) parts.push(`rested ${rec.daysSince}d`);
   else if (rec.daysSince <= 2) parts.push(`worn ${rec.daysSince}d ago`);
+  // Show style fit for context
+  const STYLE_FIT = {
+    "shift":                ["sport-elegant","dress-sport","sport"],
+    "hospital-smart-casual":["sport-elegant","dress-sport","sport"],
+    "smart-casual":         ["sport-elegant","sport","dress-sport"],
+    "formal":               ["dress","dress-sport"],
+    "casual":               ["sport","pilot"],
+  };
+  const fits = STYLE_FIT[context];
+  if (fits && w.style && !fits.includes(w.style)) parts.push("⚠ style mismatch");
   if (w.replica && ["hospital-smart-casual", "formal", "shift"].includes(context)) {
     parts.push("replica \u2014 consider genuine");
   }
