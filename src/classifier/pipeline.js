@@ -74,7 +74,7 @@ async function claudeVisionFallback(imageBase64, hash) {
     if (data?.type) return data;
     return null;
   } catch (err) {
-    console.warn("[claudeFallback] failed:", err.message);
+    if (onLog) onLog({ ts: Date.now(), step: "vision-error", msg: err.message }); console.warn("[claudeFallback]", err.message);
     return null;
   }
 }
@@ -86,8 +86,14 @@ async function claudeVisionFallback(imageBase64, hash) {
  * @param {Array} existingGarments - Current garment list for duplicate detection
  * @returns {object} Garment object ready for store
  */
-export async function runClassifierPipeline(file, existingGarments = []) {
-  console.log("[pipeline] START:", file.name, file.type, file.size + "b");
+export async function runClassifierPipeline(file, existingGarments = [], onLog = null) {
+  function _log(step, msg, detail = null) {
+    const entry = { ts: Date.now(), step, msg, detail };
+    if (onLog) onLog(entry);
+    console.log(`[pipeline:${step}]`, msg, detail ?? "");
+  }
+
+  _log("start", file.name, `${file.type} ${(file.size/1024).toFixed(1)}kb`);
 
   const id = `g_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
@@ -100,7 +106,7 @@ export async function runClassifierPipeline(file, existingGarments = []) {
   // Step 3: Person detection — check zone analysis
   const zones = await analyzeImageContent(thumbnail, file.name);
   if (shouldExcludeAsOutfitPhoto(file.name, zones)) {
-    console.log("[pipeline] outfit/person photo detected, excluding:", file.name);
+    _log("person-detect", "outfit/person photo — excluded", file.name);
     return {
       id,
       name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim(),
@@ -123,7 +129,7 @@ export async function runClassifierPipeline(file, existingGarments = []) {
     || tags._typeSource === "blind"
     || tags._typeSource === "flat-lay";
   if (needsVision) {
-    console.log("[pipeline] triggering Claude Vision fallback (512px)", `reason: ${tags._typeSource}`);
+    _log("vision", `triggering Vision fallback`, `reason: ${tags._typeSource}`);
     const aiImage = hiRes ?? thumbnail;
     if (aiImage) {
       const vision = await claudeVisionFallback(aiImage, hash);
@@ -158,8 +164,7 @@ export async function runClassifierPipeline(file, existingGarments = []) {
         if (Array.isArray(vision.contexts) && vision.contexts.length) tags.contexts = vision.contexts;
         tags._typeSource = "claude-vision";
         tags.needsReview = false;
-        console.log("[pipeline] Claude Vision override:", tags.type, tags.color,
-          vision.subtype ?? "", vision.material ?? "", vision.pattern ?? "");
+        _log("vision-result", `${tags.type} / ${tags.color}`, [tags.subtype, tags.material, tags.pattern].filter(Boolean).join(" · ") || null);
       }
     }
   }
@@ -175,6 +180,8 @@ export async function runClassifierPipeline(file, existingGarments = []) {
 
   // Prefer Vision's descriptive name (e.g. "Navy Cable Knit Crewneck") over generic buildGarmentName
   const descriptiveName = tags._visionName ?? buildGarmentName(file.name, category, tags.color);
+
+  _log("done", descriptiveName, `${category} / ${tags.color} / formality ${tags.formality}`);
 
   return {
     id,

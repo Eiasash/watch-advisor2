@@ -8,6 +8,7 @@ import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { useToast } from "./ToastProvider.jsx";
+import ImportDebugConsole from "./ImportDebugConsole.jsx";
 
 const MAX_ANGLES = 4;
 const DHASH_EXACT_THRESHOLD = 6;   // distance ≤ 6 → definite dupe (auto-merge)
@@ -64,6 +65,8 @@ function groupByAngles(items) {
 export default function ImportPanel() {
   const [busy, setBusy]         = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0, errors: [] });
+  const [debugLog, setDebugLog] = useState([]);
+  const [showDebug, setShowDebug] = useState(false);
   const [dupeModal, setDupeModal] = useState(null); // { newItem, existing } when cross-batch dupe found
 
   const addGarment  = useWardrobeStore(s => s.addGarment);
@@ -84,6 +87,8 @@ export default function ImportPanel() {
 
     setBusy(true);
     setProgress({ done: 0, total: files.length, errors: [] });
+    setDebugLog([]);
+    setShowDebug(true);
 
     const processed = [];
     const errors    = [];
@@ -91,7 +96,7 @@ export default function ImportPanel() {
     for (let i = 0; i < files.length; i++) {
       setProgress(p => ({ ...p, done: i }));
       try {
-        const g = await runClassifierPipeline(files[i], garmentsRef.current);
+        const g = await runClassifierPipeline(files[i], garmentsRef.current, entry => setDebugLog(prev => [...prev, entry]));
         processed.push(g);
       } catch (err) {
         errors.push(files[i].name);
@@ -239,6 +244,8 @@ export default function ImportPanel() {
           Failed: {progress.errors.join(", ")}
         </div>
       )}
+      <ImportDebugConsole entries={debugLog} isDark={isDark} busy={busy} />
+
       <div style={{ fontSize:10, color:sub, lineHeight:1.5 }}>
         Auto-named by type & color · dupes detected by dHash + AI Vision · angles auto-grouped
       </div>

@@ -16,6 +16,7 @@ import { buildOutfit }      from "../outfitEngine/outfitBuilder.js";
 import { fetchWeather }     from "../weather/weatherService.js";
 
 import SelfiePanel from "./SelfiePanel.jsx";
+import OnCallPlanner from "./OnCallPlanner.jsx";
 
 // Live date key — recomputes every render, rolls over at midnight
 function useTodayKey() {
@@ -408,6 +409,15 @@ export default function TodayPanel() {
           ))}
         </div>
       </div>
+
+      {/* OnCall Planner — shown when shift context selected */}
+      {context === "shift" && (
+        <div style={{ background: card, borderRadius: 14, border: "1px solid #f9731640", padding: 16, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#f97316", textTransform: "uppercase",
+                        letterSpacing: "0.06em", marginBottom: 12 }}>🏥 On-Call Planner</div>
+          <OnCallPlanner isDark={isDark} />
+        </div>
+      )}
 
       {/* AI Outfit Generator */}
       {watchId && (

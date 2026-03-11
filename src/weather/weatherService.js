@@ -30,10 +30,28 @@ export async function fetchWeather() {
   const data = await res.json();
   const cw = data.current_weather;
 
+  // Reverse geocode — best-effort, never blocks
+  let cityName = null;
+  try {
+    const geo = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+      { headers: { "Accept-Language": "en" } }
+    );
+    const geoData = await geo.json();
+    cityName = geoData?.address?.city
+      ?? geoData?.address?.town
+      ?? geoData?.address?.village
+      ?? geoData?.address?.county
+      ?? null;
+  } catch (_) { /* non-fatal */ }
+
   return {
     tempC: cw.temperature,
     description: weatherCodeToDescription(cw.weathercode),
     weathercode: cw.weathercode,
+    cityName,
+    latitude,
+    longitude,
   };
 }
 
@@ -81,7 +99,7 @@ export async function fetchWeatherForecast() {
     longitude = 35.2137;
   }
   const res = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum&timezone=auto`
   );
   const data = await res.json();
   const daily = data.daily;
@@ -96,6 +114,8 @@ export async function fetchWeatherForecast() {
       tempMin: Math.round(min),
       tempMax: Math.round(max),
       description: weatherCodeToDescription(daily.weathercode[i]),
+      precipitation: daily.precipitation_sum?.[i] ?? 0,
+      weathercode: daily.weathercode[i],
     };
   });
 }
@@ -106,5 +126,6 @@ export async function fetchWeatherForecast() {
 export function formatWeatherText(weather) {
   if (!weather) return null;
   const rec = getLayerRecommendation(weather.tempC);
-  return `${weather.tempC}°C ${weather.description} — ${rec.label}`;
+  const city = weather.cityName ? `${weather.cityName} · ` : "";
+  return `${city}${weather.tempC}°C ${weather.description} — ${rec.label}`;
 }
