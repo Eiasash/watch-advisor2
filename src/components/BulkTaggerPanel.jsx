@@ -5,7 +5,7 @@ import { useHistoryStore }  from "../stores/historyStore.js";
 import { setCachedState }   from "../services/localCache.js";
 import { pushGarment }      from "../services/supabaseSync.js";
 
-const BATCH = 8; // garments per Claude call
+const BATCH = 6; // garments per Claude call — keeps response under 1500 tokens
 
 /**
  * Bulk AI tagger — scans all untagged garments and writes back

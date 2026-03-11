@@ -4,6 +4,8 @@
  */
 
 const CAMERA_ROLL_RE = /^(img|dsc|dscn|photo|pic|pxl|screenshot|wp|cam|capture|mvimg|p_|snap)[\s_]?\d{3,}/i;
+// OPPO / some Android devices use purely numeric filenames e.g. "84325.jpg"
+const NUMERIC_ONLY_RE = /^\d{4,}$/;
 
 const TYPE_LABELS = {
   shirt:   ["shirt", "top"],
@@ -46,7 +48,7 @@ export function buildGarmentName(filename, type, color) {
   const cleanName = filename.replace(/\.[^.]+$/, "");
 
   // If filename is already descriptive (not a camera roll pattern), keep it
-  if (!CAMERA_ROLL_RE.test(cleanName)) {
+  if (!CAMERA_ROLL_RE.test(cleanName) && !NUMERIC_ONLY_RE.test(cleanName)) {
     const humanized = cleanName.replace(/[-_]/g, " ").trim();
     if (humanized.length > 2 && humanized.length < 60) return humanized;
   }

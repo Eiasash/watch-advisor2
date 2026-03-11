@@ -11,6 +11,19 @@
 [functions."push-brief"]
   schedule = "30 6 * * *"
 
+# Bulk/AI functions need extra time for Claude retries (up to 2s+8s backoff)
+[functions."bulk-tag"]
+  timeout = 26
+
+[functions."classify-image"]
+  timeout = 26
+
+[functions."ai-audit"]
+  timeout = 26
+
+[functions."occasion-planner"]
+  timeout = 26
+
 # ── Lighthouse audit on every deploy ──────────────────────────────────────────
 [[plugins]]
   package = "@netlify/plugin-lighthouse"
