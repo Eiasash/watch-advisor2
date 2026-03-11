@@ -31,6 +31,7 @@ create table if not exists garments (
   exclude_from_wardrobe boolean default false,
   photo_angles jsonb default '[]'::jsonb,
   brand text,
+  subtype text,
   notes text,
   material text,
   pattern text,

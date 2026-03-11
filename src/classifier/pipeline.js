@@ -9,7 +9,7 @@
  * the new pipeline stages (person filter, Claude fallback, duplicate check).
  */
 
-import { classify, classifyFromFilename, extractDominantColor, analyzeImageContent } from "../features/wardrobe/classifier.js";
+import { classify, analyzeImageContent } from "../features/wardrobe/classifier.js";
 import { processImage } from "../services/imagePipeline.js";
 import { enqueueOriginalCache } from "../services/photoQueue.js";
 import { normalizeType } from "./normalizeType.js";

@@ -19,7 +19,8 @@ export async function handler(event) {
     const hit = await cacheGet(ck);
     if (hit) return { statusCode:200, headers:{...CORS,"X-Cache":"HIT"}, body:JSON.stringify(hit) };
 
-    const items = garments.filter(g=>g.color&&!g.needsReview).map(g=>({
+    const ACCESSORY_EXCL = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
+    const items = garments.filter(g=>g.color&&!g.needsReview&&!ACCESSORY_EXCL.has(g.type||g.garmentType)).map(g=>({
       type:g.type||g.garmentType, name:g.name||g.color, color:g.color, pattern:g.pattern||"solid", material:g.material||""
     }));
     const watchList = watches.map(w=>({

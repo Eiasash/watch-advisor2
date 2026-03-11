@@ -41,7 +41,7 @@ export async function pullCloudState() {
 async function _doPull() {
   try {
     const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
-      supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,exclude_from_wardrobe,photo_angles,brand,notes,material,pattern,seasons,contexts,price,accent_color,created_at").order("created_at", { ascending: true }).limit(500),
+      supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,exclude_from_wardrobe,photo_angles,brand,subtype,notes,material,pattern,seasons,contexts,price,accent_color,created_at").order("created_at", { ascending: true }).limit(500),
       supabase.from("history").select("*").order("date", { ascending: false }).limit(365),
     ]);
 
@@ -64,6 +64,7 @@ async function _doPull() {
         duplicateOf: row.duplicate_of ?? undefined,
         excludeFromWardrobe: row.exclude_from_wardrobe ?? false,
         photoAngles: row.photo_angles ?? [],
+        subtype:     row.subtype ?? null,
         material:    row.material ?? null,
         pattern:     row.pattern ?? null,
         seasons:     row.seasons ?? [],
@@ -116,6 +117,7 @@ export async function pushGarment(garment) {
       // Never write base64 data URLs to photo_angles — only Storage URLs
       photo_angles: (garment.photoAngles ?? []).filter(u => u && typeof u === "string" && !u.startsWith("data:")),
       brand:        garment.brand ?? null,
+      subtype:      garment.subtype ?? null,
       notes:        garment.notes ?? null,
       material:     garment.material ?? null,
       pattern:      garment.pattern ?? null,
