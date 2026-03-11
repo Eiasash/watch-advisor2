@@ -285,7 +285,7 @@ export async function semanticSearchGarments(queryEmbedding, limit = 10) {
 // ---------------------------------------------------------------------------
 async function _embedGarment(garment) {
   try {
-    const text = [garment.name, garment.type, garment.color, garment.brand, garment.notes]
+    const text = [garment.name, garment.subtype, garment.type, garment.color, garment.brand, garment.notes]
       .filter(Boolean).join(" ");
     const res = await fetch("/.netlify/functions/generate-embedding", {
       method: "POST",
