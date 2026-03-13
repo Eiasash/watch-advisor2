@@ -10,7 +10,7 @@ import { callClaude }    from "./_claudeClient.js";
 import { cacheGet, cacheSet } from "./_blobCache.js";
 
 const CORS = {
-  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Origin":  "*", // "*" intentional: supports Netlify preview deploys (deploy-preview-*.netlify.app) and local dev
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };

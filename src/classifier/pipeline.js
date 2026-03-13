@@ -91,7 +91,7 @@ export async function runClassifierPipeline(file, existingGarments = [], onLog =
   function _log(step, msg, detail = null) {
     const entry = { ts: Date.now(), step, msg, detail };
     if (onLog) onLog(entry);
-    console.log(`[pipeline:${step}]`, msg, detail ?? "");
+    if (import.meta.env.DEV) console.log(`[pipeline:${step}]`, msg, detail ?? "");
   }
 
   _log("start", file.name, `${file.type} ${(file.size/1024).toFixed(1)}kb`);

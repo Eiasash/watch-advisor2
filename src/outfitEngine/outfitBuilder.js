@@ -4,25 +4,19 @@
  * Algorithm:
  * 1. Read selected watch
  * 2. Determine style
- * 3. Filter garments by required categories
- * 4. Score garments
- * 5. Pick highest-scoring items per slot
+ * 3. Build shortlists for core slots (shirt/pants/shoes)
+ * 4. Beam-search over shortlist combinations with pair-harmony scoring
+ * 5. Fill remaining slots (jacket, sweater, layer, belt) with per-slot scoring
  */
 
 import { STYLE_TO_SLOTS } from "./watchStyles.js";
-import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore } from "./scoring.js";
+import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore, filterShoesByStrap, clearScoreCache,
+  colorMatchScore, formalityMatchScore, watchCompatibilityScore } from "./scoring.js";
 import { useRejectStore } from "../stores/rejectStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
+import { outfitConfidence } from "./confidence.js";
+import { explainOutfit } from "./explain.js";
 
-/**
- * Generate the best outfit around a watch.
- *
- * @param {object} watch - Selected watch
- * @param {Array} wardrobe - All garments
- * @param {object} weather - { tempC: number }
- * @param {Array} history - Recent outfit history
- * @returns {object} { shirt, pants, shoes, jacket }
- */
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 // Subtype keywords for sweater differentiation.
@@ -30,11 +24,9 @@ const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","access
 const OVER_LAYER_KEYWORDS = ["zip", "cardigan", "hoodie", "vest", "gilet"];
 
 function _isPulloverType(name) {
-  if (!name) return true; // default: assume pullover (safer — prevents unknown stacking)
+  if (!name) return true;
   const n = name.toLowerCase();
-  // Explicit over-layer keywords → NOT a pullover
   if (OVER_LAYER_KEYWORDS.some(k => n.includes(k))) return false;
-  // Everything else (cable knit, crewneck, waffle, or generic "sweater") = pullover
   return true;
 }
 
@@ -50,7 +42,10 @@ function _isCasualJacket(name) {
  * Cross-slot coherence — scores how well a candidate garment harmonizes with
  * already-assigned outfit slots. Rewards palette coherence, penalizes exact
  * color duplication and warm/cool clashes.
- * Returns -0.4 to +0.25 bonus applied to total score.
+ *
+ * Returns a RAW value in the range -0.4 to +0.25.
+ * Callers (specifically _scoreCandidate) are responsible for scaling this
+ * relative to baseScore — do NOT add raw coherence directly to a multiplicative score.
  */
 const _WARM = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive","brick","rust"]);
 const _COOL = new Set(["black","navy","grey","slate","charcoal","indigo","dark navy"]);
@@ -58,14 +53,11 @@ function _crossSlotCoherence(candidate, filledColors) {
   const cc = (candidate.color ?? "").toLowerCase();
   if (!cc || !filledColors.length) return 0;
 
-  // Exact color match with another slot → avoid (monotone penalty)
   if (filledColors.includes(cc)) return -0.4;
 
-  // Tone classification
   const candidateTone = _WARM.has(cc) ? "warm" : _COOL.has(cc) ? "cool" : "neutral";
-  if (candidateTone === "neutral") return 0.1; // white works with anything
+  if (candidateTone === "neutral") return 0.1;
 
-  // Count warm vs cool in existing outfit
   let warm = 0, cool = 0;
   for (const c of filledColors) {
     if (_WARM.has(c)) warm++;
@@ -73,60 +65,247 @@ function _crossSlotCoherence(candidate, filledColors) {
   }
   const dominant = warm >= cool ? "warm" : "cool";
 
-  // Same tone as dominant → palette coherence bonus
   if (candidateTone === dominant) return 0.25;
-  // Opposite tone → mild penalty (jarring mix)
   return -0.15;
 }
 
+// ── Pair-harmony helpers ──────────────────────────────────────────────────────
+
+/**
+ * Score a single garment with diversity bonus, rejection penalty, and
+ * cross-slot coherence applied. Single entry point for all slot scoring.
+ *
+ * Hard-gate propagation: if scoreGarment returns -Infinity or ≤ 0, we return
+ * that value unchanged so _shortlistCandidates can filter it out correctly.
+ *
+ * Penalty scaling: coherence/diversity constants were calibrated for the old
+ * additive scoring system (0–10). In the multiplicative system (≈0.001–0.3)
+ * they dwarf the base score and eliminate valid candidates. Penalties are now
+ * expressed as fractions of the base score, keeping the ranking signal intact
+ * without disqualifying garments that already passed the hard gates.
+ */
+function _scoreCandidate(watch, garment, weather, history, outfitFormality, context, rejectState, filledColors = []) {
+  const baseScore = scoreGarment(watch, garment, weather, outfitFormality, context);
+  // Propagate hard gates and true-zero strap-shoe blocks unchanged
+  if (!isFinite(baseScore) || baseScore <= 0) return baseScore;
+
+  let score = baseScore + diversityBonus(garment, history);
+  // Rejection penalty: cap at 30% of base so it can't eliminate a passing garment
+  if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= baseScore * 0.30;
+  // Coherence bonus/penalty: scale to ±25% of base score
+  if (filledColors.length > 0) {
+    const coherence = _crossSlotCoherence(garment, filledColors); // raw: -0.4 to +0.25
+    // Normalise: raw range is 0.65 wide; map to ±0.25 of base
+    score += baseScore * (coherence / 0.65) * 0.25;
+  }
+  // Floor: never allow coherence/diversity to disqualify a hard-gate-passing garment
+  return Math.max(1e-6, score);
+}
+
+/**
+ * Build a scored shortlist: filter out invalid scores, sort, take top N.
+ * Excludes -Infinity (hard-gated) and ≤ 0 candidates from selection.
+ */
+function _shortlistCandidates(candidates, limit, scoreFn) {
+  return candidates
+    .map(garment => ({ garment, score: scoreFn(garment) }))
+    .filter(x => Number.isFinite(x.score) && x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+/** True if two garments share the same non-empty color string. */
+function _sameColor(a, b) {
+  const ac = (a?.color ?? "").toLowerCase();
+  const bc = (b?.color ?? "").toLowerCase();
+  return ac && ac === bc;
+}
+
+/**
+ * Outfit-level pair harmony score for a shirt/pants/shoes combination.
+ * Penalises exact color matches between pieces and delegates to
+ * pantsShoeHarmony for the pants→shoes tonal check.
+ * Returns a multiplier (≤ 1.0).
+ */
+function _pairHarmonyScore(shirt, pants, shoes) {
+  let score = 1.0;
+  // Exact shirt–pants color match: avoid monotone top/bottom
+  if (shirt && pants && _sameColor(shirt, pants)) score *= 0.82;
+  // Exact shirt–shoes color match: odd visual echo (except white shoes)
+  if (shirt && shoes && _sameColor(shirt, shoes) && (shoes.color ?? "").toLowerCase() !== "white") score *= 0.9;
+  // Pants–shoes tonal harmony (warm/cool check from pantsShoeHarmony)
+  score *= pantsShoeHarmony(pants, shoes);
+  return score;
+}
+
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}, context = null) {
-  if (!watch) return { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null, belt: null };
+  if (!watch) return {
+    shirt: null, pants: null, shoes: null, jacket: null,
+    sweater: null, layer: null, belt: null,
+    _score: 0, _confidence: 0, _confidenceLabel: "none",
+    _explanation: ["No watch selected."],
+  };
+
+  // Clear memoization cache so strap changes or watch swaps never serve stale scores
+  clearScoreCache();
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today.
-  // Fallback chain: strapStore override → watch.straps[0].label → constructed string → watch.strap.
-  // Without this, single-strap watches like the Reverso ("leather") lose their
-  // actual strap color ("Navy alligator") and strap-shoe scoring gets garbage input.
   const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(watch.id);
   let resolvedStrap = watch.strap;
   if (activeStrapObj) {
     resolvedStrap = activeStrapObj.label ?? activeStrapObj.color ?? watch.strap;
   } else if (watch.straps?.[0]) {
     const s0 = watch.straps[0];
-    // Prefer full label ("Navy alligator"); else construct "color type" ("brown leather")
     resolvedStrap = s0.label ?? (s0.color && s0.type ? `${s0.color} ${s0.type}` : s0.color ?? watch.strap);
   }
   const watchWithStrap = { ...watch, strap: resolvedStrap };
 
-  // ── Dual-dial: start with sideA (navy), will re-evaluate after outfit is built ──
+  // ── Dual-dial: start with sideA, re-evaluate after outfit is built ──────────
   let _dualDialRec = null;
   if (watch.dualDial) {
-    // Default to sideA for initial scoring — will re-evaluate using actual outfit colors
     watchWithStrap.dial = watch.dualDial.sideA;
   }
 
-  // Strip accessories, outfit photos and excluded items from outfit consideration
   const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
 
-  // Formality anchor: if slots are pinned by the user, score other slots to complement them
+  // Formality anchor: if slots are pinned, score others to complement them
   const pinnedList = Object.values(pinnedSlots).filter(Boolean);
   const outfitFormality = pinnedList.length > 0
     ? Math.round(pinnedList.reduce((s, g) => s + (g.formality ?? 5), 0) / pinnedList.length)
     : null;
 
   const slots = STYLE_TO_SLOTS[watch.style] ?? STYLE_TO_SLOTS["sport-elegant"];
-  const outfit = {};
 
+  // Initialize all slots to null — ensures tests get null, not undefined, for empty slots
+  const outfit = {
+    shirt: null, pants: null, shoes: null,
+    jacket: null, sweater: null, layer: null, belt: null,
+  };
+
+  // Hoist rejectStore once — used by _scoreCandidate and all subsequent blocks
+  const rejectState = useRejectStore.getState();
+
+  // ── Core slots: shortlist + beam-search combo selection ────────────────────
+  // Shirt / pants / shoes are selected together via pair-harmony scoring rather
+  // than greedily slot-by-slot. This prevents good individual pieces that clash
+  // as a combination.
+
+  // Apply pinned slots upfront
+  for (const slotName of ["shirt", "pants", "shoes"]) {
+    if (pinnedSlots[slotName]) outfit[slotName] = pinnedSlots[slotName];
+  }
+
+  // Build raw candidate pools for each unpinned core slot
+  const coreSlotCandidates = {};
+  for (const slotName of ["shirt", "pants", "shoes"]) {
+    if (outfit[slotName]) continue;
+    const type = slots[slotName];
+    if (!type) continue;
+    let pool = wearable.filter(g => {
+      const gType = g.type ?? g.category;
+      if (slotName === "shirt") return gType === "shirt" && !excludedPerSlot[slotName]?.has(g.id);
+      if (excludedPerSlot[slotName]?.has(g.id)) return false;
+      return gType === type;
+    });
+    // Shoes: pre-filter by strap–shoe rule BEFORE scoring so hard mismatches
+    // can never be rescued by diversity / coherence bonuses in the shortlist.
+    if (slotName === "shoes") pool = filterShoesByStrap(watchWithStrap, pool);
+    coreSlotCandidates[slotName] = pool;
+  }
+
+  // Colours already locked by pinned slots — used as context for shortlist scoring
+  const pinnedColors = Object.values(outfit).filter(Boolean).map(g => (g.color ?? "").toLowerCase());
+
+  // Build top-N shortlists (N=5 shirts/pants, N=4 shoes)
+  const shirtPool = outfit.shirt
+    ? [{ garment: outfit.shirt, score: 1 }]
+    : _shortlistCandidates(coreSlotCandidates.shirt ?? [], 5,
+        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors));
+
+  const pantsPool = outfit.pants
+    ? [{ garment: outfit.pants, score: 1 }]
+    : _shortlistCandidates(coreSlotCandidates.pants ?? [], 5,
+        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors));
+
+  const shoesPool = outfit.shoes
+    ? [{ garment: outfit.shoes, score: 1 }]
+    : _shortlistCandidates(coreSlotCandidates.shoes ?? [], 4,
+        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors));
+
+  // Greedy defaults — best individual scores (fast path if no combo search)
+  if (!outfit.shirt && shirtPool.length) outfit.shirt = shirtPool[0].garment;
+  if (!outfit.pants && pantsPool.length) outfit.pants = pantsPool[0].garment;
+  if (!outfit.shoes && shoesPool.length) outfit.shoes = shoesPool[0].garment;
+
+  // Beam search over shortlist combinations — pick best by pair-harmony × sum-of-scores
+  // Signals from the winning combo are captured for confidence + explanation.
+  let _comboScore = null;
+  if (shirtPool.length && pantsPool.length && shoesPool.length) {
+    let bestCombo = null;
+    for (const shirt of shirtPool) {
+      for (const pants of pantsPool) {
+        for (const shoes of shoesPool) {
+          const comboScore =
+            shirt.score + pants.score + shoes.score
+            + _crossSlotCoherence(pants.garment, [(shirt.garment.color ?? "").toLowerCase()])
+            + _crossSlotCoherence(shoes.garment, [
+                (shirt.garment.color ?? "").toLowerCase(),
+                (pants.garment.color ?? "").toLowerCase(),
+              ]);
+          const harmony = _pairHarmonyScore(shirt.garment, pants.garment, shoes.garment);
+          const finalScore = comboScore * harmony;
+          if (!bestCombo || finalScore > bestCombo.score) {
+            bestCombo = {
+              shirt: shirt.garment, pants: pants.garment, shoes: shoes.garment,
+              score: finalScore,
+              harmony,
+            };
+          }
+        }
+      }
+    }
+    if (bestCombo) {
+      outfit.shirt = bestCombo.shirt;
+      outfit.pants = bestCombo.pants;
+      outfit.shoes = bestCombo.shoes;
+      _comboScore = bestCombo.score;
+      // Capture dimension signals from the winning shirt for explanation
+      outfit._signals = {
+        colorMatch:         colorMatchScore(watchWithStrap, bestCombo.shirt),
+        formalityMatch:     formalityMatchScore(watchWithStrap, bestCombo.shirt),
+        watchCompatibility: watchCompatibilityScore(watchWithStrap, bestCombo.shirt),
+        harmonyScore:       bestCombo.harmony,
+      };
+    }
+  }
+
+  // ── Guard: empty wardrobe → safe fallback ──────────────────────────────────
+  // Only fires when there are genuinely no wearable garments at all.
+  // If garments exist but were filtered out by exclusions / strap rules, the
+  // engine continues so secondary slots (sweater, jacket, belt) can still fill.
+  // explainOutfit is never called in this path.
+  if (!outfit.shirt && !outfit.pants && !outfit.shoes && wearable.length === 0) {
+    return {
+      shirt: null, pants: null, shoes: null,
+      jacket: null, sweater: null, layer: null, belt: null,
+      _score: 0,
+      _confidence: 0,
+      _confidenceLabel: "none",
+      _explanation: ["No valid outfit combination found."],
+    };
+  }
+
+  // ── Remaining slots (jacket etc.) — per-slot greedy scoring ──────────────
+  // shirt / pants / shoes already handled above; skip them here.
   for (const [slotName, category] of Object.entries(slots)) {
-    // If this slot was manually pinned by the user, use it directly
+    if (["shirt", "pants", "shoes"].includes(slotName)) continue;
     if (pinnedSlots[slotName]) {
       outfit[slotName] = pinnedSlots[slotName];
       continue;
     }
-    const type = category; // slot name matches category
+    const type = category;
     const candidates = wearable.filter(g => {
       const gType = g.type ?? g.category;
-      // shirt slot: only actual shirts (sweaters go to sweater layer)
-      if (type === "shirt") return gType === "shirt" && !excludedPerSlot[slotName]?.has(g.id);
       if (excludedPerSlot[slotName]?.has(g.id)) return false;
       return gType === type;
     });
@@ -136,46 +315,31 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       continue;
     }
 
-    // Score and sort — with rejection penalty and cross-slot coherence
-    const rejectState = useRejectStore.getState();
     const filledColors = Object.values(outfit).filter(Boolean).map(g => (g.color ?? "").toLowerCase());
-    const scored = candidates.map(g => {
-      let score = scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history);
-      // Apply -0.3 penalty if this watch+garment combo was recently rejected
-      if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
-      // Cross-slot coherence: bonus for palette harmony with already-filled slots
-      if (filledColors.length > 0) {
-        score += _crossSlotCoherence(g, filledColors);
-      }
-      return { garment: g, score };
-    });
+    const scored = candidates.map(g => ({
+      garment: g,
+      score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, filledColors),
+    }));
     scored.sort((a, b) => b.score - a.score);
 
     outfit[slotName] = scored[0].garment;
   }
 
   // ── Multilayer logic ────────────────────────────────────────────────────────
-  // sweater: primary mid-layer (temp < 22°C)
-  // layer:   second mid-layer  (temp < 12°C) — must be a DIFFERENT subtype
-  //          e.g. if sweater = crewneck, layer = zip/cardigan/hoodie (not another crewneck)
   outfit.sweater = null;
   outfit.layer   = null;
 
   {
     const temp = weather?.tempC ?? 22;
     if (temp < 22) {
-      const rejectState = useRejectStore.getState();
       const isFormalCtx = context === "formal" || context === "clinic"
         || context === "hospital-smart-casual" || context === "shift";
       const sweaters = wearable.filter(g => {
         if ((g.type ?? g.category) !== "sweater") return false;
-        // In formal/clinic: exclude casual-coded sweaters (hoodies, jogger pieces)
         if (isFormalCtx) {
           const n = (g.name ?? "").toLowerCase();
           if (n.includes("hoodie") || n.includes("jogger") || n.includes("sweatshirt")) return false;
         }
-        // Formality floor: sweater formality must be within 3 of watch formality.
-        // Prevents waffle knit (f3) from appearing with Reverso (f9).
         const watchF = watchWithStrap.formality ?? 5;
         const garmentF = g.formality ?? 5;
         if (garmentF < watchF - 3) return false;
@@ -184,25 +348,19 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       if (sweaters.length) {
         const swFilledColors = [outfit.shirt, outfit.pants, outfit.shoes, outfit.jacket]
           .filter(Boolean).map(g => (g.color ?? "").toLowerCase());
-        const scored = sweaters.map(g => {
-          let score = scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history);
-          if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
-          if (swFilledColors.length > 0) score += _crossSlotCoherence(g, swFilledColors);
-          return { garment: g, score };
-        });
+        const scored = sweaters.map(g => ({
+          garment: g,
+          score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, swFilledColors),
+        }));
         scored.sort((a, b) => b.score - a.score);
 
-        // Color dedup: skip sweaters that match shirt color
         const shirtColor = (outfit.shirt?.color ?? "").toLowerCase();
         const bestSweater = scored.find(s =>
           s.score > 0 && (s.garment.color ?? "").toLowerCase() !== shirtColor
         ) ?? scored[0];
         outfit.sweater = pinnedSlots.sweater ?? (bestSweater?.score > 0 ? bestSweater.garment : null);
 
-        // Second layer when VERY cold — coat + sweater already cover 8-16°C.
-        // Only add a second mid-layer below 8°C (Arctic layering).
         if (temp < 8 && sweaters.length >= 2 && outfit.sweater) {
-          // Pinned layer always wins — user override bypasses subtype guard
           if (pinnedSlots.layer) {
             outfit.layer = pinnedSlots.layer;
           } else {
@@ -215,7 +373,6 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
               if (s.score <= 0) return false;
               const c = (s.garment.color ?? "").toLowerCase();
               if (c === sweaterColor || c === shirtColor) return false;
-              // Subtype guard: if primary is pullover, layer must be zip/cardigan/hoodie
               const layerName = (s.garment.name ?? "").toLowerCase();
               if (isPrimaryPullover && _isPulloverType(layerName)) return false;
               return true;
@@ -227,17 +384,14 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
   }
 
-  // Weather-based jacket recommendation — score and pick best, not just first.
-  // In clinic/formal contexts, exclude casual-coded jackets (bomber, hoodie, jogger).
+  // ── Jacket selection ────────────────────────────────────────────────────────
   if (weather?.tempC != null && !outfit.jacket) {
     const temp = weather.tempC;
     if (temp < 22) {
-      const rejectState = useRejectStore.getState();
       const isFormalCtx = context === "formal" || context === "clinic"
         || context === "hospital-smart-casual" || context === "shift";
       const jackets = wearable.filter(g => {
         if ((g.type ?? g.category) !== "jacket") return false;
-        // In formal/clinic: exclude casual-coded jackets by name
         if (isFormalCtx) {
           const n = (g.name ?? "").toLowerCase();
           if (_isCasualJacket(n)) return false;
@@ -245,13 +399,14 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
         return true;
       });
       if (jackets.length) {
-        const scored = jackets.map(g => {
-          let score = scoreGarment(watchWithStrap, g, weather, null, context) + diversityBonus(g, history);
-          if (rejectState.isRecentlyRejected(watch.id, [g.id])) score -= 0.3;
-          return { garment: g, score };
-        });
+        const jFilledColors = Object.values(outfit).filter(Boolean)
+          .map(g => typeof g === "object" && g.color ? g.color.toLowerCase() : null)
+          .filter(Boolean);
+        const scored = jackets.map(g => ({
+          garment: g,
+          score: _scoreCandidate(watchWithStrap, g, weather, history, null, context, rejectState, jFilledColors),
+        }));
         scored.sort((a, b) => b.score - a.score);
-        // Only pick if it passes context formality floor
         if (scored[0]?.score > 0) outfit.jacket = scored[0].garment;
       }
     }
@@ -266,32 +421,26 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     outfit.belt = pinnedSlots.belt;
   }
 
-  // ── Pants-shoe palette coherence ───────────────────────────────────────────
-  // If warm pants + black shoes (harmony < 0.4), try swapping pants to a cooler option.
-  // Only auto-swap if strap forces black shoes (can't swap shoes instead).
+  // ── Pants-shoe palette coherence swap ──────────────────────────────────────
   if (outfit.pants && outfit.shoes && !pinnedSlots.pants && !pinnedSlots.shoes) {
     const harmony = pantsShoeHarmony(outfit.pants, outfit.shoes);
     if (harmony <= 0.4) {
-      // Check if strap constrains us to these shoes (leather strap → can't change shoes)
       const strapLocked = strapShoeScore(watchWithStrap, outfit.shoes) === 1.0
         && watchWithStrap.strap !== "bracelet" && watchWithStrap.strap !== "integrated";
 
       if (strapLocked) {
-        // Can't change shoes → find better pants for these shoes
-        const rejectState = useRejectStore.getState();
-        const shoeTone = (outfit.shoes.color ?? "").toLowerCase();
+        const shoeColors = [(outfit.shoes.color ?? "").toLowerCase()];
         const altPants = wearable
           .filter(g => (g.type ?? g.category) === "pants" && g.id !== outfit.pants.id)
           .map(g => ({
             garment: g,
-            score: scoreGarment(watchWithStrap, g, weather, outfitFormality, context) + diversityBonus(g, history),
+            score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, shoeColors),
             harmony: pantsShoeHarmony(g, outfit.shoes),
           }))
           .filter(p => p.score > 0 && p.harmony >= 0.7)
           .sort((a, b) => (b.score + b.harmony) - (a.score + a.harmony));
         if (altPants.length) {
           outfit.pants = altPants[0].garment;
-          // Re-pick belt for consistency
           const belts = wardrobe.filter(g => (g.type ?? g.category) === "belt");
           outfit.belt = pickBelt(outfit.shoes, belts);
         }
@@ -299,8 +448,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
   }
 
-  // ── Dual-dial recommendation — evaluate ACTUAL outfit colors ────────────────
-  // Dark outfit → white dial (contrast/pop). Light outfit → navy dial (depth).
+  // ── Dual-dial recommendation ────────────────────────────────────────────────
   if (watch.dualDial) {
     const darkSet = new Set(["black","navy","charcoal","dark brown","indigo","slate","dark navy"]);
     const outfitColors = [outfit.shirt, outfit.sweater, outfit.layer, outfit.pants, outfit.jacket]
@@ -316,20 +464,35 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   }
   outfit._recommendedDial = _dualDialRec;
 
+  // ── Confidence + explanation ─────────────────────────────────────────────
+  const { confidence: _rawConfidence, confidenceLabel } = outfitConfidence(_comboScore ?? 0);
+  const confidence = Math.max(0, _rawConfidence);  // defensive clamp: never negative or NaN
+  outfit._score           = _comboScore ?? null;
+  outfit._confidence      = confidence;
+  outfit._confidenceLabel = confidenceLabel;
+  const _capturedSignals = outfit._signals ?? null;
+  // _signals is internal — clean it off before passing to explainOutfit
+  delete outfit._signals;
+  outfit._explanation = explainOutfit(watch, outfit, _capturedSignals
+    ? {
+        colorMatch:         _capturedSignals.colorMatch,
+        formalityMatch:     _capturedSignals.formalityMatch,
+        watchCompatibility: _capturedSignals.watchCompatibility,
+        pairHarmonyScore:   _capturedSignals.harmonyScore,
+      }
+    : {}, weather);
+
   return outfit;
 }
 
 /**
  * Diversity penalty — avoid repeating garments from recent history.
- * Checks both outfit slot map (slot→id) and garmentIds array formats.
  */
 function diversityBonus(garment, history) {
   const recent = (history ?? []).slice(-5);
   const usedCount = recent.filter(e => {
-    // Format 1: outfit is { shirt: id, pants: id, ... } slot map
     const o = e.outfit ?? e.payload?.outfit ?? {};
     if (Object.values(o).includes(garment.id)) return true;
-    // Format 2: garmentIds flat array (logged via TodayPanel / WatchDashboard)
     const ids = e.garmentIds ?? e.payload?.garmentIds ?? [];
     return ids.includes(garment.id);
   }).length;
@@ -362,14 +525,12 @@ export function explainOutfitChoice(watch, outfit, weather) {
     parts.push(`${outfit.jacket.name} added for ${weather.tempC}°C weather.`);
   }
 
-  // Palette note
   if (outfit.pants && outfit.shoes) {
     const h = pantsShoeHarmony(outfit.pants, outfit.shoes);
     if (h >= 0.9) parts.push("Pants and shoes are in perfect tonal harmony.");
     else if (h <= 0.5) parts.push("Note: pants-shoe tone transition is a stretch — consider swapping.");
   }
 
-  // Dual-dial recommendation
   if (outfit._recommendedDial) {
     const d = outfit._recommendedDial;
     parts.push(`Reverso: wear ${d.label} side — ${d.side === "B" ? "white pops against dark outfit" : "navy adds depth to lighter palette"}.`);
@@ -379,4 +540,4 @@ export function explainOutfitChoice(watch, outfit, weather) {
 }
 
 // Exported for testing
-export { _isPulloverType, _isCasualJacket };
+export { _isPulloverType, _isCasualJacket, _pairHarmonyScore, _sameColor };

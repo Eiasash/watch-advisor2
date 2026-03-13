@@ -1,13 +1,31 @@
 /**
- * Outfit scoring system.
- * Scores garments using: colorMatch, formalityMatch, watchCompatibility, weatherLayer, contextFormality.
+ * Outfit scoring system — gated multiplicative model.
  *
- * score = colorMatch * 2 + formalityMatch * 2.5 + watchCompatibility * 2 + weatherLayer + contextFormality * 2.5
+ * score = (colorMatch ** 2) * (formalityMatch ** 2) * watchCompatibility * contextFormality
+ *
+ * Hard gates (return -Infinity so they sort BELOW strap-shoe 0.0 violations):
+ *   - contextFormality === 0.0  (garment below context formality floor)
+ *
+ * Strap-shoe violations remain 0.0 (separate pre-filter in outfitBuilder for shoe slot).
+ *
+ * Weights / exponents live in src/config/scoringWeights.js — never inline here.
+ * Strap rules live in src/config/strapRules.js.
+ * Weather rules live in src/config/weatherRules.js.
  */
 
 import { STYLE_FORMALITY_TARGET } from "./watchStyles.js";
 import { DIAL_COLOR_MAP } from "../data/dialColorMap.js";
-// Garments below `min` are hard-excluded; `target` biases scoring.
+import { SCORE_EXPONENTS, STYLE_LEARN } from "../config/scoringWeights.js";
+import {
+  BLACK_STRAP_TERMS, BROWN_STRAP_TERMS, BROWN_SHOE_COLORS, BLACK_SHOE_COLORS,
+  EXEMPT_STRAP_TERMS, CASUAL_STRAP_TERMS, CASUAL_SHOE_SOFT_MATCH, CASUAL_SHOE_SOFT_MISS,
+  SPECIAL_STRAP_RULES,
+} from "../config/strapRules.js";
+import {
+  NEUTRAL_SCORE, LAYER_TYPES, LAYER_TEMP_BRACKETS,
+} from "../config/weatherRules.js";
+
+// Garments below `min` are hard-excluded (return -Infinity); `target` biases scoring.
 export const CONTEXT_FORMALITY = {
   "hospital-smart-casual": { min: 5, target: 7 },
   "clinic":                { min: 5, target: 7 },
@@ -19,11 +37,21 @@ export const CONTEXT_FORMALITY = {
   "shift":                 { min: 5, target: 7 },
 };
 
+// ── Memoization cache ─────────────────────────────────────────────────────────
+// Key: `${watchId}:${garmentId}:${context}:${strap}:${weatherTempC}`
+// Cleared on app boot; Map is module-scoped so it survives across buildOutfit calls
+// within the same session but doesn't persist across page loads.
+const _scoreCache = new Map();
 
+export function clearScoreCache() {
+  _scoreCache.clear();
+}
+
+// ── Individual dimension scorers ──────────────────────────────────────────────
 
 /**
  * Score how well a garment's color matches the watch dial.
- * Returns 0-1.
+ * Returns 0–1.
  */
 export function colorMatchScore(watch, garment) {
   const compatible = DIAL_COLOR_MAP[watch.dial] ?? [];
@@ -33,7 +61,7 @@ export function colorMatchScore(watch, garment) {
 
 /**
  * Score how well a garment's formality matches the watch formality.
- * Returns 0-1.
+ * Returns 0–1.
  */
 export function formalityMatchScore(watch, garment) {
   const diff = Math.abs((watch.formality ?? 5) - (garment.formality ?? 5));
@@ -41,8 +69,8 @@ export function formalityMatchScore(watch, garment) {
 }
 
 /**
- * Score watch-garment style compatibility.
- * Returns 0-1.
+ * Score watch–garment style compatibility.
+ * Returns 0–1.
  */
 export function watchCompatibilityScore(watch, garment) {
   const targetFormality = STYLE_FORMALITY_TARGET[watch.style] ?? 5;
@@ -52,78 +80,102 @@ export function watchCompatibilityScore(watch, garment) {
 
 /**
  * Score weather layer appropriateness.
- * Returns 0-1.
+ * Returns 0–1.
  */
 export function weatherLayerScore(garment, weather) {
-  if (!weather || weather.tempC == null) return 0.5;
-  const temp = weather.tempC;
+  if (!weather || weather.tempC == null) return NEUTRAL_SCORE;
   const type = garment.type ?? garment.category;
+  if (!LAYER_TYPES.has(type)) return NEUTRAL_SCORE;
 
-  if (type === "jacket" || type === "sweater") {
-    if (temp < 10) return 1.0;
-    if (temp < 16) return 0.8;
-    if (temp < 22) return 0.5;
-    return 0.1; // too warm for a jacket
+  const temp = weather.tempC;
+  for (const bracket of LAYER_TEMP_BRACKETS) {
+    if (temp < bracket.below) return bracket.score;
   }
-  return 0.5;
+  return NEUTRAL_SCORE;
 }
 
 /**
  * Score how well shoes match the watch strap color.
- * Non-negotiable rule: leather strap → matching leather shoe color.
- * Returns 0-1.
+ * Non-negotiable: leather strap → matching leather shoe color.
+ * Returns 0–1. Returns 0.0 on hard strap–shoe mismatch.
  */
 export function strapShoeScore(watch, garment) {
-  if ((garment.type ?? garment.category) !== "shoes") return 1.0; // only applies to shoes slot
+  if ((garment.type ?? garment.category) !== "shoes") return 1.0;
 
   const strap = (watch.strap ?? "").toLowerCase();
 
-  // Bracelet / integrated — no restriction
-  if (strap === "bracelet" || strap === "integrated" || strap === "") return 1.0;
+  // Bracelet / integrated — exempt
+  if (!strap || EXEMPT_STRAP_TERMS.some(t => strap === t || strap.includes(t))) return 1.0;
 
-  // NATO / canvas / rubber — prefer white sneakers, no hard black/brown rule
-  const isNatoCasual = strap.includes("nato") || strap.includes("canvas") || strap.includes("rubber");
-  if (isNatoCasual) {
-    const shoeColor = (garment.color ?? "").toLowerCase();
-    return ["white", "grey", "tan"].includes(shoeColor) ? 1.0 : 0.8; // soft preference only
+  // NATO / canvas / rubber — soft preference only
+  if (CASUAL_STRAP_TERMS.some(t => strap.includes(t))) {
+    const sc = (garment.color ?? "").toLowerCase();
+    return CASUAL_SHOE_SOFT_MATCH.includes(sc) ? 1.0 : CASUAL_SHOE_SOFT_MISS;
   }
 
   // Leather / alligator / calfskin / suede — strict color match
   const isLeather = strap.includes("leather") || strap.includes("alligator")
     || strap.includes("calfskin") || strap.includes("suede");
-  if (!isLeather) return 1.0; // unknown strap type — no restriction
+  if (!isLeather) return 1.0;
 
   const shoeColor = (garment.color ?? "").toLowerCase();
-  const isBlackStrap = strap.includes("black");
+  const isBlack = BLACK_STRAP_TERMS.some(t => strap.includes(t));
+
   // Brown: must explicitly name a warm color — "grey alligator" is NOT brown
-  const isBrownStrap = !isBlackStrap && (
-    strap.includes("brown") || strap.includes("tan") || strap.includes("honey")
-    || strap.includes("cognac") || strap.includes("caramel")
-    || (strap.includes("alligator") && !strap.includes("grey") && !strap.includes("gray")
+  const isBrown = !isBlack && (
+    BROWN_STRAP_TERMS.some(t => strap.includes(t))
+    || (strap.includes("alligator")
+        && !strap.includes("grey") && !strap.includes("gray")
         && !strap.includes("navy") && !strap.includes("green") && !strap.includes("teal"))
   );
 
-  if (isBlackStrap) return ["black"].includes(shoeColor) ? 1.0 : 0.0;
-  if (isBrownStrap) return ["brown", "tan", "cognac", "dark brown"].includes(shoeColor) ? 1.0 : 0.0;
+  if (isBlack) return BLACK_SHOE_COLORS.includes(shoeColor) ? 1.0 : 0.0;
+  if (isBrown) return BROWN_SHOE_COLORS.includes(shoeColor) ? 1.0 : 0.0;
 
-  // Non-standard leather color — navy, grey, teal, olive, green
-  // Navy strap → black shoes or white sneakers. Brown = hard fail.
-  // Grey strap → black or white preferred, brown tolerated.
-  // Teal/olive/green → white sneakers preferred.
-  const isNavyStrap = strap.includes("navy");
-  const isGreyStrap = strap.includes("grey") || strap.includes("gray");
-  const isTealGreenStrap = strap.includes("teal") || strap.includes("olive") || strap.includes("green");
-
-  if (isNavyStrap) return ["black", "white"].includes(shoeColor) ? 1.0 : 0.0;
-  if (isGreyStrap) return ["black", "white", "grey"].includes(shoeColor) ? 1.0 : 0.3;
-  if (isTealGreenStrap) return ["white", "black"].includes(shoeColor) ? 1.0 : 0.3;
+  // Non-standard leather colors (navy, grey, teal, olive, green)
+  for (const [key, rule] of Object.entries(SPECIAL_STRAP_RULES)) {
+    if (strap.includes(key)) {
+      return rule.allowed.includes(shoeColor) ? 1.0 : rule.fallback;
+    }
+  }
 
   return ["white", "black"].includes(shoeColor) ? 0.85 : 0.5;
 }
 
+// ── Shoe pre-filter ───────────────────────────────────────────────────────────
 
+/**
+ * Pre-filter shoe candidates by strap–shoe rule BEFORE scoring.
+ * Eliminates hard mismatches (strapShoeScore === 0.0) from the candidate pool
+ * so they never appear in sorted results, even with diversity bonuses.
+ *
+ * Falls back to full pool if filtering would leave zero candidates.
+ */
+export function filterShoesByStrap(watch, shoes) {
+  if (!shoes?.length) return shoes ?? [];
+  const compatible = shoes.filter(g => strapShoeScore(watch, g) > 0.0);
+  // Graceful fallback: never return empty — prefer any shoe over none
+  return compatible.length > 0 ? compatible : shoes;
+}
 
-// Lazy style-learn multiplier — avoids top-level indexedDB import in test env
+// ── Context formality ─────────────────────────────────────────────────────────
+
+/**
+ * Score how well a garment's formality matches the context target.
+ * Returns -Infinity for garments below the context minimum floor (hard gate).
+ * Returns 0.75 (neutral) when no context is set.
+ */
+export function contextFormalityScore(garment, context) {
+  const ctx = CONTEXT_FORMALITY[context];
+  if (!ctx) return 0.75;
+  const gf = garment.formality ?? 5;
+  if (gf < ctx.min) return -Infinity; // hard gate — sorts below all valid scores
+  const diff = Math.abs(ctx.target - gf);
+  return Math.max(0, 1 - diff / 5);
+}
+
+// ── Style-learning ─────────────────────────────────────────────────────────────
+
 let _slStore = null;
 function _styleLearnMult(garment) {
   try {
@@ -136,111 +188,179 @@ function _styleLearnMult(garment) {
   } catch (_) { return 1.0; }
 }
 
+// ── Score refinement helpers ──────────────────────────────────────────────────
+
 /**
- * Score how well a garment's formality matches the context target.
- * Returns 0-1. Returns 0.75 (neutral) when no context is set.
+ * Sharpen a score by raising it to a power > 1.
+ * Widens the gap between good and mediocre scores — mid-range values drop more
+ * than high scores, making the engine more decisive about quality differences.
+ * Only applied to scores > 0 (gates and strap-shoe 0.0 are unaffected).
  */
-export function contextFormalityScore(garment, context) {
-  const ctx = CONTEXT_FORMALITY[context];
-  if (!ctx) return 0.75; // no context or unknown — neutral
-  const gf = garment.formality ?? 5;
-  // Hard floor: garments below minimum score 0
-  if (gf < ctx.min) return 0.0;
-  const diff = Math.abs(ctx.target - gf);
-  return Math.max(0, 1 - diff / 5);
+function sharpen(score, power = 1.35) {
+  if (score <= 0) return score;
+  return Math.pow(score, power);
 }
 
+/**
+ * Brightness balance: nudge scores slightly based on garment lightness.
+ * Dark garments are slightly penalised (tend toward heavy outfits);
+ * light garments are slightly boosted (tend toward airy, daytime-appropriate outfits).
+ * Applied as a flat additive after the multiplicative base — intentionally small.
+ */
+function brightnessScore(color) {
+  const c = (color ?? "").toLowerCase();
+  const dark  = ["black", "navy", "charcoal", "dark brown", "indigo"];
+  const light = ["white", "cream", "beige", "stone", "khaki", "tan", "sand"];
+  if (dark.includes(c))  return -0.05;
+  if (light.includes(c)) return  0.05;
+  return 0;
+}
+
+// ── Composite scorer ─────────────────────────────────────────────────────────
+
+/**
+ * Score a garment against a watch + context using the gated multiplicative model.
+ *
+ * Formula (when all gates pass):
+ *   base = (colorMatch²) × (formalityMatch²) × watchCompatibility × contextFormality × weatherLayer
+ *   base = sharpen(base, 1.35)
+ *   score = max(0, base × styleLearnMult + brightnessNudge)
+ *
+ * Return values:
+ *   -Infinity  context formality floor violated (garment.formality < context.min)
+ *   -Infinity  total formality mismatch: fm === 0, non-shoe garments only
+ *   -Infinity  weather hard rejection: layer garment in heat (wl === 0)
+ *    0.0       strap-shoe hard mismatch (shoes slot only)
+ *    > 0       valid — higher is better
+ *
+ * Shoes are exempt from the formality hard gate. They are scored primarily on
+ * strap-shoe compatibility; a formality diff ≥ 5 produces a low score but does
+ * NOT eliminate the shoe — that would leave the engine with no footwear.
+ *
+ * Memoized per (watchId|brand, garmentId|type:color:formality, context, strap, tempC, outfitFormality).
+ */
 export function scoreGarment(watch, garment, weather = {}, outfitFormality = null, context = null) {
+  // ── Cache key ──────────────────────────────────────────────────────────────
+  // Include garment type+color+formality as fallback when garment.id is absent
+  // (e.g. test fixtures). Without this, different garments with no id collide.
+  const garmentKey = garment.id ?? `${garment.type ?? garment.category}:${garment.color ?? ""}:${garment.formality ?? ""}`;
+  const cacheKey = `${watch.id ?? watch.brand ?? ""}:${garmentKey}:${context ?? ""}:${watch.strap ?? ""}:${weather?.tempC ?? ""}:${outfitFormality ?? ""}`;
+  if (_scoreCache.has(cacheKey)) return _scoreCache.get(cacheKey);
+
+  // ── Compute dimensions ─────────────────────────────────────────────────────
   const cm = colorMatchScore(watch, garment);
-  // When a slot is pinned by the user, outfitFormality anchors scoring for other slots
+
   const fm = outfitFormality != null
     ? Math.max(0, 1 - Math.abs(outfitFormality - (garment.formality ?? 5)) / 5)
     : formalityMatchScore(watch, garment);
+
   const wc = watchCompatibilityScore(watch, garment);
-  const wl = weatherLayerScore(garment, weather);
-  const ss = strapShoeScore(watch, garment); // 0.0 on strap-shoe mismatch for shoes
   const cf = contextFormalityScore(garment, context);
 
-  // Context formality of 0.0 means garment is below context minimum — hard exclude
-  if (cf === 0.0) return 0.0;
+  // Hard gate: context formality floor
+  if (!isFinite(cf)) {
+    _scoreCache.set(cacheKey, -Infinity);
+    return -Infinity;
+  }
 
-  const base = cm * 2 + fm * 2.5 + wc * 2 + wl + cf * 2.5;
-  // Style-learning bias: gentle multiplier from preference profile (0.85–1.15)
+  // Hard gate: formality mismatch is total (diff ≥ 5) — incompatible piece.
+  // Shoes are exempt: they are accessories scored primarily on strap-shoe compatibility,
+  // not on formality alignment with the watch.
+  const slot = garment.type ?? garment.category;
+  if (slot !== "shoes" && fm === 0) {
+    _scoreCache.set(cacheKey, -Infinity);
+    return -Infinity;
+  }
+
+  // Hard gate: weather rejection (layer in extreme heat, score === 0 from bracket)
+  const wl = weatherLayerScore(garment, weather);
+  if (wl === 0) {
+    _scoreCache.set(cacheKey, -Infinity);
+    return -Infinity;
+  }
+
+  // Strap-shoe rule (applies only to shoes slot)
+  const ss = strapShoeScore(watch, garment);
+  if (slot === "shoes" && ss === 0.0) {
+    _scoreCache.set(cacheKey, 0.0);
+    return 0.0;
+  }
+
+  // Weather layer multiplier (applied as soft multiplier, not exponent)
+  // Already computed above in the hard gate check — use it directly in formula.
+
+  // ── Gated multiplicative formula ───────────────────────────────────────────
+  let base =
+    (cm ** SCORE_EXPONENTS.colorMatch) *
+    (fm ** SCORE_EXPONENTS.formalityMatch) *
+    (wc ** SCORE_EXPONENTS.watchCompatibility) *
+    (cf ** SCORE_EXPONENTS.contextFormality) *
+    wl;
+
+  // Sharpen: widens gap between good and mediocre scores
+  base = sharpen(base);
+
+  // Style-learning soft multiplier (clamped to STYLE_LEARN range in store)
   const prefMult = _styleLearnMult(garment);
-  // For shoes: strap-shoe is a hard multiplier — a 0.0 effectively removes the shoe from contention
-  const scored = (garment.type ?? garment.category) === "shoes" ? base * ss : base;
-  return scored * prefMult;
+  // Brightness balance: flat nudge after all multiplicative logic.
+  // Floor at 1e-6 (not 0) so a small brightness penalty can't zero out a valid
+  // garment — it only lowers ranking. Exact 0.0 is reserved for strap-shoe mismatch.
+  const finalScore = Math.max(1e-6, (base * prefMult) + brightnessScore(garment.color));
+
+  _scoreCache.set(cacheKey, finalScore);
+  return finalScore;
 }
 
-// ── Palette coherence — post-build scoring ──────────────────────────────────
+// ── Palette coherence — post-build scoring ────────────────────────────────────
 
 const WARM_COLORS = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive"]);
 const COOL_COLORS = new Set(["black","navy","grey","slate","charcoal","indigo"]);
-// "white" is neutral — works with either palette
 
 function _colorTone(color) {
   const c = (color ?? "").toLowerCase();
   if (WARM_COLORS.has(c)) return "warm";
   if (COOL_COLORS.has(c)) return "cool";
-  // partial matches: "dark brown" → warm, "light blue" → cool
   if (c.includes("brown") || c.includes("tan") || c.includes("khaki") || c.includes("cream") || c.includes("beige")) return "warm";
   if (c.includes("grey") || c.includes("navy") || c.includes("charcoal") || c.includes("slate")) return "cool";
   return "neutral";
 }
 
 /**
- * Score how well pants and shoes work together tonally.
- * Warm pants (stone, khaki, cream) + black shoes = jarring visual break at ankle.
- * Cool pants (grey, slate, navy) + brown shoes = warm/cool clash.
- * Returns 0-1.
+ * Score pants–shoes tonal harmony.
+ * Returns 0–1.
  */
 export function pantsShoeHarmony(pants, shoes) {
   if (!pants || !shoes) return 0.7;
   const pantsTone = _colorTone(pants.color);
-  const shoeTone = _colorTone(shoes.color);
+  const shoeTone  = _colorTone(shoes.color);
 
-  // white shoes or white pants = neutral, always OK
   const pc = (pants.color ?? "").toLowerCase();
   const sc = (shoes.color ?? "").toLowerCase();
   if (sc === "white" || pc === "white") return 0.9;
-
-  // Same tone family → great
   if (pantsTone === shoeTone) return 1.0;
-  // Neutral on either side → acceptable
   if (pantsTone === "neutral" || shoeTone === "neutral") return 0.8;
-  // Warm pants + cool shoes → jarring ankle break
   if (pantsTone === "warm" && shoeTone === "cool") return 0.3;
-  // Cool pants + warm shoes → mild clash
   if (pantsTone === "cool" && shoeTone === "warm") return 0.5;
   return 0.7;
 }
 
 /**
- * Pick the best belt from available belts to match shoe color.
- * Returns the best belt garment or null.
+ * Pick the best belt to match shoe color.
+ * Returns belt garment or null.
  */
 export function pickBelt(shoes, belts) {
   if (!shoes || !belts?.length) return null;
   const sc = (shoes.color ?? "").toLowerCase();
-
-  // White sneakers → no belt preference (any works)
   if (sc === "white") return belts[0] ?? null;
 
-  // Score each belt by shoe-color match
   const scored = belts.map(belt => {
     const bc = (belt.color ?? "").toLowerCase();
-    // Exact match
     if (bc === sc) return { belt, score: 1.0 };
-    // Tone-family match: brown family
     const brownFamily = ["brown", "tan", "cognac", "dark brown"];
     if (brownFamily.includes(bc) && brownFamily.includes(sc)) {
-      // Closer shade bonus: colors sharing a root word score higher
       const sharesRoot = bc.includes("brown") && sc.includes("brown");
       return { belt, score: sharesRoot ? 0.95 : 0.85 };
     }
-    // Black to black
-    if (bc === "black" && sc === "black") return { belt, score: 1.0 };
-    // Mismatch
     return { belt, score: 0.1 };
   });
   scored.sort((a, b) => b.score - a.score);

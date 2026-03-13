@@ -15,7 +15,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      console.log("[SW] registered, scope:", reg.scope);
+      if (import.meta.env.DEV) console.log("[SW] registered, scope:", reg.scope);
 
       // Detect when a new SW is waiting (app updated) — reload to activate it
       reg.addEventListener("updatefound", () => {

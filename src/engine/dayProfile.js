@@ -63,6 +63,20 @@ export function inferDayProfile(events = [], weather = {}) {
 }
 
 /**
+ * Cooldown multiplier based on days since last wear.
+ * Fresh watches are penalised; watches rested 7+ days get a small boost.
+ * Undefined = never worn → treat as fully rested (1.0).
+ */
+function watchCooldownScore(daysSinceWear) {
+  if (daysSinceWear === undefined) return 1;
+  if (daysSinceWear <= 1) return 0.4;
+  if (daysSinceWear === 2) return 0.6;
+  if (daysSinceWear === 3) return 0.8;
+  if (daysSinceWear >= 7) return 1.15;
+  return 1; // 4–6 days: neutral
+}
+
+/**
  * Score a single watch for a day profile and recent history.
  * Penalizes replicas in clinic / formal / shift contexts.
  */
@@ -81,8 +95,25 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   const recentIds = new Set(history.slice(-7).map(h => h.watchId));
   const recencyScore = recentIds.has(watch.id) ? 0 : 1;
 
+  // Cooldown: compute days since last wear from history entries
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const wearDates = history
+    .filter(h => h.watchId === watch.id && h.date)
+    .map(h => new Date(h.date))
+    .filter(d => !isNaN(d));
+  let daysSinceWear;
+  if (wearDates.length > 0) {
+    const lastWear = new Date(Math.max(...wearDates));
+    lastWear.setHours(0, 0, 0, 0);
+    daysSinceWear = Math.round((today - lastWear) / 86_400_000);
+  }
+  const cooldown = watchCooldownScore(daysSinceWear);
+
   // Replica penalty: strong penalty in professional contexts
   const replicaPenalty = (watch.replica && GENUINE_PREFERRED_PROFILES.has(dayProfile)) ? -0.5 : 0;
 
-  return 0.4 * formalityScore + 0.35 * styleScore + 0.25 * recencyScore + replicaPenalty;
+  let score = 0.4 * formalityScore + 0.35 * styleScore + 0.25 * recencyScore + replicaPenalty;
+  score *= cooldown;
+  return score;
 }

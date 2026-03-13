@@ -510,7 +510,7 @@ export async function classify(filename, thumbnailDataURL, hash, existingGarment
   const duplicateOf = findPossibleDuplicate(hash, existingGarments) ?? undefined;
   const result = _applyDecision(fn, px, pixelColor, duplicateOf);
 
-  console.log(
+  if (import.meta.env.DEV) console.log(
     "[classifier]", filename,
     "→", result.type, result.color,
     "| photo:", result.photoType,
