@@ -43,6 +43,7 @@ vi.mock("../src/features/wardrobe/classifier.js", async (importOriginal) => {
 // Mock global fetch for Claude Vision fallback
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,
+  headers: { get: () => "application/json" },
   json: () => Promise.resolve({ type: "belt", color: "brown", formality: 5, confidence: 0.9 }),
 });
 
@@ -68,6 +69,12 @@ beforeEach(() => {
     likelyType: null,
   });
   global.URL.createObjectURL = vi.fn(() => "blob:mock");
+  // Re-assign default fetch mock after clearAllMocks wipes it
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: { get: () => "application/json" },
+    json: () => Promise.resolve({ type: "belt", color: "brown", formality: 5, confidence: 0.9 }),
+  });
 });
 
 // ─── Pipeline — basic flow ──────────────────────────────────────────────────
@@ -184,8 +191,10 @@ describe("runClassifierPipeline — garment naming", () => {
 
 describe("runClassifierPipeline — AI material + pattern propagation", () => {
   it("propagates material and pattern from Claude Vision fallback", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
+    // Override the default fetch mock for this test only
+    global.fetch.mockResolvedValueOnce({
       ok: true,
+      headers: { get: () => "application/json" },
       json: () => Promise.resolve({
         type: "sweater", color: "charcoal", material: "wool",
         pattern: "cable knit", formality: 6, confidence: 0.92,
@@ -200,8 +209,9 @@ describe("runClassifierPipeline — AI material + pattern propagation", () => {
   });
 
   it("normalizes AI color alternatives to scoring palette", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
+    global.fetch.mockResolvedValueOnce({
       ok: true,
+      headers: { get: () => "application/json" },
       json: () => Promise.resolve({
         type: "pants", color: "denim", formality: 4, confidence: 0.85,
         color_alternatives: ["dark navy", "ivory", "camel"],
@@ -213,8 +223,11 @@ describe("runClassifierPipeline — AI material + pattern propagation", () => {
   });
 
   it("omits material/pattern when AI does not return them", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
+    // Default fetch mock already returns belt/brown — no override needed.
+    // Explicit override kept for clarity and resilience against beforeEach changes.
+    global.fetch.mockResolvedValueOnce({
       ok: true,
+      headers: { get: () => "application/json" },
       json: () => Promise.resolve({ type: "belt", color: "brown", formality: 5, confidence: 0.9 }),
     });
     const garment = await runClassifierPipeline(makeFile("IMG_5555.jpg"));

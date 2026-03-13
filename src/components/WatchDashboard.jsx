@@ -3,7 +3,7 @@ import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
-import { generateOutfit, explainOutfit } from "../engine/outfitEngine.js";
+
 import { buildOutfit, explainOutfitChoice } from "../outfitEngine/outfitBuilder.js";
 import { fetchWeather, formatWeatherText, getLayerRecommendation } from "../weather/weatherService.js";
 import { getAISuggestion } from "../aiStylist/claudeStylist.js";
@@ -311,9 +311,7 @@ export default function WatchDashboard() {
     // Pass slotOverrides as pinnedSlots so engine adapts other slots to manual picks
     const hasPins = Object.keys(slotOverrides).length > 0;
     for (let round = 0; round <= shuffleSeed; round++) {
-      const built = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, {}, todayContext);
-      const hasItems = Object.values(built).some(Boolean);
-      result = hasItems ? built : generateOutfit(enrichedWatch, garments, weatherObj, { context: todayContext }, iterHistory);
+      result = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, {}, todayContext);
       if (round < shuffleSeed) {
         const combined = { outfit: {} };
         for (const slot of ["shirt","sweater","pants","shoes","jacket"]) {

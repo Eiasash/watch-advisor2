@@ -61,7 +61,7 @@ export function normalizeAIColor(aiColor) {
  * Claude Vision fallback — called when pixel classifier has low confidence.
  * classify-image function returns parsed JSON directly: { type, color, material, pattern, formality, confidence }
  */
-async function claudeVisionFallback(imageBase64, hash) {
+async function claudeVisionFallback(imageBase64, hash, onLog = null) {
   try {
     const res = await fetch("/.netlify/functions/classify-image", {
       method: "POST",
@@ -74,7 +74,8 @@ async function claudeVisionFallback(imageBase64, hash) {
     if (data?.type) return data;
     return null;
   } catch (err) {
-    if (onLog) onLog({ ts: Date.now(), step: "vision-error", msg: err.message }); console.warn("[claudeFallback]", err.message);
+    if (onLog) onLog({ ts: Date.now(), step: "vision-error", msg: err.message });
+    console.warn("[claudeFallback]", err.message);
     return null;
   }
 }
@@ -132,7 +133,7 @@ export async function runClassifierPipeline(file, existingGarments = [], onLog =
     _log("vision", `triggering Vision fallback`, `reason: ${tags._typeSource}`);
     const aiImage = hiRes ?? thumbnail;
     if (aiImage) {
-      const vision = await claudeVisionFallback(aiImage, hash);
+      const vision = await claudeVisionFallback(aiImage, hash, onLog);
       if (vision?.type) {
         const visionType = normalizeType(vision.type);
 

@@ -7,7 +7,7 @@ import { normalizeType } from "../classifier/normalizeType.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
 import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
-import { generateOutfit } from "../engine/outfitEngine.js";
+
 import { setCachedState } from "../services/localCache.js";
 import { fetchWeatherForecast, getLayerRecommendation } from "../weather/weatherService.js";
 
@@ -680,9 +680,7 @@ export default function WeekPlanner() {
       for (const slot of OUTFIT_SLOTS) shuffleExcluded[slot] = new Set();
 
       for (let round = 0; round <= shuffleSeed; round++) {
-        const adv = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments, shuffleExcluded, day.ctx);
-        const hasItems = Object.values(adv).some(Boolean);
-        outfit = hasItems ? adv : generateOutfit(enrichedWatch, wearable, weather, { context: day.ctx }, iterHistory);
+        outfit = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments, shuffleExcluded, day.ctx);
         if (round < shuffleSeed) {
           // Poison this round's picks so next iteration picks runner-up.
           // IMPORTANT: must be ONE combined entry per push (not per-slot batches).

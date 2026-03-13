@@ -116,7 +116,7 @@ SEASON/CONTEXT — infer from weight and formality:
           ],
         },
       ],
-    });
+    }, { maxAttempts: 1 });
 
     const raw = response?.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();

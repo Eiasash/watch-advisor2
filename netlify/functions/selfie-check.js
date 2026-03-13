@@ -114,7 +114,7 @@ Return ONLY valid JSON, no markdown:
         model: "claude-sonnet-4-6",
         max_tokens: 2000,
         messages: [{ role: "user", content: [...imageBlocks, { type: "text", text: prompt }] }],
-      });
+      }, { maxAttempts: 1 });
     const data = res;
 
     const raw   = data.content?.[0]?.text ?? "{}";

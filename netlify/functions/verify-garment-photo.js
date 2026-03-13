@@ -120,7 +120,7 @@ Rules:
       model: "claude-sonnet-4-6",
       max_tokens: 400,
       messages: [{ role: "user", content: contentBlocks }],
-    });
+    }, { maxAttempts: 1 });
 
     const raw  = res.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
