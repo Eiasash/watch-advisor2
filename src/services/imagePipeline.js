@@ -64,11 +64,11 @@ function loadImage(src) {
 }
 
 async function processViaCanvas(file) {
-  console.log("[pipeline] FileReader start:", file.name);
+  if (import.meta.env.DEV) console.log("[pipeline] FileReader start:", file.name);
   const dataURL = await fileToDataURL(file);
-  console.log("[pipeline] Image load start:", file.name);
+  if (import.meta.env.DEV) console.log("[pipeline] Image load start:", file.name);
   const img = await loadImage(dataURL);
-  console.log("[pipeline] Canvas draw start:", file.name, img.naturalWidth, "x", img.naturalHeight);
+  if (import.meta.env.DEV) console.log("[pipeline] Canvas draw start:", file.name, img.naturalWidth, "x", img.naturalHeight);
 
   // Thumbnail 240×240 (for display)
   const tc = document.createElement("canvas");
@@ -93,14 +93,14 @@ async function processViaCanvas(file) {
     for (let x = 0; x < 8; x++)
       hash += px[(y * 9 + x) * 4] > px[(y * 9 + x + 1) * 4] ? "1" : "0";
 
-  console.log("[pipeline] done:", file.name, "thumb len:", thumbnail.length, "hiRes len:", hiRes.length, "hash:", hash);
+  if (import.meta.env.DEV) console.log("[pipeline] done:", file.name, "thumb len:", thumbnail.length, "hiRes len:", hiRes.length, "hash:", hash);
   return { thumbnail, hiRes, hash };
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export function processImage(file) {
-  console.log("[pipeline] processImage called:", file.name, "USE_WORKER:", USE_WORKER);
+  if (import.meta.env.DEV) console.log("[pipeline] processImage called:", file.name, "USE_WORKER:", USE_WORKER);
 
   const w = USE_WORKER ? getWorker() : null;
 
