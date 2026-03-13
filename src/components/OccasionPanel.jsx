@@ -83,6 +83,7 @@ export default function OccasionPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ occasion: input.trim(), garments, watches }),
       });
+      if (!res.ok) throw new Error(`Planning failed (${res.status})`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
