@@ -129,9 +129,11 @@ export async function pushGarment(garment) {
     if (error) {
       console.warn("[supabaseSync] pushGarment error:", error.message);
     } else {
-      // Fire-and-forget: generate embedding if OPENAI_API_KEY is configured.
-      // No await — never blocks the push path.
-      _embedGarment(garment);
+      // Fire-and-forget: generate embedding if garment doesn't already have one.
+      // Only called on first push or when embedding is null — avoids re-generating
+      // embeddings for every garment on every sync cycle (prevents 503 storm when
+      // OPENAI_API_KEY is not set or temporarily unavailable).
+      if (!garment.embedding) _embedGarment(garment);
     }
   } catch (e) {
     console.warn("[supabaseSync] pushGarment failed:", e.message);
@@ -285,6 +287,11 @@ export async function semanticSearchGarments(queryEmbedding, limit = 10) {
 // ---------------------------------------------------------------------------
 async function _embedGarment(garment) {
   try {
+    // Secondary guard: check DB record — garment object may be stale
+    const { data: existing } = await supabase
+      .from("garments").select("embedding").eq("id", garment.id).single();
+    if (existing?.embedding) return; // already has embedding — skip
+
     const text = [garment.name, garment.subtype, garment.type, garment.color, garment.brand, garment.notes]
       .filter(Boolean).join(" ");
     const res = await fetch("/.netlify/functions/generate-embedding", {
