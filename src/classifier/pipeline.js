@@ -121,14 +121,17 @@ export async function runClassifierPipeline(file, existingGarments = [], onLog =
   }
 
   // Step 4: Claude Vision fallback.
-  // Fires when:
-  //   a) pixel confidence is low (ambiguous/blind) — can't determine type at all
-  //   b) flat-lay detected — pixel classifier can't distinguish shirt/sweater/pants by texture,
-  //      and colour from extractDominantColor may be wrong for warm-toned garments.
-  //      Vision gives correct type (cable knit vs dress shirt vs chinos), colour, subtype, brand.
+  // Fires for ALL image-only classifications (no filename keyword match).
+  // Pixel classifier is limited to basic type/color — Vision adds:
+  //   material, pattern, subtype, brand, seasons, contexts, weight, fit,
+  //   and corrects misclassifications (e.g. pixel says "shirt" but it's a sweater).
+  // Only skip Vision for high/medium filename matches (user named the file explicitly).
   const needsVision = tags._typeSource === "ambiguous"
     || tags._typeSource === "blind"
-    || tags._typeSource === "flat-lay";
+    || tags._typeSource === "flat-lay"
+    || tags._typeSource === "image-shirt"
+    || tags._typeSource === "image-pants"
+    || tags._typeSource === "image-shoes";
   if (needsVision) {
     _log("vision", `triggering Vision fallback`, `reason: ${tags._typeSource}`);
     const aiImage = hiRes ?? thumbnail;
@@ -163,9 +166,11 @@ export async function runClassifierPipeline(file, existingGarments = [], onLog =
         if (vision.brand) tags.brand = vision.brand;
         if (Array.isArray(vision.seasons) && vision.seasons.length) tags.seasons = vision.seasons;
         if (Array.isArray(vision.contexts) && vision.contexts.length) tags.contexts = vision.contexts;
+        if (vision.weight) tags.weight = vision.weight;
+        if (vision.fit) tags.fit = vision.fit;
         tags._typeSource = "claude-vision";
         tags.needsReview = false;
-        _log("vision-result", `${tags.type} / ${tags.color}`, [tags.subtype, tags.material, tags.pattern].filter(Boolean).join(" · ") || null);
+        _log("vision-result", `${tags.type} / ${tags.color}`, [tags.subtype, tags.material, tags.pattern, tags.weight, tags.fit].filter(Boolean).join(" · ") || null);
       }
     }
   }
@@ -198,6 +203,8 @@ export async function runClassifierPipeline(file, existingGarments = [], onLog =
     ...(tags.brand ? { brand: tags.brand } : {}),
     ...(tags.seasons?.length ? { seasons: tags.seasons } : {}),
     ...(tags.contexts?.length ? { contexts: tags.contexts } : {}),
+    ...(tags.weight ? { weight: tags.weight } : {}),
+    ...(tags.fit ? { fit: tags.fit } : {}),
     formality: tags.formality,
     photoType: tags.photoType,
     needsReview: tags.needsReview,

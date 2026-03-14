@@ -39,45 +39,78 @@ export async function handler(event) {
   // Strip data URL prefix if present
   const base64 = image.includes(",") ? image.split(",")[1] : image;
 
-  // Build garment list with names for Claude to match against directly
-  const garmentList = (garments ?? [])
-    .filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo")
-    .map(g => `  [${g.id}] ${g.name ?? "?"} — ${g.color ?? "?"} ${g.type ?? "?"} (formality ${g.formality ?? 5})`)
+  // Build garment list — filter out non-wearable items
+  const wearable = (garments ?? []).filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo");
+
+  // Build garment reference with richer metadata
+  const garmentList = wearable
+    .map(g => `  [${g.id}] ${g.name ?? "?"} — ${g.color ?? "?"} ${g.type ?? "?"} (formality ${g.formality ?? 5}${g.material ? `, ${g.material}` : ""}${g.subtype ? `, ${g.subtype}` : ""})`)
     .join("\n");
 
-  const prompt = `You are analyzing an outfit photo to identify which SPECIFIC garments from the user's wardrobe are being worn.
+  // Include garment thumbnails for visual matching — up to 20 most relevant
+  // Sort by type priority (outfit slot types first) then limit to control payload size
+  const TYPE_PRIORITY = { shirt: 0, sweater: 1, pants: 2, shoes: 3, jacket: 4, belt: 5 };
+  const withThumbnails = wearable
+    .filter(g => g.thumbnail && g.thumbnail.startsWith("data:"))
+    .sort((a, b) => (TYPE_PRIORITY[a.type] ?? 9) - (TYPE_PRIORITY[b.type] ?? 9))
+    .slice(0, 20);
+
+  // Build image blocks for garment thumbnails
+  const garmentImageBlocks = [];
+  for (const g of withThumbnails) {
+    const b64 = g.thumbnail.replace(/^data:image\/\w+;base64,/, "");
+    const mediaType = g.thumbnail.startsWith("data:image/png") ? "image/png" : "image/jpeg";
+    garmentImageBlocks.push(
+      { type: "text", text: `--- GARMENT [${g.id}] "${g.name}" (${g.color} ${g.type}) ---` },
+      { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } }
+    );
+  }
+
+  const prompt = `You are analyzing an outfit/selfie photo to identify which SPECIFIC garments from the user's wardrobe are being worn.
 
 USER'S WARDROBE (match against these EXACT items):
 ${garmentList}
 
+${withThumbnails.length > 0 ? `GARMENT REFERENCE PHOTOS: ${withThumbnails.length} garment thumbnails are shown above. Use these to VISUALLY match texture, pattern, color, and material against what you see in the outfit photo.\n` : ""}
 TASK:
-1. Examine the photo carefully — identify every visible garment by type and color.
-2. For each visible garment, find the BEST match from the wardrobe list above.
-3. Match by: color match (most important), type match, and name clues (e.g. "cable knit" texture, "oxford" collar style).
+1. Examine the outfit photo carefully — identify every visible garment by type, color, texture, and pattern.
+2. For each visible garment, compare against BOTH the text descriptions AND the reference photos.
+3. Match by: visual similarity (most important), then color match, type match, and texture/pattern cues.
 4. Only return matches with reasonable confidence. Skip items you can't identify.
 
 COLOR PRECISION:
 - navy ≠ black, cream ≠ white, olive ≠ khaki, charcoal ≠ black
 - Look at the actual color in the photo, not assumptions
+- Consider lighting conditions — indoor photos may shift colors
+
+TEXTURE/PATTERN MATCHING:
+- Cable knit vs ribbed vs smooth knit — these are distinct, don't confuse them
+- Plaid vs checked vs windowpane — look at the scale and pattern
+- Match visible fabric weight: chunky knit ≠ thin jersey
 
 Return ONLY a JSON array, no markdown:
 [
-  { "garmentId": "<exact ID from wardrobe list>", "confidence": <1-10>, "reason": "<what you see that matches>" },
+  { "garmentId": "<exact ID from wardrobe list>", "confidence": <1-10>, "reason": "<what you see that matches — mention color, texture, pattern observations>" },
   ...
 ]
 
-Focus on: outermost top layer, mid-layer (sweater/knit), base shirt, pants, shoes, belt. Skip accessories.`;
+Focus on: outermost top layer, mid-layer (sweater/knit), base shirt, pants, shoes, belt. Skip accessories unless clearly visible.`;
 
   try {
+    // Build content: selfie photo first, then garment reference photos, then prompt
+    const contentBlocks = [
+      { type: "text", text: "OUTFIT PHOTO TO ANALYZE:" },
+      { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+      ...garmentImageBlocks,
+      { type: "text", text: prompt },
+    ];
+
     const resp = await callClaude(apiKey, {
       model: "claude-sonnet-4-6",
-      max_tokens: 600,
+      max_tokens: 800,
       messages: [{
         role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-          { type: "text", text: prompt },
-        ],
+        content: contentBlocks,
       }],
     });
 
