@@ -458,6 +458,15 @@ export function PhotoVerifierPanel() {
     if (fix.type  && fix.type  !== (g.type  ?? g.category)) patch.type  = fix.type;
     if (fix.color && fix.color !== g.color)                  patch.color = fix.color;
     if (fix.name  && fix.name  !== g.name)                   patch.name  = fix.name;
+    // Apply enrichment fields from AI verification (fill in missing attributes)
+    if (r.material && !g.material)             patch.material  = r.material;
+    if (r.pattern && !g.pattern)               patch.pattern   = r.pattern;
+    if (r.subtype && !g.subtype)               patch.subtype   = r.subtype;
+    if (typeof r.formality === "number")       patch.formality = r.formality;
+    if (r.weight && !g.weight)                 patch.weight    = r.weight;
+    if (r.fit && !g.fit)                       patch.fit       = r.fit;
+    if (r.seasons?.length && !g.seasons?.length)   patch.seasons  = r.seasons;
+    if (r.contexts?.length && !g.contexts?.length)  patch.contexts = r.contexts;
     if (Object.keys(patch).length) {
       updateGarment(garmentId, patch);
       const updated = { ...g, ...patch, needsReview: false };

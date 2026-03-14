@@ -97,6 +97,13 @@ Examine all provided photos carefully. Return ONLY a JSON object (no markdown, n
   "correctedColor": "${currentColor ?? "black"}" (MOST accurate primary color — one of: ${VALID_COLORS.join(", ")}),
   "color_alternatives": ["2nd most likely color", "3rd most likely color", "4th most likely color"],
   "material": "detected fabric/material" (one of: ${VALID_MATERIALS.join(", ")}),
+  "pattern": "solid"|"striped"|"plaid"|"checked"|"cable knit"|"ribbed"|"textured"|"printed"|"houndstooth"|"herringbone"|"waffle"|"pique"|"paisley"|"geometric"|"floral"|"color block"|"windowpane"|"micro-check",
+  "subtype": "<specific subtype e.g. 'cable knit crewneck'|'half-zip'|'polo'|'oxford'|'chinos'|'derby'|'chelsea boots'|'blazer'|null>",
+  "formality": <1-10 integer>,
+  "weight": "ultralight"|"light"|"medium"|"heavy",
+  "fit": "slim"|"regular"|"relaxed"|"oversized"|null,
+  "seasons": ["spring","summer","autumn","winter"] (subset appropriate for this garment),
+  "contexts": ["clinic","formal","smart-casual","casual","date-night","riviera","sport","lounge"] (subset),
   "correctedName": "${currentName ?? ""}" (short descriptive name, max 5 words),
   "confidence": 0.0-1.0,
   "reason": "one sentence: what you see across all angles and whether labels match",
@@ -111,6 +118,11 @@ Rules:
 - Set ok=false if type or color is wrong.
 - color_alternatives: list 3 plausible alternative color names from the vocabulary (navy≠black, cream≠white, olive≠khaki).
 - material: examine texture, sheen, weight cues across all angles.
+- pattern: examine the fabric pattern closely. "solid" if no visible pattern.
+- weight: ultralight=linen/silk, light=cotton tee/poplin, medium=oxford/chinos/knit, heavy=overcoat/chunky knit.
+- fit: look at garment shape — slim=fitted, regular=standard, relaxed=loose, oversized=boxy. null for shoes/accessories.
+- seasons: infer from weight + material. Lightweight linen → spring/summer. Heavy wool → autumn/winter.
+- contexts: clinic=medical professional, formal=suit/tie, smart-casual=office no tie, casual=weekend, riviera=resort.
 - isAngleShot=true when photo shows the SAME garment from a different angle (front vs back, folded vs flat).
 - isDuplicate=true when photos are near-identical (same angle, same lighting, same garment).`;
 

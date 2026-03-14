@@ -74,6 +74,9 @@ export default function BulkTaggerPanel({ isDark }) {
           if (r.contexts?.length) patch.contexts = r.contexts;
           if (r.material)         patch.material = r.material;
           if (r.pattern)          patch.pattern  = r.pattern;
+          if (typeof r.formality === "number") patch.formality = r.formality;
+          if (r.weight)           patch.weight   = r.weight;
+          if (r.fit)              patch.fit      = r.fit;
           if (Object.keys(patch).length) {
             updateGarment(r.id, patch);
             // Push to cloud in background — fire and forget
