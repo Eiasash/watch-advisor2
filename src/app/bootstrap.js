@@ -105,9 +105,12 @@ export function useBootstrap() {
           if (cloudGarments.length === 0) {
             const currentGarments = useWardrobeStore.getState().garments ?? [];
             const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-            const freshLocalImports = currentGarments.filter(g =>
-              g.id?.startsWith("g_") && g.createdAt && new Date(g.createdAt).getTime() > fiveMinAgo
-            );
+            const freshLocalImports = currentGarments.filter(g => {
+              if (!g.id?.startsWith("g_")) return false;
+              // Treat garments without createdAt as fresh (just imported, field missing)
+              if (!g.createdAt) return true;
+              return new Date(g.createdAt).getTime() > fiveMinAgo;
+            });
             if (freshLocalImports.length > 0 && currentGarments.length === freshLocalImports.length) {
               // All local items are fresh imports from THIS session — push them to cloud.
               for (const g of freshLocalImports) {

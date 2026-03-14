@@ -135,28 +135,37 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
 
     const text = data?.content?.[0]?.text ?? "";
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+    // Use non-greedy match to find the first complete JSON object, not the greediest span
+    const jsonMatch = text.match(/\{[\s\S]*?\}(?=[^}]*$)/) || text.match(/\{[\s\S]*\}/);
+    if (jsonMatch && jsonMatch[0].length < 10_000) {
       try {
-        return {
-          statusCode: 200,
-          headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
-          body: JSON.stringify(JSON.parse(jsonMatch[0])),
-        };
-      } catch (_) {
-        // Truncated JSON — attempt repair
-        let repaired = jsonMatch[0];
-        const opens = (repaired.match(/\{/g) || []).length;
-        const closes = (repaired.match(/\}/g) || []).length;
-        for (let i = 0; i < opens - closes; i++) repaired += "}";
-        repaired = repaired.replace(/,\s*([}\]])/g, "$1");
-        try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        // Validate expected shape before returning
+        if (typeof parsed === "object" && parsed !== null) {
           return {
             statusCode: 200,
             headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
-            body: JSON.stringify({ ...JSON.parse(repaired), _repaired: true }),
+            body: JSON.stringify(parsed),
           };
-        } catch (__) { /* fall through to text response */ }
+        }
+      } catch (_) {
+        // Truncated JSON — attempt repair only if small enough to be plausible
+        let repaired = jsonMatch[0];
+        if (repaired.length < 5_000) {
+          const opens = (repaired.match(/\{/g) || []).length;
+          const closes = (repaired.match(/\}/g) || []).length;
+          if (opens - closes <= 2) {
+            for (let i = 0; i < opens - closes; i++) repaired += "}";
+            repaired = repaired.replace(/,\s*([}\]])/g, "$1");
+            try {
+              return {
+                statusCode: 200,
+                headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+                body: JSON.stringify({ ...JSON.parse(repaired), _repaired: true }),
+              };
+            } catch (__) { /* fall through to text response */ }
+          }
+        }
       }
     }
 
