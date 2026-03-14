@@ -95,18 +95,18 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   const recentIds = new Set(history.slice(-7).map(h => h.watchId));
   const recencyScore = recentIds.has(watch.id) ? 0 : 1;
 
-  // Cooldown: compute days since last wear from history entries
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const wearDates = history
+  // Cooldown: compute days since last wear from history entries.
+  // Use date-string comparison (YYYY-MM-DD) to avoid timezone/DST edge cases.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayMs = new Date(todayStr).getTime();
+  const wearDateStrs = history
     .filter(h => h.watchId === watch.id && h.date)
-    .map(h => new Date(h.date))
-    .filter(d => !isNaN(d));
+    .map(h => typeof h.date === "string" ? h.date.slice(0, 10) : new Date(h.date).toISOString().slice(0, 10))
+    .filter(d => !isNaN(new Date(d)));
   let daysSinceWear;
-  if (wearDates.length > 0) {
-    const lastWear = new Date(Math.max(...wearDates));
-    lastWear.setHours(0, 0, 0, 0);
-    daysSinceWear = Math.round((today - lastWear) / 86_400_000);
+  if (wearDateStrs.length > 0) {
+    const lastWearMs = Math.max(...wearDateStrs.map(d => new Date(d).getTime()));
+    daysSinceWear = Math.round((todayMs - lastWearMs) / 86_400_000);
   }
   const cooldown = watchCooldownScore(daysSinceWear);
 
