@@ -1,15 +1,6 @@
-import { openDB } from "idb";
+import { dbPromise } from "./db.js";
 
-const DB_NAME    = "watch-advisor2";
-const DB_VERSION = 2; // bumped for weekCtx/onCallDates
-
-const dbPromise = openDB(DB_NAME, DB_VERSION, {
-  upgrade(db, oldVersion) {
-    if (!db.objectStoreNames.contains("state"))  db.createObjectStore("state");
-    if (!db.objectStoreNames.contains("images")) db.createObjectStore("images");
-    if (!db.objectStoreNames.contains("planner"))db.createObjectStore("planner");
-  },
-});
+// DB_NAME and DB_VERSION are managed in db.js — do not open the DB here.
 
 export async function getCachedState() {
   const db = await dbPromise;

@@ -9,6 +9,8 @@
  *   - sport-elegant / dress-sport preferred
  */
 
+import { daysIdle } from "../domain/rotationStats.js";
+
 export const DAY_PROFILES = ["hospital-smart-casual", "smart-casual", "formal", "casual", "travel", "shift"];
 
 const EVENT_KEYWORDS = {
@@ -111,19 +113,11 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   const recentIds = new Set(history.slice(-7).map(h => h.watchId));
   const recencyScore = recentIds.has(watch.id) ? 0 : 1;
 
-  // Cooldown: compute days since last wear from history entries.
-  // Use date-string comparison (YYYY-MM-DD) to avoid timezone/DST edge cases.
+  // Cooldown: use canonical daysIdle from domain layer.
+  // Infinity when never worn — watchCooldownScore treats undefined as 1.0 (fully rested).
   const todayStr = new Date().toISOString().slice(0, 10);
-  const todayMs = new Date(todayStr).getTime();
-  const wearDateStrs = history
-    .filter(h => h.watchId === watch.id && h.date)
-    .map(h => typeof h.date === "string" ? h.date.slice(0, 10) : new Date(h.date).toISOString().slice(0, 10))
-    .filter(d => !isNaN(new Date(d)));
-  let daysSinceWear;
-  if (wearDateStrs.length > 0) {
-    const lastWearMs = Math.max(...wearDateStrs.map(d => new Date(d).getTime()));
-    daysSinceWear = Math.round((todayMs - lastWearMs) / 86_400_000);
-  }
+  const idle = daysIdle(watch.id, history);
+  const daysSinceWear = isFinite(idle) ? idle : undefined;
   const cooldown = watchCooldownScore(daysSinceWear);
 
   // Replica penalty: strong penalty in professional contexts

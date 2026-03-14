@@ -17,7 +17,8 @@ import InstallPrompt   from "../components/InstallPrompt.jsx";
 
 // Heavy tabs — lazy-loaded so they don't bloat the initial bundle.
 // Each is only mounted on first visit (TabPane keeps it alive after that).
-const WeekPlanner    = lazy(() => import("../components/WeekPlanner.jsx"));
+const WeekPlanner       = lazy(() => import("../components/WeekPlanner.jsx"));
+const WatchRotationPanel = lazy(() => import("../components/WatchRotationPanel.jsx"));
 const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m => ({
   default: () => <><m.default /><m.PhotoVerifierPanel /></>,
 })));
@@ -184,6 +185,7 @@ function AppContent() {
           <TabPane active={tab === "rotation"}>
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
               <WeekPlanner />
+              <WatchRotationPanel />
             </Suspense>
           </TabPane>
 

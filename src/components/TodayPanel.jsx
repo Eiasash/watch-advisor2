@@ -14,6 +14,7 @@ import { scoreWatchForDay } from "../engine/dayProfile.js";
 import { getAISuggestion }  from "../aiStylist/claudeStylist.js";
 import { buildOutfit }      from "../outfitEngine/outfitBuilder.js";
 import { fetchWeather }     from "../weather/weatherService.js";
+import { neglectedGenuine, wearStreak } from "../domain/rotationStats.js";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
@@ -166,6 +167,10 @@ export default function TodayPanel() {
 
   // Today's already-logged entry (if any)
   const todayEntry = useMemo(() => entries.find(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);
+
+  // Rotation intelligence — derived from history only
+  const neglected = useMemo(() => neglectedGenuine(watches, entries), [watches, entries]);
+  const streak    = useMemo(() => wearStreak(entries), [entries]);
 
   const [selected, setSelected]   = useState(new Set(todayEntry?.garmentIds ?? []));
   // Default to AI top pick instead of always watches[0] (Snowflake)
@@ -655,6 +660,46 @@ export default function TodayPanel() {
           style={{ width: "100%", background: "transparent", border: "none", outline: "none",
                    color: text, fontSize: 13, resize: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
       </div>
+
+      {/* Rotation nudge — neglected genuine + streak */}
+      {!logged && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          {/* Neglected watch alert — show when idle 7+ days and not currently selected */}
+          {neglected && neglected.idle >= 7 && neglected.watch.id !== watchId && (
+            <div
+              onClick={() => setWatchId(neglected.watch.id)}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                       borderRadius: 12, cursor: "pointer",
+                       background: isDark ? "#1a1206" : "#fffbeb",
+                       border: `1px solid ${isDark ? "#78350f" : "#fde68a"}` }}>
+              <span style={{ fontSize: 18 }}>⏰</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700,
+                              color: isDark ? "#fbbf24" : "#92400e" }}>
+                  {neglected.watch.brand} {neglected.watch.model} —{" "}
+                  {isFinite(neglected.idle) ? `${neglected.idle} days idle` : "never worn"}
+                </div>
+                <div style={{ fontSize: 11, color: isDark ? "#d97706" : "#b45309" }}>
+                  Tap to select · give it some wrist time
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Streak badge */}
+          {streak > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
+                          borderRadius: 20, alignSelf: "flex-start",
+                          background: isDark ? "#0f1a0f" : "#f0fdf4",
+                          border: `1px solid ${isDark ? "#166534" : "#bbf7d0"}` }}>
+              <span style={{ fontSize: 15 }}>🔥</span>
+              <span style={{ fontSize: 12, fontWeight: 700,
+                             color: isDark ? "#4ade80" : "#15803d" }}>
+                {streak}-day wear streak
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Log button */}
       <button onClick={handleLog} disabled={!watchId}
