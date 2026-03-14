@@ -168,7 +168,13 @@ export default function TodayPanel() {
   const todayEntry = useMemo(() => entries.find(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);
 
   const [selected, setSelected]   = useState(new Set(todayEntry?.garmentIds ?? []));
-  const [watchId,  setWatchId]    = useState(todayEntry?.watchId  ?? watches[0]?.id ?? null);
+  // Default to AI top pick instead of always watches[0] (Snowflake)
+  const defaultWatchId = useMemo(() => {
+    if (todayEntry?.watchId) return todayEntry.watchId;
+    const recs = getWatchRecommendations(watches, entries, "smart-casual");
+    return recs[0]?.watch?.id ?? watches[0]?.id ?? null;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [watchId,  setWatchId]    = useState(defaultWatchId);
   const [context,  setContext]    = useState(todayEntry?.context  ?? "smart-casual");
   const [notes,    setNotes]      = useState(todayEntry?.notes    ?? "");
   const [extraImgs, setExtraImgs] = useState(

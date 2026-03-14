@@ -25,6 +25,17 @@ import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
 import InstallPrompt from "../components/InstallPrompt.jsx";
 
+/**
+ * TabPane — mounts children on first activation, then stays mounted but hidden.
+ * Preserves component state (uploads, AI results, form inputs) across tab switches.
+ */
+function TabPane({ active, children }) {
+  const [visited, setVisited] = useState(false);
+  useEffect(() => { if (active && !visited) setVisited(true); }, [active, visited]);
+  if (!visited) return null;
+  return <div style={{ display: active ? "block" : "none" }}>{children}</div>;
+}
+
 // ── Tab navigation ────────────────────────────────────────────────────────────
 const TABS = [
   { key:"today",    label:"Today",    icon:"👕" },
@@ -148,52 +159,38 @@ function AppContent() {
             ))}
           </div>
 
-          {/* Tab content */}
+          {/* Tab content — keep visited tabs mounted but hidden to preserve state
+              (uploads, AI results, form progress) when navigating away */}
           <div className="wa-bottom-pad">
-          {tab === "today" && <TodayPanel />}
+          <TabPane active={tab === "today"}><TodayPanel /></TabPane>
 
-          {tab === "wardrobe" && (
-            <>
-              <WatchDashboard />
-              <WardrobeInsights />
-              <style>{`
-                .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
-                @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
-              `}</style>
-              <div className="wa-main-grid">
-                <ImportPanel />
-                <WardrobeGrid />
-              </div>
-            </>
-          )}
+          <TabPane active={tab === "wardrobe"}>
+            <WatchDashboard />
+            <WardrobeInsights />
+            <style>{`
+              .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+              @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
+            `}</style>
+            <div className="wa-main-grid">
+              <ImportPanel />
+              <WardrobeGrid />
+            </div>
+          </TabPane>
 
           {/* Rotation/Planner tab — lazy-loaded */}
-          {tab === "rotation" && (
+          <TabPane active={tab === "rotation"}>
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
               <WeekPlanner />
             </Suspense>
-          )}
+          </TabPane>
 
-          {/* Stats tab */}
-          {tab === "stats" && <StatsPanel />}
-
-          {/* History tab */}
-          {tab === "history" && <OutfitHistory />}
-
-          {/* Outfit gallery tab */}
-          {tab === "gallery" && <OutfitGallery />}
-
-          {/* Audit tab */}
-          {tab === "audit" && <><AuditPanel /><PhotoVerifierPanel /></>}
-
-          {/* Occasion planner tab */}
-          {tab === "occasion" && <OccasionPlanner />}
-
-          {/* Selfie / outfit check tab */}
-          {tab === "selfie" && <SelfiePanel />}
-
-          {/* Watch ID tab */}
-          {tab === "watchid" && <WatchIDPanel />}
+          <TabPane active={tab === "stats"}><StatsPanel /></TabPane>
+          <TabPane active={tab === "history"}><OutfitHistory /></TabPane>
+          <TabPane active={tab === "gallery"}><OutfitGallery /></TabPane>
+          <TabPane active={tab === "audit"}><AuditPanel /><PhotoVerifierPanel /></TabPane>
+          <TabPane active={tab === "occasion"}><OccasionPlanner /></TabPane>
+          <TabPane active={tab === "selfie"}><SelfiePanel /></TabPane>
+          <TabPane active={tab === "watchid"}><WatchIDPanel /></TabPane>
           </div>
         </>
       )}

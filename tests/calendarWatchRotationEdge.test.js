@@ -136,52 +136,55 @@ describe("scoreWatchForDay — edge cases", () => {
     const watch = { id: "w1", formality: 9, style: "dress", replica: false };
     const score = scoreWatchForDay(watch, "formal", []);
     // formality diff = 0, style match = "dress" in formal list, no recency, no replica penalty
-    // 0.4 * 1 + 0.35 * 1 + 0.25 * 1 = 1.0
-    expect(score).toBe(1.0);
+    // 0.4 * 1 + 0.35 * 1 + 0.25 * 1 = 1.0 + small daily jitter
+    expect(score).toBeCloseTo(1.0, 1);
   });
 
   it("formality diff of 4+ gives zero formality component", () => {
     const watch = { id: "w1", formality: 1, style: "sport", replica: false };
     // formal target = 9, diff = 8, formalityScore = max(0, 1 - 8/4) = 0
     const score = scoreWatchForDay(watch, "formal", []);
-    // 0.4 * 0 + 0.35 * 0.3 (dress not in list) + 0.25 * 1 = 0.355
-    expect(score).toBeCloseTo(0.355, 3);
+    // 0.4 * 0 + 0.35 * 0.3 (dress not in list) + 0.25 * 1 = 0.355 + jitter
+    expect(score).toBeCloseTo(0.355, 1);
   });
 
   it("replica penalty applied in hospital context", () => {
-    const genuine = { id: "g", formality: 7, style: "sport-elegant", replica: false };
-    const replica = { id: "r", formality: 7, style: "sport-elegant", replica: true };
+    // Use same ID so jitter cancels out in the diff
+    const genuine = { id: "same", formality: 7, style: "sport-elegant", replica: false };
+    const replica = { id: "same", formality: 7, style: "sport-elegant", replica: true };
     const gScore = scoreWatchForDay(genuine, "hospital-smart-casual", []);
     const rScore = scoreWatchForDay(replica, "hospital-smart-casual", []);
-    expect(rScore).toBe(gScore - 0.5);
+    expect(gScore - rScore).toBeCloseTo(0.5, 5);
   });
 
   it("replica penalty applied in formal context", () => {
-    const replica = { id: "r", formality: 9, style: "dress", replica: true };
-    const score = scoreWatchForDay(replica, "formal", []);
-    expect(score).toBe(1.0 - 0.5); // 0.5
+    const genuine = { id: "same", formality: 9, style: "dress", replica: false };
+    const replica = { id: "same", formality: 9, style: "dress", replica: true };
+    const gScore = scoreWatchForDay(genuine, "formal", []);
+    const rScore = scoreWatchForDay(replica, "formal", []);
+    expect(gScore - rScore).toBeCloseTo(0.5, 5);
   });
 
   it("replica penalty applied in shift context", () => {
-    const replica = { id: "r", formality: 7, style: "sport-elegant", replica: true };
-    const score = scoreWatchForDay(replica, "shift", []);
-    const genuine = { id: "g", formality: 7, style: "sport-elegant", replica: false };
+    const genuine = { id: "same", formality: 7, style: "sport-elegant", replica: false };
+    const replica = { id: "same", formality: 7, style: "sport-elegant", replica: true };
     const gScore = scoreWatchForDay(genuine, "shift", []);
-    expect(score).toBe(gScore - 0.5);
+    const rScore = scoreWatchForDay(replica, "shift", []);
+    expect(gScore - rScore).toBeCloseTo(0.5, 5);
   });
 
   it("NO replica penalty in casual context", () => {
-    const replica = { id: "r", formality: 5, style: "sport", replica: true };
-    const genuine = { id: "g", formality: 5, style: "sport", replica: false };
-    const rScore = scoreWatchForDay(replica, "casual", []);
+    const genuine = { id: "same", formality: 5, style: "sport", replica: false };
+    const replica = { id: "same", formality: 5, style: "sport", replica: true };
     const gScore = scoreWatchForDay(genuine, "casual", []);
-    expect(rScore).toBe(gScore);
+    const rScore = scoreWatchForDay(replica, "casual", []);
+    expect(gScore - rScore).toBeCloseTo(0, 5);
   });
 
   it("NO replica penalty in smart-casual context", () => {
-    const replica = { id: "r", formality: 6, style: "sport", replica: true };
-    const genuine = { id: "g", formality: 6, style: "sport", replica: false };
-    expect(scoreWatchForDay(replica, "smart-casual", [])).toBe(scoreWatchForDay(genuine, "smart-casual", []));
+    const genuine = { id: "same", formality: 6, style: "sport", replica: false };
+    const replica = { id: "same", formality: 6, style: "sport", replica: true };
+    expect(scoreWatchForDay(genuine, "smart-casual", []) - scoreWatchForDay(replica, "smart-casual", [])).toBeCloseTo(0, 5);
   });
 
   it("recency penalty: recently worn watch scores lower", () => {
@@ -196,16 +199,16 @@ describe("scoreWatchForDay — edge cases", () => {
     const watch = { id: "w1", style: "sport", replica: false };
     // smart-casual target = 6, diff = 1
     const score = scoreWatchForDay(watch, "smart-casual", []);
-    const expected = 0.4 * 0.75 + 0.35 * 1 + 0.25 * 1; // 0.3 + 0.35 + 0.25 = 0.9
-    expect(score).toBeCloseTo(expected, 3);
+    const expected = 0.4 * 0.75 + 0.35 * 1 + 0.25 * 1; // 0.3 + 0.35 + 0.25 = 0.9 + jitter
+    expect(score).toBeCloseTo(expected, 1);
   });
 
   it("unknown day profile uses default formality 6", () => {
     const watch = { id: "w1", formality: 6, style: "sport", replica: false };
     const score = scoreWatchForDay(watch, "nonexistent-profile", []);
     // diff = 0, no suitable styles → 0.3, no recency
-    // 0.4 * 1 + 0.35 * 0.3 + 0.25 * 1 = 0.755
-    expect(score).toBeCloseTo(0.755, 3);
+    // 0.4 * 1 + 0.35 * 0.3 + 0.25 * 1 = 0.755 + jitter
+    expect(score).toBeCloseTo(0.755, 1);
   });
 
   it("history beyond 7 entries: only last 7 checked", () => {

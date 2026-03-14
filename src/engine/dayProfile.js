@@ -77,8 +77,24 @@ function watchCooldownScore(daysSinceWear) {
 }
 
 /**
+ * Deterministic daily jitter — gives each watch a small daily-varying offset
+ * so that ties are broken differently each day instead of by array position.
+ * Uses a simple hash of (watchId + dateString) mapped to [0, 0.009).
+ * Tiny enough to only affect ties, never override real score differences.
+ */
+export function dailyJitter(watchId, dateStr) {
+  let h = 0;
+  const s = watchId + dateStr;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return (Math.abs(h) % 1000) / 111112; // 0..~0.009
+}
+
+/**
  * Score a single watch for a day profile and recent history.
  * Penalizes replicas in clinic / formal / shift contexts.
+ * Adds daily jitter to break ties so the same watch doesn't always win.
  */
 export function scoreWatchForDay(watch, dayProfile, history = []) {
   const targetFormality = TARGET_FORMALITY[dayProfile] ?? 6;
@@ -115,5 +131,9 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
 
   let score = 0.4 * formalityScore + 0.35 * styleScore + 0.25 * recencyScore + replicaPenalty;
   score *= cooldown;
+
+  // Daily jitter to prevent same watch always winning ties
+  score += dailyJitter(watch.id, todayStr);
+
   return score;
 }

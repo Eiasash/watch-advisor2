@@ -335,6 +335,42 @@ export async function pushHistoryEntry(entry) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// App settings sync — weekCtx, onCallDates, active strap selections
+// ---------------------------------------------------------------------------
+export async function pullSettings() {
+  if (IS_PLACEHOLDER) return null;
+  try {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
+    if (error) { console.warn("[supabaseSync] pullSettings error:", error.message); return null; }
+    return data;
+  } catch (e) {
+    console.warn("[supabaseSync] pullSettings failed:", e.message);
+    return null;
+  }
+}
+
+export async function pushSettings(settings) {
+  if (IS_PLACEHOLDER) return;
+  try {
+    const { error } = await supabase.from("app_settings").upsert({
+      id:            "default",
+      week_ctx:      settings.weekCtx ?? null,
+      on_call_dates: settings.onCallDates ?? null,
+      active_straps: settings.activeStraps ?? null,
+      custom_straps: settings.customStraps ?? null,
+      updated_at:    new Date().toISOString(),
+    }, { onConflict: "id" });
+    if (error) console.warn("[supabaseSync] pushSettings error:", error.message);
+  } catch (e) {
+    console.warn("[supabaseSync] pushSettings failed:", e.message);
+  }
+}
+
 export async function deleteHistoryEntry(id) {
   if (IS_PLACEHOLDER) return;
   try {

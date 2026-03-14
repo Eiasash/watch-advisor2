@@ -8,7 +8,6 @@ import { buildOutfit, explainOutfitChoice } from "../outfitEngine/outfitBuilder.
 import { fetchWeather, formatWeatherText, getLayerRecommendation } from "../weather/weatherService.js";
 import { getAISuggestion } from "../aiStylist/claudeStylist.js";
 import WatchSelector from "../features/watch/WatchSelector.jsx";
-import WatchCompare from "./WatchCompare.jsx";
 import StrapPanel from "./StrapPanel.jsx";
 import { useStrapStore } from "../stores/strapStore.js";
 import WatchIDPanel   from "./WatchIDPanel.jsx";
@@ -222,7 +221,6 @@ export default function WatchDashboard() {
   const [weather, setWeather] = useState(null);
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [compareWatch, setCompareWatch] = useState(null);
   const [watchRecLoading, setWatchRecLoading] = useState(false);
   const [watchRecResult, setWatchRecResult] = useState(null);
   const [outfitLogged, setOutfitLogged] = useState(false);
@@ -392,37 +390,13 @@ export default function WatchDashboard() {
       <style>{`
         .wa-dash-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
         .wa-dash-controls { display:flex; align-items:center; gap:8px; }
-        .wa-compare-select { display:block; }
         @media (max-width:600px) {
-          .wa-compare-select { display:none; }
           .wa-dash-header { margin-bottom:12px; }
         }
       `}</style>
       <div className="wa-dash-header">
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>Today&apos;s Watch</h2>
         <div className="wa-dash-controls">
-          {watches.length >= 2 && (
-            <select
-              className="wa-compare-select"
-              value=""
-              onChange={e => {
-                const w = watches.find(w => w.id === e.target.value);
-                if (w && selectedWatch) setCompareWatch(w);
-              }}
-              style={{
-                padding: "4px 8px", borderRadius: 6, fontSize: 12,
-                background: isDark ? "#0f131a" : "#f3f4f6",
-                color: isDark ? "#8b93a7" : "#6b7280",
-                border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
-                cursor: "pointer",
-              }}
-            >
-              <option value="">Compare with...</option>
-              {watches.filter(w => w.id !== selectedWatch?.id).map(w => (
-                <option key={w.id} value={w.id}>{w.brand} {w.model}</option>
-              ))}
-            </select>
-          )}
           {watches.length > 0 && (
             <WatchSelector
               watches={watches}
@@ -763,13 +737,6 @@ export default function WatchDashboard() {
 
       {/* Watch ID from photo */}
       <WatchIDPanel />
-
-      {compareWatch && selectedWatch && (
-        <WatchCompare
-          watches={[selectedWatch, compareWatch]}
-          onClose={() => setCompareWatch(null)}
-        />
-      )}
     </div>
   );
 }
