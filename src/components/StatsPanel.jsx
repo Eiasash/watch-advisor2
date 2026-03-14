@@ -7,6 +7,7 @@ import { useHistoryStore }  from "../stores/historyStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
+import { utilizationScore } from "../domain/rotationStats.js";
 
 const COLOR_SWATCH = {
   black:"#1f2937", white:"#f3f4f6", navy:"#1e3a5f", blue:"#2563eb", grey:"#9ca3af",
@@ -252,6 +253,8 @@ export default function StatsPanel() {
       .slice(0, 8);
   }, [garments, entries]);
 
+  const utilization = useMemo(() => utilizationScore(watches, entries), [watches, entries]);
+
   return (
     <div style={{ padding: "0 0 100px" }}>
       {/* Header */}
@@ -407,6 +410,40 @@ export default function StatsPanel() {
             </Section>
           )}
 
+
+          {/* ── Collection Utilization ────────────────────────────────────── */}
+          <Section title="Collection Utilization" isDark={isDark}>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between",
+                            alignItems: "baseline", marginBottom: 6 }}>
+                <span style={{ fontSize: 13, color: text, fontWeight: 700 }}>
+                  {utilization}% of collection worn
+                </span>
+                <span style={{ fontSize: 11, color: muted }}>
+                  {new Set(entries.map(e => e.watchId).filter(Boolean)).size} of {watches.length} watches
+                </span>
+              </div>
+              <div style={{ width: "100%", height: 10, borderRadius: 5,
+                            background: isDark ? "#1a1f2b" : "#e5e7eb", overflow: "hidden" }}>
+                <div style={{
+                  width: `${utilization}%`, height: "100%", borderRadius: 5,
+                  background: utilization >= 80 ? "#22c55e"
+                            : utilization >= 50 ? "#f59e0b"
+                            : "#ef4444",
+                  transition: "width 0.6s ease",
+                }} />
+              </div>
+              <div style={{ fontSize: 11, color: muted, marginTop: 6 }}>
+                {utilization === 100
+                  ? "Every watch has seen wrist time — full rotation achieved."
+                  : utilization >= 80
+                  ? "Strong rotation. A few watches waiting their turn."
+                  : utilization >= 50
+                  ? "Over half the collection active. Some pieces sitting idle."
+                  : "Low rotation. Many watches unworn — check the Rotation tab."}
+              </div>
+            </div>
+          </Section>
 
           {/* ── Streaks + CPW ─────────────────────────────────────────────── */}
           <Section title="Habit & Value" isDark={isDark}>

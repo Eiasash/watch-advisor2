@@ -16,6 +16,7 @@ import { useRejectStore } from "../stores/rejectStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
 import { outfitConfidence } from "./confidence.js";
 import { explainOutfit } from "./explain.js";
+import { garmentDaysIdle, rotationPressure } from "../domain/rotationStats.js";
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
@@ -92,6 +93,11 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   let score = baseScore + diversityBonus(garment, history);
   // Flat rejection penalty — does not scale with base score
   if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= 0.30;
+  // Garment rotation pressure — nudge idle pieces into recommendations (capped at 0.2)
+  if (garment.id) {
+    const gIdle = garmentDaysIdle(garment.id, history);
+    score += rotationPressure(gIdle) * 0.2;
+  }
   // Coherence bonus/penalty: scale to ±25% of base score
   if (filledColors.length > 0) {
     const coherence = _crossSlotCoherence(garment, filledColors); // raw: -0.4 to +0.25

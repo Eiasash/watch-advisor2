@@ -7,7 +7,7 @@ import React, { useMemo } from "react";
 import { useWatchStore }   from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore }   from "../stores/themeStore.js";
-import { buildRotationTable } from "../domain/rotationStats.js";
+import { buildRotationMap } from "../domain/rotationSelectors.js";
 
 /** Idle-day colour coding */
 function idleColor(idle, isDark) {
@@ -40,7 +40,20 @@ export default function WatchRotationPanel() {
   const watches   = useWatchStore(s => s.watches);
   const entries   = useHistoryStore(s => s.entries);
 
-  const rows = useMemo(() => buildRotationTable(watches, entries), [watches, entries]);
+  // Compute rotation stats once per history/watches change — O(1) lookup per row.
+  const rotationMap = useMemo(() => buildRotationMap(watches, entries), [watches, entries]);
+
+  // Derive sorted display rows from the map (most idle first)
+  const rows = useMemo(() => {
+    return watches
+      .map(w => ({ watch: w, ...rotationMap[w.id] }))
+      .sort((a, b) => {
+        if (!isFinite(a.idle) && !isFinite(b.idle)) return 0;
+        if (!isFinite(a.idle)) return -1;
+        if (!isFinite(b.idle)) return 1;
+        return b.idle - a.idle;
+      });
+  }, [rotationMap, watches]);
 
   const card   = isDark ? "#171a21" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
@@ -73,7 +86,7 @@ export default function WatchRotationPanel() {
       </div>
 
       {/* Rows */}
-      {rows.map(({ watch: w, idle, count, cpw }, i) => {
+      {rows.map(({ watch: w, idle, wearCount: count, cpw }, i) => {
         const color = idleColor(idle, isDark);
         const isReplica = !!w.replica;
         return (

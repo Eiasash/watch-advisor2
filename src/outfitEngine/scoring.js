@@ -11,9 +11,13 @@
  *
  * Strap-shoe violations remain 0.0 (separate pre-filter in outfitBuilder for shoe slot).
  *
- * Rotation bias lives in engine/dayProfile.js → scoreWatchForDay via watchCooldownScore.
- * Watches idle 7+ days receive a 1.15× multiplier there. Do NOT add a second
- * rotation boost here — that would double-apply the neglect penalty.
+ * Rotation bias lives in two places:
+ *   - Watch rotation: engine/dayProfile.js → scoreWatchForDay via watchCooldownScore.
+ *     Watches idle 7+ days receive a 1.15× multiplier there.
+ *   - Garment rotation: outfitEngine/outfitBuilder.js → _scoreCandidate via
+ *     rotationPressure(garmentDaysIdle()) × 0.2. Applied post-score so it cannot
+ *     override hard gates.
+ * Do NOT add a watch rotation boost here — that would double-apply the neglect penalty.
  *
  * Weights live in src/config/scoringWeights.js — never inline here.
  * Strap rules live in src/config/strapRules.js.

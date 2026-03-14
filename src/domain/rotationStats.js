@@ -123,3 +123,69 @@ export function buildRotationTable(watches, history) {
       return b.idle - a.idle;
     });
 }
+
+/**
+ * Smooth logistic rotation pressure curve.
+ *
+ * Returns a value in (0, 1) that rises gradually as a watch sits idle.
+ *   daysIdle = 0  → ~0.02  (just worn — virtually no pressure)
+ *   daysIdle = 14 → 0.50   (midpoint — moderate pressure)
+ *   daysIdle = 28 → ~0.88  (month unworn — strong pressure)
+ *   daysIdle = ∞  → 1.00   (asymptote)
+ *
+ * Returns 0 for non-finite input (Infinity handled by caller if desired).
+ *
+ * @param {number} daysIdle — output of daysIdle(), may be 0..∞
+ * @returns {number} pressure in [0, 1)
+ */
+export function rotationPressure(daysIdleValue) {
+  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0;
+  const midpoint  = 14;
+  const steepness = 0.25;
+  return 1 / (1 + Math.exp(-steepness * (daysIdleValue - midpoint)));
+}
+
+/**
+ * Days since a garment was last worn, using garmentIds arrays in history entries.
+ * History entries store worn garment IDs in `garmentIds` or `payload.garmentIds`.
+ * Returns Infinity when the garment has never been worn.
+ *
+ * @param {string} garmentId
+ * @param {Array}  history — historyStore entries
+ * @returns {number}
+ */
+export function garmentDaysIdle(garmentId, history) {
+  const wearDates = (history ?? [])
+    .filter(h => {
+      const ids = h.garmentIds ?? h.payload?.garmentIds ?? [];
+      return ids.includes(garmentId);
+    })
+    .map(h => {
+      const d = h.date?.slice(0, 10);
+      return d ? new Date(d).getTime() : NaN;
+    })
+    .filter(ms => !isNaN(ms));
+
+  if (!wearDates.length) return Infinity;
+
+  const lastMs  = Math.max(...wearDates);
+  const todayMs = new Date(new Date().toISOString().slice(0, 10)).getTime();
+  return Math.max(0, Math.floor((todayMs - lastMs) / 86_400_000));
+}
+
+/**
+ * Percentage of the collection that has been worn at least once.
+ * Returns 0 for empty collections.
+ *
+ * @param {Array} watches — full watch collection
+ * @param {Array} history — historyStore entries
+ * @returns {number} integer 0–100
+ */
+export function utilizationScore(watches, history) {
+  if (!Array.isArray(watches) || !watches.length) return 0;
+  const watchIds = new Set(watches.map(w => w.id));
+  const worn = new Set(
+    history.map(h => h.watchId).filter(id => id && watchIds.has(id))
+  );
+  return Math.round((worn.size / watches.length) * 100);
+}
