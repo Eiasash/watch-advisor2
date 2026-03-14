@@ -33,7 +33,21 @@ export async function handler(event) {
       const mt  = image.startsWith("data:image/png") ? "image/png" : "image/jpeg";
       imageBlock = { type:"image", source:{ type:"base64", media_type:mt, data:b64 } };
     } else {
-      const r = await fetch(image);
+      let u;
+      try { u = new URL(image); } catch (_) {
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Invalid image URL" }) };
+      }
+      if (u.protocol !== "https:") {
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Only https image URLs are allowed" }) };
+      }
+      if (["localhost","127.0.0.1","::1"].includes(u.hostname) || u.hostname.startsWith("169.254.")) {
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Disallowed image host" }) };
+      }
+      const r = await fetch(u.toString(), { signal: AbortSignal.timeout(5000) });
+      const ct = r.headers.get("content-type") || "";
+      if (!ct.startsWith("image/")) {
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "URL did not return an image" }) };
+      }
       const buf = await r.arrayBuffer();
       imageBlock = { type:"image", source:{ type:"base64", media_type:r.headers.get("content-type")||"image/jpeg", data:Buffer.from(buf).toString("base64") } };
     }

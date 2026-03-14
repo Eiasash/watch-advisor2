@@ -106,10 +106,8 @@ export async function drain() {
       const task = pending[0];
       const handler = _handlers[task.type];
       if (!handler) {
-        // No handler registered — skip (will process when handler is registered)
-        task.status = "failed";
-        await db.put(STORE, task);
-        continue;
+        // No handler registered yet — leave pending, bootstrap may register it shortly
+        break;
       }
 
       // Mark running

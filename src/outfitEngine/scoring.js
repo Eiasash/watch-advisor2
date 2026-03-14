@@ -1,21 +1,25 @@
 /**
- * Outfit scoring system — gated multiplicative model.
+ * Outfit scoring system — additive weighted model.
  *
- * score = (colorMatch ** 2) * (formalityMatch ** 2) * watchCompatibility * contextFormality
+ * score = (colorMatch × 2) + (formalityMatch × 3) + (watchCompatibility × 3)
+ *       + (weatherLayer × 1) + (contextFormality × 1)
  *
  * Hard gates (return -Infinity so they sort BELOW strap-shoe 0.0 violations):
- *   - contextFormality === 0.0  (garment below context formality floor)
+ *   - contextFormality === -Infinity  (garment below context formality floor)
+ *   - formalityMatch === 0 for non-shoe slots (total formality incompatibility)
+ *   - weatherLayer === 0 (layer garment in extreme heat)
  *
  * Strap-shoe violations remain 0.0 (separate pre-filter in outfitBuilder for shoe slot).
  *
- * Weights / exponents live in src/config/scoringWeights.js — never inline here.
+ * Weights live in src/config/scoringWeights.js — never inline here.
  * Strap rules live in src/config/strapRules.js.
  * Weather rules live in src/config/weatherRules.js.
  */
 
 import { STYLE_FORMALITY_TARGET } from "./watchStyles.js";
 import { DIAL_COLOR_MAP } from "../data/dialColorMap.js";
-import { SCORE_EXPONENTS, STYLE_LEARN } from "../config/scoringWeights.js";
+import { SCORE_WEIGHTS, STYLE_LEARN } from "../config/scoringWeights.js";
+import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 import {
   BLACK_STRAP_TERMS, BROWN_STRAP_TERMS, BROWN_SHOE_COLORS, BLACK_SHOE_COLORS,
   EXEMPT_STRAP_TERMS, CASUAL_STRAP_TERMS, CASUAL_SHOE_SOFT_MATCH, CASUAL_SHOE_SOFT_MISS,
@@ -176,15 +180,9 @@ export function contextFormalityScore(garment, context) {
 
 // ── Style-learning ─────────────────────────────────────────────────────────────
 
-let _slStore = null;
 function _styleLearnMult(garment) {
   try {
-    if (!_slStore) {
-      // eslint-disable-next-line no-undef
-      const m = globalThis.__styleLearnStore__;
-      if (m) _slStore = m;
-    }
-    return _slStore ? _slStore.getState().preferenceMultiplier(garment) : 1.0;
+    return useStyleLearnStore.getState().preferenceMultiplier(garment);
   } catch (_) { return 1.0; }
 }
 
@@ -219,12 +217,12 @@ function brightnessScore(color) {
 // ── Composite scorer ─────────────────────────────────────────────────────────
 
 /**
- * Score a garment against a watch + context using the gated multiplicative model.
+ * Score a garment against a watch + context using the additive weighted model.
  *
  * Formula (when all gates pass):
- *   base = (colorMatch²) × (formalityMatch²) × watchCompatibility × contextFormality × weatherLayer
- *   base = sharpen(base, 1.35)
- *   score = max(0, base × styleLearnMult + brightnessNudge)
+ *   base = (colorMatch×2) + (formalityMatch×3) + (watchCompatibility×3)
+ *        + (weatherLayer×1) + (contextFormality×1)
+ *   score = max(1e-6, base × styleLearnMult + brightnessNudge)
  *
  * Return values:
  *   -Infinity  context formality floor violated (garment.formality < context.min)
@@ -289,20 +287,21 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   // Weather layer multiplier (applied as soft multiplier, not exponent)
   // Already computed above in the hard gate check — use it directly in formula.
 
-  // ── Gated multiplicative formula ───────────────────────────────────────────
+  // ── Additive weighted formula ───────────────────────────────────────────────
+  // score = (colorMatch × 2) + (formalityMatch × 3) + (watchCompatibility × 3)
+  //       + (weatherLayer × 1) + (contextFormality × 1)
+  // Additive model: a weak dimension hurts but cannot zero-out a valid garment
+  // (hard gates above handle true exclusions — context floor, strap-shoe mismatch).
   let base =
-    (cm ** SCORE_EXPONENTS.colorMatch) *
-    (fm ** SCORE_EXPONENTS.formalityMatch) *
-    (wc ** SCORE_EXPONENTS.watchCompatibility) *
-    (cf ** SCORE_EXPONENTS.contextFormality) *
-    wl;
-
-  // Sharpen: widens gap between good and mediocre scores
-  base = sharpen(base);
+    (cm * SCORE_WEIGHTS.colorMatch) +
+    (fm * SCORE_WEIGHTS.formalityMatch) +
+    (wc * SCORE_WEIGHTS.watchCompatibility) +
+    (wl * SCORE_WEIGHTS.weatherLayer) +
+    (cf * SCORE_WEIGHTS.contextFormality);
 
   // Style-learning soft multiplier (clamped to STYLE_LEARN range in store)
   const prefMult = _styleLearnMult(garment);
-  // Brightness balance: flat nudge after all multiplicative logic.
+  // Brightness balance: flat nudge after all additive logic.
   // Floor at 1e-6 (not 0) so a small brightness penalty can't zero out a valid
   // garment — it only lowers ranking. Exact 0.0 is reserved for strap-shoe mismatch.
   const finalScore = Math.max(1e-6, (base * prefMult) + brightnessScore(garment.color));

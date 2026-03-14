@@ -45,10 +45,15 @@ export async function handler(event) {
         const mt  = img.startsWith("data:image/png") ? "image/png" : "image/jpeg";
         imageBlocks.push({ type: "image", source: { type: "base64", media_type: mt, data: b64 } });
       } else {
-        const r = await fetch(img);
+        let u;
+        try { u = new URL(img); } catch (_) { continue; }
+        if (u.protocol !== "https:" || ["localhost","127.0.0.1","::1"].includes(u.hostname) || u.hostname.startsWith("169.254.")) continue;
+        const r = await fetch(u.toString(), { signal: AbortSignal.timeout(5000) });
+        const ct = r.headers.get("content-type") || "";
+        if (!ct.startsWith("image/")) continue;
         const buf = await r.arrayBuffer();
         const b64 = Buffer.from(buf).toString("base64");
-        imageBlocks.push({ type: "image", source: { type: "base64", media_type: r.headers.get("content-type") || "image/jpeg", data: b64 } });
+        imageBlocks.push({ type: "image", source: { type: "base64", media_type: ct, data: b64 } });
       }
     }
 

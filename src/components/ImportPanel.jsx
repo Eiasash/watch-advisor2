@@ -136,6 +136,10 @@ export default function ImportPanel() {
         if (existAngles.length < MAX_ANGLES && primary.thumbnail) {
           const newAngles = [...existAngles, primary.thumbnail].slice(0, MAX_ANGLES);
           updateGarment(existingDupe.id, { photoAngles: newAngles });
+          const nextGarments = useWardrobeStore.getState().garments;
+          setCachedState({ watches, garments: nextGarments, history }).catch(() => {});
+          pushGarment({ ...existingDupe, photoAngles: newAngles }).catch(() => {});
+          garmentsRef.current = nextGarments;
           if (toast) toast.addToast(`Added angle to "${existingDupe.name}"`, "info", 2500);
         } else {
           if (toast) toast.addToast(`Duplicate of "${existingDupe.name}" skipped`, "warning", 2500);
@@ -153,6 +157,10 @@ export default function ImportPanel() {
           if (existAngles.length < MAX_ANGLES && primary.thumbnail) {
             const newAngles = [...existAngles, primary.thumbnail].slice(0, MAX_ANGLES);
             updateGarment(existingDupe.id, { photoAngles: newAngles });
+            const nextGarments = useWardrobeStore.getState().garments;
+            setCachedState({ watches, garments: nextGarments, history }).catch(() => {});
+            pushGarment({ ...existingDupe, photoAngles: newAngles }).catch(() => {});
+            garmentsRef.current = nextGarments;
             if (toast) toast.addToast(`AI merged angle into "${existingDupe.name}"`, "info", 2500);
           } else {
             if (toast) toast.addToast(`AI duplicate of "${existingDupe.name}" skipped`, "warning", 2500);

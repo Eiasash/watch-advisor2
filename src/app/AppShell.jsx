@@ -1,29 +1,32 @@
 import React, { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import { useBootstrap } from "./bootstrap.js";
 import { useThemeStore } from "../stores/themeStore.js";
-import Header        from "../components/Header.jsx";
+import Header          from "../components/Header.jsx";
 import WatchDashboard  from "../components/WatchDashboard.jsx";
 import WardrobeInsights from "../components/WardrobeInsights.jsx";
-import ImportPanel    from "../components/ImportPanel.jsx";
-import WardrobeGrid   from "../components/WardrobeGrid.jsx";
-import TodayPanel     from "../components/TodayPanel.jsx";
-import StatsPanel     from "../components/StatsPanel.jsx";
-import AuditPanel, { PhotoVerifierPanel } from "../components/AuditPanel.jsx";
-
-const WeekPlanner = lazy(() => import("../components/WeekPlanner.jsx"));
-import SyncBar        from "../components/SyncBar.jsx";
-import SettingsPanel  from "../components/SettingsPanel.jsx";
-import ScrollToTop    from "../components/ScrollToTop.jsx";
-import OccasionPanel  from "../components/OccasionPanel.jsx";
-import OccasionPlanner from "../components/OccasionPlanner.jsx";
-import SelfiePanel    from "../components/SelfiePanel.jsx";
-import WatchIDPanel   from "../components/WatchIDPanel.jsx";
-import OutfitHistory  from "../components/OutfitHistory.jsx";
-import OutfitGallery  from "../components/OutfitGallery.jsx";
-import CommandPalette from "../components/CommandPalette.jsx";
+import ImportPanel     from "../components/ImportPanel.jsx";
+import WardrobeGrid    from "../components/WardrobeGrid.jsx";
+import TodayPanel      from "../components/TodayPanel.jsx";
+import StatsPanel      from "../components/StatsPanel.jsx";
+import SyncBar         from "../components/SyncBar.jsx";
+import ScrollToTop     from "../components/ScrollToTop.jsx";
+import CommandPalette  from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
-import InstallPrompt from "../components/InstallPrompt.jsx";
+import InstallPrompt   from "../components/InstallPrompt.jsx";
+
+// Heavy tabs — lazy-loaded so they don't bloat the initial bundle.
+// Each is only mounted on first visit (TabPane keeps it alive after that).
+const WeekPlanner    = lazy(() => import("../components/WeekPlanner.jsx"));
+const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m => ({
+  default: () => <><m.default /><m.PhotoVerifierPanel /></>,
+})));
+const SettingsPanel  = lazy(() => import("../components/SettingsPanel.jsx"));
+const OccasionPlanner = lazy(() => import("../components/OccasionPlanner.jsx"));
+const SelfiePanel    = lazy(() => import("../components/SelfiePanel.jsx"));
+const WatchIDPanel   = lazy(() => import("../components/WatchIDPanel.jsx"));
+const OutfitHistory  = lazy(() => import("../components/OutfitHistory.jsx"));
+const OutfitGallery  = lazy(() => import("../components/OutfitGallery.jsx"));
 
 /**
  * TabPane — mounts children on first activation, then stays mounted but hidden.
@@ -185,18 +188,52 @@ function AppContent() {
           </TabPane>
 
           <TabPane active={tab === "stats"}><StatsPanel /></TabPane>
-          <TabPane active={tab === "history"}><OutfitHistory /></TabPane>
-          <TabPane active={tab === "gallery"}><OutfitGallery /></TabPane>
-          <TabPane active={tab === "audit"}><AuditPanel /><PhotoVerifierPanel /></TabPane>
-          <TabPane active={tab === "occasion"}><OccasionPlanner /></TabPane>
-          <TabPane active={tab === "selfie"}><SelfiePanel /></TabPane>
-          <TabPane active={tab === "watchid"}><WatchIDPanel /></TabPane>
+
+          <TabPane active={tab === "history"}>
+            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
+              <OutfitHistory />
+            </Suspense>
+          </TabPane>
+
+          <TabPane active={tab === "gallery"}>
+            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
+              <OutfitGallery />
+            </Suspense>
+          </TabPane>
+
+          <TabPane active={tab === "audit"}>
+            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
+              <AuditTab />
+            </Suspense>
+          </TabPane>
+
+          <TabPane active={tab === "occasion"}>
+            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
+              <OccasionPlanner />
+            </Suspense>
+          </TabPane>
+
+          <TabPane active={tab === "selfie"}>
+            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
+              <SelfiePanel />
+            </Suspense>
+          </TabPane>
+
+          <TabPane active={tab === "watchid"}>
+            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
+              <WatchIDPanel />
+            </Suspense>
+          </TabPane>
           </div>
         </>
       )}
 
       <SyncBar />
-      {showSettings  && <SettingsPanel onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <Suspense fallback={null}>
+          <SettingsPanel onClose={() => setShowSettings(false)} />
+        </Suspense>
+      )}
       {showPalette   && <CommandPalette onClose={() => setShowPalette(false)} onAction={handlePaletteAction} />}
       <ScrollToTop />
       <InstallPrompt isDark={isDark} />

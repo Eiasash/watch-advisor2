@@ -1,12 +1,10 @@
-/**
- * BulkPhotoMatcher — attach photos to garments in bulk.
- * Lists all garments grouped by category. Tap to pick photo from gallery.
- * Resizes → uploads to Supabase Storage → attaches URL to garment.
- */
 import React, { useState, useRef, useCallback } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import { useWatchStore } from "../stores/watchStore.js";
+import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { uploadPhoto } from "../services/supabaseSync.js";
+import { setCachedState } from "../services/localCache.js";
 import { enqueueTask } from "../services/backgroundQueue.js";
 
 function resizeForUpload(file, maxPx = 512) {
@@ -39,6 +37,8 @@ export default function BulkPhotoMatcher() {
   const isDark = mode === "dark";
   const garments = useWardrobeStore(s => s.garments);
   const updateGarment = useWardrobeStore(s => s.updateGarment);
+  const watches = useWatchStore(s => s.watches);
+  const history = useHistoryStore(s => s.entries);
   const [uploading, setUploading] = useState(null); // garment id being uploaded
   const [done, setDone] = useState(new Set());
   const inputRef = useRef();
@@ -74,10 +74,14 @@ export default function BulkPhotoMatcher() {
         updateGarment(gId, { photoUrl: publicUrl });
       }
 
+      // Persist to IDB immediately so tab-close doesn't lose it
+      const updatedGarments = useWardrobeStore.getState().garments;
+      await setCachedState({ garments: updatedGarments, watches, history }).catch(() => {});
+
       // Queue a push-garment to sync the URL
-      const garment = garments.find(g => g.id === gId);
-      if (garment) {
-        enqueueTask("push-garment", { garment: { ...garment, thumbnail: dataUrl, photoUrl: publicUrl } });
+      const updatedGarment = updatedGarments.find(g => g.id === gId);
+      if (updatedGarment) {
+        enqueueTask("push-garment", { garment: updatedGarment }, `push-${gId}`);
       }
 
       setDone(prev => new Set([...prev, gId]));

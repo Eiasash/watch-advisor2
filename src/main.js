@@ -1,4 +1,4 @@
-import { StrictMode, createElement } from "react";
+import { StrictMode, createElement, Component } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app/AppShell.jsx";
 import { initDebugLogger } from "./services/debugLogger.js";
@@ -6,8 +6,33 @@ import { initDebugLogger } from "./services/debugLogger.js";
 // Init debug logger before anything else so we capture startup errors
 initDebugLogger();
 
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error("[ErrorBoundary]", error, info); }
+  render() {
+    if (this.state.error) {
+      return createElement("div", {
+        style: { padding: 32, fontFamily: "system-ui, sans-serif", color: "#dc2626" }
+      },
+        createElement("h2", null, "Something went wrong"),
+        createElement("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap" } },
+          this.state.error?.message ?? String(this.state.error)
+        ),
+        createElement("button", {
+          onClick: () => this.setState({ error: null }),
+          style: { marginTop: 16, padding: "8px 16px", cursor: "pointer" }
+        }, "Retry")
+      );
+    }
+    return this.props.children;
+  }
+}
+
 createRoot(document.getElementById("root")).render(
-  createElement(StrictMode, null, createElement(App))
+  createElement(StrictMode, null,
+    createElement(ErrorBoundary, null, createElement(App))
+  )
 );
 
 // ── Service Worker registration ───────────────────────────────────────────────

@@ -8,7 +8,7 @@ import { useWatchStore }    from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
 import { useStrapStore }         from "../stores/strapStore.js";
-import { useRejectStore }        from "../stores/rejectStore.js";
+import { useRejectStore, hydrateRejectStore } from "../stores/rejectStore.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 export function useBootstrap() {
@@ -21,7 +21,6 @@ export function useBootstrap() {
   const setWeekCtx      = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates  = useWardrobeStore(s => s.setOnCallDates);
   const hydrateStraps   = useStrapStore(s => s.hydrate);
-  const hydrateRejects  = useRejectStore(s => s.hydrate);
   const hydrateStyle    = useStyleLearnStore(s => s.hydrate);
 
   useEffect(() => {
@@ -48,7 +47,7 @@ export function useBootstrap() {
       if (Array.isArray(cached.onCallDates)) setOnCallDates(cached.onCallDates);
       if (cached._outfitOverrides) useWardrobeStore.setState({ _outfitOverrides: cached._outfitOverrides });
       if (cached.strapStore) hydrateStraps(cached.strapStore);
-      await hydrateRejects();
+      await hydrateRejectStore();
       hydrateStyle(cached.styleLearning ?? {});
 
       setReady(true);
@@ -98,28 +97,18 @@ export function useBootstrap() {
           const h = cloud.history ?? [];
 
           // Cloud is authoritative. Always accept cloud state.
-          // The ONLY exception: cloud returns 0 garments AND local has garments
-          // that were NEVER synced to cloud (brand new user, first import).
-          // We detect this by checking if any local garment has an id starting
-          // with "g_" (app-generated) and created_at within the last 5 minutes.
+          // The ONLY exception: cloud returns 0 garments AND local has garments.
+          // In that case, push all local garments to cloud and abort the pull.
+          // This prevents transient cloud-empty states (auth glitch, sync gap)
+          // from destroying a non-empty local wardrobe.
           if (cloudGarments.length === 0) {
             const currentGarments = useWardrobeStore.getState().garments ?? [];
-            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-            const freshLocalImports = currentGarments.filter(g => {
-              if (!g.id?.startsWith("g_")) return false;
-              // Treat garments without createdAt as fresh (just imported, field missing)
-              if (!g.createdAt) return true;
-              return new Date(g.createdAt).getTime() > fiveMinAgo;
-            });
-            if (freshLocalImports.length > 0 && currentGarments.length === freshLocalImports.length) {
-              // All local items are fresh imports from THIS session — push them to cloud.
-              for (const g of freshLocalImports) {
+            if (currentGarments.length > 0) {
+              for (const g of currentGarments) {
                 pushGarmentSync(g).catch(() => {});
               }
               return;
             }
-            // Otherwise: cloud was intentionally emptied or user has stale IDB.
-            // Accept empty cloud. Clear local.
           }
 
           setWatches(w);
@@ -185,7 +174,12 @@ export function useBootstrap() {
       );
     })();
 
-    return () => { off && off(); };
+    return () => {
+      off?.();
+      offWardrobe?.();
+      offStrap?.();
+      if (settingsDebounce) clearTimeout(settingsDebounce);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ready, status };

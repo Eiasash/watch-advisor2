@@ -16,7 +16,7 @@ export default function BulkTaggerPanel({ isDark }) {
   const garments     = useWardrobeStore(s => s.garments);
   const updateGarment = useWardrobeStore(s => s.updateGarment);
   const watches      = useWatchStore(s => s.watches);
-  const history      = useHistoryStore(s => s.history);
+  const history      = useHistoryStore(s => s.entries);
 
   const [running,  setRunning]  = useState(false);
   const [progress, setProgress] = useState(0);   // 0–100

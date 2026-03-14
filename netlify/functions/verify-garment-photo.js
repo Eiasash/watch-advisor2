@@ -57,11 +57,21 @@ export async function handler(event) {
       const mediaType = imageBase64.startsWith("data:image/png") ? "image/png" : "image/jpeg";
       imageBlock = { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } };
     } else if (imageUrl) {
-      // Fetch the image and convert to base64
-      const imgRes = await fetch(imageUrl);
+      // Fetch the image and convert to base64 — validate URL first to prevent SSRF
+      let u;
+      try { u = new URL(imageUrl); } catch (_) {
+        return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Invalid image URL" }) };
+      }
+      if (u.protocol !== "https:" || ["localhost","127.0.0.1","::1"].includes(u.hostname) || u.hostname.startsWith("169.254.")) {
+        return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Disallowed image host" }) };
+      }
+      const imgRes = await fetch(u.toString(), { signal: AbortSignal.timeout(5000) });
+      const ct = imgRes.headers.get("content-type") || "";
+      if (!ct.startsWith("image/")) {
+        return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "URL did not return an image" }) };
+      }
       const buf = await imgRes.arrayBuffer();
       const b64 = Buffer.from(buf).toString("base64");
-      const ct = imgRes.headers.get("content-type") || "image/jpeg";
       imageBlock = { type: "image", source: { type: "base64", media_type: ct, data: b64 } };
     } else {
       return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "No image provided" }) };

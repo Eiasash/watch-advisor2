@@ -13,10 +13,10 @@ const CORS = {
 };
 
 function sb() {
-  return createClient(
-    process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
-  );
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) throw new Error("Supabase server credentials not configured");
+  return createClient(url, key);
 }
 
 export async function handler(event) {
@@ -35,12 +35,17 @@ export async function handler(event) {
     if (event.httpMethod === "POST") {
       const { subscription, deviceName } = body;
       if (!subscription?.endpoint) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing subscription" }) };
-      await sb().from("push_subscriptions").upsert({
+      const keys = subscription?.keys ?? {};
+      if (typeof keys.p256dh !== "string" || typeof keys.auth !== "string") {
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Invalid subscription payload" }) };
+      }
+      const { error } = await sb().from("push_subscriptions").upsert({
         endpoint:    subscription.endpoint,
-        p256dh:      subscription.keys.p256dh,
-        auth:        subscription.keys.auth,
-        device_name: deviceName ?? "unknown",
+        p256dh:      keys.p256dh,
+        auth:        keys.auth,
+        device_name: typeof deviceName === "string" ? deviceName.slice(0, 120) : "unknown",
       }, { onConflict: "endpoint" });
+      if (error) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: error.message }) };
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
     }
 

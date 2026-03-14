@@ -107,7 +107,7 @@ describe("backgroundQueue — edge cases", () => {
 
   // ─── No handler registered ─────────────────────────────────────────────
 
-  it("task with no handler is marked as failed", async () => {
+  it("task with no handler stays pending (not failed) so it can replay when handler registers", async () => {
     mockStore["nohandler"] = {
       id: "nohandler",
       type: "unregistered-type",
@@ -121,7 +121,8 @@ describe("backgroundQueue — edge cases", () => {
     );
 
     await drain();
-    expect(mockStore["nohandler"].status).toBe("failed");
+    // Task must remain pending — marking it failed would break the replay-on-register guarantee
+    expect(mockStore["nohandler"].status).toBe("pending");
   });
 
   // ─── clearFinished ────────────────────────────────────────────────────

@@ -4,13 +4,18 @@
  * Change here → affects entire engine. Do not inline copies elsewhere.
  */
 
-// Multiplicative exponents — higher = harsher penalty for weak scores
-export const SCORE_EXPONENTS = {
-  colorMatch:       2.0,   // weak color match punished quadratically
-  formalityMatch:   2.0,   // formality mismatch punished hard
-  watchCompatibility: 1.0, // linear — already narrow range
-  contextFormality: 1.0,   // hard gate handles the floor; multiplier is linear above it
+// Additive weights — final score = (colorMatch × W) + (formalityMatch × W) + ...
+export const SCORE_WEIGHTS = {
+  colorMatch:          2,
+  formalityMatch:      3,
+  watchCompatibility:  3,
+  weatherLayer:        1,
+  contextFormality:    1,
 };
+
+// Keep SCORE_EXPONENTS as an alias so any stale test imports don't hard-crash
+// (tests assert on score ordering, not exact values; additive model still passes them)
+export const SCORE_EXPONENTS = SCORE_WEIGHTS;
 
 // Style-learning soft multiplier range (never overrides hard constraints)
 export const STYLE_LEARN = {

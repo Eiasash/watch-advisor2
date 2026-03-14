@@ -81,7 +81,13 @@ const ACCESSORY_TYPES = new Set([
 ]);
 
 /** Canonical types allowed in outfit slots */
-export const OUTFIT_TYPES = new Set(["shirt","pants","shoes","jacket","sweater"]);
+export const OUTFIT_SLOT_TYPES = new Set(["shirt","pants","shoes","jacket"]);
+
+/** Layer types — not outfit slots, but valid garment categories */
+export const LAYER_TYPES = new Set(["sweater"]);
+
+/** Union for backward compat — prefer OUTFIT_SLOT_TYPES for slot logic */
+export const OUTFIT_TYPES = new Set([...OUTFIT_SLOT_TYPES, ...LAYER_TYPES]);
 
 export function normalizeType(type) {
   if (!type) return "shirt";

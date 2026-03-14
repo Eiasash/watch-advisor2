@@ -90,8 +90,8 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   if (!isFinite(baseScore) || baseScore <= 0) return baseScore;
 
   let score = baseScore + diversityBonus(garment, history);
-  // Rejection penalty: cap at 30% of base so it can't eliminate a passing garment
-  if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= baseScore * 0.30;
+  // Flat rejection penalty — does not scale with base score
+  if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= 0.30;
   // Coherence bonus/penalty: scale to ±25% of base score
   if (filledColors.length > 0) {
     const coherence = _crossSlotCoherence(garment, filledColors); // raw: -0.4 to +0.25
