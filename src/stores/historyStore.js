@@ -1,30 +1,27 @@
 import { create } from "zustand";
 import { pushHistoryEntry, deleteHistoryEntry } from "../services/supabaseSync.js";
-import { setCachedState } from "../services/localCache.js";
+import { upsert as persistUpsert, remove as persistRemove } from "../services/persistence/historyPersistence.js";
 
 export const useHistoryStore = create((set, get) => ({
   entries: [],
   setEntries: entries => set({ entries }),
+
+  // addEntry / upsertEntry / removeEntry keep the same public API.
+  // Write order is now: IDB → Zustand (via persistUpsert) → cloud (fire-and-forget).
+
   addEntry: entry => {
-    const all = [...get().entries, entry];
-    set({ entries: all });
-    setCachedState({ history: all }).catch(() => {});
+    // IDB-first + Zustand handled by persistUpsert; cloud is fire-and-forget.
+    persistUpsert(entry).catch(() => {});
     pushHistoryEntry(entry).catch(() => {});
   },
+
   upsertEntry: entry => {
-    const existing = get().entries;
-    const idx = existing.findIndex(e => e.date === entry.date);
-    const all = idx >= 0
-      ? existing.map((e, i) => i === idx ? entry : e)
-      : [...existing, entry];
-    set({ entries: all });
-    setCachedState({ history: all }).catch(() => {});
+    persistUpsert(entry).catch(() => {});
     pushHistoryEntry(entry).catch(() => {});
   },
+
   removeEntry: id => {
-    const all = get().entries.filter(e => e.id !== id);
-    set({ entries: all });
-    setCachedState({ history: all }).catch(() => {});
+    persistRemove(id).catch(() => {});
     deleteHistoryEntry(id).catch(() => {});
   },
 }));

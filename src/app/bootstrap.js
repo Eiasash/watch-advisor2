@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
+import { loadAll as loadHistoryEntries } from "../services/persistence/historyPersistence.js";
+import { safeGet } from "../services/dbSafeLoad.js";
 import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings } from "../services/supabaseSync.js";
 import { registerHandler, resumePendingTasks, flushTasksByType } from "../services/backgroundQueue.js";
 import { checkAndBackup } from "../services/backupService.js";
@@ -33,14 +35,15 @@ export function useBootstrap() {
       setWatches(cached.watches?.length ? cached.watches : WATCH_COLLECTION);
 
       // Restore garments — thumbnail is stored inline; full-res objectURLs are gone after refresh
-      // (they are ephemeral) — grid only needs thumbnail for display
       const restoredGarments = (cached.garments ?? []).map(g => ({
         ...g,
-        // photoUrl may be an expired ObjectURL — clear it so grid falls back to thumbnail
         photoUrl: g.photoUrl?.startsWith("blob:") ? undefined : g.photoUrl,
       }));
       setGarments(restoredGarments);
-      setHistory(cached.history ?? []);
+
+      // Load history from indexed store (IDB-first) with fallback to blob
+      const historyEntries = await loadHistoryEntries();
+      setHistory(historyEntries);
 
       // Restore planner state
       if (Array.isArray(cached.weekCtx) && cached.weekCtx.length === 7) setWeekCtx(cached.weekCtx);
