@@ -1,0 +1,2 @@
+-- remote migration stub: applied directly to DB before local tracking was established
+-- version is recorded here so Supabase CI can verify migration history is consistent
