@@ -1,5 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Mock db.js and persistence layer to prevent real IDB open in Node test env
+vi.mock("../src/services/db.js", () => ({
+  DB_NAME: "watch-advisor2", DB_VERSION: 3,
+  dbPromise: Promise.resolve({}),
+  db: { put: vi.fn(), get: vi.fn(), getAll: vi.fn().mockResolvedValue([]), delete: vi.fn(), putAll: vi.fn() },
+}));
+vi.mock("../src/services/dbSafeLoad.js", () => ({
+  safeLoad: vi.fn().mockResolvedValue([]),
+  safeGet:  vi.fn().mockResolvedValue(null),
+}));
+vi.mock("../src/services/persistence/historyPersistence.js", () => ({
+  upsert: vi.fn().mockResolvedValue(undefined),
+  remove: vi.fn().mockResolvedValue(undefined),
+  loadAll: vi.fn().mockResolvedValue([]),
+}));
+
 // Mock localCache and supabaseSync to prevent real IDB/Supabase calls
 vi.mock("../src/services/localCache.js", () => ({
   getCachedState: vi.fn().mockResolvedValue({ garments: [], history: [] }),
@@ -9,16 +25,18 @@ vi.mock("../src/services/localCache.js", () => ({
 }));
 
 vi.mock("../src/services/supabaseSync.js", () => ({
-  pushHistoryEntry: vi.fn().mockResolvedValue(undefined),
-  pushGarment: vi.fn().mockResolvedValue(undefined),
-  pullCloudState: vi.fn().mockResolvedValue({ garments: [], history: [] }),
+  pushHistoryEntry:   vi.fn().mockResolvedValue(undefined),
+  deleteHistoryEntry: vi.fn().mockResolvedValue(undefined),
+  pushGarment:        vi.fn().mockResolvedValue(undefined),
+  pullCloudState:     vi.fn().mockResolvedValue({ garments: [], history: [] }),
   subscribeSyncState: vi.fn(() => () => {}),
 }));
 
 import { useWardrobeStore } from "../src/stores/wardrobeStore.js";
-import { useHistoryStore } from "../src/stores/historyStore.js";
-import { setCachedState } from "../src/services/localCache.js";
+import { useHistoryStore }  from "../src/stores/historyStore.js";
+import { setCachedState }   from "../src/services/localCache.js";
 import { pushHistoryEntry } from "../src/services/supabaseSync.js";
+import * as historyPersistence from "../src/services/persistence/historyPersistence.js";
 
 // ─── wardrobeStore ──────────────────────────────────────────────────────────
 
@@ -226,6 +244,10 @@ describe("wardrobeStore — batchMergeAngles", () => {
 });
 
 // ─── historyStore ───────────────────────────────────────────────────────────
+//
+// historyStore.addEntry is now a thin delegation wrapper.
+// Write order: historyPersistence.upsert (IDB → Zustand) → cloud (fire-and-forget).
+// Tests verify delegation contracts, not direct state mutation.
 
 describe("historyStore — addEntry", () => {
   beforeEach(() => {
@@ -233,15 +255,15 @@ describe("historyStore — addEntry", () => {
     useHistoryStore.setState({ entries: [] });
   });
 
-  it("appends entry to entries list", () => {
-    useHistoryStore.getState().addEntry({ id: "h1", watchId: "snowflake", date: "2026-03-07" });
-    expect(useHistoryStore.getState().entries).toHaveLength(1);
-    expect(useHistoryStore.getState().entries[0].id).toBe("h1");
+  it("delegates to historyPersistence.upsert with the entry", () => {
+    const entry = { id: "h1", watchId: "snowflake", date: "2026-03-07" };
+    useHistoryStore.getState().addEntry(entry);
+    expect(historyPersistence.upsert).toHaveBeenCalledWith(entry);
   });
 
-  it("calls setCachedState for local persistence", () => {
+  it("does NOT call setCachedState directly (persistence layer owns IDB writes)", () => {
     useHistoryStore.getState().addEntry({ id: "h1", watchId: "snowflake" });
-    expect(setCachedState).toHaveBeenCalled();
+    expect(setCachedState).not.toHaveBeenCalled();
   });
 
   it("calls pushHistoryEntry for cloud sync", () => {

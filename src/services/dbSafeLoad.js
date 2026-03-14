@@ -23,7 +23,9 @@ export async function safeLoad(store) {
   } catch (err) {
     console.warn(`[dbSafeLoad] IDB error on store "${store}", resetting DB:`, err.message);
     try {
-      await indexedDB.deleteDatabase(DB_NAME);
+      if (typeof indexedDB !== "undefined") {
+        await indexedDB.deleteDatabase(DB_NAME);
+      }
     } catch (_) {}
     return [];
   }

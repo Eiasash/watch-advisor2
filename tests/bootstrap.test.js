@@ -2,6 +2,22 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // ── Mock all external dependencies ──────────────────────────────────────────
 
+// Prevent real IDB open in Node test environment
+vi.mock("../src/services/db.js", () => ({
+  DB_NAME: "watch-advisor2", DB_VERSION: 3,
+  dbPromise: Promise.resolve({}),
+  db: { put: vi.fn(), get: vi.fn(), getAll: vi.fn().mockResolvedValue([]), delete: vi.fn(), putAll: vi.fn() },
+}));
+vi.mock("../src/services/dbSafeLoad.js", () => ({
+  safeLoad: vi.fn().mockResolvedValue([]),
+  safeGet:  vi.fn().mockResolvedValue(null),
+}));
+vi.mock("../src/services/persistence/historyPersistence.js", () => ({
+  upsert:  vi.fn().mockResolvedValue(undefined),
+  remove:  vi.fn().mockResolvedValue(undefined),
+  loadAll: vi.fn().mockResolvedValue([]),
+}));
+
 const mockCachedState = {
   watches: [],
   garments: [],
