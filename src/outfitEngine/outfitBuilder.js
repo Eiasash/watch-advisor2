@@ -465,10 +465,13 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   outfit._recommendedDial = _dualDialRec;
 
   // ── Confidence + explanation ─────────────────────────────────────────────
-  const { confidence: _rawConfidence, confidenceLabel } = outfitConfidence(_comboScore ?? 0);
-  const confidence = Math.max(0, _rawConfidence);  // defensive clamp: never negative or NaN
+  // When _comboScore is null, no valid shirt/pants/shoes combination was built.
+  // Force "none" label regardless of what outfitConfidence(0) would return ("weak").
+  const { confidence: _rawConfidence, confidenceLabel: _rawLabel } = outfitConfidence(_comboScore ?? 0);
+  const confidence = Math.max(0, _rawConfidence);
+  const confidenceLabel = _comboScore === null ? "none" : _rawLabel;
   outfit._score           = _comboScore ?? null;
-  outfit._confidence      = confidence;
+  outfit._confidence      = _comboScore === null ? 0 : confidence;
   outfit._confidenceLabel = confidenceLabel;
   const _capturedSignals = outfit._signals ?? null;
   // _signals is internal — clean it off before passing to explainOutfit
@@ -503,7 +506,8 @@ function diversityBonus(garment, history) {
  * Explain why this outfit was chosen.
  */
 export function explainOutfitChoice(watch, outfit, weather) {
-  const filled = Object.values(outfit).filter(Boolean);
+  // Filter for actual garment objects only — exclude metadata fields like _score, _explanation etc.
+  const filled = Object.values(outfit).filter(v => v && typeof v === "object" && (v.name || v.type || v.category));
   if (!filled.length) {
     return `No garments in wardrobe yet. Add some and the engine will build around the ${watch.model}.`;
   }
