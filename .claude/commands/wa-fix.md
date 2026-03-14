@@ -1,6 +1,6 @@
 ---
-description: Apply a targeted fix to watch-advisor2. Arg: area to fix (e.g. persistence, classifier, mobile, types)
-argument-hint: [area: persistence|classifier|mobile|types|all]
+description: Apply a targeted fix to watch-advisor2. Arg: area to fix (e.g. persistence, classifier, mobile, types, engine, security, all)
+argument-hint: [area: persistence|classifier|mobile|types|engine|security|all]
 allowed-tools: Read, Bash, Edit, Write, Grep
 ---
 
@@ -19,14 +19,13 @@ For the area **$ARGUMENTS**, apply ALL needed fixes from the audit. Rules:
 
 - **Never modify** `src/data/watchSeed.js`
 - **Never change** the test mock architecture in `tests/classifier.test.js` lines 1-40
-- Use Python `str.replace()` via `python3 -c` for complex multi-line JS edits
-- Use `str_replace` for simple targeted changes
 - After every file edit, verify the change is correct by reading it back
 - Preserve all existing exports — do not remove any exported functions
 
 ### For `persistence`:
-- `src/app/bootstrap.js`: cloud pull guard (empty cloud → push local up, don't wipe)
+- `src/app/bootstrap.js`: cloud pull guard (empty cloud → push local up, don't wipe), createdAt handling
 - `src/services/supabaseSync.js`: `_localOnly` flag, correct `pushGarment` column mapping, `pullCloudState` maps `category→type`
+- `src/services/localCache.js`: validate cached state shape before returning
 - `src/components/ImportPanel.jsx`: `pushGarment()` called after each import
 
 ### For `classifier`:
@@ -47,6 +46,17 @@ For the area **$ARGUMENTS**, apply ALL needed fixes from the audit. Rules:
 - `src/components/WatchDashboard.jsx`: AI stylist garment list filters accessories
 - `netlify/functions/claude-stylist.js`: same
 
+### For `engine`:
+- `src/outfitEngine/scoring.js`: strap-shoe veto, colorMatch, formalityMatch
+- `src/outfitEngine/outfitBuilder.js`: reject/diversity logic, sweater thresholds
+- `src/engine/dayProfile.js`: timezone-safe dates, cooldown, replica penalty
+- `src/engine/weekRotation.js`: empty array guards
+
+### For `security`:
+- `netlify/functions/claude-stylist.js`: JSON size limits, repair bounds, shape validation
+- `netlify/functions/bulk-tag.js`: input array size limit
+- `netlify/functions/_claudeClient.js`: error handling, no key leaks
+
 ### For `all`:
 Apply all of the above in sequence.
 
@@ -58,8 +68,8 @@ npm test 2>&1 | tail -8
 npm run build 2>&1 | tail -5
 ```
 
-If tests fail: diagnose and fix before proceeding. All 140 must pass.
-If build fails: fix the syntax error (run `node --check` or check esbuild error).
+If tests fail: diagnose and fix before proceeding. Only 2 pre-existing failures are acceptable.
+If build fails: fix the syntax error.
 
 Report what was changed and the final test count.
 Do NOT push — use `/wa-deploy` for that.

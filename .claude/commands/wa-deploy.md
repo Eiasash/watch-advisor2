@@ -11,7 +11,7 @@ Deploy watch-advisor2 with commit message: **$ARGUMENTS**
 ### 1. Tests
 !`npm test 2>&1`
 
-If any test fails: STOP. Do not proceed. Report the failure and suggest using `/wa-fix`.
+If any NEW test fails (beyond the 2 known pre-existing): STOP. Do not proceed. Report the failure and suggest using `/wa-fix`.
 
 ### 2. Build
 !`npm run build 2>&1`
@@ -21,7 +21,7 @@ If build fails: STOP. Report the error.
 ### 3. No debug artifacts
 !`grep -rn "console\.log\(\"\[zones\]" src/ 2>/dev/null | wc -l`
 
-If count > 0: warn (non-blocking — zones log removed in last fix).
+If count > 0: warn (non-blocking).
 
 ### 4. watchSeed.js unchanged
 !`git diff src/data/watchSeed.js | head -5`
@@ -35,11 +35,12 @@ git add -A
 git status
 ```
 
-Commit with message:
+Review staged changes. Then commit:
+
 ```bash
 git commit -m "$ARGUMENTS
 
-$(npm test 2>&1 | grep 'Tests ' | sed 's/.*Tests //' | sed 's/ .*//')/140 tests"
+$(npm test 2>&1 | grep 'Tests ' | head -1 | sed 's/.*[0-9]* //' | sed 's/ .*//')/1717 tests"
 ```
 
 Then push:
@@ -51,6 +52,7 @@ git pull --rebase origin main && git push origin main
 
 Report:
 - Commit SHA
-- Test count
+- Test count (N/1717, note any pre-existing failures)
+- Build: success / fail
 - Netlify will auto-deploy from main push (usually 60-90s)
 - Live URL: https://watch-advisor2.netlify.app
