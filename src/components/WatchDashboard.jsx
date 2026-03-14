@@ -306,16 +306,23 @@ export default function WatchDashboard() {
     if (!enrichedWatch) return {};
     // Shuffle: each increment poisons the previous pick for all slots simultaneously
     // so diversityBonus slice(-5) penalises every slot, not just the last one.
+    // Also track excluded garments per slot to prevent cycling back to earlier picks
+    // once they fall outside the diversityBonus slice(-5) window.
     let iterHistory = [...history];
     let result = {};
+    const shuffleExcluded = {};
+    for (const slot of ["shirt","sweater","pants","shoes","jacket"]) shuffleExcluded[slot] = new Set();
     // Pass slotOverrides as pinnedSlots so engine adapts other slots to manual picks
     const hasPins = Object.keys(slotOverrides).length > 0;
     for (let round = 0; round <= shuffleSeed; round++) {
-      result = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, {}, todayContext);
+      result = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, shuffleExcluded, todayContext);
       if (round < shuffleSeed) {
         const combined = { outfit: {} };
         for (const slot of ["shirt","sweater","pants","shoes","jacket"]) {
-          if (result[slot]?.id) combined.outfit[slot] = result[slot].id;
+          if (result[slot]?.id) {
+            combined.outfit[slot] = result[slot].id;
+            shuffleExcluded[slot].add(result[slot].id);
+          }
         }
         for (let i = 0; i < 5; i++) iterHistory.push(combined);
       }
@@ -366,6 +373,7 @@ export default function WatchDashboard() {
   // Only fires if AI was already active (aiSuggestion exists or aiLoading)
   useEffect(() => {
     if (Object.keys(slotOverrides).length === 0) return;
+    if (!aiSuggestion && !aiLoading) return; // Guard: only re-trigger if AI was already active
     if (aiDebounceRef.current) clearTimeout(aiDebounceRef.current);
     aiDebounceRef.current = setTimeout(() => {
       handleAIStylist(slotOverrides);
@@ -457,7 +465,7 @@ export default function WatchDashboard() {
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <button
-                onClick={() => { setShuffleSeed(s => (s + 1) % 8); setSlotOverrides({}); setOverrideOutfit(null); setAiSuggestion(null); }}
+                onClick={() => { setShuffleSeed(s => s + 1); setSlotOverrides({}); setOverrideOutfit(null); setAiSuggestion(null); }}
                 title="Shuffle to next best outfit"
                 style={{
                   fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
@@ -675,8 +683,8 @@ export default function WatchDashboard() {
                       if (g) built[slot] = g;
                     }
                   }
-                  // Preserve sweater from engine outfit if present
-                  if (outfit.sweater) built.sweater = outfit.sweater;
+                  // Preserve engine sweater only if AI didn't suggest one
+                  if (outfit.sweater && !built.sweater) built.sweater = outfit.sweater;
                   if (Object.keys(built).length > 0) setOverrideOutfit(built);
                 }}
                 style={{
