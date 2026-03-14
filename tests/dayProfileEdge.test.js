@@ -87,15 +87,15 @@ describe("scoreWatchForDay — formality calculations", () => {
     // formalityDiff = 0, formalityScore = 1.0
     // dress-sport is suitable → styleScore = 1.0
     // no history → recencyScore = 1.0
-    // no replica penalty
-    expect(score).toBeCloseTo(0.4 * 1.0 + 0.35 * 1.0 + 0.25 * 1.0, 2);
+    // no replica penalty, + small daily jitter
+    expect(score).toBeCloseTo(0.4 * 1.0 + 0.35 * 1.0 + 0.25 * 1.0, 1);
   });
 
   it("formality off by 2 for casual (target=5)", () => {
     const score = scoreWatchForDay(watch, "casual");
     const formalityScore = 1 - 2 / 4; // 0.5
-    // dress-sport not in casual suitability → styleScore = 0.3
-    expect(score).toBeCloseTo(0.4 * formalityScore + 0.35 * 0.3 + 0.25 * 1.0, 2);
+    // dress-sport not in casual suitability → styleScore = 0.3, + jitter
+    expect(score).toBeCloseTo(0.4 * formalityScore + 0.35 * 0.3 + 0.25 * 1.0, 1);
   });
 
   it("formality off by 4+ clamps to 0", () => {
@@ -109,8 +109,9 @@ describe("scoreWatchForDay — formality calculations", () => {
 // ─── scoreWatchForDay — replica penalty magnitude ───────────────────────────
 
 describe("scoreWatchForDay — replica penalty is exactly -0.5", () => {
+  // Same ID ensures daily jitter cancels out in the diff
   const watch = { id: "rep", formality: 7, style: "dress-sport", replica: true };
-  const genuine = { ...watch, replica: false };
+  const genuine = { id: "rep", formality: 7, style: "dress-sport", replica: false };
 
   it("hospital-smart-casual replica penalty is 0.5", () => {
     const diff = scoreWatchForDay(genuine, "hospital-smart-casual") - scoreWatchForDay(watch, "hospital-smart-casual");
@@ -129,12 +130,12 @@ describe("scoreWatchForDay — replica penalty is exactly -0.5", () => {
 
   it("smart-casual has zero replica penalty", () => {
     const diff = scoreWatchForDay(genuine, "smart-casual") - scoreWatchForDay(watch, "smart-casual");
-    expect(diff).toBe(0);
+    expect(diff).toBeCloseTo(0, 5);
   });
 
   it("travel has zero replica penalty", () => {
     const diff = scoreWatchForDay(genuine, "travel") - scoreWatchForDay(watch, "travel");
-    expect(diff).toBe(0);
+    expect(diff).toBeCloseTo(0, 5);
   });
 });
 

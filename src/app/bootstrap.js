@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
-import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync } from "../services/supabaseSync.js";
+import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings } from "../services/supabaseSync.js";
 import { registerHandler, resumePendingTasks, flushTasksByType } from "../services/backgroundQueue.js";
 import { checkAndBackup } from "../services/backupService.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
@@ -126,13 +126,66 @@ export function useBootstrap() {
           setGarments(cloudGarments);
           setHistory(h);
           await setCachedState({ watches: w, garments: cloudGarments, history: h });
+
+          // Pull settings (weekCtx, onCallDates, active straps)
+          const settings = await pullSettings();
+          if (settings) {
+            if (Array.isArray(settings.week_ctx) && settings.week_ctx.length === 7) {
+              setWeekCtx(settings.week_ctx);
+              await setCachedState({ weekCtx: settings.week_ctx });
+            }
+            if (Array.isArray(settings.on_call_dates)) {
+              setOnCallDates(settings.on_call_dates);
+              await setCachedState({ onCallDates: settings.on_call_dates });
+            }
+            if (settings.active_straps && typeof settings.active_straps === "object") {
+              const strapState = useStrapStore.getState();
+              // Merge cloud active straps with local (cloud wins)
+              const mergedActive = { ...strapState.activeStrap, ...settings.active_straps };
+              useStrapStore.setState({ activeStrap: mergedActive });
+            }
+            if (settings.custom_straps && typeof settings.custom_straps === "object") {
+              const strapState = useStrapStore.getState();
+              useStrapStore.setState({ straps: { ...strapState.straps, ...settings.custom_straps } });
+            }
+          }
         } catch (e) {
           console.warn("[bootstrap] cloud pull failed:", e.message);
         }
       }, 10);
+
+      // ── 4. Auto-push settings on change ─────────────────────────────────
+      let settingsDebounce = null;
+      const pushSettingsDebounced = () => {
+        clearTimeout(settingsDebounce);
+        settingsDebounce = setTimeout(() => {
+          const { weekCtx, onCallDates } = useWardrobeStore.getState();
+          const { activeStrap, straps } = useStrapStore.getState();
+          // Only sync custom straps (seed straps are immutable)
+          const customStraps = {};
+          for (const [id, s] of Object.entries(straps)) {
+            if (s.custom) customStraps[id] = s;
+          }
+          pushSettings({ weekCtx, onCallDates, activeStraps: activeStrap, customStraps }).catch(() => {});
+        }, 2000);
+      };
+      const offWardrobe = useWardrobeStore.subscribe(
+        (state, prev) => {
+          if (state.weekCtx !== prev.weekCtx || state.onCallDates !== prev.onCallDates) {
+            pushSettingsDebounced();
+          }
+        }
+      );
+      const offStrap = useStrapStore.subscribe(
+        (state, prev) => {
+          if (state.activeStrap !== prev.activeStrap || state.straps !== prev.straps) {
+            pushSettingsDebounced();
+          }
+        }
+      );
     })();
 
-    return () => off && off();
+    return () => { off && off(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ready, status };

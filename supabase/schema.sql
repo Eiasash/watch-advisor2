@@ -43,6 +43,15 @@ create table if not exists garments (
   created_at timestamptz default now()
 );
 
+create table if not exists app_settings (
+  id text primary key default 'default',
+  week_ctx jsonb default '["smart-casual","smart-casual","smart-casual","smart-casual","smart-casual","casual","casual"]'::jsonb,
+  on_call_dates jsonb default '[]'::jsonb,
+  active_straps jsonb default '{}'::jsonb,
+  custom_straps jsonb default '{}'::jsonb,
+  updated_at timestamptz default now()
+);
+
 create table if not exists history (
   id uuid primary key default gen_random_uuid(),
   watch_id text,
