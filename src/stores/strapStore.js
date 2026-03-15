@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
+import { setCachedState } from "../services/localCache.js";
 
 function buildInitialStraps() {
   const straps = {};
@@ -85,8 +86,6 @@ export const useStrapStore = create((set, get) => ({
     return { straps, activeStrap };
   },
 }));
-
-import { setCachedState } from "../services/localCache.js";
 
 function persist() {
   const state = useStrapStore.getState();
