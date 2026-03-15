@@ -319,11 +319,13 @@ export default function TodayPanel() {
     const wornIds = [...selected];
     wornIds.forEach(id => updateGarment(id, { lastWorn: TODAY_ISO }));
 
-    // Style learning
+    // Style learning — writes to the store that scoreGarment actually reads from.
+    // Previously wrote to prefStore which was siloed from scoring (scoreGarment
+    // reads useStyleLearnStore). The wear→learn→score loop was broken.
     try {
-      const { usePrefStore } = await import("../stores/prefStore.js");
+      const { useStyleLearnStore } = await import("../stores/styleLearnStore.js");
       const wornG = garments.filter(g => selected.has(g.id));
-      usePrefStore.getState().recordWear(wornG);
+      useStyleLearnStore.getState().recordWear(wornG);
     } catch(_) {}
 
     setLogged(true);

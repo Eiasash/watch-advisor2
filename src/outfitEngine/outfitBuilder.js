@@ -417,6 +417,10 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
         formalityMatch:     formalityMatchScore(watchWithStrap, bestCombo.shirt),
         watchCompatibility: watchCompatibilityScore(watchWithStrap, bestCombo.shirt),
         harmonyScore:       bestCombo.harmony,
+        // Season/context signals for explanation
+        shirtSeasons:   bestCombo.shirt.seasons  ?? [],
+        shirtContexts:  bestCombo.shirt.contexts ?? [],
+        outfitContext:  context,
       };
     }
   }
@@ -547,6 +551,9 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
         formalityMatch:     _capturedSignals.formalityMatch,
         watchCompatibility: _capturedSignals.watchCompatibility,
         pairHarmonyScore:   _capturedSignals.harmonyScore,
+        shirtSeasons:       _capturedSignals.shirtSeasons,
+        shirtContexts:      _capturedSignals.shirtContexts,
+        outfitContext:      _capturedSignals.outfitContext,
       }
     : {}, weather);
   // When no valid combo was found, prepend a fallback message

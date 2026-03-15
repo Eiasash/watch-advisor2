@@ -107,6 +107,10 @@ export function explainOutfit(watch, outfit, signals = {}, weather = {}) {
     else if (h <= 0.5) lines.push("Note: pants–shoe tone transition is a stretch — consider swapping.");
   }
 
+  // ── Season / context fit ──────────────────────────────────────────────────
+  const scLines = explainSeasonContext(signals);
+  lines.push(...scLines);
+
   // ── Dual-dial ─────────────────────────────────────────────────────────────
   if (outfit._recommendedDial) {
     const d = outfit._recommendedDial;
@@ -116,6 +120,34 @@ export function explainOutfit(watch, outfit, signals = {}, weather = {}) {
         ? "white dial pops against the dark outfit."
         : "navy dial adds depth to the lighter palette.")
     );
+  }
+
+  return lines;
+}
+
+/**
+ * Generate additional context lines for season and outfit context signals.
+ * Called from explainOutfit when signals include season/context data.
+ */
+export function explainSeasonContext(signals = {}) {
+  const lines = [];
+  const { shirtSeasons = [], shirtContexts = [], outfitContext } = signals;
+
+  if (shirtSeasons.length > 0 && !shirtSeasons.includes("all-season") && !shirtSeasons.includes("all")) {
+    const season = new Date().getMonth();
+    const cur = ["winter","winter","spring","spring","spring","summer",
+                 "summer","summer","autumn","autumn","autumn","winter"][season];
+    if (shirtSeasons.includes(cur)) {
+      lines.push(`Seasonal fit: shirt tagged for ${cur} — right pick for this time of year.`);
+    } else {
+      lines.push(`Seasonal note: shirt tagged for ${shirtSeasons.join("/")} — may feel heavy or light.`);
+    }
+  }
+
+  if (outfitContext && shirtContexts.length > 0) {
+    if (shirtContexts.includes(outfitContext)) {
+      lines.push(`Context match: shirt tagged for ${outfitContext} context.`);
+    }
   }
 
   return lines;
