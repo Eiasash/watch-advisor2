@@ -20,9 +20,13 @@ const SHELL_URLS = [
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 self.addEventListener("install", e => {
-  self.skipWaiting();
+  // Do NOT call self.skipWaiting() here — let the main thread request it
+  // via the SKIP_WAITING message. Unconditional skipWaiting causes reload
+  // loops when combined with the controllerchange listener in main.js.
   e.waitUntil(
-    caches.open(SHELL_CACHE).then(c => c.addAll(SHELL_URLS)).catch(() => {})
+    caches.open(SHELL_CACHE).then(c => c.addAll(SHELL_URLS)).catch(err => {
+      console.warn("[SW] shell precache failed:", err);
+    })
   );
 });
 

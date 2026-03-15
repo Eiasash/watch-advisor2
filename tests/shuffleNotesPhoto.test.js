@@ -15,6 +15,30 @@ vi.mock("../src/services/localCache.js", () => ({
   getImage: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../src/services/supabaseSync.js", () => ({
+  pushHistoryEntry: vi.fn().mockResolvedValue(undefined),
+  deleteHistoryEntry: vi.fn().mockResolvedValue(undefined),
+  pushGarment: vi.fn().mockResolvedValue(undefined),
+  pullCloudState: vi.fn().mockResolvedValue({ garments: [], history: [] }),
+  subscribeSyncState: vi.fn(() => () => {}),
+}));
+
+vi.mock("../src/services/persistence/historyPersistence.js", () => ({
+  upsert: vi.fn(async (entry) => {
+    // Replicate the Zustand update that real persistUpsert does after IDB write
+    const { useHistoryStore } = await import("../src/stores/historyStore.js");
+    useHistoryStore.setState(state => {
+      const idx = state.entries.findIndex(e => e.id === entry.id);
+      const next = idx >= 0
+        ? state.entries.map((e, i) => i === idx ? entry : e)
+        : [...state.entries, entry];
+      return { entries: next };
+    });
+  }),
+  remove: vi.fn().mockResolvedValue(undefined),
+  loadAll: vi.fn().mockResolvedValue([]),
+}));
+
 import { buildOutfit } from "../src/outfitEngine/outfitBuilder.js";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 
@@ -138,6 +162,8 @@ describe("historyStore — log entry with notes and photos", () => {
     };
 
     store.upsertEntry(entry);
+    // upsertEntry delegates to async persistUpsert — wait for it to settle
+    await new Promise(r => setTimeout(r, 10));
     const saved = useHistoryStore.getState().entries.find(e => e.id === "test-log-1");
 
     expect(saved).toBeTruthy();
@@ -162,6 +188,7 @@ describe("historyStore — log entry with notes and photos", () => {
     };
 
     store.upsertEntry(entry);
+    await new Promise(r => setTimeout(r, 10));
     const saved = useHistoryStore.getState().entries.find(e => e.id === "test-log-2");
     expect(saved).toBeTruthy();
     expect(saved.notes).toBeNull();
@@ -175,9 +202,11 @@ describe("historyStore — log entry with notes and photos", () => {
     const id = "test-log-upsert";
     store.upsertEntry({ id, date: "2026-03-09", watchId: "laureato",
       garmentIds: [], context: "casual", notes: "original", loggedAt: new Date().toISOString() });
+    await new Promise(r => setTimeout(r, 10));
 
     store.upsertEntry({ id, date: "2026-03-09", watchId: "laureato",
       garmentIds: [], context: "casual", notes: "updated with coat buttoned", loggedAt: new Date().toISOString() });
+    await new Promise(r => setTimeout(r, 10));
 
     const saved = useHistoryStore.getState().entries.find(e => e.id === id);
     expect(saved.notes).toBe("updated with coat buttoned");

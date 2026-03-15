@@ -41,11 +41,31 @@ createRoot(document.getElementById("root")).render(
 // ── Service Worker registration ───────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
+    // Reload-loop guard: if the page has reloaded more than 3 times
+    // within 10 seconds, stop registering the SW to break the cycle.
+    const now = Date.now();
+    const RL_KEY = "wa2-sw-reloads";
+    const RL_WINDOW = 10000;
+    const RL_MAX = 3;
+    try {
+      const hist = JSON.parse(sessionStorage.getItem(RL_KEY) || "[]")
+        .filter(t => now - t < RL_WINDOW);
+      hist.push(now);
+      sessionStorage.setItem(RL_KEY, JSON.stringify(hist));
+      if (hist.length > RL_MAX) {
+        console.error("[SW] reload loop detected — skipping registration");
+        // Unregister all SWs to break the loop
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+        return;
+      }
+    } catch { /* sessionStorage blocked — proceed normally */ }
+
     try {
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       if (import.meta.env.DEV) console.log("[SW] registered, scope:", reg.scope);
 
-      // Detect when a new SW is waiting (app updated) — reload to activate it
+      // Detect when a new SW is waiting (app updated) — tell it to activate
       reg.addEventListener("updatefound", () => {
         const incoming = reg.installing;
         if (!incoming) return;

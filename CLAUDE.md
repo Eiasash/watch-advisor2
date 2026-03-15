@@ -128,7 +128,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **1568+ tests across 85+ files** — run `npm test` to see current count
+- **1906+ tests across 104 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -140,79 +140,114 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (74 files)
+### Test file inventory (104 files)
 ```
 tests/
-  additionalStores.test.js   rejectStore, styleLearnStore, prefStore, themeStore
-  aiDupeDetection.test.js    AI duplicate detection function
-  auditPanel.test.js         AuditPanel component
-  backgroundQueue.test.js    IDB task queue
+  setup.js                     vitest global setup — IndexedDB stub for jsdom
+  additionalStores.test.js     rejectStore, styleLearnStore, prefStore, themeStore
+  aiDupeDetection.test.js      AI duplicate detection function
+  appShell.test.js             AppShell component
+  auditPanel.test.js           AuditPanel component
+  backgroundQueue.test.js      IDB task queue
   backgroundQueueEdge.test.js  FIFO ordering, failure isolation, retry, no-handler
-  backupService.test.js      backup service
-  blobCache.test.js          Netlify Blobs cache
-  bootstrap.test.js          boot sequence data wipe guard + blob cleanup + state restore
-  calendarWatchRotation.test.js  calendar-aware watch selection
-  classifier.test.js         pixel classifier
-  classifierBoundary.test.js  pants total/topF boundaries, flat-lay zoneSpread/botF, shoes terminal
-  classifierPipeline.test.js master import pipeline
-  claudeClient.test.js       shared Claude API client (retry, backoff, error handling)
-  claudeStylist.test.js      AI stylist function
-  colorDetection.test.js     color extraction
-  commandPalette.test.js     search/filter logic, deduplication, result merging
-  dayProfile.test.js         day profile inference + scoring
-  duplicateDetection.test.js dHash duplicate detection
-  extractOutfit.test.js      outfit extraction from selfies (scoring, dedup, confidence)
-  garmentEditor.test.js      canonicalType mapping, buildAutoName generation
-  garmentNamer.test.js       garment naming
-  generateOutfit.test.js     outfit generation
-  getWeather.test.js         weather API
-  imagePipeline.test.js      thumbnail + dHash pipeline
-  importPipeline.test.js     import panel logic
-  integrationImportFlow.test.js   classify → normalize → store → sync chain
+  backupService.test.js        backup service
+  blobCache.test.js            Netlify Blobs cache
+  bootstrap.test.js            boot sequence data wipe guard + blob cleanup + state restore
+  bulkPhotoMatcher.test.js     bulk photo matcher
+  bulkTag.test.js              bulk tag function
+  calendarWatchRotation.test.js      calendar-aware watch selection
+  calendarWatchRotationEdge.test.js  calendar rotation edge cases
+  classifier.test.js           pixel classifier
+  classifierBoundary.test.js   pants total/topF boundaries, flat-lay zoneSpread/botF, shoes terminal
+  classifierPipeline.test.js   master import pipeline
+  claudeClient.test.js         shared Claude API client (retry, backoff, error handling)
+  claudeStylist.test.js        AI stylist function
+  claudeStylistError.test.js   AI stylist error handling
+  colorDetection.test.js       color extraction
+  colorMaterialDetection.test.js  color/material detection
+  colorsMultilayerHiRes.test.js  multi-layer color scoring
+  commandPalette.test.js       search/filter logic, deduplication, result merging
+  confidence.test.js           outfit confidence scoring
+  contextMemory.test.js        context memory + repetition penalty
+  dayProfile.test.js           day profile inference + scoring
+  dayProfileEdge.test.js       day profile keyword + scoring boundaries
+  duplicateDetection.test.js   dHash duplicate detection
+  explain.test.js              outfit explanation engine
+  extractOutfit.test.js        outfit extraction from selfies (scoring, dedup, confidence)
+  garmentDaysIdle.test.js      garment idle days calculation
+  garmentEditor.test.js        canonicalType mapping, buildAutoName generation
+  garmentNamer.test.js         garment naming
+  generateEmbedding.test.js    vector embedding generation
+  generateOutfit.test.js       outfit generation
+  getWeather.test.js           weather API
+  historyStore.test.js         history store upsert/remove
+  imagePipeline.test.js        thumbnail + dHash pipeline
+  importPanel.test.js          import panel logic
+  integrationImportFlow.test.js      classify → normalize → store → sync chain
   integrationOutfitGeneration.test.js  dayProfile → pickWatch → scoreGarment end-to-end
-  integrationRejectRelearn.test.js    reject → isRejected → styleLearn → preferenceMultiplier
-  integrationStrapShoeVeto.test.js    strap → shoe scoring → outfit veto integration
-  integrationWeatherOutfit.test.js    weather → outfit engine → sweater layer integration
-  isOutfitPhoto.test.js      outfit photo detection
-  localCache.test.js         IndexedDB cache
-  localCacheEdge.test.js     IDB error resilience, corrupt data, concurrent writes
-  netlifyfunctions.test.js   Netlify function handlers (1)
-  netlifyfunctions2.test.js  Netlify function handlers (2) + hardened error paths
-  normalizeType.test.js      type normalization
-  outfitBuilder.test.js      outfit builder
-  outfitEngine.test.js       outfit engine
-  outfitHistory.test.js      outfit history
-  personFilter.test.js       person/selfie filter
-  photoImport.test.js        photo import
-  photoQueue.test.js         photo queue
-  pushBrief.test.js          push-brief scheduled function (brief generation, delivery, stale cleanup)
-  pushService.test.js        client push service (subscribe, unsubscribe, permission)
-  pushSubscribe.test.js      push-subscribe function (POST/DELETE, validation)
-  scoring.test.js            garment scoring
-  settingsPanel.test.js      backup/export serialization (JSON, CSV, backup format)
-  statsPanel.test.js         stats computation (frequency, streak, cold bench, CPW)
-  stores.test.js             wardrobeStore, watchStore, historyStore
-  strapStore.test.js         strap store
-  supabaseSync.test.js       Supabase sync (pull, push)
-  supabaseSyncCrud.test.js   uploadPhoto, deleteGarment, fuzzy/semantic search, subscribeSyncState
-  todayPanel.test.js         daysSinceWorn, garment type ordering
-  wardrobeGrid.test.js       TYPE_FILTER predicates, search filtering
-  wardrobeInsights.test.js   wardrobe insights
-  wardrobeStoreActions.test.js  setGarments, setWeekCtx, setOnCallDates, navigation, select mode
+  integrationRejectRelearn.test.js     reject → isRejected → styleLearn → preferenceMultiplier
+  integrationStrapShoeVeto.test.js     strap → shoe scoring → outfit veto integration
+  integrationWeatherOutfit.test.js     weather → outfit engine → sweater layer integration
+  isOutfitPhoto.test.js        outfit photo detection
+  localCache.test.js           IndexedDB cache
+  localCacheEdge.test.js       IDB error resilience, corrupt data, concurrent writes
+  netlifyfunctions.test.js     Netlify function handlers (1)
+  netlifyfunctions2.test.js    Netlify function handlers (2) + hardened error paths
+  normalizeType.test.js        type normalization
+  outfitBuilder.edge.test.js   outfit builder edge — all-fail fallback, metadata
+  outfitBuilder.test.js        outfit builder
+  outfitBuilderCoverage.test.js  outfit builder coverage
+  outfitBuilderEdge.test.js    outfit builder edge cases + sweater threshold
+  outfitEngine.test.js         outfit engine
+  outfitGallery.test.js        outfit gallery component
+  outfitHistory.test.js        outfit history
+  paletteCoherence.test.js     cross-slot palette coherence
+  persistence.test.js          history persistence (IDB-first writes)
+  personFilter.test.js         person/selfie filter
+  photoQueue.test.js           photo queue
+  preferenceLearning.test.js   preference weight learning
+  pushBrief.test.js            push-brief scheduled function
+  pushService.test.js          client push service
+  pushSubscribe.test.js        push-subscribe function
+  recommendationConfidence.test.js  recommendation confidence levels
+  regressionMarch2026.test.js  March 2026 regression tests
+  regressionOutfitEngine.test.js  outfit engine regressions
+  rotationImprovements.test.js rotation improvement logic
+  rotationPressure.test.js     rotation pressure scoring
+  rotationStats.test.js        rotation statistics
+  scenarioForecast.test.js     scenario-based forecast
+  scoring.test.js              garment scoring
+  scoringEdge.test.js          strap-shoe edge cases + all dial colors
+  scoringFactors.test.js       modular scoring factors
+  selfiePanel.test.js          selfie panel component
+  settingsPanel.test.js        backup/export serialization (JSON, CSV, backup format)
+  shuffleNotesPhoto.test.js    shuffle exclusion, layer logic, history notes
+  statsPanel.test.js           stats computation (frequency, streak, cold bench, CPW)
+  stores.test.js               wardrobeStore, watchStore, historyStore
+  strapPanel.test.js           strap panel component
+  strapStore.test.js           strap store
+  supabaseSync.test.js         Supabase sync (pull, push)
+  supabaseSyncCrud.test.js     uploadPhoto, deleteGarment, fuzzy/semantic search
+  syncBar.test.js              sync bar component
+  todayPanel.test.js           daysSinceWorn, garment type ordering
+  utilizationScore.test.js     utilization scoring
+  wardrobeGrid.test.js         TYPE_FILTER predicates, search filtering
+  wardrobeInsights.test.js     wardrobe insights
+  wardrobeStoreActions.test.js setGarments, setWeekCtx, setOnCallDates, navigation, select mode
+  watchCompare.test.js         watch comparison component
+  watchDashboardAiApply.test.js  AI suggestion apply logic
+  watchRotationEdge.test.js    pickWatch/pickWatchPair edge cases
   watchRotationEngine.test.js  pickWatch, pickWatchPair
-  watchSeed.test.js          watch seed validation
-  watchStore.test.js         setWatches, setActiveWatch
-  watchStyles.test.js        watch styles
-  weatherRules.test.js       weather rules
-  weatherService.test.js     weather service
-  weekOutfitRotation.test.js week outfit rotation
-  weekPlannerLogic.test.js   outfit slots, accessory types, wearable garment filtering
-  weekRotation.test.js       genWeekRotation
-  dayProfileEdge.test.js     day profile keyword + scoring boundaries
-  outfitBuilderEdge.test.js  outfit builder edge cases + sweater threshold
-  scoringEdge.test.js        strap-shoe edge cases + all dial colors
-  watchRotationEdge.test.js  pickWatch/pickWatchPair edge cases
-  weekRotationEdge.test.js   week rotation structure + inactive + on-call
+  watchSeed.test.js            watch seed validation
+  watchStore.test.js           setWatches, setActiveWatch
+  watchStoreEdge.test.js       watch store edge cases
+  watchStyles.test.js          watch styles
+  weatherRules.test.js         weather rules
+  weatherService.test.js       weather service
+  weekOutfitRotation.test.js   week outfit rotation
+  weekPlannerLogic.test.js     outfit slots, accessory types, wearable garment filtering
+  weekRotation.test.js         genWeekRotation
+  weekRotationEdge.test.js     week rotation structure + inactive + on-call
 ```
 
 ### Mobile-first UX rules
@@ -242,11 +277,17 @@ tests/
 - `thumbnail_url` not `thumbnail` in DB; `photo_url` not `photoUrl`
 - No Supabase migrations dir — schema managed manually via `supabase/schema.sql`
 
+### Service Worker
+- SW registration in main.js has reload-loop guard (sessionStorage counter, 3 reloads in 10s = bail)
+- SW install event does NOT call self.skipWaiting() — main thread sends SKIP_WAITING message when ready
+- App shell uses network-first caching (broken build recovery)
+- Three caches: shell (wa2-shell-v5), images (wa2-images-v3), API (wa2-api-v3)
+
 ### Performance
 - `USE_WORKER=false` in `imagePipeline.js` — OffscreenCanvas not enabled yet
 - Cloud pull fires 10ms after boot — must be non-destructive (guard in bootstrap.js)
 - Thumbnails (base64 data URLs) are the persistent display source; `photoUrl` (blob:) ephemeral
-- Main bundle ~525 kB (151 kB gzipped) — WeekPlanner lazy-loaded
+- Main bundle ~571 kB (167 kB gzipped) — WeekPlanner lazy-loaded
 
 ### UI bugs (unfixed)
 - None currently.
@@ -264,14 +305,14 @@ tests/
 |--------|-------|
 | Source files | 71 |
 | Source LOC | ~8,600 |
-| Test files | 87 |
-| Test LOC | ~15,200 |
-| Tests | 1600+ |
+| Test files | 104 |
+| Test LOC | ~17,000 |
+| Tests | 1906+ |
 | Test pass rate | 100% |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |
 | Zustand stores | 8 |
-| Build output | 583 kB (168 kB gzip) |
+| Build output | 571 kB (167 kB gzip) |
 
 ---
 
