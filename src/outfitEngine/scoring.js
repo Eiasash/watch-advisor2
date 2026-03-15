@@ -251,8 +251,11 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   // ── Cache key ──────────────────────────────────────────────────────────────
   // Include garment type+color+formality as fallback when garment.id is absent
   // (e.g. test fixtures). Without this, different garments with no id collide.
+  // seasons+contexts included so BulkTaggerPanel retags immediately invalidate
+  // cached scores without requiring a full page reload.
   const garmentKey = garment.id ?? `${garment.type ?? garment.category}:${garment.color ?? ""}:${garment.formality ?? ""}`;
-  const cacheKey = `${watch.id ?? watch.brand ?? ""}:${garmentKey}:${context ?? ""}:${watch.strap ?? ""}:${weather?.tempC ?? ""}:${outfitFormality ?? ""}`;
+  const tagSig = `${(garment.seasons ?? []).join(",")}|${(garment.contexts ?? []).join(",")}`;
+  const cacheKey = `${watch.id ?? watch.brand ?? ""}:${garmentKey}:${tagSig}:${context ?? ""}:${watch.strap ?? ""}:${weather?.tempC ?? ""}:${outfitFormality ?? ""}`;
   if (_scoreCache.has(cacheKey)) return _scoreCache.get(cacheKey);
 
   // ── Compute dimensions ─────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import diversityFactor      from "./scoringFactors/diversityFactor.js";
 import repetitionFactor     from "./scoringFactors/repetitionFactor.js";
 import rotationFactor       from "./scoringFactors/rotationFactor.js";
 import seasonContextFactor  from "./scoringFactors/seasonContextFactor.js";
+import weightFactor         from "./scoringFactors/weightFactor.js";
 
 // Lazy init — register factors on first buildOutfit call, not at module top-level.
 // Top-level registerFactor() calls caused TDZ crashes in Rollup's minified output
@@ -37,6 +38,7 @@ function _ensureFactors() {
   registerFactor(repetitionFactor);
   registerFactor(rotationFactor);
   registerFactor(seasonContextFactor);
+  registerFactor(weightFactor);
 }
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
@@ -119,6 +121,7 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   };
   const factorCtx = {
     watch,
+    weather,
     history,
     rejectState,
     filledColors,
