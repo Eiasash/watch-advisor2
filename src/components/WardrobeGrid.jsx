@@ -322,12 +322,20 @@ export default function WardrobeGrid() {
     let arr = allItems.filter(fn);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      arr = arr.filter(g =>
-        (g.name ?? "").toLowerCase().includes(q) ||
-        (g.type ?? "").toLowerCase().includes(q) ||
-        (g.color ?? "").toLowerCase().includes(q) ||
-        (g.brand ?? "").toLowerCase().includes(q)
-      );
+      arr = arr.filter(g => {
+        const s = q;
+        if ((g.name    ?? "").toLowerCase().includes(s)) return true;
+        if ((g.type    ?? "").toLowerCase().includes(s)) return true;
+        if ((g.color   ?? "").toLowerCase().includes(s)) return true;
+        if ((g.brand   ?? "").toLowerCase().includes(s)) return true;
+        if ((g.material?? "").toLowerCase().includes(s)) return true;
+        if ((g.notes   ?? "").toLowerCase().includes(s)) return true;
+        if ((g.weight  ?? "").toLowerCase().includes(s)) return true;
+        if ((g.fit     ?? "").toLowerCase().includes(s)) return true;
+        if ((g.seasons ?? []).some(x => x.includes(s))) return true;
+        if ((g.contexts?? []).some(x => x.includes(s))) return true;
+        return false;
+      });
     }
     return arr;
   }, [allItems, activeFilter, query]);

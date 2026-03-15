@@ -726,7 +726,7 @@ export default function WatchDashboard() {
             const garmentIds = ["shirt","sweater","layer","pants","shoes","jacket"]
               .map(s => mergedOutfit[s]?.id).filter(Boolean);
             if (garmentIds.length === 0) return;
-            addRejection(selectedWatch.id, garmentIds, "smart-casual");
+            addRejection(selectedWatch.id, garmentIds, todayContext ?? "smart-casual");
           }}
           style={{ fontSize:11, color:isDark?"#4b5563":"#9ca3af", background:"none", border:"none",
                    cursor:"pointer", width:"100%", padding:"4px 0", textAlign:"center" }}>
