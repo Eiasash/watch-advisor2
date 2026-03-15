@@ -5,7 +5,7 @@ import { initDebugLogger } from "./services/debugLogger.js";
 
 // Build stamp — survives tree-shaking by writing to window (side-effect).
 // Bump to force Netlify to produce a new bundle hash.
-window.__WA2_BUILD = "20260315-4";
+window.__WA2_BUILD = "20260315-5";
 // Init debug logger before anything else so we capture startup errors
 initDebugLogger();
 
