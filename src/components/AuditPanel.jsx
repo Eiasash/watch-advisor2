@@ -10,7 +10,15 @@ import { enqueueTask, getPendingTasks, subscribeQueue } from "../services/backgr
 async function runAudit(garments, watches, history) {
   const garmentsSummary = garments
     .filter(g => g.type !== "outfit-photo" && !g.excludeFromWardrobe)
-    .map(g => `[${g.type}] ${g.name}${g.brand ? " (" + g.brand + ")" : ""} — ${g.color ?? "?"} (formality ${g.formality ?? 5}/10)${g.notes ? " | " + g.notes : ""}`)
+    .map(g => {
+      const tags = [
+        g.weight ? `wt:${g.weight}` : null,
+        g.fit    ? `fit:${g.fit}`   : null,
+        (g.seasons?.length && !g.seasons.includes("all-season")) ? g.seasons.join("/") : null,
+        g.material ? g.material : null,
+      ].filter(Boolean).join(", ");
+      return `[${g.type}] ${g.name}${g.brand ? " (" + g.brand + ")" : ""} — ${g.color ?? "?"} (formality ${g.formality ?? 5}/10${tags ? `, ${tags}` : ""})${g.notes ? " | " + g.notes : ""}`;
+    })
     .join("\n");
 
   const colorCounts = {};

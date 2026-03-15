@@ -36,10 +36,16 @@ export async function handler(event) {
     const garmentLines = garments
       .filter(g => !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type ?? g.category))
       .map(g => {
-        const type  = g.type ?? g.category ?? "?";
-        const color = g.color ?? "unknown color";
-        const form  = g.formality ?? 5;
-        return `  ID:${g.name} — ${color} ${type} (formality ${form}/10)`;
+        const type    = g.type ?? g.category ?? "?";
+        const color   = g.color ?? "unknown color";
+        const form    = g.formality ?? 5;
+        const tags    = [
+          g.weight ? `weight:${g.weight}` : null,
+          g.fit    ? `fit:${g.fit}`        : null,
+          (g.seasons?.length  && !g.seasons.includes("all-season"))  ? `seasons:${g.seasons.join("/")}` : null,
+          g.contexts?.length ? `ctx:${g.contexts.join("/")}` : null,
+        ].filter(Boolean).join(", ");
+        return `  ID:${g.name} — ${color} ${type} (formality ${form}/10${tags ? `, ${tags}` : ""})`;
       })
       .join("\n");
 
