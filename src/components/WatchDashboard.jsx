@@ -313,7 +313,7 @@ export default function WatchDashboard() {
     // Pass slotOverrides as pinnedSlots so engine adapts other slots to manual picks
     const hasPins = Object.keys(slotOverrides).length > 0;
     for (let round = 0; round <= shuffleSeed; round++) {
-      result = buildOutfit(enrichedWatch, garments, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, shuffleExcluded, todayContext);
+      result = buildOutfit(enrichedWatch, wearable, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, shuffleExcluded, todayContext);
       if (round < shuffleSeed) {
         const combined = { outfit: {} };
         for (const slot of ["shirt","sweater","pants","shoes","jacket"]) {
