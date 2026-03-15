@@ -26,13 +26,19 @@ import diversityFactor  from "./scoringFactors/diversityFactor.js";
 import repetitionFactor from "./scoringFactors/repetitionFactor.js";
 import rotationFactor   from "./scoringFactors/rotationFactor.js";
 
-// Register all scoring factors once at module initialisation.
-// Only outfitBuilder.js does this — UI code never touches scoringFactors/.
-registerFactor(colorFactor);
-registerFactor(formalityFactor);
-registerFactor(diversityFactor);
-registerFactor(repetitionFactor);
-registerFactor(rotationFactor);
+// Lazy init — register factors on first buildOutfit call, not at module top-level.
+// Top-level registerFactor() calls caused TDZ crashes in Rollup's minified output
+// because module-level side effects ran before const declarations were initialised.
+let _factorsRegistered = false;
+function _ensureFactors() {
+  if (_factorsRegistered) return;
+  _factorsRegistered = true;
+  registerFactor(colorFactor);
+  registerFactor(formalityFactor);
+  registerFactor(diversityFactor);
+  registerFactor(repetitionFactor);
+  registerFactor(rotationFactor);
+}
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
@@ -175,6 +181,9 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     _score: 0, _confidence: 0, _confidenceLabel: "none",
     _explanation: ["No watch selected."],
   };
+
+  // Ensure scoring factors are registered (lazy init to avoid top-level TDZ)
+  _ensureFactors();
 
   // Clear memoization cache so strap changes or watch swaps never serve stale scores
   clearScoreCache();
