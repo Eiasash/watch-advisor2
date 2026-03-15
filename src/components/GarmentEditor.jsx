@@ -173,6 +173,8 @@ export default function GarmentEditor({ garment, onClose }) {
   const [notes,      setNotes]      = useState(garment.notes      ?? "");
   const [seasons,    setSeasons]    = useState(garment.seasons    ?? []);
   const [contexts,   setContexts]   = useState(garment.contexts   ?? []);
+  const [weight,     setWeight]     = useState(garment.weight     ?? "");
+  const [fit,        setFit]        = useState(garment.fit        ?? "");
   const [angleIdx,   setAngleIdx]   = useState(0);
   const [aiColorAlts, setAiColorAlts] = useState([]); // color alternatives from AI scan
 
@@ -227,6 +229,8 @@ export default function GarmentEditor({ garment, onClose }) {
       notes: notes || undefined,
       seasons: seasons.length ? seasons : undefined,
       contexts: contexts.length ? contexts : undefined,
+      weight: weight || undefined,
+      fit: fit || undefined,
       needsReview: false,
     };
     updateGarment(garment.id, updates);
@@ -542,7 +546,21 @@ export default function GarmentEditor({ garment, onClose }) {
             <ChipPicker options={PATTERNS} value={pattern} multi={false} onChange={setPattern} isDark={isDark} />
           </Section>
 
-          {/* Formality */}
+          {/* Weight + Fit — two compact pickers side by side */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+            <Section label="Weight">
+              <ChipPicker
+                options={["ultralight","light","medium","heavy"]}
+                value={weight} multi={false} onChange={setWeight} isDark={isDark}
+              />
+            </Section>
+            <Section label="Fit">
+              <ChipPicker
+                options={["slim","regular","relaxed","oversized"]}
+                value={fit} multi={false} onChange={setFit} isDark={isDark}
+              />
+            </Section>
+          </div>
           <Section label={`Formality ${formality}/10 — ${FORMALITY_LABELS[formality]}`}>
             <input type="range" min={1} max={10} value={formality}
               onChange={e => setFormality(Number(e.target.value))}

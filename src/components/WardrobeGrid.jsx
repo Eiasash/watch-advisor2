@@ -204,6 +204,23 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
             {item.brand && (
               <span style={{ fontSize:9, color:isDark?"#4b5563":"#9ca3af", fontStyle:"italic" }}>{item.brand}</span>
             )}
+            {item.weight && (
+              <span style={{ fontSize:9, padding:"1px 5px", borderRadius:4,
+                             background:isDark?"#1c2438":"#eff6ff", color:"#60a5fa" }}
+                    title="Fabric weight">{item.weight}</span>
+            )}
+            {item.fit && (
+              <span style={{ fontSize:9, padding:"1px 5px", borderRadius:4,
+                             background:isDark?"#1c2438":"#eff6ff", color:"#818cf8" }}
+                    title="Fit">{item.fit}</span>
+            )}
+            {(item.seasons ?? []).filter(s => s !== "all-season" && s !== "all").length > 0 && (
+              <span style={{ fontSize:9, padding:"1px 5px", borderRadius:4,
+                             background:isDark?"#172516":"#f0fdf4", color:"#4ade80" }}
+                    title={`Seasons: ${item.seasons.join(", ")}`}>
+                {item.seasons.filter(s=>s!=="all-season"&&s!=="all").slice(0,2).join("/")}
+              </span>
+            )}
           </div>
         </div>
       </div>
