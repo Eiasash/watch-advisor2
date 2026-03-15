@@ -16,15 +16,14 @@ import { useRejectStore } from "../stores/rejectStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
 import { outfitConfidence } from "./confidence.js";
 import { explainOutfit } from "./explain.js";
-import { garmentDaysIdle, rotationPressure } from "../domain/rotationStats.js";
 import { learnPreferenceWeights } from "../domain/preferenceLearning.js";
-import { repetitionPenalty } from "../domain/contextMemory.js";
 import { registerFactor, applyFactors } from "./scoringFactors/index.js";
-import colorFactor      from "./scoringFactors/colorFactor.js";
-import formalityFactor  from "./scoringFactors/formalityFactor.js";
-import diversityFactor  from "./scoringFactors/diversityFactor.js";
-import repetitionFactor from "./scoringFactors/repetitionFactor.js";
-import rotationFactor   from "./scoringFactors/rotationFactor.js";
+import colorFactor           from "./scoringFactors/colorFactor.js";
+import formalityFactor       from "./scoringFactors/formalityFactor.js";
+import diversityFactor       from "./scoringFactors/diversityFactor.js";
+import repetitionFactor      from "./scoringFactors/repetitionFactor.js";
+import rotationFactor        from "./scoringFactors/rotationFactor.js";
+import seasonContextFactor   from "./scoringFactors/seasonContextFactor.js";
 
 // Lazy init — register factors on first buildOutfit call, not at module top-level.
 // Top-level registerFactor() calls caused TDZ crashes in Rollup's minified output
@@ -38,6 +37,7 @@ function _ensureFactors() {
   registerFactor(diversityFactor);
   registerFactor(repetitionFactor);
   registerFactor(rotationFactor);
+  registerFactor(seasonContextFactor);
 }
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
@@ -112,29 +112,39 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   // Propagate hard gates and true-zero strap-shoe blocks unchanged
   if (!isFinite(baseScore) || baseScore <= 0) return baseScore;
 
-  let score = baseScore + diversityBonus(garment, history);
-  // Flat rejection penalty — does not scale with base score
+  // Build candidate + context objects for the factor pipeline
+  const candidate = {
+    garment,
+    baseScore,
+    diversityBonus: diversityBonus(garment, history),
+  };
+  const factorCtx = {
+    watch,
+    history,
+    rejectState,
+    filledColors,
+    preferenceWeights,
+    outfitContext: context, // string e.g. "clinic", "smart-casual"
+  };
+
+  // Run all registered factors (diversity, repetition, rotation, seasonContext, …)
+  let score = baseScore + applyFactors(candidate, factorCtx);
+
+  // Flat rejection penalty — not a factor because it's a global veto, not a scoring nudge
   if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= 0.30;
-  // Repetition penalty — binary signal: worn at all recently (complements diversityBonus)
-  if (garment.id) score += repetitionPenalty(garment.id, history);
-  // Garment rotation pressure — nudge idle pieces into recommendations (capped at 0.2)
-  if (garment.id) {
-    const gIdle = garmentDaysIdle(garment.id, history);
-    score += rotationPressure(gIdle) * 0.2;
-  }
-  // Preference weight — apply learned formality lean as a soft multiplier on base
+
+  // Preference weight — formality lean derived from wear history
   if (preferenceWeights && preferenceWeights.formality !== 1) {
-    // Shift: formality weight >1 boosts formal garments, <1 boosts casual ones
-    const fLean = (preferenceWeights.formality - 1) * 0.1 * baseScore;
-    score += fLean;
+    score += (preferenceWeights.formality - 1) * 0.1 * baseScore;
   }
+
   // Coherence bonus/penalty: scale to ±25% of base score
   if (filledColors.length > 0) {
     const coherence = _crossSlotCoherence(garment, filledColors); // raw: -0.4 to +0.25
-    // Normalise: raw range is 0.65 wide; map to ±0.25 of base
     score += baseScore * (coherence / 0.65) * 0.25;
   }
-  // Floor: never allow coherence/diversity to disqualify a hard-gate-passing garment
+
+  // Floor: never allow post-score adjustments to disqualify a hard-gate-passing garment
   return Math.max(1e-6, score);
 }
 
