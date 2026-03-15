@@ -27,6 +27,10 @@ export function useBootstrap() {
 
   useEffect(() => {
     const off = subscribeSyncState(state => setStatus(`Sync ${state.status}`));
+    // Hoisted so the cleanup return() can reach them despite the async IIFE boundary
+    let offWardrobe = null;
+    let offStrap = null;
+    let settingsDebounce = null;
 
     (async () => {
       // ── 1. Serve from local cache immediately ─────────────────────────────
@@ -147,7 +151,6 @@ export function useBootstrap() {
       }, 10);
 
       // ── 4. Auto-push settings on change ─────────────────────────────────
-      let settingsDebounce = null;
       const pushSettingsDebounced = () => {
         clearTimeout(settingsDebounce);
         settingsDebounce = setTimeout(() => {
@@ -161,14 +164,14 @@ export function useBootstrap() {
           pushSettings({ weekCtx, onCallDates, activeStraps: activeStrap, customStraps }).catch(() => {});
         }, 2000);
       };
-      const offWardrobe = useWardrobeStore.subscribe(
+      offWardrobe = useWardrobeStore.subscribe(
         (state, prev) => {
           if (state.weekCtx !== prev.weekCtx || state.onCallDates !== prev.onCallDates) {
             pushSettingsDebounced();
           }
         }
       );
-      const offStrap = useStrapStore.subscribe(
+      offStrap = useStrapStore.subscribe(
         (state, prev) => {
           if (state.activeStrap !== prev.activeStrap || state.straps !== prev.straps) {
             pushSettingsDebounced();
