@@ -12,6 +12,13 @@
 import { cacheGet, cacheSet } from "./_blobCache.js";
 import { callClaude } from "./_claudeClient.js";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json",
+};
+
 const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat","scarf","bag","accessory","watch","outfit-photo"];
 const VALID_COLORS = ["black","white","navy","blue","grey","brown","tan","beige","cream","ecru",
                       "green","olive","teal","khaki","stone","burgundy","red","pink","orange",
@@ -21,19 +28,16 @@ const VALID_COLORS = ["black","white","navy","blue","grey","brown","tan","beige"
 const VALID_MATERIALS = ["wool","cotton","linen","denim","leather","suede","synthetic","cashmere","knit","corduroy","tweed","flannel","canvas","rubber","mesh","unknown"];
 
 export async function handler(event) {
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: { "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type" } };
-  }
+  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
     const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors, allAngles = [] } = JSON.parse(event.body ?? "{}");
 
     const apiKey = process.env.CLAUDE_API_KEY;
-    if (!apiKey) return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
+    if (!apiKey) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
     // ── Cache check ──────────────────────────────────────────────────────────
     // Key includes angle count — adding new angles invalidates old cache entry
@@ -44,7 +48,7 @@ export async function handler(event) {
       if (cached) {
         return {
           statusCode: 200,
-          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "X-Cache": "HIT" },
+          headers: { ...CORS, "X-Cache": "HIT" },
           body: JSON.stringify({ garmentId, ...cached, _cached: true }),
         };
       }
@@ -60,21 +64,21 @@ export async function handler(event) {
       // Fetch the image and convert to base64 — validate URL first to prevent SSRF
       let u;
       try { u = new URL(imageUrl); } catch (_) {
-        return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Invalid image URL" }) };
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Invalid image URL" }) };
       }
       if (u.protocol !== "https:" || ["localhost","127.0.0.1","::1"].includes(u.hostname) || u.hostname.startsWith("169.254.")) {
-        return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "Disallowed image host" }) };
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Disallowed image host" }) };
       }
       const imgRes = await fetch(u.toString(), { signal: AbortSignal.timeout(5000) });
       const ct = imgRes.headers.get("content-type") || "";
       if (!ct.startsWith("image/")) {
-        return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "URL did not return an image" }) };
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "URL did not return an image" }) };
       }
       const buf = await imgRes.arrayBuffer();
       const b64 = Buffer.from(buf).toString("base64");
       imageBlock = { type: "image", source: { type: "base64", media_type: ct, data: b64 } };
     } else {
-      return { statusCode: 400, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: "No image provided" }) };
+      return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "No image provided" }) };
     }
 
     // Build neighbor context for angle/dupe detection
@@ -156,11 +160,11 @@ Rules:
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "X-Cache": "MISS" },
+      headers: { ...CORS, "X-Cache": "MISS" },
       body: JSON.stringify({ garmentId, ...parsed }),
     };
   } catch (err) {
     const isClaudeError = err.message?.startsWith("Claude API error");
-    return { statusCode: isClaudeError ? 502 : 500, headers: { "Access-Control-Allow-Origin": "*" }, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: isClaudeError ? 502 : 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
   }
 }

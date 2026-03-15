@@ -1,6 +1,19 @@
 import { create } from "zustand";
 import { pushHistoryEntry, deleteHistoryEntry } from "../services/supabaseSync.js";
-import { upsert as persistUpsert, remove as persistRemove } from "../services/persistence/historyPersistence.js";
+
+// Lazy import to break the circular dependency:
+//   historyStore → historyPersistence → historyStore
+// historyPersistence already uses a dynamic import for historyStore.
+// A static import here in historyStore would recreate the cycle in Rollup's
+// module graph, causing a TDZ error on the minified export (surfaced as
+// "Cannot access 'k' before initialization" in production).
+let _persistencePromise = null;
+function getPersistence() {
+  if (!_persistencePromise) {
+    _persistencePromise = import("../services/persistence/historyPersistence.js");
+  }
+  return _persistencePromise;
+}
 
 export const useHistoryStore = create((set, get) => ({
   entries: [],
@@ -11,17 +24,17 @@ export const useHistoryStore = create((set, get) => ({
 
   addEntry: entry => {
     // IDB-first + Zustand handled by persistUpsert; cloud is fire-and-forget.
-    persistUpsert(entry).catch(() => {});
+    getPersistence().then(m => m.upsert(entry)).catch(() => {});
     pushHistoryEntry(entry).catch(() => {});
   },
 
   upsertEntry: entry => {
-    persistUpsert(entry).catch(() => {});
+    getPersistence().then(m => m.upsert(entry)).catch(() => {});
     pushHistoryEntry(entry).catch(() => {});
   },
 
   removeEntry: id => {
-    persistRemove(id).catch(() => {});
+    getPersistence().then(m => m.remove(id)).catch(() => {});
     deleteHistoryEntry(id).catch(() => {});
   },
 }));
