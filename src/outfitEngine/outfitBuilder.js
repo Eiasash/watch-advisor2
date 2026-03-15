@@ -518,7 +518,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   const _capturedSignals = outfit._signals ?? null;
   // _signals is internal — clean it off before passing to explainOutfit
   delete outfit._signals;
-  outfit._explanation = explainOutfit(watch, outfit, _capturedSignals
+  const explanationLines = explainOutfit(watch, outfit, _capturedSignals
     ? {
         colorMatch:         _capturedSignals.colorMatch,
         formalityMatch:     _capturedSignals.formalityMatch,
@@ -526,6 +526,11 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
         pairHarmonyScore:   _capturedSignals.harmonyScore,
       }
     : {}, weather);
+  // When no valid combo was found, prepend a fallback message
+  if (_comboScore === null) {
+    explanationLines.unshift("No valid outfit combination found.");
+  }
+  outfit._explanation = explanationLines;
 
   return outfit;
 }

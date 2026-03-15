@@ -11,9 +11,10 @@ describe("claudeStylist — error handling", () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    // Default: successful fetch
+    // Default: successful fetch — must include headers.get() for content-type check
     global.fetch = vi.fn(async () => ({
       ok: true,
+      headers: { get: (h) => h === "content-type" ? "application/json" : null },
       json: async () => ({ explanation: "test" }),
     }));
     const mod = await import("../src/aiStylist/claudeStylist.js");
@@ -45,6 +46,7 @@ describe("claudeStylist — error handling", () => {
   it("returns null when json() throws", async () => {
     global.fetch = vi.fn(async () => ({
       ok: true,
+      headers: { get: (h) => h === "content-type" ? "application/json" : null },
       json: async () => { throw new Error("Invalid JSON"); },
     }));
     const result = await getAISuggestion(GARMENTS, WATCH, null, {});
@@ -54,6 +56,7 @@ describe("claudeStylist — error handling", () => {
   it("returns valid response on success", async () => {
     global.fetch = vi.fn(async () => ({
       ok: true,
+      headers: { get: (h) => h === "content-type" ? "application/json" : null },
       json: async () => ({ shirt: "White Shirt", explanation: "Looks good" }),
     }));
     const result = await getAISuggestion(GARMENTS, WATCH, null, {});
