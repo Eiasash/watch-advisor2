@@ -765,7 +765,7 @@ export default function WeekPlanner() {
   }, []);
 
   const handleShuffle = useCallback((offset) => {
-    setShuffleSeeds(prev => ({ ...prev, [offset]: ((prev[offset] ?? 0) + 1) % 6 }));
+    setShuffleSeeds(prev => ({ ...prev, [offset]: ((prev[offset] ?? 0) + 1) % 12 }));
   }, []);
 
   const handleResetOutfit = useCallback((offset) => {
