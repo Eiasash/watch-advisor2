@@ -15,7 +15,8 @@ import { getAISuggestion }  from "../aiStylist/claudeStylist.js";
 import { buildOutfit }      from "../outfitEngine/outfitBuilder.js";
 import { fetchWeather }     from "../weather/weatherService.js";
 import { neglectedGenuine, wearStreak } from "../domain/rotationStats.js";
-import { buildTomorrowContext, forecastRecommendation } from "../domain/scenarioForecast.js";
+import { useRecommendationEngine } from "../hooks/useRecommendationEngine.js";
+import { useTodayFormState }       from "../hooks/useTodayFormState.js";
 import StreakBadge      from "./today/StreakBadge.jsx";
 import NeglectedAlert   from "./today/NeglectedAlert.jsx";
 import TomorrowPreview  from "./today/TomorrowPreview.jsx";
@@ -177,68 +178,35 @@ export default function TodayPanel() {
   const neglected = useMemo(() => neglectedGenuine(watches, entries), [watches, entries]);
   const streak    = useMemo(() => wearStreak(entries), [entries]);
 
-  // Tomorrow Preview — run engine against tomorrow's date + forecast (or today's temp as fallback)
-  const tomorrowPreview = useMemo(() => {
-    const wearable = garments.filter(g =>
-      !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type ?? g.category)
-      && !g.excludeFromWardrobe
-    );
-    if (!watches.length || !wearable.length) return null;
-    try {
-      const ctx = buildTomorrowContext({
-        history: entries,
-        garments: wearable,
-        watches,
-        forecastTempC: weather?.tempC ?? null,
-      });
-      // Select best watch for tomorrow using existing rotation scoring
-      const bestWatch = watches
-        .map(w => ({ watch: w, score: scoreWatchForDay(w, "smart-casual", entries) }))
-        .sort((a, b) => b.score - a.score)[0]?.watch ?? watches[0];
-      const outfit = forecastRecommendation(
-        (c) => buildOutfit(bestWatch, c.garments, { tempC: c.tempC ?? 18 }, c.history, [], {}),
-        ctx
-      );
-      return outfit ? { watch: bestWatch, outfit } : null;
-    } catch { return null; }
-  }, [watches, garments, entries, weather]);
+  // Tomorrow preview — logic encapsulated in hook
+  const { tomorrowPreview } = useRecommendationEngine({ watches, garments, entries, weather });
 
-  const [selected, setSelected]   = useState(new Set(todayEntry?.garmentIds ?? []));
-  // Default to AI top pick instead of always watches[0] (Snowflake)
+  // Default watch: prefer today's already-logged watch, else top recommendation
   const defaultWatchId = useMemo(() => {
     if (todayEntry?.watchId) return todayEntry.watchId;
     const recs = getWatchRecommendations(watches, entries, "smart-casual");
     return recs[0]?.watch?.id ?? watches[0]?.id ?? null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const [watchId,  setWatchId]    = useState(defaultWatchId);
-  const [context,  setContext]    = useState(todayEntry?.context  ?? "smart-casual");
-  const [notes,    setNotes]      = useState(todayEntry?.notes    ?? "");
-  const [extraImgs, setExtraImgs] = useState(
-    todayEntry?.outfitPhotos ?? (todayEntry?.outfitPhoto ? [todayEntry.outfitPhoto] : [])
-  );
-  const [logged,   setLogged]     = useState(!!todayEntry);
-  const [filter,   setFilter]     = useState("all");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiHint,    setAiHint]    = useState(null); // { explanation, strapShoeOk }
+
+  // Form state — encapsulated in hook
+  const {
+    selected, setSelected, toggleGarment,
+    watchId,  setWatchId,
+    context,  setContext,
+    notes,    setNotes,
+    extraImgs, setExtraImgs,
+    logged,   setLogged,
+    filter,   setFilter,
+    aiLoading, setAiLoading,
+    aiHint,   setAiHint,
+  } = useTodayFormState({ todayEntry, watches, defaultWatchId });
+
   const [weather,   setWeather]   = useState(null);
   const cameraRef = useRef();
 
   useEffect(() => {
     fetchWeather().then(setWeather).catch(() => {});
   }, []);
-
-  // Sync form state when todayEntry hydrates from Supabase after initial render
-  const prevEntryId = useRef(todayEntry?.id);
-  useEffect(() => {
-    if (!todayEntry || todayEntry.id === prevEntryId.current) return;
-    prevEntryId.current = todayEntry.id;
-    setSelected(new Set(todayEntry.garmentIds ?? []));
-    setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
-    setContext(todayEntry.context ?? "smart-casual");
-    setNotes(todayEntry.notes ?? "");
-    setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
-    setLogged(true);
-  }, [todayEntry, watches]);
 
   const bg     = isDark ? "#101114" : "#f9fafb";
   const card   = isDark ? "#171a21" : "#ffffff";
@@ -264,12 +232,6 @@ export default function TodayPanel() {
   const watchStraps   = Object.values(straps).filter(s => s.watchId === watchId);
   const activeStrapId = activeStrap[watchId];
   const activeStrapObj = activeStrapId ? straps[activeStrapId] : null;
-
-  const toggleGarment = id => setSelected(s => {
-    const n = new Set(s);
-    n.has(id) ? n.delete(id) : n.add(id);
-    return n;
-  });
 
   const handleCamera = useCallback(async (e) => {
     const files = Array.from(e.target.files ?? []);
