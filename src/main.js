@@ -5,7 +5,7 @@ import { initDebugLogger } from "./services/debugLogger.js";
 
 // Build stamp — survives tree-shaking by writing to window (side-effect).
 // Bump to force Netlify to produce a new bundle hash.
-window.__WA2_BUILD = "20260315-3";
+window.__WA2_BUILD = "20260315-4";
 // Init debug logger before anything else so we capture startup errors
 initDebugLogger();
 
@@ -65,14 +65,15 @@ if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       if (import.meta.env.DEV) console.log("[SW] registered, scope:", reg.scope);
 
-      // Detect when a new SW is waiting (app updated) — tell it to activate
+      // Detect when a new SW is waiting (app updated) — it already called skipWaiting()
+      // in its install event, so controllerchange will fire automatically.
+      // Keep this listener for logging/debugging only.
       reg.addEventListener("updatefound", () => {
         const incoming = reg.installing;
         if (!incoming) return;
         incoming.addEventListener("statechange", () => {
-          if (incoming.state === "installed" && navigator.serviceWorker.controller) {
-            // New SW is ready — tell it to skip waiting, then reload
-            incoming.postMessage({ type: "SKIP_WAITING" });
+          if (import.meta.env.DEV && incoming.state === "installed") {
+            console.log("[SW] new SW installed, skipWaiting already called");
           }
         });
       });
