@@ -880,7 +880,7 @@ export default function WeekPlanner() {
 
               {/* Watch */}
               <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall}
-                label={day.isOverridden ? "overridden" : null}
+                label={day.isLoggedToday ? "wearing now" : day.isOverridden ? "overridden" : null}
                 daysSince={day.watch ? daysSinceWorn(day.watch.id, history) : null} />
 
               {/* Watch override picker */}
