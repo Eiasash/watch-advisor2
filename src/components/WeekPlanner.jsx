@@ -549,12 +549,22 @@ export default function WeekPlanner() {
   // pendingLog: holds the day offset + pre-built garmentIds while modal is open
   const [pendingLog, setPendingLog] = useState(null);
   const [pickingDay, setPickingDay]         = useState(null);
-  // Per-day per-slot garment overrides: { [offset]: { shirt: garmentId, ... } }
+  // Per-day per-slot garment overrides: { [YYYY-MM-DD]: { shirt: garmentId, ... } }
+  // Keyed by ISO date (not offset) so overrides survive midnight correctly.
+  // Offset-keyed overrides would shift: what was tomorrow (offset:1) becomes today
+  // (offset:0) after midnight, attaching a wrong garment override to the wrong day.
   const [outfitOverrides, setOutfitOverrides] = useState(() => {
-    // Restore from IDB on mount (sync read from wardrobeStore cache)
     try {
       const cached = useWardrobeStore.getState();
-      return cached._outfitOverrides ?? {};
+      const raw = cached._outfitOverrides ?? {};
+      // Migrate legacy offset-keyed overrides → drop them (offsets are ambiguous after reboot)
+      const isDateKeyed = Object.keys(raw).every(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
+      if (!isDateKeyed) return {}; // discard legacy format
+      // Prune dates older than 7 days
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 7);
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      return Object.fromEntries(Object.entries(raw).filter(([d]) => d >= cutoffStr));
     } catch { return {}; }
   });
 
@@ -682,7 +692,7 @@ export default function WeekPlanner() {
       // shuffleSeed N means "skip the top N combinations" — each increment adds
       // 5 fake appearances per slot, enough to push -0.60 penalty and force next-best.
       // Extract pinned garments for this day so engine complements them
-      const dayOverrides = outfitOverrides[day.offset] ?? {};
+      const dayOverrides = outfitOverrides[day.date] ?? {};
       const pinnedSlotGarments = {};
       for (const slot of OUTFIT_SLOTS) {
         if (dayOverrides[slot]) {
@@ -691,7 +701,7 @@ export default function WeekPlanner() {
         }
       }
 
-      const shuffleSeed = shuffleSeeds[day.offset] ?? 0;
+      const shuffleSeed = shuffleSeeds[day.date] ?? 0;
       let iterHistory = [...fakeHistory];
       let outfit = {};
       // Track all previously shuffled garments per slot — prevents cycling back
@@ -720,7 +730,7 @@ export default function WeekPlanner() {
       }
 
       // Apply manual overrides
-      const overrides = outfitOverrides[day.offset] ?? {};
+      const overrides = outfitOverrides[day.date] ?? {};
       for (const slot of OUTFIT_SLOTS) {
         if (overrides[slot]) {
           const g = garments.find(x => x.id === overrides[slot]);
@@ -755,24 +765,24 @@ export default function WeekPlanner() {
     setCachedState({ onCallDates: next }).catch(() => {});
   }
 
-  const handleSwapGarment = useCallback((offset, slot, garment) => {
+  const handleSwapGarment = useCallback((date, slot, garment) => {
     setOutfitOverrides(prev => ({
       ...prev,
-      [offset]: { ...(prev[offset] ?? {}), [slot]: garment.id },
+      [date]: { ...(prev[date] ?? {}), [slot]: garment.id },
     }));
     // Reset shuffle seed so non-pinned slots find their best complement for the new pick
-    setShuffleSeeds(prev => { const n = { ...prev }; delete n[offset]; return n; });
+    setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
   }, []);
 
-  const handleShuffle = useCallback((offset) => {
-    setShuffleSeeds(prev => ({ ...prev, [offset]: ((prev[offset] ?? 0) + 1) % 12 }));
+  const handleShuffle = useCallback((date) => {
+    setShuffleSeeds(prev => ({ ...prev, [date]: ((prev[date] ?? 0) + 1) % 12 }));
   }, []);
 
-  const handleResetOutfit = useCallback((offset) => {
-    setShuffleSeeds(prev => { const n = { ...prev }; delete n[offset]; return n; });
+  const handleResetOutfit = useCallback((date) => {
+    setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
     setOutfitOverrides(prev => {
       const next = { ...prev };
-      delete next[offset];
+      delete next[date];
       return next;
     });
   }, []);
@@ -816,7 +826,7 @@ export default function WeekPlanner() {
           const cardBorder = day.isOnCall ? "#f97316" : isToday ? "#3b82f6" : border;
           const dayForecast = forecast.find(f => f.date === day.date);
           const dayOutfit = weekOutfits[dayIdx] ?? {};
-          const hasOverrides = !!outfitOverrides[day.offset];
+          const hasOverrides = !!outfitOverrides[day.date];
 
           // Repeat warning: check if this outfit's watch was worn in last 3 history entries
           const dayWatchId = (watchOverrides[day.offset] ?? rotation[dayIdx]?.watch?.id);
@@ -982,16 +992,16 @@ export default function WeekPlanner() {
                     </div>
                     {!dayOutfit._isLogged && (
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => handleShuffle(day.offset)}
+                      <button onClick={() => handleShuffle(day.date)}
                         title="Shuffle for alternative outfit"
                         style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
                                   border: `1px solid ${isDark ? "#4f46e5" : "#6366f1"}`,
-                                  background: shuffleSeeds[day.offset] ? "#6366f122" : "transparent",
+                                  background: shuffleSeeds[day.date] ? "#6366f122" : "transparent",
                                   color: isDark ? "#818cf8" : "#6366f1", fontWeight: 600 }}>
-                        {"\u{1F500}"} Shuffle{shuffleSeeds[day.offset] ? ` (${shuffleSeeds[day.offset]})` : ""}
+                        {"\u{1F500}"} Shuffle{shuffleSeeds[day.date] ? ` (${shuffleSeeds[day.date]})` : ""}
                       </button>
-                      {(hasOverrides || shuffleSeeds[day.offset]) && (
-                        <button onClick={() => handleResetOutfit(day.offset)}
+                      {(hasOverrides || shuffleSeeds[day.date]) && (
+                        <button onClick={() => handleResetOutfit(day.date)}
                           style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
                                     border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
                           Reset
@@ -1013,7 +1023,7 @@ export default function WeekPlanner() {
                         isDark={isDark}
                         border={border}
                         candidates={slotCandidates[slot]}
-                        onSwap={(s, g) => handleSwapGarment(day.offset, s, g)}
+                        onSwap={(s, g) => handleSwapGarment(day.date, s, g)}
                       />
                     ))}
                   </div>
