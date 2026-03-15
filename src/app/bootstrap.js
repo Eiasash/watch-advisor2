@@ -57,6 +57,19 @@ export function useBootstrap() {
       await hydrateRejectStore();
       hydrateStyle(cached.styleLearning ?? {});
 
+      // One-time migration: prefProfile (orphaned prefStore key) → styleLearning
+      // TodayPanel previously wrote wear signals to prefStore (prefProfile IDB key)
+      // instead of styleLearnStore (styleLearning IDB key). Merge on first boot
+      // so existing wear preference data isn't discarded.
+      if (cached.prefProfile && !cached.styleLearning?.colors) {
+        const migrated = {
+          colors: { ...(cached.prefProfile.colors ?? {}) },
+          types:  { ...(cached.prefProfile.types  ?? {}) },
+        };
+        hydrateStyle(migrated);
+        setCachedState({ styleLearning: migrated, prefProfile: null }).catch(() => {});
+      }
+
       setReady(true);
       setStatus("Ready");
 
