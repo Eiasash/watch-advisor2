@@ -202,13 +202,6 @@ function _styleLearnMult(garment) {
  * Sharpen a score by raising it to a power > 1.
  * Widens the gap between good and mediocre scores — mid-range values drop more
  * than high scores, making the engine more decisive about quality differences.
- * Only applied to scores > 0 (gates and strap-shoe 0.0 are unaffected).
- */
-function sharpen(score, power = 1.35) {
-  if (score <= 0) return score;
-  return Math.pow(score, power);
-}
-
 /**
  * Brightness balance: nudge scores slightly based on garment lightness.
  * Dark garments are slightly penalised (tend toward heavy outfits);

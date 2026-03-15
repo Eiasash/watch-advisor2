@@ -603,7 +603,7 @@ export default function WeekPlanner() {
 
   const rotation = useMemo(() =>
     rawRotation.map(day => {
-      const oid = watchOverrides[day.offset];
+      const oid = watchOverrides[day.date];
       if (!oid) return day;
       const w = watches.find(x => x.id === oid);
       return w ? { ...day, watch: w, isOverridden: true } : day;
@@ -666,8 +666,8 @@ export default function WeekPlanner() {
       }
 
       // Enrich watch with active strap for this day (shoe-strap coordination)
-      const dayWatchId = watchOverrides[day.offset] ?? day.watch?.id;
-      const dayStrapId = strapOverrides[day.offset]
+      const dayWatchId = watchOverrides[day.date] ?? day.watch?.id;
+      const dayStrapId = strapOverrides[day.date]
         ?? (dayWatchId && activeStrap[dayWatchId]) ?? null;
       const dayStrapObj = dayStrapId ? straps[dayStrapId] : null;
       let enrichedWatch = day.watch;
@@ -829,7 +829,7 @@ export default function WeekPlanner() {
           const hasOverrides = !!outfitOverrides[day.date];
 
           // Repeat warning: check if this outfit's watch was worn in last 3 history entries
-          const dayWatchId = (watchOverrides[day.offset] ?? rotation[dayIdx]?.watch?.id);
+          const dayWatchId = (watchOverrides[day.date] ?? rotation[dayIdx]?.watch?.id);
           const recentEntries = history.filter(e => e.date < day.date).slice(-7);
           const recentWatchDates = recentEntries.filter(e => e.watchId === dayWatchId).map(e => e.date);
           const watchRepeated = recentWatchDates.length > 0;
@@ -903,7 +903,7 @@ export default function WeekPlanner() {
                   {day.isOverridden ? "\u231A Change" : "\u231A Override"}
                 </button>
                 {day.isOverridden && (
-                  <button onClick={() => setWatchOverrides(o => { const n = {...o}; delete n[day.offset]; return n; })}
+                  <button onClick={() => setWatchOverrides(o => { const n = {...o}; delete n[day.date]; return n; })}
                     style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, cursor: "pointer",
                               border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
                     Reset
@@ -916,11 +916,11 @@ export default function WeekPlanner() {
                 <div style={{ marginTop: 8, border: `1px solid ${border}`, borderRadius: 10,
                               background: isDark ? "#171a21" : "#fff", overflow: "hidden" }}>
                   {watches.map(w => {
-                    const isSelected = (watchOverrides[day.offset] ?? day.watch?.id) === w.id;
+                    const isSelected = (watchOverrides[day.date] ?? day.watch?.id) === w.id;
                     return (
                       <div key={w.id}>
                         <div onClick={() => {
-                          setWatchOverrides(o => ({ ...o, [day.offset]: w.id }));
+                          setWatchOverrides(o => ({ ...o, [day.date]: w.id }));
                           setPickingDay(null);
                         }}
                           style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer",
@@ -941,11 +941,11 @@ export default function WeekPlanner() {
 
               {/* Strap picker */}
               {(() => {
-                const dayWatchId = watchOverrides[day.offset] ?? day.watch?.id;
+                const dayWatchId = watchOverrides[day.date] ?? day.watch?.id;
                 if (!dayWatchId) return null;
                 const dayStraps = Object.values(straps).filter(s => s.watchId === dayWatchId);
                 if (dayStraps.length <= 1) return null;
-                const activeStrapId = strapOverrides[day.offset]
+                const activeStrapId = strapOverrides[day.date]
                   ?? Object.values(straps).find(s => s.watchId === dayWatchId && activeStrap[dayWatchId] === s.id)?.id
                   ?? dayStraps[0]?.id;
                 return (
@@ -956,7 +956,7 @@ export default function WeekPlanner() {
                         const isActive = activeStrapId === s.id;
                         return (
                           <button key={s.id}
-                            onClick={() => setStrapOverrides(o => ({ ...o, [day.offset]: s.id }))}
+                            onClick={() => setStrapOverrides(o => ({ ...o, [day.date]: s.id }))}
                             style={{ padding: "4px 9px", borderRadius: 7, fontSize: 10, fontWeight: 600,
                                       border: `1px solid ${isActive ? "#3b82f6" : border}`,
                                       background: isActive ? "#3b82f622" : "transparent",
