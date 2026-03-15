@@ -17,6 +17,8 @@ import { useStrapStore } from "../stores/strapStore.js";
 import { outfitConfidence } from "./confidence.js";
 import { explainOutfit } from "./explain.js";
 import { garmentDaysIdle, rotationPressure } from "../domain/rotationStats.js";
+import { learnPreferenceWeights } from "../domain/preferenceLearning.js";
+import { repetitionPenalty } from "../domain/contextMemory.js";
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
@@ -85,7 +87,7 @@ function _crossSlotCoherence(candidate, filledColors) {
  * expressed as fractions of the base score, keeping the ranking signal intact
  * without disqualifying garments that already passed the hard gates.
  */
-function _scoreCandidate(watch, garment, weather, history, outfitFormality, context, rejectState, filledColors = []) {
+function _scoreCandidate(watch, garment, weather, history, outfitFormality, context, rejectState, filledColors = [], preferenceWeights = null) {
   const baseScore = scoreGarment(watch, garment, weather, outfitFormality, context);
   // Propagate hard gates and true-zero strap-shoe blocks unchanged
   if (!isFinite(baseScore) || baseScore <= 0) return baseScore;
@@ -93,10 +95,18 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   let score = baseScore + diversityBonus(garment, history);
   // Flat rejection penalty — does not scale with base score
   if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= 0.30;
+  // Repetition penalty — binary signal: worn at all recently (complements diversityBonus)
+  if (garment.id) score += repetitionPenalty(garment.id, history);
   // Garment rotation pressure — nudge idle pieces into recommendations (capped at 0.2)
   if (garment.id) {
     const gIdle = garmentDaysIdle(garment.id, history);
     score += rotationPressure(gIdle) * 0.2;
+  }
+  // Preference weight — apply learned formality lean as a soft multiplier on base
+  if (preferenceWeights && preferenceWeights.formality !== 1) {
+    // Shift: formality weight >1 boosts formal garments, <1 boosts casual ones
+    const fLean = (preferenceWeights.formality - 1) * 0.1 * baseScore;
+    score += fLean;
   }
   // Coherence bonus/penalty: scale to ±25% of base score
   if (filledColors.length > 0) {
@@ -154,6 +164,9 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
 
   // Clear memoization cache so strap changes or watch swaps never serve stale scores
   clearScoreCache();
+
+  // Derive preference weights once per call — passed to all _scoreCandidate invocations
+  const preferenceWeights = learnPreferenceWeights(history);
 
   // Inject active strap label so strapShoeScore uses the real strap being worn today.
   const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(watch.id);
@@ -226,17 +239,17 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   const shirtPool = outfit.shirt
     ? [{ garment: outfit.shirt, score: 1 }]
     : _shortlistCandidates(coreSlotCandidates.shirt ?? [], 5,
-        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors));
+        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors, preferenceWeights));
 
   const pantsPool = outfit.pants
     ? [{ garment: outfit.pants, score: 1 }]
     : _shortlistCandidates(coreSlotCandidates.pants ?? [], 5,
-        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors));
+        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors, preferenceWeights));
 
   const shoesPool = outfit.shoes
     ? [{ garment: outfit.shoes, score: 1 }]
     : _shortlistCandidates(coreSlotCandidates.shoes ?? [], 4,
-        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors));
+        g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors, preferenceWeights));
 
   // Greedy defaults — best individual scores (fast path if no combo search)
   if (!outfit.shirt && shirtPool.length) outfit.shirt = shirtPool[0].garment;
@@ -324,7 +337,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const filledColors = Object.values(outfit).filter(Boolean).map(g => (g.color ?? "").toLowerCase());
     const scored = candidates.map(g => ({
       garment: g,
-      score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, filledColors),
+      score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, filledColors, preferenceWeights),
     }));
     scored.sort((a, b) => b.score - a.score);
 
@@ -356,7 +369,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
           .filter(Boolean).map(g => (g.color ?? "").toLowerCase());
         const scored = sweaters.map(g => ({
           garment: g,
-          score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, swFilledColors),
+          score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, swFilledColors, preferenceWeights),
         }));
         scored.sort((a, b) => b.score - a.score);
 
@@ -410,7 +423,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
           .filter(Boolean);
         const scored = jackets.map(g => ({
           garment: g,
-          score: _scoreCandidate(watchWithStrap, g, weather, history, null, context, rejectState, jFilledColors),
+          score: _scoreCandidate(watchWithStrap, g, weather, history, null, context, rejectState, jFilledColors, preferenceWeights),
         }));
         scored.sort((a, b) => b.score - a.score);
         if (scored[0]?.score > 0) outfit.jacket = scored[0].garment;
@@ -440,7 +453,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
           .filter(g => (g.type ?? g.category) === "pants" && g.id !== outfit.pants.id)
           .map(g => ({
             garment: g,
-            score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, shoeColors),
+            score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, shoeColors, preferenceWeights),
             harmony: pantsShoeHarmony(g, outfit.shoes),
           }))
           .filter(p => p.score > 0 && p.harmony >= 0.7)

@@ -15,6 +15,11 @@ import { getAISuggestion }  from "../aiStylist/claudeStylist.js";
 import { buildOutfit }      from "../outfitEngine/outfitBuilder.js";
 import { fetchWeather }     from "../weather/weatherService.js";
 import { neglectedGenuine, wearStreak } from "../domain/rotationStats.js";
+import { buildTomorrowContext, forecastRecommendation } from "../domain/scenarioForecast.js";
+import StreakBadge      from "./today/StreakBadge.jsx";
+import NeglectedAlert   from "./today/NeglectedAlert.jsx";
+import TomorrowPreview  from "./today/TomorrowPreview.jsx";
+import LogButton        from "./today/LogButton.jsx";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
@@ -171,6 +176,32 @@ export default function TodayPanel() {
   // Rotation intelligence — derived from history only
   const neglected = useMemo(() => neglectedGenuine(watches, entries), [watches, entries]);
   const streak    = useMemo(() => wearStreak(entries), [entries]);
+
+  // Tomorrow Preview — run engine against tomorrow's date + forecast (or today's temp as fallback)
+  const tomorrowPreview = useMemo(() => {
+    const wearable = garments.filter(g =>
+      !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type ?? g.category)
+      && !g.excludeFromWardrobe
+    );
+    if (!watches.length || !wearable.length) return null;
+    try {
+      const ctx = buildTomorrowContext({
+        history: entries,
+        garments: wearable,
+        watches,
+        forecastTempC: weather?.tempC ?? null,
+      });
+      // Select best watch for tomorrow using existing rotation scoring
+      const bestWatch = watches
+        .map(w => ({ watch: w, score: scoreWatchForDay(w, "smart-casual", entries) }))
+        .sort((a, b) => b.score - a.score)[0]?.watch ?? watches[0];
+      const outfit = forecastRecommendation(
+        (c) => buildOutfit(bestWatch, c.garments, { tempC: c.tempC ?? 18 }, c.history, [], {}),
+        ctx
+      );
+      return outfit ? { watch: bestWatch, outfit } : null;
+    } catch { return null; }
+  }, [watches, garments, entries, weather]);
 
   const [selected, setSelected]   = useState(new Set(todayEntry?.garmentIds ?? []));
   // Default to AI top pick instead of always watches[0] (Snowflake)
@@ -664,50 +695,16 @@ export default function TodayPanel() {
       {/* Rotation nudge — neglected genuine + streak */}
       {!logged && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-          {/* Neglected watch alert — show when idle 7+ days and not currently selected */}
-          {neglected && neglected.idle >= 7 && neglected.watch.id !== watchId && (
-            <div
-              onClick={() => setWatchId(neglected.watch.id)}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
-                       borderRadius: 12, cursor: "pointer",
-                       background: isDark ? "#1a1206" : "#fffbeb",
-                       border: `1px solid ${isDark ? "#78350f" : "#fde68a"}` }}>
-              <span style={{ fontSize: 18 }}>⏰</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700,
-                              color: isDark ? "#fbbf24" : "#92400e" }}>
-                  {neglected.watch.brand} {neglected.watch.model} —{" "}
-                  {isFinite(neglected.idle) ? `${neglected.idle} days idle` : "never worn"}
-                </div>
-                <div style={{ fontSize: 11, color: isDark ? "#d97706" : "#b45309" }}>
-                  Tap to select · give it some wrist time
-                </div>
-              </div>
-            </div>
-          )}
-          {/* Streak badge */}
-          {streak > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
-                          borderRadius: 20, alignSelf: "flex-start",
-                          background: isDark ? "#0f1a0f" : "#f0fdf4",
-                          border: `1px solid ${isDark ? "#166534" : "#bbf7d0"}` }}>
-              <span style={{ fontSize: 15 }}>🔥</span>
-              <span style={{ fontSize: 12, fontWeight: 700,
-                             color: isDark ? "#4ade80" : "#15803d" }}>
-                {streak}-day wear streak
-              </span>
-            </div>
-          )}
+          <NeglectedAlert neglected={neglected} watchId={watchId} onSelect={setWatchId} />
+          <StreakBadge streak={streak} />
         </div>
       )}
 
+      {/* Tomorrow Preview */}
+      {!logged && <TomorrowPreview preview={tomorrowPreview} />}
+
       {/* Log button */}
-      <button onClick={handleLog} disabled={!watchId}
-        style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none",
-                 background: watchId ? "#3b82f6" : "#374151", color: "#fff",
-                 fontSize: 16, fontWeight: 800, cursor: watchId ? "pointer" : "not-allowed" }}>
-        Log Today's Outfit ✓
-      </button>
+      <LogButton onLog={handleLog} disabled={!watchId} />
     </div>
   );
 }
