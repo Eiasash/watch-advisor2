@@ -100,6 +100,34 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Emergency SW cache nuke — runs BEFORE the module bundle loads.
+      // If a broken JS bundle was cached by the SW, the module script will crash
+      // with a TDZ error and never get a chance to unregister the SW itself.
+      // This inline script is NOT cached by the SW (it's part of index.html which
+      // is fetched network-first), so it always runs fresh.
+      // Bump CACHE_VERSION to force a full cache wipe on next deploy.
+      (function() {
+        var CACHE_VERSION = 2;
+        var KEY = "wa2-cache-v";
+        try {
+          var prev = parseInt(localStorage.getItem(KEY) || "0", 10);
+          if (prev < CACHE_VERSION) {
+            localStorage.setItem(KEY, String(CACHE_VERSION));
+            if ("caches" in window) {
+              caches.keys().then(function(names) {
+                names.forEach(function(name) { caches.delete(name); });
+              });
+            }
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                regs.forEach(function(r) { r.unregister(); });
+              });
+            }
+          }
+        } catch(e) { /* localStorage blocked */ }
+      })();
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

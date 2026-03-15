@@ -3,9 +3,9 @@ import { createRoot } from "react-dom/client";
 import App from "./app/AppShell.jsx";
 import { initDebugLogger } from "./services/debugLogger.js";
 
-// Build stamp — bump to force Netlify to produce a new bundle hash
-// when deploy deduplication would otherwise reuse a broken cached build.
-export const BUILD_STAMP = "20260315-2";
+// Build stamp — survives tree-shaking by writing to window (side-effect).
+// Bump to force Netlify to produce a new bundle hash.
+window.__WA2_BUILD = "20260315-3";
 // Init debug logger before anything else so we capture startup errors
 initDebugLogger();
 
