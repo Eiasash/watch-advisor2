@@ -108,7 +108,7 @@
       // is fetched network-first), so it always runs fresh.
       // Bump CACHE_VERSION to force a full cache wipe on next deploy.
       (function() {
-        var CACHE_VERSION = 2;
+        var CACHE_VERSION = 3;
         var KEY = "wa2-cache-v";
         try {
           var prev = parseInt(localStorage.getItem(KEY) || "0", 10);
