@@ -8,28 +8,21 @@
  *
  * candidate shape: { garment, baseScore, ...scoreParts }
  * context  shape:  { watch, weather, history, preferenceWeights, filledColors, rejectState }
+ *
+ * Factors are NOT imported here — they are registered by outfitBuilder.js
+ * at module initialisation time. This lets Rollup tree-shake any factor
+ * that is never explicitly imported by the build graph.
  */
 
-import colorFactor       from "./colorFactor.js";
-import formalityFactor   from "./formalityFactor.js";
-import diversityFactor   from "./diversityFactor.js";
-import repetitionFactor  from "./repetitionFactor.js";
-import rotationFactor    from "./rotationFactor.js";
-
-export const scoringFactors = [
-  colorFactor,
-  formalityFactor,
-  diversityFactor,
-  repetitionFactor,
-  rotationFactor,
-];
+const _factors = [];
 
 /**
- * Register an additional factor at runtime.
+ * Register a scoring factor.
+ * Called by outfitBuilder.js; never by UI code.
  * @param {Function} fn — (candidate, context) → number
  */
 export function registerFactor(fn) {
-  scoringFactors.push(fn);
+  _factors.push(fn);
 }
 
 /**
@@ -42,8 +35,16 @@ export function registerFactor(fn) {
  */
 export function applyFactors(candidate, context) {
   let score = 0;
-  for (const factor of scoringFactors) {
+  for (const factor of _factors) {
     score += factor(candidate, context);
   }
   return score;
+}
+
+/**
+ * Read-only snapshot of currently registered factors.
+ * Used by tests to verify registration state.
+ */
+export function getFactors() {
+  return [..._factors];
 }

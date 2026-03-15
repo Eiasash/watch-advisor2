@@ -19,6 +19,20 @@ import { explainOutfit } from "./explain.js";
 import { garmentDaysIdle, rotationPressure } from "../domain/rotationStats.js";
 import { learnPreferenceWeights } from "../domain/preferenceLearning.js";
 import { repetitionPenalty } from "../domain/contextMemory.js";
+import { registerFactor, applyFactors } from "./scoringFactors/index.js";
+import colorFactor      from "./scoringFactors/colorFactor.js";
+import formalityFactor  from "./scoringFactors/formalityFactor.js";
+import diversityFactor  from "./scoringFactors/diversityFactor.js";
+import repetitionFactor from "./scoringFactors/repetitionFactor.js";
+import rotationFactor   from "./scoringFactors/rotationFactor.js";
+
+// Register all scoring factors once at module initialisation.
+// Only outfitBuilder.js does this — UI code never touches scoringFactors/.
+registerFactor(colorFactor);
+registerFactor(formalityFactor);
+registerFactor(diversityFactor);
+registerFactor(repetitionFactor);
+registerFactor(rotationFactor);
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 

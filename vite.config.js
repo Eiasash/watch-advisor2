@@ -6,6 +6,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     minify: "esbuild",
     rollupOptions: {
+      treeshake: true,
       output: {
         manualChunks(id) {
           // Scoring engine — heavy pure logic with no UI deps
