@@ -49,8 +49,17 @@ Create 2 complete outfit recommendations. Return ONLY valid JSON, no markdown:
 
     const res = await callClaude(apiKey, { model:"claude-sonnet-4-6", max_tokens:1000,
         messages:[{role:"user",content:prompt}] });
-    const data = res;
-    const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}");
+    const raw = res.content?.[0]?.text ?? "";
+    let parsed;
+    try {
+      // Strip markdown fences if present, then parse
+      parsed = JSON.parse(raw.replace(/^```json\s*/,"").replace(/\s*```$/,"").trim());
+    } catch {
+      // Fallback: find the first { ... } block in the response
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("Claude returned non-JSON response");
+      parsed = JSON.parse(m[0]);
+    }
     cacheSet(ck, parsed);
     return { statusCode:200, headers:{...CORS,"X-Cache":"MISS"}, body:JSON.stringify(parsed) };
   } catch(e) {

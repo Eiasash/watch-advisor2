@@ -44,6 +44,32 @@ describe("strapShoeScore — colored alligator straps have specific shoe rules",
   });
 });
 
+// ─── strapShoeScore — navy hybrid strap (navy + rubber, nato, canvas) ────────
+// Regression: "Navy leather/rubber" contains "rubber" which previously matched
+// CASUAL_STRAP_TERMS first (soft 0.8 fallback) instead of SPECIAL_STRAP_RULES
+// (hard 0.0). SPECIAL_STRAP_RULES must take priority over CASUAL_STRAP_TERMS.
+
+describe("strapShoeScore — navy hybrid strap priority", () => {
+  it("navy leather/rubber + brown shoes → 0.0 (navy rule beats rubber soft path)", () => {
+    expect(strapShoeScore({ strap: "navy leather/rubber" }, { type: "shoes", color: "brown" })).toBe(0.0);
+  });
+  it("navy leather/rubber + black shoes → 1.0", () => {
+    expect(strapShoeScore({ strap: "navy leather/rubber" }, { type: "shoes", color: "black" })).toBe(1.0);
+  });
+  it("navy leather/rubber + white shoes → 1.0", () => {
+    expect(strapShoeScore({ strap: "navy leather/rubber" }, { type: "shoes", color: "white" })).toBe(1.0);
+  });
+  it("navy leather/rubber + tan shoes → 0.0 (tan is not in navy allowed list)", () => {
+    expect(strapShoeScore({ strap: "navy leather/rubber" }, { type: "shoes", color: "tan" })).toBe(0.0);
+  });
+  it("navy canvas strap + brown shoes → 0.0 (navy dominates canvas soft path)", () => {
+    expect(strapShoeScore({ strap: "navy canvas" }, { type: "shoes", color: "brown" })).toBe(0.0);
+  });
+  it("plain rubber strap (no color) + brown shoes → 0.8 (pure rubber = soft path only)", () => {
+    expect(strapShoeScore({ strap: "white rubber" }, { type: "shoes", color: "brown" })).toBe(0.8);
+  });
+});
+
 // ─── strapShoeScore — honey/cognac/caramel leather ──────────────────────────
 
 describe("strapShoeScore — honey/cognac/caramel strap variants", () => {

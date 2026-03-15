@@ -119,10 +119,20 @@ export function strapShoeScore(watch, garment) {
   // Bracelet / integrated — exempt
   if (!strap || EXEMPT_STRAP_TERMS.some(t => strap === t || strap.includes(t))) return 1.0;
 
-  // NATO / canvas / rubber — soft preference only
+  // SPECIAL_STRAP_RULES check FIRST — must precede CASUAL_STRAP_TERMS.
+  // "Navy leather/rubber" contains "rubber" but the dominant color is navy.
+  // Checking navy before the rubber soft-path ensures the hard 0.0 block fires.
+  // Rule: navy/teal/grey/olive/green straps → only allowed shoe colors pass.
+  const shoeColor = (garment.color ?? "").toLowerCase();
+  for (const [key, rule] of Object.entries(SPECIAL_STRAP_RULES)) {
+    if (strap.includes(key)) {
+      return rule.allowed.includes(shoeColor) ? 1.0 : rule.fallback;
+    }
+  }
+
+  // NATO / canvas / rubber — soft preference only (no hard blocks)
   if (CASUAL_STRAP_TERMS.some(t => strap.includes(t))) {
-    const sc = (garment.color ?? "").toLowerCase();
-    return CASUAL_SHOE_SOFT_MATCH.includes(sc) ? 1.0 : CASUAL_SHOE_SOFT_MISS;
+    return CASUAL_SHOE_SOFT_MATCH.includes(shoeColor) ? 1.0 : CASUAL_SHOE_SOFT_MISS;
   }
 
   // Leather / alligator / calfskin / suede — strict color match
@@ -130,7 +140,6 @@ export function strapShoeScore(watch, garment) {
     || strap.includes("calfskin") || strap.includes("suede");
   if (!isLeather) return 1.0;
 
-  const shoeColor = (garment.color ?? "").toLowerCase();
   const isBlack = BLACK_STRAP_TERMS.some(t => strap.includes(t));
 
   // Brown: must explicitly name a warm color — "grey alligator" is NOT brown
@@ -143,13 +152,6 @@ export function strapShoeScore(watch, garment) {
 
   if (isBlack) return BLACK_SHOE_COLORS.includes(shoeColor) ? 1.0 : 0.0;
   if (isBrown) return BROWN_SHOE_COLORS.includes(shoeColor) ? 1.0 : 0.0;
-
-  // Non-standard leather colors (navy, grey, teal, olive, green)
-  for (const [key, rule] of Object.entries(SPECIAL_STRAP_RULES)) {
-    if (strap.includes(key)) {
-      return rule.allowed.includes(shoeColor) ? 1.0 : rule.fallback;
-    }
-  }
 
   return ["white", "black"].includes(shoeColor) ? 0.85 : 0.5;
 }

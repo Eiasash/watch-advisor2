@@ -78,12 +78,22 @@ export default function OccasionPanel() {
     setLoading(true);
     setResult(null);
     try {
+      // Strip all image data before sending — thumbnails/photoAngles are base64
+      // and inflate the payload to 4-6MB with 200+ garments, hitting Netlify's limit.
+      const leanGarments = garments.map(({ thumbnail, photoAngles, photo, ...rest }) => rest);
+      const leanWatches  = watches.map(({ thumbnail, photo, ...rest }) => rest);
+
       const res = await fetch("/.netlify/functions/occasion-planner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ occasion: input.trim(), garments, watches }),
+        body: JSON.stringify({ occasion: input.trim(), garments: leanGarments, watches: leanWatches }),
       });
-      if (!res.ok) throw new Error(`Planning failed (${res.status})`);
+      if (!res.ok) {
+        // Read body for error detail even on non-200
+        let errMsg = `Planning failed (${res.status})`;
+        try { const ed = await res.json(); if (ed.error) errMsg = ed.error; } catch {}
+        throw new Error(errMsg);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);

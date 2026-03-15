@@ -635,6 +635,26 @@ export default function WeekPlanner() {
       const dayForecast = forecast.find(f => f.date === day.date);
       const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
 
+      // For today: if already logged, use logged garments directly.
+      // Engine re-scoring today would diverge from what was actually chosen.
+      if (day.offset === 0) {
+        const loggedEntry = history.find(h => h.date === day.date);
+        const loggedIds = loggedEntry?.garmentIds ?? loggedEntry?.payload?.garmentIds ?? [];
+        if (loggedIds.length > 0) {
+          const loggedOutfit = { _isLogged: true };
+          for (const slot of OUTFIT_SLOTS) {
+            // Resolve garment objects from logged IDs — match by any slot that normalizes correctly
+            const candidates = garments.filter(g => loggedIds.includes(g.id));
+            const match = candidates.find(g => normalizeType(g.type ?? g.category ?? "") === slot);
+            if (match) {
+              loggedOutfit[slot] = match;
+              if (match.id) usedPerSlot[slot].push(match.id);
+            }
+          }
+          return loggedOutfit;
+        }
+      }
+
       // Enrich watch with active strap for this day (shoe-strap coordination)
       const dayWatchId = watchOverrides[day.offset] ?? day.watch?.id;
       const dayStrapId = strapOverrides[day.offset]
@@ -949,9 +969,18 @@ export default function WeekPlanner() {
               {showOutfits && day.watch && wearable.length > 0 && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${border}` }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <div style={{ fontSize: 10, color: sub, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      OUTFIT
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ fontSize: 10, color: sub, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        OUTFIT
+                      </div>
+                      {dayOutfit._isLogged && (
+                        <div style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                                      background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
+                          ✓ Logged
+                        </div>
+                      )}
                     </div>
+                    {!dayOutfit._isLogged && (
                     <div style={{ display: "flex", gap: 4 }}>
                       <button onClick={() => handleShuffle(day.offset)}
                         title="Shuffle for alternative outfit"
@@ -969,6 +998,7 @@ export default function WeekPlanner() {
                         </button>
                       )}
                     </div>
+                    )}
                   </div>
                   <style>{`
                     .wa-week-outfit-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
@@ -990,8 +1020,8 @@ export default function WeekPlanner() {
                 </div>
               )}
 
-              {/* Wear This Outfit — opens notes+photo modal before logging */}
-              {showOutfits && isToday && day.watch && (
+              {/* Wear This Outfit (today, not yet logged) / Log This Outfit (future days) */}
+              {showOutfits && day.watch && !dayOutfit._isLogged && (
                 <button
                   onClick={() => {
                     const garmentIds = OUTFIT_SLOTS
@@ -1001,11 +1031,13 @@ export default function WeekPlanner() {
                   }}
                   style={{
                     width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8,
-                    border: "none", background: "#22c55e", color: "#fff",
+                    background: isToday ? "#22c55e" : isDark ? "#1e293b" : "#f1f5f9",
+                    color: isToday ? "#fff" : isDark ? "#94a3b8" : "#64748b",
                     fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    border: isToday ? "none" : `1px solid ${border}`,
                   }}
                 >
-                  Wear This Outfit
+                  {isToday ? "Wear This Outfit" : "Log This Outfit"}
                 </button>
               )}
 

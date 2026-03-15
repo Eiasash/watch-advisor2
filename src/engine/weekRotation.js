@@ -35,6 +35,24 @@ export function genWeekRotation(watches, history = [], weekCtx = [], onCallDates
     const isOnCall = onCallDates.includes(dateKey);
     const effectiveCtx = isOnCall ? "shift" : ctx;
 
+    // For today: if already logged, lock to the logged watch.
+    // The rotation should never second-guess what you actually chose today.
+    if (offset === 0) {
+      const todayEntry = history.find(h => h.date === dateKey && h.watchId);
+      if (todayEntry) {
+        const loggedWatch = active.find(w => w.id === todayEntry.watchId);
+        if (loggedWatch) {
+          usedIds.add(loggedWatch.id);
+          result.push({
+            offset, dayName: DAY_NAMES[dayIdx], date: dateKey,
+            ctx: effectiveCtx, isOnCall, watch: loggedWatch,
+            backup: null, isLoggedToday: true,
+          });
+          continue;
+        }
+      }
+    }
+
     // Score all active watches for this context
     const scored = active
       .map(w => ({

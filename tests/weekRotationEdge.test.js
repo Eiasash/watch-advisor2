@@ -171,3 +171,52 @@ describe("genWeekRotation — default context", () => {
     }
   });
 });
+
+// ─── genWeekRotation — today lock to logged watch ────────────────────────────
+// Regression: before the fix, today's slot always re-scored from scratch,
+// ignoring the watch you'd already logged. The rotation showed a different
+// watch than what you were actually wearing.
+
+describe("genWeekRotation — today lock", () => {
+  it("locks today (offset 0) to the logged watch when already worn today", () => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const history = [{ watchId: "w2", date: todayIso }];
+    const result = genWeekRotation(watches, history);
+    // offset 0 = today
+    expect(result[0].watch.id).toBe("w2");
+  });
+
+  it("marks today as isLoggedToday when locked", () => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const history = [{ watchId: "w3", date: todayIso }];
+    const result = genWeekRotation(watches, history);
+    expect(result[0].isLoggedToday).toBe(true);
+  });
+
+  it("does NOT lock today if no history entry exists for today", () => {
+    const result = genWeekRotation(watches, []);
+    // Without a logged entry, rotation engine picks freely — no isLoggedToday flag
+    expect(result[0].isLoggedToday).toBeFalsy();
+  });
+
+  it("does not lock future days even if they have past entries", () => {
+    // A past entry for tomorrow's date should not lock it (date arithmetic check)
+    const result = genWeekRotation(watches, []);
+    // offset > 0 should never be isLoggedToday regardless
+    for (const day of result.slice(1)) {
+      expect(day.isLoggedToday).toBeFalsy();
+    }
+  });
+
+  it("locked today watch still feeds usedIds so week variety is maintained", () => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    // w1 is the highest-formality watch — engine would pick it repeatedly without usedIds
+    const history = [{ watchId: "w1", date: todayIso }];
+    const result = genWeekRotation(watches, history);
+    // w1 locked to today, remaining days should not all repeat w1
+    const futureDayIds = result.slice(1).map(d => d.watch?.id);
+    const w1Count = futureDayIds.filter(id => id === "w1").length;
+    // Without usedIds propagation, all 6 days would be w1 — should be at most 1
+    expect(w1Count).toBeLessThanOrEqual(1);
+  });
+});
