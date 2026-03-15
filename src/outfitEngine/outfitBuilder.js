@@ -49,7 +49,7 @@ const OVER_LAYER_KEYWORDS = ["zip", "cardigan", "hoodie", "vest", "gilet"];
 function _isPulloverType(name) {
   if (!name) return true;
   const n = name.toLowerCase();
-  if (OVER_LAYER_KEYWORDS.some(k => n.includes(k))) return false;
+  if (OVER_LAYER_KEYWORDS.some(kw => n.includes(kw))) return false;
   return true;
 }
 
@@ -58,7 +58,7 @@ const CASUAL_JACKET_KEYWORDS = ["bomber", "hoodie", "sweatshirt", "jogger", "fle
 
 function _isCasualJacket(name) {
   if (!name) return false;
-  return CASUAL_JACKET_KEYWORDS.some(k => name.includes(k));
+  return CASUAL_JACKET_KEYWORDS.some(kw => name.includes(kw));
 }
 
 /**
@@ -172,6 +172,97 @@ function _pairHarmonyScore(shirt, pants, shoes) {
   // Pants–shoes tonal harmony (warm/cool check from pantsShoeHarmony)
   score *= pantsShoeHarmony(pants, shoes);
   return score;
+}
+
+/**
+ * Fill sweater + layer slots. Extracted into a function to create a proper
+ * function scope — bare block `{ }` scopes were flattened by esbuild's minifier,
+ * causing the filter callback parameter and const declarations to collide under
+ * the same minified name (TDZ: "Cannot access 'k' before initialization").
+ */
+function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights, pinnedSlots) {
+  const temp = weather?.tempC ?? 22;
+  if (temp >= 22) return;
+
+  const isFormalCtx = context === "formal" || context === "clinic"
+    || context === "hospital-smart-casual" || context === "shift";
+  const sweaters = wearable.filter(candidate => {
+    if ((candidate.type ?? candidate.category) !== "sweater") return false;
+    if (isFormalCtx) {
+      const nm = (candidate.name ?? "").toLowerCase();
+      if (nm.includes("hoodie") || nm.includes("jogger") || nm.includes("sweatshirt")) return false;
+    }
+    const watchF = watchWithStrap.formality ?? 5;
+    const garmentF = candidate.formality ?? 5;
+    if (garmentF < watchF - 3) return false;
+    return true;
+  });
+  if (!sweaters.length) return;
+
+  const swFilledColors = [outfit.shirt, outfit.pants, outfit.shoes, outfit.jacket]
+    .filter(Boolean).map(item => (item.color ?? "").toLowerCase());
+  const scored = sweaters.map(candidate => ({
+    garment: candidate,
+    score: _scoreCandidate(watchWithStrap, candidate, weather, history, outfitFormality, context, rejectState, swFilledColors, preferenceWeights),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+
+  const shirtColor = (outfit.shirt?.color ?? "").toLowerCase();
+  const bestSweater = scored.find(entry =>
+    entry.score > 0 && (entry.garment.color ?? "").toLowerCase() !== shirtColor
+  ) ?? scored[0];
+  outfit.sweater = pinnedSlots.sweater ?? (bestSweater?.score > 0 ? bestSweater.garment : null);
+
+  if (temp < 8 && sweaters.length >= 2 && outfit.sweater) {
+    if (pinnedSlots.layer) {
+      outfit.layer = pinnedSlots.layer;
+    } else {
+      const sweaterColor = (outfit.sweater.color ?? "").toLowerCase();
+      const primaryName = (outfit.sweater.name ?? "").toLowerCase();
+      const isPrimaryPullover = _isPulloverType(primaryName);
+
+      const secondBest = scored.find(entry => {
+        if (entry.garment.id === outfit.sweater.id) return false;
+        if (entry.score <= 0) return false;
+        const col = (entry.garment.color ?? "").toLowerCase();
+        if (col === sweaterColor || col === shirtColor) return false;
+        const layerName = (entry.garment.name ?? "").toLowerCase();
+        if (isPrimaryPullover && _isPulloverType(layerName)) return false;
+        return true;
+      });
+      if (secondBest) outfit.layer = secondBest.garment;
+    }
+  }
+}
+
+/**
+ * Fill jacket slot when temp < 22°C. Same TDZ-prevention rationale as above.
+ */
+function _fillJacket(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights) {
+  const temp = weather.tempC;
+  if (temp >= 22) return;
+
+  const isFormalCtx = context === "formal" || context === "clinic"
+    || context === "hospital-smart-casual" || context === "shift";
+  const jackets = wearable.filter(candidate => {
+    if ((candidate.type ?? candidate.category) !== "jacket") return false;
+    if (isFormalCtx) {
+      const nm = (candidate.name ?? "").toLowerCase();
+      if (_isCasualJacket(nm)) return false;
+    }
+    return true;
+  });
+  if (!jackets.length) return;
+
+  const jFilledColors = Object.values(outfit).filter(Boolean)
+    .map(item => typeof item === "object" && item.color ? item.color.toLowerCase() : null)
+    .filter(Boolean);
+  const scored = jackets.map(candidate => ({
+    garment: candidate,
+    score: _scoreCandidate(watchWithStrap, candidate, weather, history, null, context, rejectState, jFilledColors, preferenceWeights),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  if (scored[0]?.score > 0) outfit.jacket = scored[0].garment;
 }
 
 export function buildOutfit(watch, wardrobe, weather = {}, history = [], garmentIds = [], pinnedSlots = {}, excludedPerSlot = {}, context = null) {
@@ -370,88 +461,11 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   // ── Multilayer logic ────────────────────────────────────────────────────────
   outfit.sweater = null;
   outfit.layer   = null;
-
-  {
-    const temp = weather?.tempC ?? 22;
-    if (temp < 22) {
-      const isFormalCtx = context === "formal" || context === "clinic"
-        || context === "hospital-smart-casual" || context === "shift";
-      const sweaters = wearable.filter(g => {
-        if ((g.type ?? g.category) !== "sweater") return false;
-        if (isFormalCtx) {
-          const n = (g.name ?? "").toLowerCase();
-          if (n.includes("hoodie") || n.includes("jogger") || n.includes("sweatshirt")) return false;
-        }
-        const watchF = watchWithStrap.formality ?? 5;
-        const garmentF = g.formality ?? 5;
-        if (garmentF < watchF - 3) return false;
-        return true;
-      });
-      if (sweaters.length) {
-        const swFilledColors = [outfit.shirt, outfit.pants, outfit.shoes, outfit.jacket]
-          .filter(Boolean).map(g => (g.color ?? "").toLowerCase());
-        const scored = sweaters.map(g => ({
-          garment: g,
-          score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, swFilledColors, preferenceWeights),
-        }));
-        scored.sort((a, b) => b.score - a.score);
-
-        const shirtColor = (outfit.shirt?.color ?? "").toLowerCase();
-        const bestSweater = scored.find(s =>
-          s.score > 0 && (s.garment.color ?? "").toLowerCase() !== shirtColor
-        ) ?? scored[0];
-        outfit.sweater = pinnedSlots.sweater ?? (bestSweater?.score > 0 ? bestSweater.garment : null);
-
-        if (temp < 8 && sweaters.length >= 2 && outfit.sweater) {
-          if (pinnedSlots.layer) {
-            outfit.layer = pinnedSlots.layer;
-          } else {
-            const sweaterColor = (outfit.sweater.color ?? "").toLowerCase();
-            const primaryName = (outfit.sweater.name ?? "").toLowerCase();
-            const isPrimaryPullover = _isPulloverType(primaryName);
-
-            const secondBest = scored.find(s => {
-              if (s.garment.id === outfit.sweater.id) return false;
-              if (s.score <= 0) return false;
-              const c = (s.garment.color ?? "").toLowerCase();
-              if (c === sweaterColor || c === shirtColor) return false;
-              const layerName = (s.garment.name ?? "").toLowerCase();
-              if (isPrimaryPullover && _isPulloverType(layerName)) return false;
-              return true;
-            });
-            if (secondBest) outfit.layer = secondBest.garment;
-          }
-        }
-      }
-    }
-  }
+  _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights, pinnedSlots);
 
   // ── Jacket selection ────────────────────────────────────────────────────────
   if (weather?.tempC != null && !outfit.jacket) {
-    const temp = weather.tempC;
-    if (temp < 22) {
-      const isFormalCtx = context === "formal" || context === "clinic"
-        || context === "hospital-smart-casual" || context === "shift";
-      const jackets = wearable.filter(g => {
-        if ((g.type ?? g.category) !== "jacket") return false;
-        if (isFormalCtx) {
-          const n = (g.name ?? "").toLowerCase();
-          if (_isCasualJacket(n)) return false;
-        }
-        return true;
-      });
-      if (jackets.length) {
-        const jFilledColors = Object.values(outfit).filter(Boolean)
-          .map(g => typeof g === "object" && g.color ? g.color.toLowerCase() : null)
-          .filter(Boolean);
-        const scored = jackets.map(g => ({
-          garment: g,
-          score: _scoreCandidate(watchWithStrap, g, weather, history, null, context, rejectState, jFilledColors, preferenceWeights),
-        }));
-        scored.sort((a, b) => b.score - a.score);
-        if (scored[0]?.score > 0) outfit.jacket = scored[0].garment;
-      }
-    }
+    _fillJacket(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights);
   }
 
   // ── Belt slot — auto-match to shoes ──────────────────────────────────────────
