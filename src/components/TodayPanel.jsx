@@ -178,6 +178,10 @@ export default function TodayPanel() {
   const neglected = useMemo(() => neglectedGenuine(watches, entries), [watches, entries]);
   const streak    = useMemo(() => wearStreak(entries), [entries]);
 
+  // Weather must be declared BEFORE useRecommendationEngine which receives it as a prop.
+  // Declaring it after caused a TDZ crash in Rollup's minified output (const S used before init).
+  const [weather,   setWeather]   = useState(null);
+
   // Tomorrow preview — logic encapsulated in hook
   const { tomorrowPreview } = useRecommendationEngine({ watches, garments, entries, weather });
 
@@ -201,7 +205,6 @@ export default function TodayPanel() {
     aiHint,   setAiHint,
   } = useTodayFormState({ todayEntry, watches, defaultWatchId });
 
-  const [weather,   setWeather]   = useState(null);
   const cameraRef = useRef();
 
   useEffect(() => {

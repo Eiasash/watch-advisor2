@@ -255,9 +255,12 @@ describe("historyStore — addEntry", () => {
     useHistoryStore.setState({ entries: [] });
   });
 
-  it("delegates to historyPersistence.upsert with the entry", () => {
+  it("delegates to historyPersistence.upsert with the entry", async () => {
     const entry = { id: "h1", watchId: "snowflake", date: "2026-03-07" };
     useHistoryStore.getState().addEntry(entry);
+    // _persist() uses dynamic import() — wait for the module to resolve and
+    // the .then() callback to execute before asserting.
+    await vi.waitUntil(() => historyPersistence.upsert.mock.calls.length > 0, { timeout: 500 });
     expect(historyPersistence.upsert).toHaveBeenCalledWith(entry);
   });
 
