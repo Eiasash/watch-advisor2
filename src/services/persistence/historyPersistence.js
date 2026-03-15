@@ -13,8 +13,16 @@
  */
 
 import { db } from "../db.js";
-import { useHistoryStore } from "../../stores/historyStore.js";
 import { safeLoad } from "../dbSafeLoad.js";
+
+// useHistoryStore imported lazily inside functions to break the circular dependency:
+// historyPersistence → historyStore → historyPersistence
+// If imported at module level, esbuild evaluates one before the other and hits a TDZ.
+function getHistoryStore() {
+  // Dynamic require-style: module is guaranteed to be initialized by the time
+  // any persistence function is actually called (after app boot).
+  return import("../../stores/historyStore.js").then(m => m.useHistoryStore);
+}
 
 const STORE = "history_items";
 
@@ -55,7 +63,8 @@ export async function upsert(entry) {
   // 1. IDB
   await db.put(STORE, entry);
 
-  // 2. Zustand
+  // 2. Zustand (lazy import to break circular dep with historyStore)
+  const useHistoryStore = await getHistoryStore();
   useHistoryStore.setState(state => {
     const idx = state.entries.findIndex(e => e.id === entry.id);
     const next = idx >= 0
@@ -73,7 +82,8 @@ export async function remove(id) {
   // 1. IDB
   await db.delete(STORE, id);
 
-  // 2. Zustand
+  // 2. Zustand (lazy import to break circular dep with historyStore)
+  const useHistoryStore = await getHistoryStore();
   useHistoryStore.setState(state => ({
     entries: state.entries.filter(e => e.id !== id),
   }));
