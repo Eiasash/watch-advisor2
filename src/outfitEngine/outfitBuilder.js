@@ -18,12 +18,10 @@ import { outfitConfidence } from "./confidence.js";
 import { explainOutfit } from "./explain.js";
 import { learnPreferenceWeights } from "../domain/preferenceLearning.js";
 import { registerFactor, applyFactors } from "./scoringFactors/index.js";
-import colorFactor           from "./scoringFactors/colorFactor.js";
-import formalityFactor       from "./scoringFactors/formalityFactor.js";
-import diversityFactor       from "./scoringFactors/diversityFactor.js";
-import repetitionFactor      from "./scoringFactors/repetitionFactor.js";
-import rotationFactor        from "./scoringFactors/rotationFactor.js";
-import seasonContextFactor   from "./scoringFactors/seasonContextFactor.js";
+import diversityFactor      from "./scoringFactors/diversityFactor.js";
+import repetitionFactor     from "./scoringFactors/repetitionFactor.js";
+import rotationFactor       from "./scoringFactors/rotationFactor.js";
+import seasonContextFactor  from "./scoringFactors/seasonContextFactor.js";
 
 // Lazy init — register factors on first buildOutfit call, not at module top-level.
 // Top-level registerFactor() calls caused TDZ crashes in Rollup's minified output
@@ -32,8 +30,9 @@ let _factorsRegistered = false;
 function _ensureFactors() {
   if (_factorsRegistered) return;
   _factorsRegistered = true;
-  registerFactor(colorFactor);
-  registerFactor(formalityFactor);
+  // colorFactor and formalityFactor removed — those dimensions are already in
+  // baseScore from scoreGarment() and were always returning 0 here (candidate.colorScore
+  // and candidate.formalityScore were never populated).
   registerFactor(diversityFactor);
   registerFactor(repetitionFactor);
   registerFactor(rotationFactor);

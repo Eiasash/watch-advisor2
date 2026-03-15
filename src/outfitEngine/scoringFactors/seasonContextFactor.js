@@ -38,7 +38,8 @@ export default function seasonContextFactor(candidate, context) {
   if (seasons.length > 0) {
     // Allow tests to inject season via context._season to avoid Date mocking
     const season = context._season ?? currentSeason();
-    if (seasons.includes("all-season")) {
+    // Handle both "all-season" and legacy "all" tag from bulk tagger
+    if (seasons.includes("all-season") || seasons.includes("all")) {
       // Neutral — no bonus, no penalty
     } else if (seasons.includes(season)) {
       score += 0.3;

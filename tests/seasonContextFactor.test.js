@@ -87,3 +87,14 @@ describe("seasonContextFactor — combined", () => {
     )).toBe(0.25);
   });
 });
+
+// ── Legacy "all" tag ──────────────────────────────────────────────────────────
+describe("seasonContextFactor — legacy 'all' tag", () => {
+  it("treats 'all' tag same as 'all-season' — neutral, no bonus/penalty", () => {
+    expect(seasonContextFactor(makeCandidate(["all"]), makeCtx(null, "spring"))).toBe(0);
+  });
+  it("handles garment with both 'all' and specific seasons gracefully", () => {
+    // If "all" is present it overrides everything to neutral
+    expect(seasonContextFactor(makeCandidate(["all", "summer"]), makeCtx(null, "spring"))).toBe(0);
+  });
+});
