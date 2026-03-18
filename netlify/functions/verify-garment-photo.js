@@ -154,14 +154,20 @@ Rules:
 
     const res = await callClaude(apiKey, {
       model: "claude-sonnet-4-6",
-      max_tokens: 600,
+      max_tokens: 800,
       messages: [{ role: "user", content: contentBlocks }],
     }, { maxAttempts: 1 });
 
     const raw  = res.content?.[0]?.text ?? "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
     let parsed;
-    try { parsed = JSON.parse(clean); } catch { parsed = { ok: false, confidence: 0, reason: "AI parse error" }; }
+    try {
+      parsed = JSON.parse(clean);
+      // Guard: if required fields missing, treat as parse error
+      if (typeof parsed.ok !== "boolean") throw new Error("missing ok field");
+    } catch {
+      parsed = { ok: false, confidence: 0, reason: "AI parse error" };
+    }
 
     // ── Cache write ──────────────────────────────────────────────────────────
     if (cacheKey) {
