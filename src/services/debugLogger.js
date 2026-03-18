@@ -29,10 +29,20 @@ export function initDebugLogger() {
   // ── Unhandled promise rejections ──────────────────────────────────────────
   window.addEventListener("unhandledrejection", e => {
     const reason = e.reason;
+    const msg = reason?.message ?? String(reason);
+    // Suppress fetch network errors that Netlify RUM fires for weather API
+    // failures. These are already caught and logged as console.warn.
+    if (
+      msg === "Failed to fetch" ||
+      msg === "Load failed" ||
+      msg === "NetworkError when attempting to fetch resource." ||
+      msg === "weather timeout" ||
+      (reason instanceof TypeError && msg.toLowerCase().includes("fetch"))
+    ) return;
     pushDebugEntry({
       level:   "error",
       source:  "unhandled",
-      msg:     reason?.message ?? String(reason),
+      msg,
       stack:   reason?.stack ?? undefined,
     });
   });
