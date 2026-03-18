@@ -65,7 +65,7 @@ WARDROBE (${garments.length} garments):
 Types: ${typeSummary}
 Colors: ${colorSummary}
 Items:
-${garmentsSummary.slice(0, 3000)}
+${garmentsSummary.slice(0, 12000)}${garmentsSummary.length > 12000 ? `\n[...${garments.length - Math.floor(12000 / (garmentsSummary.length / garments.length))} garments truncated — use type/color summary above for full picture]` : ""}
 
 WATCHES (${watches.length} pieces):
 ${watchSummary}
@@ -282,6 +282,12 @@ export default function AuditPanel() {
               <p style={{ margin:0, fontSize:13, color:isDark?"#a1a9b8":"#4b5563", lineHeight:1.6 }}>{result.color_harmony}</p>
             </div>
           )}
+          {result.versatility && (
+            <div style={{ marginBottom:12 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:"#f59e0b", marginBottom:4 }}>VERSATILITY</div>
+              <p style={{ margin:0, fontSize:13, color:isDark?"#a1a9b8":"#4b5563", lineHeight:1.6 }}>{result.versatility}</p>
+            </div>
+          )}
           {result.watch_wardrobe_synergy && (
             <div style={{ marginBottom:12 }}>
               <div style={{ fontSize:12, fontWeight:700, color:"#3b82f6", marginBottom:4 }}>WATCH-WARDROBE SYNERGY</div>
@@ -432,14 +438,16 @@ export function PhotoVerifierPanel() {
 
   async function runVerification() {
     setRunning(true); setDone(false); setResults({}); setProgress(0); setOverrides({}); setTypeFilter("all");
+    // Always verify the full set — never the type-filtered subset.
+    const toVerify = allWithPhoto;
     const out = {};
-    for (let i = 0; i < withPhoto.length; i++) {
-      const g = withPhoto[i];
+    for (let i = 0; i < toVerify.length; i++) {
+      const g = toVerify[i];
       try {
-        const r = await verifyPhoto(g, withPhoto);
+        const r = await verifyPhoto(g, toVerify);
         if (r) out[g.id] = { ...r, garmentId: g.id };
       } catch { /* skip */ }
-      setProgress(Math.round(((i + 1) / withPhoto.length) * 100));
+      setProgress(Math.round(((i + 1) / toVerify.length) * 100));
     }
     setResults(out);
     setRunning(false);
