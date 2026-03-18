@@ -93,17 +93,18 @@ export default function BulkPhotoMatcher() {
     }
   }, [garments, updateGarment]);
 
-  // Group by category
+  // Group by category — skip excluded and outfit-photos
   const grouped = {};
   for (const g of garments) {
+    if (g.excludeFromWardrobe) continue;
     const cat = g.type ?? g.category ?? "other";
     if (cat === "outfit-photo") continue;
     if (!grouped[cat]) grouped[cat] = [];
     grouped[cat].push(g);
   }
 
-  const totalWithPhoto = garments.filter(g => g.thumbnail || g.photoUrl).length;
-  const totalWearable = garments.filter(g => (g.type ?? g.category) !== "outfit-photo").length;
+  const totalWithPhoto = garments.filter(g => !g.excludeFromWardrobe && g.thumbnail || !g.excludeFromWardrobe && g.photoUrl).length;
+  const totalWearable = garments.filter(g => !g.excludeFromWardrobe && (g.type ?? g.category) !== "outfit-photo").length;
 
   return (
     <div>
