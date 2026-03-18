@@ -66,8 +66,8 @@ describe("Fix 1: strap resolution uses straps[0].label for single-strap watches"
     expect(strapShoeScore({ strap: "Navy alligator" }, { type: "shoes", color: "black" })).toBe(1.0);
   });
 
-  it("Navy alligator strap rejects brown shoes at 0.0", () => {
-    expect(strapShoeScore({ strap: "Navy alligator" }, { type: "shoes", color: "brown" })).toBe(0.0);
+  it("Navy alligator strap allows brown shoes at 1.0 (navy rule updated Mar 2026)", () => {
+    expect(strapShoeScore({ strap: "Navy alligator" }, { type: "shoes", color: "brown" })).toBe(1.0);
   });
 
   it("constructs 'brown leather' from {color:'brown', type:'leather'} when no label", () => {

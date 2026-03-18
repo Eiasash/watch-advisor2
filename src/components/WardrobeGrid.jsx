@@ -317,9 +317,9 @@ export default function WardrobeGrid() {
 
   const allItems = useMemo(() => garments.filter(g => g && !g.excludeFromWardrobe), [garments]);
 
-  // Count garments missing season/context tags — used for BulkTag nudge banner
+  // Count garments missing season/context/weight tags — used for BulkTag nudge banner
   const untaggedCount = useMemo(() =>
-    allItems.filter(g => g.type !== "outfit-photo" && g.type !== "outfit-shot" && (!g.seasons?.length || !g.contexts?.length)).length,
+    allItems.filter(g => g.type !== "outfit-photo" && g.type !== "outfit-shot" && (!g.seasons?.length || !g.contexts?.length || !g.weight)).length,
   [allItems]);
 
   const filtered = useMemo(() => {
@@ -446,7 +446,7 @@ export default function WardrobeGrid() {
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
         }}>
           <span style={{ fontSize: 12, color: isDark ? "#fcd34d" : "#92400e" }}>
-            ✦ {untaggedCount} garments untagged — season & context scoring disabled
+            ✦ {untaggedCount} garments untagged — season, context & weight scoring disabled
           </span>
           <button
             onClick={() => {

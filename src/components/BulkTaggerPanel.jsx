@@ -29,11 +29,11 @@ export default function BulkTaggerPanel({ isDark }) {
   const text   = isDark ? "#e2e8f0" : "#1f2937";
   const sub    = isDark ? "#8b93a7" : "#6b7280";
 
-  // Garments that need tagging: missing seasons OR contexts (both must be set)
+  // Garments that need tagging: missing seasons, contexts, OR weight
   const untagged = garments.filter(g =>
     !g.excludeFromWardrobe &&
     g.type !== "outfit-photo" && g.type !== "outfit-shot" &&
-    (!g.seasons?.length || !g.contexts?.length)
+    (!g.seasons?.length || !g.contexts?.length || !g.weight)
   );
 
   const run = useCallback(async () => {
