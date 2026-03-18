@@ -65,6 +65,17 @@ function AppContent() {
     return (p && valid.includes(p)) ? p : "today";
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsScrollTo, setSettingsScrollTo] = useState(null);
+
+  // BulkTag banner in WardrobeGrid fires this event
+  useEffect(() => {
+    function handleOpenSettings(e) {
+      setSettingsScrollTo(e.detail?.scrollTo ?? null);
+      setShowSettings(true);
+    }
+    window.addEventListener("open-settings", handleOpenSettings);
+    return () => window.removeEventListener("open-settings", handleOpenSettings);
+  }, []);
   const [showPalette,  setShowPalette]  = useState(false);
   const toast = useToast();
 
@@ -233,7 +244,7 @@ function AppContent() {
       <SyncBar />
       {showSettings && (
         <Suspense fallback={null}>
-          <SettingsPanel onClose={() => setShowSettings(false)} />
+          <SettingsPanel onClose={() => { setShowSettings(false); setSettingsScrollTo(null); }} scrollTo={settingsScrollTo} />
         </Suspense>
       )}
       {showPalette   && <CommandPalette onClose={() => setShowPalette(false)} onAction={handlePaletteAction} />}

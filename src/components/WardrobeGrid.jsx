@@ -317,6 +317,11 @@ export default function WardrobeGrid() {
 
   const allItems = useMemo(() => garments.filter(g => g && !g.excludeFromWardrobe), [garments]);
 
+  // Count garments missing season/context tags — used for BulkTag nudge banner
+  const untaggedCount = useMemo(() =>
+    allItems.filter(g => g.type !== "outfit-photo" && g.type !== "outfit-shot" && (!g.seasons?.length || !g.contexts?.length)).length,
+  [allItems]);
+
   const filtered = useMemo(() => {
     const fn = TYPE_FILTER[activeFilter] ?? TYPE_FILTER.all;
     let arr = allItems.filter(fn);
@@ -431,6 +436,31 @@ export default function WardrobeGrid() {
                          background:"#451a03", color:"#f97316" }}>{typeCounts.review} review</span>
         )}
       </div>
+
+      {/* BulkTag nudge — shown when garments are missing season/context tags */}
+      {untaggedCount > 0 && (
+        <div style={{
+          marginBottom: 10, padding: "8px 12px", borderRadius: 9,
+          background: isDark ? "#1c1500" : "#fffbeb",
+          border: "1px solid #f59e0b44",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        }}>
+          <span style={{ fontSize: 12, color: isDark ? "#fcd34d" : "#92400e" }}>
+            ✦ {untaggedCount} garments untagged — season & context scoring disabled
+          </span>
+          <button
+            onClick={() => {
+              // Open settings panel via custom event — AppShell listens for this
+              window.dispatchEvent(new CustomEvent("open-settings", { detail: { scrollTo: "bulk-tag" } }));
+            }}
+            style={{
+              padding: "4px 10px", borderRadius: 6, border: "none", flexShrink: 0,
+              background: "#f59e0b", color: "#1c1500", fontSize: 11, fontWeight: 700, cursor: "pointer",
+            }}>
+            Tag All →
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <input

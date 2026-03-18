@@ -70,7 +70,14 @@ function exportCSV(garments) {
   URL.revokeObjectURL(url);
 }
 
-export default function SettingsPanel({ onClose }) {
+export default function SettingsPanel({ onClose, scrollTo }) {
+  const bulkTagRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollTo === "bulk-tag" && bulkTagRef.current) {
+      setTimeout(() => bulkTagRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    }
+  }, [scrollTo]);
   const garments = useWardrobeStore(s => s.garments);
   const watches = useWatchStore(s => s.watches);
   const history = useHistoryStore(s => s.entries);
@@ -245,6 +252,7 @@ export default function SettingsPanel({ onClose }) {
         </Section>
 
         {/* AI Bulk Tagger */}
+        <div ref={bulkTagRef} />
         <Section title="AI Garment Tagger" isDark={isDark}>
           <BulkTaggerPanel isDark={isDark} />
         </Section>
@@ -321,6 +329,11 @@ export default function SettingsPanel({ onClose }) {
         <Section title="🪲 Debug Console" isDark={isDark}>
           <DebugConsole isDark={isDark} />
         </Section>
+
+        {/* Version */}
+        <div style={{ textAlign: "center", padding: "10px 0 4px", fontSize: 11, color: isDark ? "#374151" : "#d1d5db" }}>
+          Watch Advisor · {__APP_VERSION__}
+        </div>
 
       </div>
     </div>
