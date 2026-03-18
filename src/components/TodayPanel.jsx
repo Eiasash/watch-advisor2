@@ -141,7 +141,7 @@ function GarmentThumb({ g, selected, onClick, isDark }) {
         <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", flexDirection: "column",
                       alignItems: "center", justifyContent: "center", gap: 4 }}>
           <div style={{ fontSize: 24 }}>👕</div>
-          <div style={{ fontSize: 9, color: isDark ? "#4b5563" : "#9ca3af", textAlign: "center", padding: "0 4px" }}>
+          <div style={{ fontSize: 11, color: isDark ? "#4b5563" : "#9ca3af", textAlign: "center", padding: "0 4px" }}>
             {g.name?.slice(0,18)}
           </div>
         </div>
@@ -152,7 +152,7 @@ function GarmentThumb({ g, selected, onClick, isDark }) {
                       fontSize: 11, color: "#fff", fontWeight: 700 }}>✓</div>
       )}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent,#00000088)",
-                    padding: "12px 4px 4px", fontSize: 9, color: "#fff", textAlign: "center", fontWeight: 600 }}>
+                    padding: "12px 4px 4px", fontSize: 11, color: "#fff", textAlign: "center", fontWeight: 600 }}>
         {g.type?.toUpperCase()}
       </div>
     </div>
@@ -366,7 +366,7 @@ export default function TodayPanel() {
                     <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", alignItems: "center",
                                   justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 20 }}>👕</div>
                   )}
-                  <div style={{ padding: "2px 4px", fontSize: 9, color: muted, textAlign: "center" }}>{g.name?.slice(0,14)}</div>
+                  <div style={{ padding: "2px 4px", fontSize: 11, color: muted, textAlign: "center" }}>{g.name?.slice(0,14)}</div>
                 </div>
               ))}
             </div>
@@ -521,7 +521,7 @@ export default function TodayPanel() {
                     ) : (
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#22c55e" }}>new</div>
                     )}
-                    <div style={{ fontSize: 9, color: muted }}>
+                    <div style={{ fontSize: 11, color: muted }}>
                       {Math.round(rec.score * 100)}%
                     </div>
                   </div>

@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import { useBootstrap } from "./bootstrap.js";
 import { useThemeStore } from "../stores/themeStore.js";
+// Critical path — always loaded
 import Header          from "../components/Header.jsx";
-import WatchDashboard  from "../components/WatchDashboard.jsx";
-import WardrobeInsights from "../components/WardrobeInsights.jsx";
-import ImportPanel     from "../components/ImportPanel.jsx";
-import WardrobeGrid    from "../components/WardrobeGrid.jsx";
 import TodayPanel      from "../components/TodayPanel.jsx";
-import StatsPanel      from "../components/StatsPanel.jsx";
+import WatchDashboard  from "../components/WatchDashboard.jsx";
 import SyncBar         from "../components/SyncBar.jsx";
-import ScrollToTop     from "../components/ScrollToTop.jsx";
-import CommandPalette  from "../components/CommandPalette.jsx";
 import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
+import ScrollToTop     from "../components/ScrollToTop.jsx";
 import InstallPrompt   from "../components/InstallPrompt.jsx";
+// Non-critical — lazy loaded to reduce initial bundle
+const WardrobeGrid    = lazy(() => import("../components/WardrobeGrid.jsx"));
+const WardrobeInsights = lazy(() => import("../components/WardrobeInsights.jsx"));
+const ImportPanel     = lazy(() => import("../components/ImportPanel.jsx"));
+const StatsPanel      = lazy(() => import("../components/StatsPanel.jsx"));
+const CommandPalette  = lazy(() => import("../components/CommandPalette.jsx"));
 
 // Heavy tabs — lazy-loaded so they don't bloat the initial bundle.
 // Each is only mounted on first visit (TabPane keeps it alive after that).
@@ -144,7 +146,7 @@ function AppContent() {
                 flex:0 0 auto; min-width:56px;
                 border-radius:0 !important; border:none !important;
                 border-top:2px solid transparent !important;
-                padding:8px 6px 6px !important; font-size:10px !important;
+                padding:8px 6px 6px !important; font-size:11px !important;
                 flex-direction:column; display:flex; align-items:center; gap:1px;
                 white-space:nowrap;
               }
@@ -154,7 +156,7 @@ function AppContent() {
               }
               .wa-bottom-pad { padding-bottom:72px; }
               .wa-tab-icon { font-size:16px; line-height:1; }
-              .wa-tab-label { font-size:10px; line-height:1.2; }
+              .wa-tab-label { font-size:11px; line-height:1.2; }
             }
           `}</style>
           <div className="wa-tab-bar">

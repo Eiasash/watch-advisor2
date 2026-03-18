@@ -17,6 +17,18 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     minify: "esbuild",
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react":   ["react", "react-dom"],
+          "vendor-state":   ["zustand"],
+          "vendor-supabase": ["@supabase/supabase-js"],
+          "vendor-window":  ["react-window"],
+          "vendor-idb":     ["idb"],
+        },
+      },
+    },
   },
   esbuild: {
     // Strip console.log and debugger in production; keep warn/error

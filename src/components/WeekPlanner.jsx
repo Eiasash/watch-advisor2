@@ -66,7 +66,7 @@ function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
         <div style={{ fontSize:10, color:isDark?"#6b7280":"#9ca3af", display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
           <span>{watch.dualDial ? `${watch.dualDial.sideA}/${watch.dualDial.sideB}` : (watch.dial ?? "")} dial</span>
           <span style={{
-            padding:"1px 5px", borderRadius:4, fontSize:9, fontWeight:700,
+            padding:"1px 5px", borderRadius:4, fontSize: 11, fontWeight:700,
             background: watch.replica ? "#78350f22" : "#14532d22",
             color:       watch.replica ? "#f59e0b"   : "#22c55e",
           }}>{watch.replica ? "replica" : "genuine"}</span>
@@ -989,7 +989,7 @@ export default function WeekPlanner() {
                         OUTFIT
                       </div>
                       {dayOutfit._isLogged && (
-                        <div style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                        <div style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
                                       background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
                           ✓ Logged
                         </div>
