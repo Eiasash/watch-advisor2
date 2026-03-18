@@ -183,14 +183,14 @@ function AppContent() {
 
           <TabPane active={tab === "wardrobe"}>
             <WatchDashboard />
-            <WardrobeInsights />
+            <Suspense fallback={null}><WardrobeInsights /></Suspense>
             <style>{`
               .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
               @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
             `}</style>
             <div className="wa-main-grid">
-              <ImportPanel />
-              <WardrobeGrid />
+              <Suspense fallback={null}><ImportPanel /></Suspense>
+              <Suspense fallback={<div style={{ padding: 12, color: "#6b7280" }}>Loading wardrobe…</div>}><WardrobeGrid /></Suspense>
             </div>
           </TabPane>
 
@@ -202,7 +202,7 @@ function AppContent() {
             </Suspense>
           </TabPane>
 
-          <TabPane active={tab === "stats"}><StatsPanel /></TabPane>
+          <TabPane active={tab === "stats"}><Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading…</div>}><StatsPanel /></Suspense></TabPane>
 
           <TabPane active={tab === "history"}>
             <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
@@ -249,7 +249,7 @@ function AppContent() {
           <SettingsPanel onClose={() => { setShowSettings(false); setSettingsScrollTo(null); }} scrollTo={settingsScrollTo} />
         </Suspense>
       )}
-      {showPalette   && <CommandPalette onClose={() => setShowPalette(false)} onAction={handlePaletteAction} />}
+      {showPalette   && <Suspense fallback={null}><CommandPalette onClose={() => setShowPalette(false)} onAction={handlePaletteAction} /></Suspense>}
       <ScrollToTop />
       <InstallPrompt isDark={isDark} />
     </div>
