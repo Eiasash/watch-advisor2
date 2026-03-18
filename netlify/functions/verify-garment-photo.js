@@ -16,31 +16,37 @@ const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json",
 };
+const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
 
+// Kept in sync with classify-image.js — any change here must be mirrored there
 const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat","scarf","bag","accessory","watch","outfit-photo"];
-const VALID_COLORS = ["black","white","navy","blue","grey","brown","tan","beige","cream","ecru",
-                      "green","olive","teal","khaki","stone","burgundy","red","pink","orange",
-                      "yellow","purple","charcoal","dark brown","light blue","dark navy","coral",
-                      "multicolor","camel","rust","maroon","ivory","slate","mint","lavender",
-                      "sage","wine","taupe","cognac","sand","pewter","silver","gold","denim"];
-const VALID_MATERIALS = ["wool","cotton","linen","denim","leather","suede","synthetic","cashmere","knit","corduroy","tweed","flannel","canvas","rubber","mesh","unknown"];
+const VALID_COLORS = [
+  "beige","black","blue","brown","burgundy","camel","charcoal","cognac","coral","cream",
+  "dark brown","dark green","dark navy","denim","ecru","gold","green","grey","ivory","khaki",
+  "lavender","light blue","maroon","mint","multicolor","navy","olive","orange","pink","purple",
+  "red","rust","sage","sand","silver","slate","stone","tan","taupe","teal","white","wine","yellow",
+];
+// Full material list — kept in sync with classify-image.js
+const VALID_MATERIALS = [
+  "wool","cotton","linen","denim","leather","suede","synthetic","cashmere","knit",
+  "corduroy","tweed","flannel","canvas","rubber","mesh","jersey","silk","nylon",
+  "polyester","velvet","seersucker","chambray","unknown",
+];
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
     const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors, allAngles = [] } = JSON.parse(event.body ?? "{}");
 
     const apiKey = process.env.CLAUDE_API_KEY;
-    if (!apiKey) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
+    if (!apiKey) return { statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
     // ── Cache check ──────────────────────────────────────────────────────────
-    // Key includes angle count — adding new angles invalidates old cache entry
     const angleCount = (allAngles ?? []).length;
     const cacheKey = hash ? `verify:${hash}:a${angleCount}` : null;
     if (cacheKey) {
@@ -48,7 +54,7 @@ export async function handler(event) {
       if (cached) {
         return {
           statusCode: 200,
-          headers: { ...CORS, "X-Cache": "HIT" },
+          headers: { ...JSON_HEADERS, "X-Cache": "HIT" },
           body: JSON.stringify({ garmentId, ...cached, _cached: true }),
         };
       }
@@ -61,24 +67,23 @@ export async function handler(event) {
       const mediaType = imageBase64.startsWith("data:image/png") ? "image/png" : "image/jpeg";
       imageBlock = { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } };
     } else if (imageUrl) {
-      // Fetch the image and convert to base64 — validate URL first to prevent SSRF
       let u;
       try { u = new URL(imageUrl); } catch (_) {
-        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Invalid image URL" }) };
+        return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: "Invalid image URL" }) };
       }
       if (u.protocol !== "https:" || ["localhost","127.0.0.1","::1"].includes(u.hostname) || u.hostname.startsWith("169.254.")) {
-        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Disallowed image host" }) };
+        return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: "Disallowed image host" }) };
       }
       const imgRes = await fetch(u.toString(), { signal: AbortSignal.timeout(5000) });
       const ct = imgRes.headers.get("content-type") || "";
       if (!ct.startsWith("image/")) {
-        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "URL did not return an image" }) };
+        return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: "URL did not return an image" }) };
       }
       const buf = await imgRes.arrayBuffer();
       const b64 = Buffer.from(buf).toString("base64");
       imageBlock = { type: "image", source: { type: "base64", media_type: ct, data: b64 } };
     } else {
-      return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "No image provided" }) };
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: "No image provided" }) };
     }
 
     // Build neighbor context for angle/dupe detection
@@ -97,7 +102,7 @@ export async function handler(event) {
       ? `\nADDITIONAL ANGLES: ${angleBlocks.length} extra photo(s) of this garment follow. Use ALL angles to assess color, material, and texture more accurately.\n`
       : "";
 
-    const prompt = `You are a wardrobe AI classifying garment photos. Current labels for this item:
+    const prompt = `You are a menswear AI verifying garment photo labels. Current labels for this item:
 - Type: ${currentType ?? "unknown"}
 - Color: ${currentColor ?? "unknown"}
 - Name: ${currentName ?? "unknown"}
@@ -111,7 +116,7 @@ Examine all provided photos carefully. Return ONLY a JSON object (no markdown, n
   "correctedColor": "${currentColor ?? "black"}" (MOST accurate primary color — one of: ${VALID_COLORS.join(", ")}),
   "color_alternatives": ["2nd most likely color", "3rd most likely color", "4th most likely color"],
   "material": "detected fabric/material" (one of: ${VALID_MATERIALS.join(", ")}),
-  "pattern": "solid"|"striped"|"plaid"|"checked"|"cable knit"|"ribbed"|"textured"|"printed"|"houndstooth"|"herringbone"|"waffle"|"pique"|"paisley"|"geometric"|"floral"|"color block"|"windowpane"|"micro-check",
+  "pattern": "solid"|"striped"|"plaid"|"checked"|"cable knit"|"ribbed"|"textured"|"printed"|"houndstooth"|"herringbone"|"waffle"|"pique"|"paisley"|"geometric"|"floral"|"color block"|"windowpane"|"micro-check"|"glen plaid",
   "subtype": "<specific subtype e.g. 'cable knit crewneck'|'half-zip'|'polo'|'oxford'|'chinos'|'derby'|'chelsea boots'|'blazer'|null>",
   "formality": <1-10 integer>,
   "weight": "ultralight"|"light"|"medium"|"heavy",
@@ -121,6 +126,8 @@ Examine all provided photos carefully. Return ONLY a JSON object (no markdown, n
   "correctedName": "${currentName ?? ""}" (short descriptive name, max 5 words),
   "confidence": 0.0-1.0,
   "reason": "one sentence: what you see across all angles and whether labels match",
+  "isOutfitPhoto": false (true if the photo shows a complete outfit or multiple garments together — e.g. flat-lay, mannequin, full-body shot showing shirt+trousers+shoes),
+  "detectedGarments": [] (if isOutfitPhoto=true, list each visible garment as {type, color, subtype} — e.g. [{type:"shirt",color:"white",subtype:"oxford"},{type:"pants",color:"navy",subtype:"chinos"}]),
   "isAngleShot": false (true if this looks like a different angle of the same garment as a neighbor),
   "angleOfId": null (if isAngleShot=true, the neighbor ID this is an angle of),
   "isDuplicate": false (true if this is an exact or near-exact duplicate photo of a neighbor),
@@ -128,23 +135,26 @@ Examine all provided photos carefully. Return ONLY a JSON object (no markdown, n
 }
 
 Rules:
-- Set ok=true ONLY if type AND color are both correct.
-- Set ok=false if type or color is wrong.
-- color_alternatives: list 3 plausible alternative color names from the vocabulary (navy≠black, cream≠white, olive≠khaki).
-- material: examine texture, sheen, weight cues across all angles.
-- pattern: examine the fabric pattern closely. "solid" if no visible pattern.
-- weight: ultralight=linen/silk, light=cotton tee/poplin, medium=oxford/chinos/knit, heavy=overcoat/chunky knit.
-- fit: look at garment shape — slim=fitted, regular=standard, relaxed=loose, oversized=boxy. null for shoes/accessories.
-- seasons: infer from weight + material. Lightweight linen → spring/summer. Heavy wool → autumn/winter.
-- contexts: clinic=medical professional, formal=suit/tie, smart-casual=office no tie, casual=weekend, riviera=resort.
-- isAngleShot=true when photo shows the SAME garment from a different angle (front vs back, folded vs flat).
-- isDuplicate=true when photos are near-identical (same angle, same lighting, same garment).`;
+- Set ok=true ONLY if type AND color are both correct. ok=false if either is wrong.
+- COLOR PRECISION: navy≠black, cream≠white, olive≠khaki, charcoal≠black, ecru≠cream, teal≠green, stone≠beige, slate≠grey.
+  Look at the entire garment, not just the center. Lighting can shift perceived color — account for it.
+- MATERIAL: examine texture and sheen closely. knit=visible knit structure (cable/ribbed/chunky). jersey=smooth stretchy knit (t-shirts/polos).
+  cotton=smooth woven. wool=woven suiting. cashmere=very fine soft knit. flannel=brushed napped surface. denim=twill weave jeans fabric.
+  chambray=lightweight denim-look woven. velvet=plush pile. silk=lustrous smooth. nylon/polyester=synthetic sheen.
+- PATTERN: cable knit and ribbed are patterns (not solid). Check for subtle patterns — micro-check, fine stripes, texture weaves.
+- WEIGHT: ultralight=linen/silk/sheer, light=cotton tee/poplin/thin chinos, medium=oxford/regular knit/chinos/leather shoes, heavy=overcoat/chunky knit/thick denim/winter boots.
+- FIT: assess from garment shape — slim=fitted/tapered, regular=standard cut, relaxed=loose, oversized=boxy/dropped shoulders. null for shoes/accessories/belts.
+- SEASONS: infer from weight+material. Heavy knit/wool=autumn/winter. Light cotton/linen=spring/summer. Medium cotton=spring/summer/autumn. all-season items can span all four.
+- CONTEXTS: clinic=medical professional setting. formal=black tie/suit. smart-casual=office no tie. casual=weekend. date-night=evening out. riviera=resort/summer. sport=athletic. lounge=home/relaxed.
+- MULTI-GARMENT: if the photo shows multiple clothing items (outfit flat-lay, full-body photo, several garments on a rail), set isOutfitPhoto=true and list each visible item in detectedGarments. The labelled item (currentType) should still be classified as the primary result.
+- isAngleShot=true when photo shows the SAME garment from a different angle (front vs back, folded vs flat, hanging vs laid flat).
+- isDuplicate=true when photos are near-identical (same angle, same lighting, same garment, likely uploaded twice).`;
 
     const contentBlocks = [imageBlock, ...angleBlocks, { type: "text", text: prompt }];
 
     const res = await callClaude(apiKey, {
       model: "claude-sonnet-4-6",
-      max_tokens: 400,
+      max_tokens: 600,
       messages: [{ role: "user", content: contentBlocks }],
     }, { maxAttempts: 1 });
 
@@ -160,11 +170,11 @@ Rules:
 
     return {
       statusCode: 200,
-      headers: { ...CORS, "X-Cache": "MISS" },
+      headers: { ...JSON_HEADERS, "X-Cache": "MISS" },
       body: JSON.stringify({ garmentId, ...parsed }),
     };
   } catch (err) {
     const isClaudeError = err.message?.startsWith("Claude API error");
-    return { statusCode: isClaudeError ? 502 : 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: isClaudeError ? 502 : 500, headers: JSON_HEADERS, body: JSON.stringify({ error: err.message }) };
   }
 }

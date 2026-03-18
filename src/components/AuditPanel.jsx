@@ -530,10 +530,11 @@ export function PhotoVerifierPanel() {
     setOverrides(ov => ({ ...ov, [garmentId]: { ...(ov[garmentId] ?? {}), [key]: val } }));
   }
 
-  const issues = Object.values(results).filter(r => !r.ok && !r._applied && !r._dismissed);
-  const angles = Object.values(results).filter(r => r.isAngleShot && !r._dismissed && !r._applied);
-  const dupes  = Object.values(results).filter(r => r.isDuplicate && !r._dismissed && !r._applied);
-  const oks    = Object.values(results).filter(r => r.ok && !r._dismissed);
+  const issues  = Object.values(results).filter(r => !r.ok && !r._applied && !r._dismissed && !r.isAngleShot && !r.isDuplicate);
+  const angles  = Object.values(results).filter(r => r.isAngleShot && !r._dismissed && !r._applied);
+  const dupes   = Object.values(results).filter(r => r.isDuplicate && !r._dismissed && !r._applied);
+  const outfits = Object.values(results).filter(r => r.isOutfitPhoto && !r._dismissed && !r._applied);
+  const oks     = Object.values(results).filter(r => r.ok && !r._dismissed);
 
   const TYPE_OPTIONS  = ["shirt","pants","shoes","jacket","sweater","shorts","dress","skirt","coat","accessory","bag","other"];
   const COLOR_OPTIONS = ["beige","black","blue","brown","burgundy","camel","charcoal","cognac","coral","cream","dark brown","dark green","dark navy","denim","gold","green","grey","ivory","khaki","lavender","light blue","maroon","mint","multicolor","navy","olive","orange","pink","purple","red","rust","sage","sand","silver","slate","tan","taupe","teal","white","wine","yellow"];
@@ -614,7 +615,7 @@ export function PhotoVerifierPanel() {
         </button>
       )}
 
-      {done && issues.length === 0 && !dupes.length && !angles.length && (
+      {done && issues.length === 0 && !dupes.length && !angles.length && !outfits.length && (
         <div style={{ padding: "10px 14px", borderRadius: 10, background: isDark ? "#0a1a0a" : "#f0fdf4",
                       border: `1px solid ${isDark ? "#166534" : "#bbf7d0"}`, fontSize: 13,
                       color: isDark ? "#86efac" : "#15803d" }}>
@@ -832,6 +833,55 @@ export function PhotoVerifierPanel() {
                       Keep Both
                     </button>
                   </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Outfit / multi-garment photos */}
+      {done && outfits.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#8b5cf6", marginBottom: 8, textTransform: "uppercase" }}>
+            Outfit Photos ({outfits.length}) — multiple garments detected
+          </div>
+          {outfits.map(r => {
+            const g = garments.find(x => x.id === r.garmentId);
+            if (!g) return null;
+            const thumb = g.thumbnail || g.photoUrl;
+            return (
+              <div key={r.garmentId} style={{ marginBottom: 8, padding: 10, borderRadius: 10,
+                                              background: card, border: `1px solid #8b5cf6` }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  {thumb && (
+                    <div onClick={() => setLightbox({ src: thumb, garmentId: r.garmentId })}
+                      style={{ cursor: "zoom-in", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+                      <img src={thumb} alt={g.name} style={{ width: 56, height: 56, objectFit: "cover", display: "block" }} />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#8b5cf6", marginBottom: 3 }}>
+                      Full outfit detected in "{g.name}"
+                    </div>
+                    {r.detectedGarments?.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
+                        {r.detectedGarments.map((dg, i) => (
+                          <span key={i} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5,
+                                                  background: isDark ? "#1a1f2b" : "#f3f4f6",
+                                                  color: isDark ? "#a1a9b8" : "#4b5563" }}>
+                            {dg.color} {dg.subtype ?? dg.type}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: sub }}>{r.reason}</div>
+                  </div>
+                  <button onClick={() => dismissCard(r.garmentId)}
+                    style={{ padding: "5px 9px", borderRadius: 7, border: `1px solid ${border}`,
+                             background: "transparent", color: sub, fontSize: 11, cursor: "pointer", flexShrink: 0 }}>
+                    ✕ Dismiss
+                  </button>
                 </div>
               </div>
             );
