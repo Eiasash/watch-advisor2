@@ -164,3 +164,39 @@ describe("scoreWatchForDay", () => {
     expect(score).not.toBeNaN();
   });
 });
+
+describe("scoreWatchForDay — pilot formality floor", () => {
+  const laco = { id: "laco", brand: "Laco", model: "Flieger Type B", style: "pilot", formality: 5, replica: false };
+  const hanhart = { id: "hanhart", brand: "Hanhart", model: "Pioneer Flyback", style: "pilot", formality: 6, replica: false };
+  const speedmaster = { id: "speedmaster", brand: "Omega", model: "Speedmaster", style: "sport", formality: 7, replica: false };
+
+  it("Laco (pilot, formality 5) scores 0 on shift — hard floor", () => {
+    expect(scoreWatchForDay(laco, "shift")).toBe(0);
+  });
+
+  it("Laco scores 0 on hospital-smart-casual — hard floor", () => {
+    expect(scoreWatchForDay(laco, "hospital-smart-casual")).toBe(0);
+  });
+
+  it("Laco scores 0 on formal — hard floor", () => {
+    expect(scoreWatchForDay(laco, "formal")).toBe(0);
+  });
+
+  it("Laco scores > 0 on casual — pilot/field is appropriate", () => {
+    expect(scoreWatchForDay(laco, "casual")).toBeGreaterThan(0);
+  });
+
+  it("Laco scores > 0 on smart-casual — no floor there", () => {
+    expect(scoreWatchForDay(laco, "smart-casual")).toBeGreaterThan(0);
+  });
+
+  it("Hanhart (pilot, formality 6) is NOT blocked on shift — meets floor", () => {
+    expect(scoreWatchForDay(hanhart, "shift")).toBeGreaterThan(0);
+  });
+
+  it("Speedmaster (sport, formality 7) beats Laco on shift", () => {
+    const lacoScore = scoreWatchForDay(laco, "shift");
+    const speedScore = scoreWatchForDay(speedmaster, "shift");
+    expect(speedScore).toBeGreaterThan(lacoScore);
+  });
+});

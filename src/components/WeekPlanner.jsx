@@ -63,9 +63,14 @@ function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
         <div style={{ fontSize:11, fontWeight:700, color:isDark?"#e2e8f0":"#111827", lineHeight:1.2 }}>
           {watch.brand ?? ""} {watch.model ?? watch.name ?? "Watch"}
         </div>
-        <div style={{ fontSize:10, color:isDark?"#6b7280":"#9ca3af" }}>
-          {watch.dualDial ? `${watch.dualDial.sideA}/${watch.dualDial.sideB}` : (watch.dial ?? "")} dial
-          {label && <span style={{ color:accent, marginLeft:4 }}>{label}</span>}
+        <div style={{ fontSize:10, color:isDark?"#6b7280":"#9ca3af", display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+          <span>{watch.dualDial ? `${watch.dualDial.sideA}/${watch.dualDial.sideB}` : (watch.dial ?? "")} dial</span>
+          <span style={{
+            padding:"1px 5px", borderRadius:4, fontSize:9, fontWeight:700,
+            background: watch.replica ? "#78350f22" : "#14532d22",
+            color:       watch.replica ? "#f59e0b"   : "#22c55e",
+          }}>{watch.replica ? "replica" : "genuine"}</span>
+          {label && <span style={{ color:accent }}>{label}</span>}
         </div>
       </div>
       {daysSince !== undefined && daysSince !== null && (

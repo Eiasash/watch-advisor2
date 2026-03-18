@@ -152,16 +152,26 @@ export default function AuditPanel() {
   const [expanded, setExpanded] = useState(false);
   const [stale,    setStale]    = useState(false); // garments changed since last audit
 
+  // Lightweight fingerprint: join id+color+type+formality for all active garments.
+  // Changes on add/remove AND on edits (relabel, retag, recolor).
+  function _auditFingerprint(gs) {
+    return gs
+      .filter(g => !g.excludeFromWardrobe)
+      .map(g => `${g.id}:${g.color}:${g.type}:${g.formality ?? 5}`)
+      .sort()
+      .join("|");
+  }
+
   // Restore cached audit result on mount + check staleness
   useEffect(() => {
     getCachedState().then(cached => {
       if (cached._auditResult && cached._auditResult.grade) {
         setResult(cached._auditResult);
         setExpanded(false);
-        // Stale if garment count changed since last audit
-        const audited = cached._auditGarmentCount ?? 0;
-        const current = garments.filter(g => !g.excludeFromWardrobe).length;
-        if (audited > 0 && audited !== current) setStale(true);
+        // Stale if fingerprint changed (catches adds, removes, AND edits)
+        const savedFp = cached._auditFingerprint ?? "";
+        const currentFp = _auditFingerprint(garments);
+        if (savedFp && savedFp !== currentFp) setStale(true);
       }
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -170,9 +180,10 @@ export default function AuditPanel() {
   useEffect(() => {
     if (!result) return;
     getCachedState().then(cached => {
-      const audited = cached._auditGarmentCount ?? 0;
-      const current = garments.filter(g => !g.excludeFromWardrobe).length;
-      if (audited > 0 && audited !== current) setStale(true);
+      const savedFp = cached._auditFingerprint ?? "";
+      if (!savedFp) return;
+      const currentFp = _auditFingerprint(garments);
+      if (savedFp !== currentFp) setStale(true);
     }).catch(() => {});
   }, [garments, result]);
 
@@ -189,7 +200,7 @@ export default function AuditPanel() {
       setResult(res);
       setExpanded(true);
       setStale(false);
-      setCachedState({ _auditResult: res, _auditGarmentCount: filtered.length }).catch(() => {});
+      setCachedState({ _auditResult: res, _auditFingerprint: _auditFingerprint(garments) }).catch(() => {});
     } catch (e) {
       setError(e.message || "Audit failed");
     }

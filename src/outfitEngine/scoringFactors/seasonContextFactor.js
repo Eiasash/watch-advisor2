@@ -23,7 +23,12 @@ const SEASON_BY_MONTH = {
 };
 
 export function currentSeason() {
-  return SEASON_BY_MONTH[new Date().getMonth()];
+  // Use Jerusalem timezone so the season is correct regardless of server/client UTC offset.
+  const month = parseInt(
+    new Date().toLocaleDateString("en-US", { month: "numeric", timeZone: "Asia/Jerusalem" }),
+    10
+  ) - 1; // toLocaleDateString month is 1-indexed
+  return SEASON_BY_MONTH[month];
 }
 
 export default function seasonContextFactor(candidate, context) {

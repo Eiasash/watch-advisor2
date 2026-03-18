@@ -36,6 +36,9 @@ const DIAL_SWATCH = {
 function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
   if (!watch) return null;
   const swatch = DIAL_SWATCH[watch.dial] ?? "#444";
+  // Show active strap from strapStore so card reflects the strap actually in use today
+  const activeStrapObj = useStrapStore(s => s.getActiveStrapObj?.(watch.id));
+  const strapLabel = activeStrapObj?.label ?? watch.strap ?? null;
 
   return (
     <div style={{
@@ -63,6 +66,11 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
           }
           {watch.style} &middot; formality {watch.formality}/10
         </div>
+        {strapLabel && (
+          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, fontStyle: "italic" }}>
+            {strapLabel}
+          </div>
+        )}
       </div>
     </div>
   );

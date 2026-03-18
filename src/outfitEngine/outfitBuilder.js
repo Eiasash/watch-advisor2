@@ -374,7 +374,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
 
   const shoesPool = outfit.shoes
     ? [{ garment: outfit.shoes, score: 1 }]
-    : _shortlistCandidates(coreSlotCandidates.shoes ?? [], 4,
+    : _shortlistCandidates(coreSlotCandidates.shoes ?? [], 6,
         g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors, preferenceWeights));
 
   // Greedy defaults — best individual scores (fast path if no combo search)
@@ -572,7 +572,8 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
  * Diversity penalty — avoid repeating garments from recent history.
  */
 function diversityBonus(garment, history) {
-  const recent = (history ?? []).slice(-5);
+  // 7-day window: matches the recency window used in scoreWatchForDay.
+  const recent = (history ?? []).slice(-7);
   const usedCount = recent.filter(e => {
     const o = e.outfit ?? e.payload?.outfit ?? {};
     if (Object.values(o).includes(garment.id)) return true;

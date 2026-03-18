@@ -93,14 +93,30 @@ export function dailyJitter(watchId, dateStr) {
   return (Math.abs(h) % 1000) / 111112; // 0..~0.009
 }
 
+// Profiles where pilot/field watches with low formality are inappropriate
+// (Laco formality 5 should never appear in clinic or shift recommendations)
+const PILOT_FORMALITY_FLOOR = {
+  "hospital-smart-casual": 6,
+  "shift":                 6,
+  "formal":                8,
+};
+
 /**
  * Score a single watch for a day profile and recent history.
  * Penalizes replicas in clinic / formal / shift contexts.
+ * Hard-excludes low-formality pilot watches from professional profiles.
  * Adds daily jitter to break ties so the same watch doesn't always win.
  */
 export function scoreWatchForDay(watch, dayProfile, history = []) {
   const targetFormality = TARGET_FORMALITY[dayProfile] ?? 6;
   const suitableStyles = STYLE_SUITABILITY[dayProfile] ?? [];
+
+  // Hard gate: pilot watches below the profile formality floor score 0.
+  // Prevents Laco (formality 5) from appearing in shift/hospital recommendations.
+  const pilotFloor = PILOT_FORMALITY_FLOOR[dayProfile];
+  if (pilotFloor && watch.style === "pilot" && (watch.formality ?? 5) < pilotFloor) {
+    return 0;
+  }
 
   // Formality closeness: max score when diff=0, zero at diff>=4
   const formalityDiff = Math.abs((watch.formality ?? 5) - targetFormality);
