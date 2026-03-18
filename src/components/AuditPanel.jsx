@@ -11,13 +11,13 @@ async function runAudit(garments, watches, history) {
   const garmentsSummary = garments
     .filter(g => g.type !== "outfit-photo" && !g.excludeFromWardrobe)
     .map(g => {
+      // Compact format to reduce prompt size and avoid 504 timeouts
       const tags = [
         g.weight ? `wt:${g.weight}` : null,
-        g.fit    ? `fit:${g.fit}`   : null,
-        (g.seasons?.length && !g.seasons.includes("all-season")) ? g.seasons.join("/") : null,
-        g.material ? g.material : null,
-      ].filter(Boolean).join(", ");
-      return `[${g.type}] ${g.name}${g.brand ? " (" + g.brand + ")" : ""} — ${g.color ?? "?"} (formality ${g.formality ?? 5}/10${tags ? `, ${tags}` : ""})${g.notes ? " | " + g.notes : ""}`;
+        g.fit && g.fit !== "regular" ? `fit:${g.fit}` : null,
+        (g.seasons?.length && !g.seasons.includes("all-season")) ? g.seasons.slice(0,2).join("/") : null,
+      ].filter(Boolean).join(" ");
+      return `${g.type}|${g.name}|${g.color ?? "?"}|f${g.formality ?? 5}${tags ? "|" + tags : ""}`;
     })
     .join("\n");
 
@@ -65,7 +65,7 @@ WARDROBE (${garments.length} garments):
 Types: ${typeSummary}
 Colors: ${colorSummary}
 Items:
-${garmentsSummary.slice(0, 12000)}${garmentsSummary.length > 12000 ? `\n[...${garments.length - Math.floor(12000 / (garmentsSummary.length / garments.length))} garments truncated — use type/color summary above for full picture]` : ""}
+${garmentsSummary.slice(0, 8000)}${garmentsSummary.length > 12000 ? `\n[...${garments.length - Math.floor(12000 / (garmentsSummary.length / garments.length))} garments truncated — use type/color summary above for full picture]` : ""}
 
 WATCHES (${watches.length} pieces):
 ${watchSummary}
@@ -99,11 +99,19 @@ Provide a precise, critical wardrobe audit. Reference specific items. Return ONL
   "pro_tip": "One advanced watch-wardrobe coordination insight specific to this collection (1-2 sentences)"
 }`;
 
-  const res = await fetch("/.netlify/functions/ai-audit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s client timeout
+  let res;
+  try {
+    res = await fetch("/.netlify/functions/ai-audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!res.ok) throw new Error(`AI audit failed: ${res.status}`);
   const data = await res.json();
   return data;
@@ -530,7 +538,15 @@ export function PhotoVerifierPanel() {
     setOverrides(ov => ({ ...ov, [garmentId]: { ...(ov[garmentId] ?? {}), [key]: val } }));
   }
 
-  const issues  = Object.values(results).filter(r => !r.ok && !r._applied && !r._dismissed && !r.isAngleShot && !r.isDuplicate);
+  // Auto-dismiss AI parse errors (Claude overload/truncation) — not actionable
+  // Exclude: confidence===0 OR reason==="AI parse error" (belt-and-suspenders)
+  const issues  = Object.values(results).filter(r =>
+    !r.ok && !r._applied && !r._dismissed && !r.isAngleShot && !r.isDuplicate &&
+    r.reason !== "AI parse error" && (r.confidence ?? 0) > 0
+  );
+  const parseErrors = Object.values(results).filter(r =>
+    (r.reason === "AI parse error" || (r.confidence ?? 1) === 0) && !r._dismissed
+  );
   const angles  = Object.values(results).filter(r => r.isAngleShot && !r._dismissed && !r._applied);
   const dupes   = Object.values(results).filter(r => r.isDuplicate && !r._dismissed && !r._applied);
   const outfits = Object.values(results).filter(r => r.isOutfitPhoto && !r._dismissed && !r._applied);
@@ -613,6 +629,14 @@ export function PhotoVerifierPanel() {
                    cursor: "pointer", marginBottom: 10, width: "100%" }}>
           Apply All {issues.length} Fixes
         </button>
+      )}
+
+      {done && parseErrors.length > 0 && (
+        <div style={{ padding:"8px 12px", borderRadius:8, marginBottom:8, fontSize:12,
+                      background:isDark?"#1a1f2b":"#f9fafb", border:`1px solid ${border}`,
+                      color:sub }}>
+          ↺ {parseErrors.length} garment{parseErrors.length > 1 ? "s" : ""} returned parse errors (Claude overloaded) — re-run Verify to retry these.
+        </div>
       )}
 
       {done && issues.length === 0 && !dupes.length && !angles.length && !outfits.length && (

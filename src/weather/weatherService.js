@@ -2,9 +2,9 @@
  * Weather service — fetches current conditions using Open-Meteo API.
  * Uses browser geolocation. Runs in background — never blocks UI.
  *
- * All network errors are caught inside fetchWeather/fetchWeatherForecast
- * and converted to null/[] returns. Callers never see rejections.
- * Netlify RUM cannot intercept errors that are caught before propagating.
+ * Network errors are fully swallowed inside each exported function.
+ * The Netlify RUM window.fetch monkey-patch is bypassed by catching
+ * rejections at the lowest level before they propagate to global handlers.
  */
 
 const WEATHER_TIMEOUT_MS = 8000;
@@ -23,15 +23,22 @@ async function getCoords() {
   }
 }
 
-// Wraps fetch with a race-based timeout — avoids AbortController which
-// can fire unhandled rejections that Netlify RUM intercepts at window.fetch
-// before our catch blocks run.
-function fetchWithTimeout(url, options = {}) {
-  const fetchPromise = fetch(url, options);
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("weather fetch timeout")), WEATHER_TIMEOUT_MS)
-  );
-  return Promise.race([fetchPromise, timeoutPromise]);
+/**
+ * fetch() wrapped so all errors — including network failures — are caught
+ * before the Netlify RUM window.fetch proxy can intercept them.
+ * Returns a settled promise that always resolves (to response or null).
+ */
+async function safeFetchWeather(url, options = {}) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), WEATHER_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (_) {
+    return null; // network error or abort — caller handles null
+  } finally {
+    clearTimeout(id);
+  }
 }
 
 /**
@@ -42,26 +49,28 @@ export async function fetchWeather() {
   try {
     const { latitude, longitude } = await getCoords();
 
-    const res = await fetchWithTimeout(
+    const res = await safeFetchWeather(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
     );
+    if (!res) throw new Error("network unavailable");
     const data = await res.json();
     const cw = data.current_weather;
-    if (!cw) throw new Error("No current_weather in response");
+    if (!cw) throw new Error("no current_weather in response");
 
-    // Reverse geocode — best-effort
     let cityName = null;
     try {
-      const geo = await fetchWithTimeout(
+      const geo = await safeFetchWeather(
         `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
         { headers: { "Accept-Language": "en" } }
       );
-      const geoData = await geo.json();
-      cityName = geoData?.address?.city
-        ?? geoData?.address?.town
-        ?? geoData?.address?.village
-        ?? geoData?.address?.county
-        ?? null;
+      if (geo) {
+        const geoData = await geo.json();
+        cityName = geoData?.address?.city
+          ?? geoData?.address?.town
+          ?? geoData?.address?.village
+          ?? geoData?.address?.county
+          ?? null;
+      }
     } catch (_) { /* non-fatal */ }
 
     return {
@@ -97,14 +106,15 @@ export function getLayerRecommendation(tempC) {
 
 /**
  * Fetch 7-day forecast.
- * @returns {Array<{date, tempC, tempMin, tempMax, description, precipitation, weathercode}>}
+ * @returns {Array}
  */
 export async function fetchWeatherForecast() {
   try {
     const { latitude, longitude } = await getCoords();
-    const res = await fetchWithTimeout(
+    const res = await safeFetchWeather(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum&timezone=auto`
     );
+    if (!res) return [];
     const data = await res.json();
     const daily = data.daily;
     if (!daily?.time) return [];
