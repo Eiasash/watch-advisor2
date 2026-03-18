@@ -28,7 +28,7 @@ export const CASUAL_SHOE_SOFT_MISS  = 0.8;
 
 // Non-standard leather colors and their allowed shoe families
 export const SPECIAL_STRAP_RULES = {
-  navy:  { allowed: ["black", "white"],          fallback: 0.0 },
+  navy:  { allowed: ["black", "white", "brown", "tan", "cognac", "dark brown"], fallback: 0.0 },
   grey:  { allowed: ["black", "white", "grey"],  fallback: 0.3 },
   teal:  { allowed: ["white", "black"],           fallback: 0.3 },
   olive: { allowed: ["white", "black"],           fallback: 0.3 },

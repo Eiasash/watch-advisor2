@@ -11,8 +11,20 @@ import {
 // ─── strapShoeScore — non-standard leather colors ──────────────────────────
 
 describe("strapShoeScore — colored alligator straps have specific shoe rules", () => {
-  it("navy alligator + brown shoes → 0.0 (navy strap rejects brown — hard fail)", () => {
-    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "brown" })).toBe(0.0);
+  it("navy alligator + brown shoes → 1.0 (navy strap now allows brown)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "brown" })).toBe(1.0);
+  });
+
+  it("navy alligator + tan shoes → 1.0 (navy strap allows tan)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "tan" })).toBe(1.0);
+  });
+
+  it("navy alligator + cognac shoes → 1.0 (navy strap allows cognac)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "cognac" })).toBe(1.0);
+  });
+
+  it("navy alligator + dark brown shoes → 1.0 (navy strap allows dark brown)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "dark brown" })).toBe(1.0);
   });
 
   it("navy alligator + black shoes → 1.0 (navy strap + black shoes = correct)", () => {
@@ -21,6 +33,10 @@ describe("strapShoeScore — colored alligator straps have specific shoe rules",
 
   it("navy alligator + white shoes → 1.0 (navy strap + white sneakers = correct)", () => {
     expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "white" })).toBe(1.0);
+  });
+
+  it("navy alligator + burgundy shoes → 0.0 (navy strap still hard-blocks unrelated colors)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "burgundy" })).toBe(0.0);
   });
 
   it("grey alligator + tan shoes → 0.3 (grey strap tolerates non-ideal shoes)", () => {

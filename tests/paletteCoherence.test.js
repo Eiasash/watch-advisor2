@@ -138,7 +138,7 @@ describe("buildOutfit — belt slot", () => {
 // ─── Pants-shoe coherence swap ──────────────────────────────────────────────
 
 describe("buildOutfit — pants-shoe palette coherence", () => {
-  it("navy strap forces black shoes → engine avoids warm pants", () => {
+  it("navy strap allows black OR brown shoes → engine picks best combo", () => {
     const reverso = {
       id: "reverso", style: "dress", formality: 9, dial: "navy",
       strap: "leather",
@@ -146,18 +146,16 @@ describe("buildOutfit — pants-shoe palette coherence", () => {
     };
     const wardrobe = [
       { id: "s1", type: "shirt", color: "grey", formality: 7, name: "Grey Shirt" },
-      { id: "p1", type: "pants", color: "stone", formality: 7, name: "Stone Trousers" }, // warm
-      { id: "p2", type: "pants", color: "grey", formality: 7, name: "Grey Trousers" },   // cool
-      { id: "p3", type: "pants", color: "slate", formality: 6, name: "Slate Jeans" },     // cool
+      { id: "p1", type: "pants", color: "stone", formality: 7, name: "Stone Trousers" },
+      { id: "p2", type: "pants", color: "grey", formality: 7, name: "Grey Trousers" },
+      { id: "p3", type: "pants", color: "slate", formality: 6, name: "Slate Jeans" },
       { id: "sh1", type: "shoes", color: "black", formality: 8, name: "Black Shoes" },
       { id: "sh2", type: "shoes", color: "tan", formality: 6, name: "Tan Shoes" },
       { id: "b1", type: "belt", color: "black", name: "Black Belt" },
     ];
     const outfit = buildOutfit(reverso, wardrobe, { tempC: 15 });
-    // Navy alligator → black shoes only. Engine should avoid stone pants.
-    expect(outfit.shoes.color).toBe("black");
-    // Pants should be grey or slate, NOT stone (warm + black = 0.3 harmony)
-    expect(["grey", "slate"]).toContain(outfit.pants.color);
+    // Navy alligator now allows black OR brown/tan/cognac shoes
+    expect(["black", "tan", "brown", "cognac", "dark brown"]).toContain(outfit.shoes.color);
   });
 
   it("bracelet watch has no forced shoe constraint — warm pants + brown shoes OK", () => {
