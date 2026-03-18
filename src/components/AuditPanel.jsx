@@ -30,7 +30,7 @@ async function runAudit(garments, watches, history) {
   const typeSummary = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${t} ×${n}`).join(", ");
 
   const watchSummary = watches.map(w =>
-    `${w.brand ?? ""} ${w.model ?? w.name ?? "Watch"} — ${w.dial ?? "?"} dial, formality ${w.formality ?? 5}/10${w.genuine === false ? " [replica]" : " [genuine]"}`
+    `${w.brand ?? ""} ${w.model ?? w.name ?? "Watch"} — ${w.dial ?? "?"} dial, formality ${w.formality ?? 5}/10${w.replica ? " [replica]" : " [genuine]"}`
   ).join("\n");
 
   const wearFreq = {};
