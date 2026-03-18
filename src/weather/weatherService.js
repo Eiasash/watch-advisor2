@@ -2,19 +2,12 @@
  * Weather service — fetches current conditions using Open-Meteo API.
  * Uses browser geolocation. Runs in background — never blocks UI.
  *
- * All external fetches have an 8s AbortSignal timeout so a slow/unreachable
- * API never hangs indefinitely. Errors are swallowed inside the function so
- * callers get null rather than an unhandled rejection that pollutes error logs.
+ * All network errors are caught inside fetchWeather/fetchWeatherForecast
+ * and converted to null/[] returns. Callers never see rejections.
+ * Netlify RUM cannot intercept errors that are caught before propagating.
  */
 
 const WEATHER_TIMEOUT_MS = 8000;
-
-function timedFetch(url, options = {}) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), WEATHER_TIMEOUT_MS);
-  return fetch(url, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(id));
-}
 
 async function getCoords() {
   try {
@@ -26,55 +19,63 @@ async function getCoords() {
     });
     return { latitude: position.coords.latitude, longitude: position.coords.longitude };
   } catch (_) {
-    // Geolocation denied or timed out — fallback to Jerusalem
     return { latitude: 31.7683, longitude: 35.2137 };
   }
 }
 
+// Wraps fetch with a race-based timeout — avoids AbortController which
+// can fire unhandled rejections that Netlify RUM intercepts at window.fetch
+// before our catch blocks run.
+function fetchWithTimeout(url, options = {}) {
+  const fetchPromise = fetch(url, options);
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("weather fetch timeout")), WEATHER_TIMEOUT_MS)
+  );
+  return Promise.race([fetchPromise, timeoutPromise]);
+}
+
 /**
  * Fetch current weather.
- * @returns {{ tempC: number, description: string, weathercode: number } | null}
+ * @returns {{ tempC, description, weathercode, cityName, latitude, longitude } | null}
  */
 export async function fetchWeather() {
-  const { latitude, longitude } = await getCoords();
-
-  let cw;
   try {
-    const res = await timedFetch(
+    const { latitude, longitude } = await getCoords();
+
+    const res = await fetchWithTimeout(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
     );
     const data = await res.json();
-    cw = data.current_weather;
+    const cw = data.current_weather;
     if (!cw) throw new Error("No current_weather in response");
+
+    // Reverse geocode — best-effort
+    let cityName = null;
+    try {
+      const geo = await fetchWithTimeout(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const geoData = await geo.json();
+      cityName = geoData?.address?.city
+        ?? geoData?.address?.town
+        ?? geoData?.address?.village
+        ?? geoData?.address?.county
+        ?? null;
+    } catch (_) { /* non-fatal */ }
+
+    return {
+      tempC: cw.temperature,
+      description: weatherCodeToDescription(cw.weathercode),
+      weathercode: cw.weathercode,
+      cityName,
+      latitude,
+      longitude,
+    };
   } catch (err) {
-    // Network error, timeout, or bad response — non-fatal, caller handles null
     console.warn("[weather] fetchWeather failed:", err.message);
     return null;
   }
-
-  // Reverse geocode — best-effort, 5s timeout, never blocks
-  let cityName = null;
-  try {
-    const geo = await timedFetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-      { headers: { "Accept-Language": "en" } }
-    );
-    const geoData = await geo.json();
-    cityName = geoData?.address?.city
-      ?? geoData?.address?.town
-      ?? geoData?.address?.village
-      ?? geoData?.address?.county
-      ?? null;
-  } catch (_) { /* non-fatal */ }
-
-  return {
-    tempC: cw.temperature,
-    description: weatherCodeToDescription(cw.weathercode),
-    weathercode: cw.weathercode,
-    cityName,
-    latitude,
-    longitude,
-  };
 }
 
 function weatherCodeToDescription(code) {
@@ -87,9 +88,6 @@ function weatherCodeToDescription(code) {
   return "Unknown";
 }
 
-/**
- * Weather-based layering rules.
- */
 export function getLayerRecommendation(tempC) {
   if (tempC < 10) return { layer: "coat", label: "Heavy coat recommended" };
   if (tempC < 16) return { layer: "sweater", label: "Sweater recommended" };
@@ -98,14 +96,13 @@ export function getLayerRecommendation(tempC) {
 }
 
 /**
- * Fetch 7-day weather forecast (daily min/max/avg temp + weather codes).
- * Returns array of { date, tempC, tempMin, tempMax, description } or []
+ * Fetch 7-day forecast.
+ * @returns {Array<{date, tempC, tempMin, tempMax, description, precipitation, weathercode}>}
  */
 export async function fetchWeatherForecast() {
-  const { latitude, longitude } = await getCoords();
-
   try {
-    const res = await timedFetch(
+    const { latitude, longitude } = await getCoords();
+    const res = await fetchWithTimeout(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum&timezone=auto`
     );
     const data = await res.json();
@@ -131,9 +128,6 @@ export async function fetchWeatherForecast() {
   }
 }
 
-/**
- * Format weather display text.
- */
 export function formatWeatherText(weather) {
   if (!weather) return null;
   const rec = getLayerRecommendation(weather.tempC);
