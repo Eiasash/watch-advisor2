@@ -327,7 +327,7 @@ export default function StatsPanel() {
                     <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${border}`,
                                   marginBottom: 4, position: "relative" }}>
                       {(g.thumbnail || g.photoUrl) ? (
-                        <img src={g.thumbnail || g.photoUrl}
+                        <img src={g.thumbnail || g.photoUrl} alt={g.name ?? g.color ?? ""}
                           style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
                       ) : (
                         <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", alignItems: "center",
@@ -356,7 +356,7 @@ export default function StatsPanel() {
                                   border:`1px solid ${daysSince >= 60 ? "#ef4444" : "#f59e0b"}44`,
                                   marginBottom:4, position:"relative" }}>
                       {(g.thumbnail || g.photoUrl) ? (
-                        <img src={g.thumbnail || g.photoUrl}
+                        <img src={g.thumbnail || g.photoUrl} alt={g.name ?? g.color ?? ""}
                           style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", display:"block", opacity:0.75 }} />
                       ) : (
                         <div style={{ width:"100%", aspectRatio:"3/4", display:"flex", alignItems:"center",
@@ -514,7 +514,7 @@ export default function StatsPanel() {
                   <div style={{ width: 36, height: 48, borderRadius: 6, overflow: "hidden", flexShrink: 0,
                                 border: `1px solid ${border}` }}>
                     {(g.thumbnail || g.photoUrl) ? (
-                      <img src={g.thumbnail || g.photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={g.thumbnail || g.photoUrl} alt={g.name ?? g.color ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center",
                                     justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 16 }}>👕</div>

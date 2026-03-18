@@ -361,7 +361,7 @@ export default function TodayPanel() {
               {wornGarments.map(g => (
                 <div key={g.id} style={{ borderRadius: 8, overflow: "hidden", border: `1px solid ${border}` }}>
                   {(g.thumbnail || g.photoUrl) ? (
-                    <img src={g.thumbnail || g.photoUrl} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
+                    <img src={g.thumbnail || g.photoUrl} alt={g.name ?? g.color ?? ""} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
                   ) : (
                     <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", alignItems: "center",
                                   justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 20 }}>👕</div>

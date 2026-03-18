@@ -246,9 +246,12 @@ export default function WatchDashboard() {
   }, [watches, activeWatch, setActiveWatch]);
 
   useEffect(() => {
-    fetchWeather()
-      .then(setWeather)
-      .catch(err => console.warn("[weather] failed:", err.message));
+    // Delay weather fetch 2s after mount — avoids geolocation-on-page-load
+    // Lighthouse flag and gives the main bundle time to hydrate first.
+    const t = setTimeout(() => {
+      fetchWeather().then(setWeather);
+    }, 2000);
+    return () => clearTimeout(t);
   }, []);
 
   const selectedWatch = activeWatch ?? watches[0] ?? null;
