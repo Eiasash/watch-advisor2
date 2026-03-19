@@ -52,10 +52,14 @@ export async function handler(event) {
     if (cacheKey) {
       const cached = await cacheGet(cacheKey);
       if (cached) {
+        // IMPORTANT: garmentId always comes from the request, never from cache.
+        // Cache stores only the Vision result (ok, correctedType, etc.) — not the ID.
+        // Spreading garmentId LAST ensures request ID always wins even if cache
+        // somehow contains a stale garmentId field from a previous session.
         return {
           statusCode: 200,
           headers: { ...JSON_HEADERS, "X-Cache": "HIT" },
-          body: JSON.stringify({ garmentId, ...cached, _cached: true }),
+          body: JSON.stringify({ ...cached, garmentId, _cached: true }),
         };
       }
     }

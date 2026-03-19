@@ -416,12 +416,21 @@ export function PhotoVerifierPanel() {
   // Which cards are in edit mode
   const [editing, setEditing]     = useState({});
 
-  // Restore cached verification results from IDB on mount
+  // Restore cached verification results from IDB on mount.
+  // Filter to only IDs that still exist in current wardrobe — stale results
+  // from excluded/deleted garments (e.g. after dedup) cause phantom entries
+  // and ID mismatches when Claude Vision results reference excluded garment IDs.
   useEffect(() => {
     getCachedState().then(cached => {
       if (cached._verifyResults && Object.keys(cached._verifyResults).length > 0) {
-        setResults(cached._verifyResults);
-        setDone(true);
+        const activeIds = new Set(garments.map(g => g.id));
+        const filtered = Object.fromEntries(
+          Object.entries(cached._verifyResults).filter(([id]) => activeIds.has(id))
+        );
+        if (Object.keys(filtered).length > 0) {
+          setResults(filtered);
+          setDone(true);
+        }
       }
     });
     const off = subscribeQueue(state => {
@@ -468,10 +477,13 @@ export function PhotoVerifierPanel() {
       } catch { /* skip */ }
       setProgress(Math.round(((i + 1) / toVerify.length) * 100));
     }
-    setResults(out);
+    // Filter to active garments only before storing — prevents stale ID pollution in IDB
+    const activeIds = new Set(garments.map(g => g.id));
+    const cleanOut = Object.fromEntries(Object.entries(out).filter(([id]) => activeIds.has(id)));
+    setResults(cleanOut);
     setRunning(false);
     setDone(true);
-    setCachedState({ _verifyResults: out }).catch(() => {});
+    setCachedState({ _verifyResults: cleanOut }).catch(() => {});
   }
 
   // Resolve what to apply for a garment: user override > AI suggestion > current value
