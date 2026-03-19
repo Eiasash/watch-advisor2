@@ -13,24 +13,18 @@ import InstallPrompt   from "../components/InstallPrompt.jsx";
 import UpdateBanner    from "../components/UpdateBanner.jsx";
 // Non-critical — lazy loaded to reduce initial bundle
 const WardrobeGrid    = lazy(() => import("../components/WardrobeGrid.jsx"));
-const WardrobeInsights = lazy(() => import("../components/WardrobeInsights.jsx"));
 const ImportPanel     = lazy(() => import("../components/ImportPanel.jsx"));
 const StatsPanel      = lazy(() => import("../components/StatsPanel.jsx"));
 const CommandPalette  = lazy(() => import("../components/CommandPalette.jsx"));
 
 // Heavy tabs — lazy-loaded so they don't bloat the initial bundle.
-// Each is only mounted on first visit (TabPane keeps it alive after that).
 const WeekPlanner       = lazy(() => import("../components/WeekPlanner.jsx"));
 const WatchRotationPanel = lazy(() => import("../components/WatchRotationPanel.jsx"));
 const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m => ({
   default: () => <><m.default /><m.PhotoVerifierPanel /></>,
 })));
 const SettingsPanel  = lazy(() => import("../components/SettingsPanel.jsx"));
-const OccasionPlanner = lazy(() => import("../components/OccasionPlanner.jsx"));
-const SelfiePanel    = lazy(() => import("../components/SelfiePanel.jsx"));
-const WatchIDPanel   = lazy(() => import("../components/WatchIDPanel.jsx"));
 const OutfitHistory  = lazy(() => import("../components/OutfitHistory.jsx"));
-const OutfitGallery  = lazy(() => import("../components/OutfitGallery.jsx"));
 
 /**
  * TabPane — mounts children on first activation, then stays mounted but hidden.
@@ -47,14 +41,9 @@ function TabPane({ active, children }) {
 const TABS = [
   { key:"today",    label:"Today",    icon:"👕" },
   { key:"wardrobe", label:"Wardrobe", icon:"👔" },
-  { key:"rotation", label:"Rotation", icon:"⌚" },
-  { key:"stats",    label:"Stats",    icon:"📊" },
-  { key:"history",  label:"History",  icon:"📅" },
-  { key:"gallery",  label:"Gallery",  icon:"🖼️" },
+  { key:"plan",     label:"Plan",     icon:"📅" },
+  { key:"history",  label:"History",  icon:"📊" },
   { key:"audit",    label:"Audit",    icon:"🔍" },
-  { key:"occasion", label:"Plan",     icon:"✨" },
-  { key:"selfie",   label:"Check",    icon:"📸" },
-  { key:"watchid",  label:"ID",       icon:"🔎" },
 ];
 
 function AppContent() {
@@ -178,14 +167,14 @@ function AppContent() {
             ))}
           </div>
 
-          {/* Tab content — keep visited tabs mounted but hidden to preserve state
-              (uploads, AI results, form progress) when navigating away */}
+          {/* Tab content — keep visited tabs mounted but hidden to preserve state */}
           <div className="wa-bottom-pad">
-          <TabPane active={tab === "today"}><TodayPanel /></TabPane>
+          <TabPane active={tab === "today"}>
+            <TodayPanel />
+            <WatchDashboard />
+          </TabPane>
 
           <TabPane active={tab === "wardrobe"}>
-            <WatchDashboard />
-            <Suspense fallback={null}><WardrobeInsights /></Suspense>
             <style>{`
               .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
               @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
@@ -196,49 +185,23 @@ function AppContent() {
             </div>
           </TabPane>
 
-          {/* Rotation/Planner tab — lazy-loaded */}
-          <TabPane active={tab === "rotation"}>
+          <TabPane active={tab === "plan"}>
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
               <WeekPlanner />
               <WatchRotationPanel />
+              <StatsPanel />
             </Suspense>
           </TabPane>
-
-          <TabPane active={tab === "stats"}><Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading…</div>}><StatsPanel /></Suspense></TabPane>
 
           <TabPane active={tab === "history"}>
-            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
+            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading…</div>}>
               <OutfitHistory />
-            </Suspense>
-          </TabPane>
-
-          <TabPane active={tab === "gallery"}>
-            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
-              <OutfitGallery />
             </Suspense>
           </TabPane>
 
           <TabPane active={tab === "audit"}>
             <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
               <AuditTab />
-            </Suspense>
-          </TabPane>
-
-          <TabPane active={tab === "occasion"}>
-            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
-              <OccasionPlanner />
-            </Suspense>
-          </TabPane>
-
-          <TabPane active={tab === "selfie"}>
-            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
-              <SelfiePanel />
-            </Suspense>
-          </TabPane>
-
-          <TabPane active={tab === "watchid"}>
-            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
-              <WatchIDPanel />
             </Suspense>
           </TabPane>
           </div>
