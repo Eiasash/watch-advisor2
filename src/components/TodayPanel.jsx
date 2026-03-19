@@ -171,8 +171,9 @@ export default function TodayPanel() {
   const upsertEntry  = useHistoryStore(s => s.upsertEntry);
   const entries      = useHistoryStore(s => s.entries);
 
-  // Today's already-logged entry (if any)
-  const todayEntry = useMemo(() => entries.find(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);
+  // Today's logged entries (multiple watches per day supported)
+  const todayEntries = useMemo(() => entries.filter(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);
+  const todayEntry = todayEntries[todayEntries.length - 1] ?? null; // latest, for form init
 
   // Rotation intelligence — derived from history only
   const neglected = useMemo(() => neglectedGenuine(watches, entries), [watches, entries]);
@@ -303,8 +304,8 @@ export default function TodayPanel() {
 
   const handleLog = useCallback(async () => {
     if (!watchId) return;
-    // Preserve ID from existing entry so upsert hits the same DB row
-    const entryId = todayEntry?.id ?? `today-${Date.now()}`;
+    // Per-watch entry: same watch on same day = update, different watch = new entry
+    const entryId = `wear-${TODAY_ISO}-${watchId}`;
     const entry = {
       id: entryId,
       date: TODAY_ISO,
@@ -338,78 +339,85 @@ export default function TodayPanel() {
       upsertEntry, updateGarment, garments, todayEntry, TODAY_ISO]);
 
   // ── Summary card when already logged ────────────────────────────────────────
-  if (logged && todayEntry) {
-    const watch = watches.find(w => w.id === todayEntry.watchId);
-    const wornGarments = garments.filter(g => (todayEntry.garmentIds ?? []).includes(g.id));
+  if (logged && todayEntries.length > 0) {
     return (
       <div style={{ padding: "0 0 80px" }}>
         <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 20, marginBottom: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: text, marginBottom: 4 }}>Today ✅</div>
-          <div style={{ fontSize: 13, color: muted, marginBottom: 16 }}>{TODAY_ISO} · {todayEntry.context}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: text, marginBottom: 4 }}>
+            Today ✅ {todayEntries.length > 1 && <span style={{ fontSize: 13, fontWeight: 600, color: muted }}>· {todayEntries.length} watches</span>}
+          </div>
+          <div style={{ fontSize: 13, color: muted, marginBottom: 16 }}>{TODAY_ISO}</div>
 
-          {watch && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16,
-                          padding: "10px 14px", borderRadius: 10, background: isDark ? "#0f131a" : "#f3f4f6",
-                          border: `1px solid ${border}` }}>
-              <div style={{ fontSize: 28 }}>{watch.emoji ?? "⌚"}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{watch.brand} {watch.model}</div>
-                <div style={{ fontSize: 11, color: muted }}>
-                  {todayEntry.strapLabel ?? watch.dial + " dial"}
-                </div>
+          {todayEntries.map(te => {
+            const watch = watches.find(w => w.id === te.watchId);
+            const wornGarments = garments.filter(g => (te.garmentIds ?? []).includes(g.id));
+            return (
+              <div key={te.id} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${border}` }}>
+                {watch && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10,
+                                padding: "10px 14px", borderRadius: 10, background: isDark ? "#0f131a" : "#f3f4f6",
+                                border: `1px solid ${border}` }}>
+                    <div style={{ fontSize: 28 }}>{watch.emoji ?? "⌚"}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{watch.brand} {watch.model}</div>
+                      <div style={{ fontSize: 11, color: muted }}>
+                        {te.strapLabel ?? watch.dial + " dial"} · {te.context ?? "smart-casual"}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {wornGarments.length > 0 && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(80px,1fr))", gap: 8 }}>
+                    {wornGarments.map(g => (
+                      <div key={g.id} style={{ borderRadius: 8, overflow: "hidden", border: `1px solid ${border}` }}>
+                        {(g.thumbnail || g.photoUrl) ? (
+                          <img src={g.thumbnail || g.photoUrl} alt={g.name ?? g.color ?? ""} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
+                        ) : (
+                          <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", alignItems: "center",
+                                        justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 20 }}>👕</div>
+                        )}
+                        <div style={{ padding: "2px 4px", fontSize: 11, color: muted, textAlign: "center" }}>{g.name?.slice(0,14)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(te.outfitPhotos?.length || te.outfitPhoto) && (
+                  <div style={{ marginTop: 8, display: "grid",
+                                gridTemplateColumns: (te.outfitPhotos?.length ?? 1) > 1 ? "repeat(2, 1fr)" : "1fr", gap: 6 }}>
+                    {(te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : [])).map((src, i) => (
+                      <img key={i} src={src} alt={`outfit ${i + 1}`}
+                        style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 300, display: "block" }} />
+                    ))}
+                  </div>
+                )}
+                {te.notes && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: muted, fontStyle: "italic" }}>{te.notes}</div>
+                )}
               </div>
-            </div>
-          )}
-
-          {wornGarments.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(80px,1fr))", gap: 8 }}>
-              {wornGarments.map(g => (
-                <div key={g.id} style={{ borderRadius: 8, overflow: "hidden", border: `1px solid ${border}` }}>
-                  {(g.thumbnail || g.photoUrl) ? (
-                    <img src={g.thumbnail || g.photoUrl} alt={g.name ?? g.color ?? ""} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
-                  ) : (
-                    <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", alignItems: "center",
-                                  justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 20 }}>👕</div>
-                  )}
-                  <div style={{ padding: "2px 4px", fontSize: 11, color: muted, textAlign: "center" }}>{g.name?.slice(0,14)}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {(todayEntry.outfitPhotos?.length || todayEntry.outfitPhoto) && (
-            <div style={{ marginTop: 12, display: "grid",
-                          gridTemplateColumns: (todayEntry.outfitPhotos?.length ?? 1) > 1 ? "repeat(2, 1fr)" : "1fr",
-                          gap: 6 }}>
-              {(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : [])).map((src, i) => (
-                <img key={i} src={src} alt={`outfit ${i + 1}`}
-                  style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 300, display: "block" }} />
-              ))}
-            </div>
-          )}
-
-          {todayEntry.notes && (
-            <div style={{ marginTop: 12, fontSize: 12, color: muted, fontStyle: "italic" }}>{todayEntry.notes}</div>
-          )}
+            );
+          })}
         </div>
 
         <SelfiePanel context={todayEntry?.context ?? "smart-casual"} watchId={todayEntry?.watchId ?? null} />
 
-        {/* Quick watch check-in — always visible, prominent */}
+        {/* Quick watch check-in — adds a NEW entry, doesn't overwrite */}
         <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", textTransform: "uppercase",
                         letterSpacing: "0.06em", marginBottom: 10 }}>
-            ⌚ Wearing a different watch?
+            ⌚ Log another watch
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 6 }}>
-            {watches.filter(w => w.id !== todayEntry.watchId).slice(0, 8).map(w => {
+            {watches.filter(w => !todayEntries.some(te => te.watchId === w.id)).slice(0, 8).map(w => {
               const strapObj = activeStrap[w.id] && straps[activeStrap[w.id]];
               return (
                 <button key={w.id}
                   onClick={() => {
                     upsertEntry({
-                      ...todayEntry,
+                      id: `wear-${TODAY_ISO}-${w.id}`,
+                      date: TODAY_ISO,
                       watchId: w.id,
+                      garmentIds: [],
+                      context: "smart-casual",
                       strapId: activeStrap[w.id] ?? null,
                       strapLabel: strapObj?.label ?? null,
                       loggedAt: new Date().toISOString(),
@@ -431,9 +439,9 @@ export default function TodayPanel() {
               );
             })}
           </div>
-          {watches.length > 9 && (
+          {watches.length > todayEntries.length + 8 && (
             <button
-              onClick={() => { setWatchId(todayEntry.watchId); setLogged(false); }}
+              onClick={() => { setLogged(false); }}
               style={{ marginTop: 8, fontSize: 11, color: "#3b82f6", background: "none", border: "none", cursor: "pointer" }}>
               Show all {watches.length} watches →
             </button>
@@ -441,7 +449,7 @@ export default function TodayPanel() {
         </div>
 
         <button onClick={() => {
-          // Reload form state from the logged entry before switching to edit mode
+          // Reload form state from the latest logged entry before switching to edit mode
           if (todayEntry) {
             setSelected(new Set(todayEntry.garmentIds ?? []));
             setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);

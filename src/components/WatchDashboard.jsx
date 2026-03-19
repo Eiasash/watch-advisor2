@@ -501,20 +501,21 @@ export default function WatchDashboard() {
             <button
               onClick={() => {
                 const todayIso = new Date().toISOString().slice(0,10);
-                const existingToday = useHistoryStore.getState().entries.find(e => e.date === todayIso);
                 const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(selectedWatch.id);
+                // Per-watch entry: same watch on same day = update, different watch = new entry
+                const entryId = `wear-${todayIso}-${selectedWatch.id}`;
+                const existingForWatch = useHistoryStore.getState().entries.find(e => e.id === entryId);
                 // Save previous state for undo
-                setLastCheckinRef(existingToday ? { ...existingToday } : null);
-                const entryId = existingToday?.id ?? `checkin-${Date.now()}`;
+                setLastCheckinRef(existingForWatch ? { ...existingForWatch } : null);
                 useHistoryStore.getState().upsertEntry({
                   id: entryId,
                   date: todayIso,
                   watchId: selectedWatch.id,
-                  garmentIds: existingToday?.garmentIds ?? [],
-                  context: todayContext ?? existingToday?.context ?? "smart-casual",
+                  garmentIds: existingForWatch?.garmentIds ?? [],
+                  context: todayContext ?? existingForWatch?.context ?? "smart-casual",
                   strapId: activeStrapObj?.id ?? null,
                   strapLabel: activeStrapObj?.label ?? null,
-                  notes: existingToday?.notes ?? null,
+                  notes: existingForWatch?.notes ?? null,
                   loggedAt: new Date().toISOString(),
                 });
                 setOutfitLogged(true);
@@ -538,7 +539,8 @@ export default function WatchDashboard() {
                     useHistoryStore.getState().upsertEntry(lastCheckinRef);
                   } else {
                     const todayIso = new Date().toISOString().slice(0,10);
-                    const entry = useHistoryStore.getState().entries.find(e => e.date === todayIso);
+                    const entryId = `wear-${todayIso}-${selectedWatch.id}`;
+                    const entry = useHistoryStore.getState().entries.find(e => e.id === entryId);
                     if (entry) useHistoryStore.getState().removeEntry(entry.id);
                   }
                   setOutfitLogged(false);
