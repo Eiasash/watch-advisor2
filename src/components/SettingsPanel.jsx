@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { VersionChip } from "./UpdateBanner.jsx";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
@@ -333,7 +332,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
 
         {/* Version */}
         <div style={{ textAlign: "center", padding: "10px 0 4px", fontSize: 11, color: isDark ? "#374151" : "#d1d5db" }}>
-          Watch Advisor · <VersionChip isDark={isDark} />
+          Watch Advisor · v{__BUILD_NUMBER__} · {__APP_VERSION__}
         </div>
 
       </div>
