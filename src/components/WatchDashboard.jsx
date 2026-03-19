@@ -520,6 +520,38 @@ export default function WatchDashboard() {
             </div>
           )}
 
+          {/* Quick watch check-in — logs just the watch, no outfit required */}
+          <button
+            onClick={() => {
+              const todayIso = new Date().toISOString().slice(0,10);
+              const existingToday = useHistoryStore.getState().entries.find(e => e.date === todayIso);
+              const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(selectedWatch.id);
+              useHistoryStore.getState().upsertEntry({
+                id: existingToday?.id ?? `checkin-${Date.now()}`,
+                date: todayIso,
+                watchId: selectedWatch.id,
+                garmentIds: existingToday?.garmentIds ?? [],
+                context: todayContext ?? existingToday?.context ?? "smart-casual",
+                strapId: activeStrapObj?.id ?? null,
+                strapLabel: activeStrapObj?.label ?? null,
+                notes: existingToday?.notes ?? null,
+                loggedAt: new Date().toISOString(),
+              });
+              setOutfitLogged(true);
+              setTimeout(() => setOutfitLogged(false), 3000);
+            }}
+            disabled={outfitLogged}
+            style={{
+              width: "100%", marginBottom: 14, padding: "10px 0", borderRadius: 8,
+              border: "none", cursor: outfitLogged ? "default" : "pointer",
+              background: outfitLogged ? "#166534" : "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+              color: "#fff", fontSize: 13, fontWeight: 700,
+              boxShadow: outfitLogged ? "none" : "0 2px 8px #3b82f633",
+            }}
+          >
+            {outfitLogged ? "✅ Checked In!" : `⌚ Check In — ${selectedWatch.model}`}
+          </button>
+
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <div style={{ fontSize: 13, color: overrideOutfit ? "#8b5cf6" : "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               {overrideOutfit ? "AI Stylist outfit" : "Outfit built around this watch"}

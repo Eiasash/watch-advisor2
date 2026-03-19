@@ -395,6 +395,37 @@ export default function TodayPanel() {
 
         <SelfiePanel context={todayEntry?.context ?? "smart-casual"} watchId={todayEntry?.watchId ?? null} />
 
+        {/* Quick watch swap — change today's watch without editing the full log */}
+        <details style={{ marginBottom: 12 }}>
+          <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#3b82f6",
+                            padding: "10px 0", listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
+            <span>⌚ Switch watch</span>
+          </summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 0" }}>
+            {watches.filter(w => w.id !== todayEntry.watchId).map(w => (
+              <button key={w.id}
+                onClick={() => {
+                  upsertEntry({
+                    ...todayEntry,
+                    watchId: w.id,
+                    strapId: activeStrap[w.id] ?? null,
+                    strapLabel: (activeStrap[w.id] && straps[activeStrap[w.id]]?.label) ?? null,
+                    loggedAt: new Date().toISOString(),
+                  });
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+                         borderRadius: 8, border: `1px solid ${border}`, background: "transparent",
+                         color: text, fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+                <span style={{ fontSize: 18 }}>{w.emoji ?? "⌚"}</span>
+                <span style={{ fontWeight: 600 }}>{w.brand} {w.model}</span>
+                <span style={{ color: muted, marginLeft: "auto", fontSize: 10 }}>
+                  {w.replica ? "replica" : "genuine"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </details>
+
         <button onClick={() => {
           // Reload form state from the logged entry before switching to edit mode
           if (todayEntry) {

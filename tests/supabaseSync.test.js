@@ -85,9 +85,10 @@ describe("pullCloudState", () => {
     historyQueryResult = { data: [], error: null };
 
     const result = await pullCloudState();
-    expect(result.garments[0].photoUrl).toBeUndefined();
-    // thumbnail also filters blob: URLs — falls back to thumbnail_url
-    expect(result.garments[0].thumbnail).toBe("data:image/jpeg;base64,abc");
+    // Phase 1 pull no longer includes photo_url/thumbnail_url — both are null
+    // Thumbnails are loaded lazily by pullThumbnails() after UI is interactive
+    expect(result.garments[0].photoUrl).toBeNull();
+    expect(result.garments[0].thumbnail).toBeNull();
   });
 
   it("maps history rows with payload unpacking", async () => {

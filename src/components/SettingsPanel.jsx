@@ -290,6 +290,35 @@ export default function SettingsPanel({ onClose, scrollTo }) {
             }}>
             🗑 Clear Local Cache & Reload
           </button>
+          <button
+            onClick={async () => {
+              try {
+                // 1. Nuke all SW caches
+                const keys = await caches.keys();
+                await Promise.all(keys.map(k => caches.delete(k)));
+                // 2. Unregister all service workers
+                const regs = await navigator.serviceWorker?.getRegistrations() ?? [];
+                await Promise.all(regs.map(r => r.unregister()));
+                // 3. Clear IDB
+                await clearCachedState();
+                const dbs = await indexedDB.databases?.() ?? [];
+                for (const d of dbs) {
+                  if (d.name) indexedDB.deleteDatabase(d.name);
+                }
+                // 4. Hard reload (bypass cache)
+                window.location.replace(window.location.href.split("?")[0] + "?_t=" + Date.now());
+              } catch (e) {
+                alert("Force update failed: " + e.message);
+                window.location.reload();
+              }
+            }}
+            style={{
+              padding: "10px 16px", borderRadius: 8, border: `1px solid #2563eb`,
+              background: isDark ? "#0c1f3f" : "#dbeafe", color: "#2563eb",
+              fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%", marginTop: 8,
+            }}>
+            🔄 Force Update — Nuke Cache + SW
+          </button>
         </Section>
 
         {/* Export */}
