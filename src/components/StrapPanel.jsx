@@ -1,8 +1,9 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useMemo } from "react";
 import { useStrapStore } from "../stores/strapStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { uploadPhoto } from "../services/supabaseSync.js";
+import { PENDING_STRAPS } from "../data/watchSeed.js";
 
 const TYPE_COLOR  = { bracelet:"#3b82f6", leather:"#92400e", canvas:"#65a30d", nato:"#0891b2", rubber:"#7c3aed", integrated:"#6b7280" };
 const TYPE_LABELS = ["bracelet","integrated","leather","canvas","nato","rubber"];
@@ -182,6 +183,16 @@ export default function StrapPanel({ watch, isDark: isDarkProp }) {
 
   const watchStraps = Object.values(straps).filter(s => s.watchId === watch?.id);
 
+  // Pending strap deliveries for this watch — filter out any that have been "delivered" (added to store)
+  const pendingForWatch = useMemo(() => {
+    if (!watch?.id) return [];
+    return PENDING_STRAPS.filter(ps => {
+      if (ps.watchId !== watch.id) return false;
+      // If a strap with the same label already exists in the store, it was marked delivered
+      return !watchStraps.some(s => s.label === ps.label);
+    });
+  }, [watch?.id, watchStraps]);
+
   const resizeAndUpload = useCallback(async (strapId, file, kind) => {
     return new Promise(resolve => {
       const reader = new FileReader();
@@ -357,6 +368,43 @@ Return ONLY valid JSON:
           onSave={handleSave}
           onClose={() => setModal(null)}
           isDark={isDark} />
+      )}
+
+      {/* Pending strap deliveries */}
+      {pendingForWatch.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", textTransform: "uppercase",
+                        letterSpacing: "0.07em", marginBottom: 8 }}>
+            📦 Pending Delivery ({pendingForWatch.length})
+          </div>
+          {pendingForWatch.map((ps, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px",
+                                   borderRadius: 8, marginBottom: 6,
+                                   background: isDark ? "#1a1600" : "#fffbeb",
+                                   border: `1px solid ${isDark ? "#78350f44" : "#fbbf2444"}` }}>
+              <div style={{ width: 14, height: 14, borderRadius: 4,
+                            background: SWATCH[ps.color] ?? "#888", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#fbbf24" : "#92400e" }}>
+                  {ps.label}
+                </div>
+                <div style={{ fontSize: 10, color: isDark ? "#8b93a7" : "#9ca3af" }}>
+                  {ps.source} · {ps.lug} · {ps.orderValue}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  // Add strap to this watch via strapStore + remove from pending
+                  const newId = addStrap(watch.id, { label: ps.label, color: ps.color, type: ps.type, useCase: `${ps.source} delivery` });
+                  if (newId) setActive(watch.id, newId);
+                }}
+                style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "1px solid #22c55e",
+                         background: "transparent", color: "#22c55e", cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}>
+                ✓ Delivered
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

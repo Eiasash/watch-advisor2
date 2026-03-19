@@ -584,6 +584,19 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   }
   outfit._explanation = explanationLines;
 
+  // ── Per-slot scoring breakdown — for UI chips ──────────────────────────────
+  const _slotSignals = {};
+  for (const slotName of ["shirt", "sweater", "layer", "pants", "shoes", "jacket"]) {
+    const g = outfit[slotName];
+    if (!g) continue;
+    const cm = colorMatchScore(watchWithStrap, g);
+    const fm = formalityMatchScore(watchWithStrap, g, outfitFormality);
+    const wc = watchCompatibilityScore(watchWithStrap, g);
+    const ss = strapShoeScore(watchWithStrap, g);
+    _slotSignals[slotName] = { colorMatch: cm, formalityMatch: fm, watchCompat: wc, strapShoe: ss };
+  }
+  outfit._slotSignals = _slotSignals;
+
   return outfit;
 }
 

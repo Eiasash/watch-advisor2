@@ -25,3 +25,13 @@ export const WATCH_COLLECTION = [
   { id:"op_grape", brand:"Rolex", model:"Oyster Perpetual", ref:"rep", dial:"purple", strap:"bracelet", formality:6, style:"sport-elegant", replica:true, size:36, lug:19, straps:[ {id:"op_grape-oyster", label:"Steel Oyster bracelet", color:"silver", type:"bracelet", useCase:"Default — any footwear"} ] },
   { id:"breguet_tradition", brand:"Breguet", model:"Tradition", ref:"rep", dial:"black", strap:"leather", formality:8, style:"dress", replica:true, size:40, lug:20, straps:[ {id:"breguet_tradition-black-leather", label:"Black leather", color:"black", type:"leather", useCase:"Default"} ] },
 ];
+
+/**
+ * Pending strap deliveries — shown in StrapPanel as a tracker.
+ * When delivered, move the strap into the watch's straps[] array above and remove from here.
+ */
+export const PENDING_STRAPS = [
+  { watchId: "pasha", label: "Navy alligator YG-02", color: "navy", type: "leather", lug: "21/16mm taper, 14mm notch", source: "DayDayWatchband", orderValue: "$173.46", status: "pending" },
+  { watchId: "blackbay", label: "Navy canvas #18", color: "navy", type: "canvas", lug: "21mm→18mm", source: "DayDayWatchband", orderValue: "~$80", status: "pending" },
+  { watchId: "blackbay", label: "Olive canvas #21", color: "olive", type: "canvas", lug: "21mm→18mm", source: "DayDayWatchband", orderValue: "~$80", status: "pending" },
+];

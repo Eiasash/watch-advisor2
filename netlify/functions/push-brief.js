@@ -32,7 +32,10 @@ async function buildBrief(apiKey) {
   const supabase = sb();
   const [{ data: history }, { data: garments }] = await Promise.all([
     supabase.from("history").select("date,watch_id,payload").order("date", { ascending: false }).limit(7),
-    supabase.from("garments").select("id,name,type,color,formality,brand").limit(100),
+    supabase.from("garments").select("id,name,type,color,formality,brand")
+      .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
+      .not("type", "in", "(outfit-photo,outfit-shot,watch)")
+      .limit(100),
   ]);
 
   const recentWatches = (history ?? []).map(e => e.watch_id).filter(Boolean).slice(0, 5);

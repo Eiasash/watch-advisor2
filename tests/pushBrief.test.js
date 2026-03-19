@@ -105,6 +105,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };
@@ -157,6 +162,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };
@@ -191,6 +201,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };
@@ -239,6 +254,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };
@@ -285,6 +305,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };
@@ -328,6 +353,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };
@@ -383,6 +413,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };
@@ -416,6 +451,11 @@ describe("push-brief handler", () => {
       if (table === "garments") {
         return {
           select: vi.fn(() => ({
+            or: vi.fn(() => ({
+              not: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              })),
+            })),
             limit: vi.fn().mockResolvedValue({ data: [], error: null }),
           })),
         };

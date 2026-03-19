@@ -5,6 +5,7 @@ import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 
 import { buildOutfit, explainOutfitChoice } from "../outfitEngine/outfitBuilder.js";
+import { recommendStrap } from "../outfitEngine/strapRecommender.js";
 import { fetchWeather, formatWeatherText, getLayerRecommendation } from "../weather/weatherService.js";
 import { getAISuggestion } from "../aiStylist/claudeStylist.js";
 import WatchSelector from "../features/watch/WatchSelector.jsx";
@@ -76,13 +77,20 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
   );
 }
 
-function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, isOverridden }) {
+function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, isOverridden, signals }) {
   const [open, setOpen] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const ICONS = { shirt: "\u{1F454}", sweater: "\u{1FAA2}", layer: "\u{1F9E3}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
   const border = isDark ? "#2b3140" : "#d1d5db";
   const accentBorder = isOverridden ? "#8b5cf6" : (open ? "#3b82f6" : border);
   const photo = garment?.thumbnail || garment?.photoUrl;
+
+  // Score chip helper
+  const chipColor = (v) => v >= 0.7 ? "#22c55e" : v >= 0.4 ? "#f59e0b" : "#ef4444";
+  const chipBg = (v, dark) => {
+    const c = v >= 0.7 ? "22c55e" : v >= 0.4 ? "f59e0b" : "ef4444";
+    return dark ? `#${c}18` : `#${c}15`;
+  };
 
   return (
     <div style={{ position: "relative" }}>
@@ -124,6 +132,28 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
                 </div>
                 {garment.brand && (
                   <div style={{ fontSize: 11, color: "#8b93a7", marginTop: 1 }}>{garment.brand}</div>
+                )}
+                {signals && (
+                  <div style={{ display: "flex", gap: 3, marginTop: 3, flexWrap: "wrap" }}>
+                    {[
+                      { k: "colorMatch", l: "clr" },
+                      { k: "formalityMatch", l: "frm" },
+                      { k: "watchCompat", l: "wtch" },
+                      ...(slot === "shoes" ? [{ k: "strapShoe", l: "strap" }] : []),
+                    ].map(({ k, l }) => {
+                      const v = signals[k];
+                      if (v == null) return null;
+                      return (
+                        <span key={k} style={{
+                          fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 3,
+                          color: chipColor(v), background: chipBg(v, isDark),
+                          lineHeight: 1.4,
+                        }}>
+                          {v >= 0.7 ? "✓" : v >= 0.4 ? "~" : "✗"} {l}
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
               </>
             ) : (
@@ -353,6 +383,12 @@ export default function WatchDashboard() {
   const weatherText = formatWeatherText(weather);
   const layerRec = weather ? getLayerRecommendation(weather.tempC) : null;
 
+  // Strap recommendation — which strap to wear today based on outfit + context
+  const strapRec = useMemo(() => {
+    if (!selectedWatch) return null;
+    return recommendStrap(selectedWatch, mergedOutfit, todayContext);
+  }, [selectedWatch, mergedOutfit, todayContext]);
+
   const handleAIStylist = useCallback(async (overridePinned) => {
     if (!enrichedWatch || garments.length === 0) return;
     setAiLoading(true);
@@ -444,6 +480,46 @@ export default function WatchDashboard() {
             <WatchCard watch={selectedWatch} label="Selected" accent="#3b82f6" isDark={isDark} />
           </div>
 
+          {/* Strap recommendation for today's outfit */}
+          {strapRec && (
+            <div style={{
+              marginBottom: 14, padding: "10px 14px", borderRadius: 10,
+              background: isDark ? "#0f1318" : "#f0fdf4",
+              border: `1px solid ${isDark ? "#16a34a33" : "#22c55e33"}`,
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <div style={{ fontSize: 18, flexShrink: 0 }}>🔗</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#86efac" : "#166534" }}>
+                  Wear: {strapRec.recommended.label}
+                </div>
+                <div style={{ fontSize: 11, color: isDark ? "#8b93a7" : "#6b7280", marginTop: 2 }}>
+                  {strapRec.reason}
+                </div>
+                {strapRec.alternatives.length > 0 && (
+                  <div style={{ fontSize: 10, color: isDark ? "#4b5563" : "#9ca3af", marginTop: 3 }}>
+                    Also: {strapRec.alternatives.map(a => a.label).join(" · ")}
+                  </div>
+                )}
+              </div>
+              {strapRec.recommended.id && (
+                <button
+                  onClick={() => {
+                    const setActive = useStrapStore.getState().setActiveStrap;
+                    setActive(selectedWatch.id, strapRec.recommended.id);
+                  }}
+                  style={{
+                    fontSize: 10, padding: "3px 8px", borderRadius: 5, cursor: "pointer",
+                    border: "1px solid #22c55e", background: "transparent", color: "#22c55e",
+                    fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
+                  }}
+                >
+                  Set Active
+                </button>
+              )}
+            </div>
+          )}
+
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <div style={{ fontSize: 13, color: overrideOutfit ? "#8b5cf6" : "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               {overrideOutfit ? "AI Stylist outfit" : "Outfit built around this watch"}
@@ -491,6 +567,7 @@ export default function WatchDashboard() {
                   isDark={isDark}
                   isOverridden={!!slotOverrides[slot]}
                   candidates={slotCandidates[slot] ?? []}
+                  signals={mergedOutfit._slotSignals?.[slot] ?? null}
                   onSwap={(s, g) => {
                     if (!g) {
                       setSlotOverrides(prev => { const n = {...prev}; delete n[s]; return n; });
@@ -567,10 +644,17 @@ export default function WatchDashboard() {
                 watchId: selectedWatch.id,
                 garmentIds,
                 outfit: outfitMap,
-                context: existingToday?.context ?? "smart-casual",
+                context: existingToday?.context ?? todayContext ?? "smart-casual",
                 notes: existingToday?.notes ?? null,
                 loggedAt: new Date().toISOString(),
               });
+              // Feed style learning — record worn garments so preference weights evolve
+              const wornGarments = slots.map(s => mergedOutfit[s]).filter(Boolean);
+              if (wornGarments.length > 0) {
+                import("../stores/styleLearnStore.js").then(({ useStyleLearnStore }) => {
+                  useStyleLearnStore.getState().recordWear(wornGarments);
+                }).catch(() => {});
+              }
               setOutfitLogged(true);
               setTimeout(() => setOutfitLogged(false), 3000);
             }}
@@ -702,7 +786,7 @@ export default function WatchDashboard() {
               const res = await fetch("/.netlify/functions/watch-rec", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ outfit: recOutfit, watches, context: "smart-casual" }),
+                body: JSON.stringify({ outfit: recOutfit, watches, context: todayContext ?? "smart-casual" }),
               });
               if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) throw new Error("bad response");
               const data = await res.json();

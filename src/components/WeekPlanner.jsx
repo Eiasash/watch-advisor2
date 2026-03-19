@@ -1094,6 +1094,13 @@ export default function WeekPlanner() {
               outfitPhotos: photos.length ? photos : null,
               loggedAt: new Date().toISOString(),
             });
+            // Feed style learning — resolve garment objects from IDs
+            const wornG = garmentIds.map(id => garments.find(g => g.id === id)).filter(Boolean);
+            if (wornG.length > 0) {
+              import("../stores/styleLearnStore.js").then(({ useStyleLearnStore }) => {
+                useStyleLearnStore.getState().recordWear(wornG);
+              }).catch(() => {});
+            }
             setPendingLog(null);
           }}
         />

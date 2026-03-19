@@ -49,7 +49,17 @@ export default function seasonContextFactor(candidate, context) {
     } else if (seasons.includes(season)) {
       score += 0.3;
     } else {
-      score -= 0.2;
+      // Check if garment is tagged for the OPPOSITE season (summer↔winter, spring↔autumn).
+      // Opposite-season items get a much stronger penalty (-0.8) to effectively eliminate them
+      // from selection, while adjacent-season items keep the mild -0.2 penalty.
+      const OPPOSITE = { winter: "summer", summer: "winter", spring: "autumn", autumn: "spring" };
+      const ADJACENT = { winter: new Set(["autumn", "spring"]), summer: new Set(["spring", "autumn"]),
+                         spring: new Set(["winter", "summer"]), autumn: new Set(["summer", "winter"]) };
+      const opposite = OPPOSITE[season];
+      const adjacent = ADJACENT[season] ?? new Set();
+      const hasAdjacent = seasons.some(s => adjacent.has(s));
+      const isOnlyOpposite = seasons.length === 1 && seasons[0] === opposite;
+      score -= isOnlyOpposite ? 0.8 : (hasAdjacent ? 0.15 : 0.2);
     }
   }
 
