@@ -10,6 +10,7 @@ import LoadingSkeleton from "../components/LoadingSkeleton.jsx";
 import ToastProvider, { useToast } from "../components/ToastProvider.jsx";
 import ScrollToTop     from "../components/ScrollToTop.jsx";
 import InstallPrompt   from "../components/InstallPrompt.jsx";
+import UpdateBanner    from "../components/UpdateBanner.jsx";
 // Non-critical — lazy loaded to reduce initial bundle
 const WardrobeGrid    = lazy(() => import("../components/WardrobeGrid.jsx"));
 const WardrobeInsights = lazy(() => import("../components/WardrobeInsights.jsx"));
@@ -120,6 +121,7 @@ function AppContent() {
   return (
     <div style={{ maxWidth:1360, margin:"0 auto", padding:"14px 16px", color:text }}>
       <Header onOpenSettings={() => setShowSettings(true)} onOpenSearch={() => setShowPalette(true)} />
+      <UpdateBanner isDark={isDark} />
 
       {!ready ? (
         <LoadingSkeleton />
