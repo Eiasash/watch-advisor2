@@ -585,6 +585,38 @@ export default function TodayPanel() {
         )}
       </div>
 
+      {/* Quick watch check-in — one tap, no garments needed */}
+      {watchId && !logged && (
+        <button
+          onClick={() => {
+            const entryId = todayEntry?.id ?? `today-${Date.now()}`;
+            upsertEntry({
+              id: entryId,
+              date: TODAY_ISO,
+              watchId,
+              strapId: activeStrapId ?? null,
+              strapLabel: activeStrapObj?.label ?? null,
+              garmentIds: todayEntry?.garmentIds ?? [],
+              context,
+              notes: todayEntry?.notes ?? null,
+              outfitPhoto: todayEntry?.outfitPhoto ?? null,
+              outfitPhotos: todayEntry?.outfitPhotos ?? null,
+              loggedAt: new Date().toISOString(),
+            });
+            setLogged(true);
+          }}
+          style={{
+            width: "100%", marginBottom: 14, padding: "12px 0", borderRadius: 10,
+            border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
+            background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+            color: "#fff",
+            boxShadow: "0 2px 8px #3b82f633",
+          }}
+        >
+          ⌚ Check In — {watches.find(w => w.id === watchId)?.model ?? "Watch"}
+        </button>
+      )}
+
       {/* Garment picker */}
       <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>

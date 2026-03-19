@@ -7,7 +7,7 @@
  *   - Push notifications: same as before
  */
 
-const SHELL_CACHE  = "wa2-shell-v6";
+const SHELL_CACHE  = "wa2-shell-v7";
 const IMAGE_CACHE  = "wa2-images-v4";
 const API_CACHE    = "wa2-api-v4";
 const MAX_IMAGES   = 200;
@@ -20,12 +20,12 @@ const SHELL_URLS = [
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 self.addEventListener("install", e => {
-  // skipWaiting immediately — do NOT wait for SKIP_WAITING message from the main thread.
-  // If the JS bundle has a crash (TDZ, parse error, etc.), main.js never runs and
-  // SKIP_WAITING is never sent. The broken old SW stays in control forever.
-  // Unconditional skipWaiting here ensures the new SW activates on next navigation
-  // even if the current page is broken, breaking the "stuck bad bundle" loop.
-  self.skipWaiting();
+  // Do NOT call self.skipWaiting() here — let the UpdateBanner detect the
+  // waiting SW and prompt the user. The user taps "Update Now" which sends
+  // SKIP_WAITING via postMessage (handled at bottom of file).
+  // Safety net: auto-activate after 30s if user never taps the banner
+  // (e.g. banner not visible, app in background tab, stale page).
+  setTimeout(() => self.skipWaiting(), 30000);
   e.waitUntil(
     caches.open(SHELL_CACHE).then(c => c.addAll(SHELL_URLS)).catch(err => {
       console.warn("[SW] shell precache failed:", err);
