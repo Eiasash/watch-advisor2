@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { loadAll as loadHistoryEntries } from "../services/persistence/historyPersistence.js";
 import { safeGet } from "../services/dbSafeLoad.js";
-import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings } from "../services/supabaseSync.js";
+import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings, pullThumbnails } from "../services/supabaseSync.js";
 import { registerHandler, resumePendingTasks, flushTasksByType } from "../services/backgroundQueue.js";
 import { checkAndBackup } from "../services/backupService.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
@@ -135,6 +135,9 @@ export function useBootstrap() {
           setGarments(cloudGarments);
           setHistory(h);
           await setCachedState({ watches: w, garments: cloudGarments, history: h });
+
+          // Phase 2: lazy-load thumbnails now that UI is interactive with metadata
+          pullThumbnails().catch(() => {});
 
           // Pull settings (weekCtx, onCallDates, active straps)
           const settings = await pullSettings();

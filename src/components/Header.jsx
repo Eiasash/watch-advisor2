@@ -26,8 +26,8 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>
           watch-advisor
         </h1>
-        <div style={{ color: "#6b7280", fontSize: 13, marginTop: 2 }}>
-          Watch-first outfit planner &middot; {watches.length} watches &middot; {garments.filter(g => !g.excludeFromWardrobe).length} garments &middot; <span style={{ opacity: 0.6 }}>v{__BUILD_NUMBER__}</span>
+        <div style={{ color: isDark ? "#9ca3af" : "#6b7280", fontSize: 13, marginTop: 2 }}>
+          Watch-first outfit planner &middot; {watches.length} watches &middot; {garments.filter(g => !g.excludeFromWardrobe).length} garments &middot; <span style={{ color: isDark ? "#6b7280" : "#9ca3af" }}>v{__BUILD_NUMBER__}</span>
         </div>
       </div>
       <div className="wa-header-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -38,7 +38,7 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
           style={{ ...btnStyle, display: "flex", alignItems: "center", gap: 6 }}
         >
           &#128269;
-          <span style={{ fontSize: 11, color: isDark ? "#4b5563" : "#9ca3af" }}>Ctrl+K</span>
+          <span style={{ fontSize: 11, color: isDark ? "#6b7280" : "#9ca3af" }}>Ctrl+K</span>
         </button>
         {/* Day/Night toggle */}
         <button

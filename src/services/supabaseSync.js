@@ -41,7 +41,8 @@ export async function pullCloudState() {
 async function _doPull() {
   try {
     const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
-      supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_url,thumbnail_url,photo_type,needs_review,duplicate_of,exclude_from_wardrobe,photo_angles,brand,subtype,notes,material,pattern,seasons,contexts,price,accent_color,weight,fit,created_at").order("created_at", { ascending: true }).limit(500),
+      // Phase 1: metadata only — no photo_url/thumbnail_url to keep payload <200KB
+      supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_type,needs_review,duplicate_of,exclude_from_wardrobe,photo_angles,brand,subtype,notes,material,pattern,seasons,contexts,price,accent_color,weight,fit,created_at").order("created_at", { ascending: true }).limit(500),
       supabase.from("history").select("*").order("date", { ascending: false }).limit(365),
     ]);
 
@@ -56,9 +57,9 @@ async function _doPull() {
         // DB column is 'type'; 'category' is an alias kept for compat
         type:        row.type ?? row.category,
         category:    row.type ?? row.category,
-        photoUrl:    row.photo_url?.startsWith?.("blob:") ? undefined : (row.photo_url ?? null),
-        // Prefer thumbnail_url; fall back to photo_url only if thumbnail_url absent
-        thumbnail:   (row.thumbnail_url ?? null) || ((row.photo_url && !row.photo_url?.startsWith?.("blob:")) ? row.photo_url : null),
+        // Phase 1: no photo_url/thumbnail_url in initial query — set null, filled by pullThumbnails
+        photoUrl:    null,
+        thumbnail:   null,
         photoType:   row.photo_type ?? null,
         needsReview: row.needs_review ?? false,
         duplicateOf: row.duplicate_of ?? undefined,
@@ -91,6 +92,57 @@ async function _doPull() {
     setSyncState({ status: "error" });
     console.warn("[supabaseSync] pull failed:", e.message);
     return { watches: WATCH_COLLECTION, garments: [], history: [], _localOnly: true };
+  }
+}
+
+/**
+ * Phase 2 thumbnail loader — called after UI is interactive.
+ * Fetches only id + thumbnail_url + photo_url from Supabase, then patches
+ * the wardrobeStore garments in place. Reduces initial payload by ~1.5MB.
+ *
+ * Call from bootstrap.js or a component effect after the first render.
+ */
+let _thumbInflight = null;
+export async function pullThumbnails() {
+  if (IS_PLACEHOLDER) return;
+  if (_thumbInflight) return _thumbInflight;
+  _thumbInflight = _doPullThumbs().finally(() => { _thumbInflight = null; });
+  return _thumbInflight;
+}
+
+async function _doPullThumbs() {
+  try {
+    const { data, error } = await supabase
+      .from("garments")
+      .select("id,thumbnail_url,photo_url")
+      .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
+      .limit(500);
+
+    if (error || !data) return;
+
+    // Build a lookup map: id → { thumbnail, photoUrl }
+    const thumbMap = {};
+    for (const row of data) {
+      const photoUrl = row.photo_url?.startsWith?.("blob:") ? null : (row.photo_url ?? null);
+      const thumbnail = (row.thumbnail_url ?? null) || photoUrl;
+      if (thumbnail || photoUrl) {
+        thumbMap[row.id] = { thumbnail, photoUrl };
+      }
+    }
+
+    // Patch wardrobeStore — dynamic import to avoid circular deps
+    const { useWardrobeStore } = await import("../stores/wardrobeStore.js");
+    const store = useWardrobeStore.getState();
+    const patched = store.garments.map(g => {
+      const th = thumbMap[g.id];
+      if (!th) return g;
+      return { ...g, thumbnail: th.thumbnail, photoUrl: th.photoUrl };
+    });
+    useWardrobeStore.setState({ garments: patched });
+
+    if (import.meta.env.DEV) console.log(`[supabaseSync] thumbnails hydrated: ${Object.keys(thumbMap).length}`);
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("[supabaseSync] pullThumbnails failed:", e.message);
   }
 }
 

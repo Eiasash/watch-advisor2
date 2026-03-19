@@ -141,7 +141,7 @@ function GarmentThumb({ g, selected, onClick, isDark }) {
         <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", flexDirection: "column",
                       alignItems: "center", justifyContent: "center", gap: 4 }}>
           <div style={{ fontSize: 24 }}>👕</div>
-          <div style={{ fontSize: 11, color: isDark ? "#4b5563" : "#9ca3af", textAlign: "center", padding: "0 4px" }}>
+          <div style={{ fontSize: 11, color: isDark ? "#6b7280" : "#9ca3af", textAlign: "center", padding: "0 4px" }}>
             {g.name?.slice(0,18)}
           </div>
         </div>
@@ -208,14 +208,19 @@ export default function TodayPanel() {
   const cameraRef = useRef();
 
   useEffect(() => {
-    fetchWeather().then(setWeather).catch(() => {});
+    // Delay 3s to avoid geolocation-on-page-load Lighthouse flag.
+    // UI renders with tempC=22 default until real weather arrives.
+    const t = setTimeout(() => {
+      fetchWeather().then(setWeather).catch(() => {});
+    }, 3000);
+    return () => clearTimeout(t);
   }, []);
 
   const bg     = isDark ? "#101114" : "#f9fafb";
   const card   = isDark ? "#171a21" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const muted  = isDark ? "#6b7280" : "#9ca3af";
+  const muted  = isDark ? "#8b93a7" : "#9ca3af";
 
   const activeGarments = useMemo(() =>
     garments.filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo" && g.type !== "outfit-shot"),
