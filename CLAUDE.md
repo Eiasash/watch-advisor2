@@ -128,7 +128,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **1906+ tests across 104 files** — run `npm test` to see current count
+- **1988+ tests across 108 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -140,7 +140,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (104 files)
+### Test file inventory (108 files)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -181,6 +181,8 @@ tests/
   generateOutfit.test.js       outfit generation
   getWeather.test.js           weather API
   historyStore.test.js         history store upsert/remove
+  historyWindow.test.js        calendar-day history window + recentWatchIds
+  emptyHistoryJitter.test.js   empty-history jitter boost + bootstrap sync error
   imagePipeline.test.js        thumbnail + dHash pipeline
   importPanel.test.js          import panel logic
   integrationImportFlow.test.js      classify → normalize → store → sync chain
@@ -232,7 +234,7 @@ tests/
   todayPanel.test.js           daysSinceWorn, garment type ordering
   utilizationScore.test.js     utilization scoring
   wardrobeGrid.test.js         TYPE_FILTER predicates, search filtering
-  wardrobeInsights.test.js     wardrobe insights
+
   wardrobeStoreActions.test.js setGarments, setWeekCtx, setOnCallDates, navigation, select mode
   watchCompare.test.js         watch comparison component
   watchDashboardAiApply.test.js  AI suggestion apply logic
@@ -305,9 +307,9 @@ tests/
 |--------|-------|
 | Source files | 71 |
 | Source LOC | ~8,600 |
-| Test files | 104 |
+| Test files | 108 |
 | Test LOC | ~17,000 |
-| Tests | 1906+ |
+| Tests | 1988+ |
 | Test pass rate | 100% |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |

@@ -10,6 +10,7 @@
  */
 
 import { daysIdle } from "../domain/rotationStats.js";
+import { recentWatchIds } from "../domain/historyWindow.js";
 
 export const DAY_PROFILES = ["hospital-smart-casual", "smart-casual", "formal", "casual", "travel", "shift"];
 
@@ -135,7 +136,7 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   //   - Worn 14+ days ago    → 1.0 (full pressure, prioritised)
   //   - Never worn           → 0.75 (high but capped — first wear encouraged
   //                                  without permanently dominating rotation)
-  const recentIds = new Set(history.slice(-7).map(h => h.watchId));
+  const recentIds = recentWatchIds(history, 7);
   const todayStr = new Date().toISOString().slice(0, 10);
   const idle = daysIdle(watch.id, history);
   let recencyScore;
@@ -159,6 +160,13 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
 
   // Daily jitter to prevent same watch always winning ties
   score += dailyJitter(watch.id, todayStr);
+
+  // Extra jitter when history is empty — all watches get identical recencyScore
+  // so seed-array order dominates. A second jitter hash (~0.045 range) is big
+  // enough to vary daily picks without overriding formality/style differences.
+  if (history.length === 0) {
+    score += dailyJitter(watch.id, todayStr + "x") * 5;
+  }
 
   return score;
 }

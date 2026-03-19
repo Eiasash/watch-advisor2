@@ -835,7 +835,10 @@ export default function WeekPlanner() {
 
           // Repeat warning: check if this outfit's watch was worn in last 3 history entries
           const dayWatchId = (watchOverrides[day.date] ?? rotation[dayIdx]?.watch?.id);
-          const recentEntries = history.filter(e => e.date < day.date).slice(-7);
+          const cutoffDate = new Date(day.date);
+          cutoffDate.setDate(cutoffDate.getDate() - 7);
+          const cutoffStr = cutoffDate.toISOString().slice(0, 10);
+          const recentEntries = history.filter(e => e.date && e.date >= cutoffStr && e.date < day.date);
           const recentWatchDates = recentEntries.filter(e => e.watchId === dayWatchId).map(e => e.date);
           const watchRepeated = recentWatchDates.length > 0;
           const lastWornDays = recentWatchDates.length > 0

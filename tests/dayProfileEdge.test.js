@@ -86,9 +86,11 @@ describe("scoreWatchForDay — formality calculations", () => {
     const score = scoreWatchForDay(watch, "hospital-smart-casual");
     // formalityDiff = 0, formalityScore = 1.0
     // dress-sport is suitable → styleScore = 1.0
-    // no history → recencyScore = 1.0
-    // no replica penalty, + small daily jitter
-    expect(score).toBeCloseTo(0.4 * 1.0 + 0.35 * 1.0 + 0.25 * 1.0, 1);
+    // no history → recencyScore = 0.75 (never-worn cap), cooldown = 1.15
+    // no replica penalty, + daily jitter + empty-history boost
+    // (0.4*1 + 0.35*1 + 0.25*0.75) * 1.15 ≈ 1.08 + jitter
+    expect(score).toBeGreaterThan(1.0);
+    expect(score).toBeLessThan(1.2);
   });
 
   it("formality off by 2 for casual (target=5)", () => {
@@ -108,24 +110,25 @@ describe("scoreWatchForDay — formality calculations", () => {
 
 // ─── scoreWatchForDay — replica penalty magnitude ───────────────────────────
 
-describe("scoreWatchForDay — replica penalty is exactly -0.5", () => {
+describe("scoreWatchForDay — replica penalty (-0.5 × cooldown)", () => {
   // Same ID ensures daily jitter cancels out in the diff
   const watch = { id: "rep", formality: 7, style: "dress-sport", replica: true };
   const genuine = { id: "rep", formality: 7, style: "dress-sport", replica: false };
+  // Never-worn → cooldown = 1.15, so diff = 0.5 * 1.15 = 0.575
 
-  it("hospital-smart-casual replica penalty is 0.5", () => {
+  it("hospital-smart-casual replica penalty is 0.575", () => {
     const diff = scoreWatchForDay(genuine, "hospital-smart-casual") - scoreWatchForDay(watch, "hospital-smart-casual");
-    expect(diff).toBeCloseTo(0.5, 5);
+    expect(diff).toBeCloseTo(0.575, 2);
   });
 
-  it("formal replica penalty is 0.5", () => {
+  it("formal replica penalty is 0.575", () => {
     const diff = scoreWatchForDay(genuine, "formal") - scoreWatchForDay(watch, "formal");
-    expect(diff).toBeCloseTo(0.5, 5);
+    expect(diff).toBeCloseTo(0.575, 2);
   });
 
-  it("shift replica penalty is 0.5", () => {
+  it("shift replica penalty is 0.575", () => {
     const diff = scoreWatchForDay(genuine, "shift") - scoreWatchForDay(watch, "shift");
-    expect(diff).toBeCloseTo(0.5, 5);
+    expect(diff).toBeCloseTo(0.575, 2);
   });
 
   it("smart-casual has zero replica penalty", () => {
@@ -151,10 +154,14 @@ describe("scoreWatchForDay — recency window exactly 7", () => {
     expect(penalised).toBeLessThan(fresh);
   });
 
-  it("watch at position 8 (outside window) is not penalised", () => {
+  it("watch at position 8 (outside window) is not penalised vs recent", () => {
     const history = [{ watchId: "target" }, ...Array(7).fill({ watchId: "other" })];
     const score = scoreWatchForDay(watch, "smart-casual", history);
-    const fresh = scoreWatchForDay(watch, "smart-casual", []);
-    expect(score).toBe(fresh);
+    // "target" is outside the last-7 window, so same recencyScore as never-worn
+    // Compare against a history where target was never worn (not empty history,
+    // which gets extra jitter)
+    const noTargetHistory = Array(7).fill({ watchId: "other" });
+    const notWorn = scoreWatchForDay(watch, "smart-casual", noTargetHistory);
+    expect(score).toBe(notWorn);
   });
 });

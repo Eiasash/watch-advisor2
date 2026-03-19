@@ -16,6 +16,8 @@ import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 export function useBootstrap() {
   const [ready,  setReady]  = useState(false);
   const [status, setStatus] = useState("Loading…");
+  const [syncError, setSyncError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const setWatches      = useWatchStore(s => s.setWatches);
   const setGarments     = useWardrobeStore(s => s.setGarments);
@@ -163,6 +165,7 @@ export function useBootstrap() {
           }
         } catch (e) {
           console.warn("[bootstrap] cloud pull failed:", e.message);
+          setSyncError(e.message || "Cloud sync failed");
         }
       }, 10);
 
@@ -202,7 +205,13 @@ export function useBootstrap() {
       offStrap?.();
       if (settingsDebounce) clearTimeout(settingsDebounce);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { ready, status };
+  const retrySync = () => {
+    setSyncError(null);
+    setStatus("Retrying…");
+    setRetryCount(c => c + 1);
+  };
+
+  return { ready, status, syncError, retrySync };
 }

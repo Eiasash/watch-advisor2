@@ -51,14 +51,14 @@ describe("seasonContextFactor — season scoring", () => {
   it("returns +0.3 when season matches", () => {
     expect(seasonContextFactor(makeCandidate(["spring"]), makeCtx(null,"spring"))).toBe(0.3);
   });
-  it("returns -0.2 when season does not match", () => {
-    expect(seasonContextFactor(makeCandidate(["summer"]), makeCtx(null,"spring"))).toBe(-0.2);
+  it("returns -0.15 when season is adjacent (summer in spring)", () => {
+    expect(seasonContextFactor(makeCandidate(["summer"]), makeCtx(null,"spring"))).toBe(-0.15);
   });
   it("returns +0.3 when one of multiple tags matches", () => {
     expect(seasonContextFactor(makeCandidate(["spring","autumn"]), makeCtx(null,"spring"))).toBe(0.3);
   });
-  it("returns -0.2 for winter-only in spring", () => {
-    expect(seasonContextFactor(makeCandidate(["winter"]), makeCtx(null,"spring"))).toBe(-0.2);
+  it("returns -0.15 for winter (adjacent) in spring", () => {
+    expect(seasonContextFactor(makeCandidate(["winter"]), makeCtx(null,"spring"))).toBe(-0.15);
   });
   it("works for all four seasons", () => {
     for (const s of ["spring","summer","autumn","winter"])
@@ -91,11 +91,11 @@ describe("seasonContextFactor — combined", () => {
       { outfitContext:"smart-casual", _season:"spring" }
     )).toBeCloseTo(0.55);
   });
-  it("+0.05 for wrong season + right context (0.25 - 0.20)", () => {
+  it("+0.10 for adjacent season + right context (0.25 - 0.15)", () => {
     expect(seasonContextFactor(
       makeCandidate(["winter"],["clinic"]),
       { outfitContext:"clinic", _season:"spring" }
-    )).toBeCloseTo(0.05);
+    )).toBeCloseTo(0.10);
   });
   it("+0.3 for right season + no context tag", () => {
     expect(seasonContextFactor(makeCandidate(["spring"],[]), { outfitContext:"clinic", _season:"spring" })).toBe(0.3);

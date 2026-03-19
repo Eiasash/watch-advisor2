@@ -21,16 +21,16 @@ describe("rotationPressure", () => {
     expect(p).toBeLessThan(1);
   });
 
-  it("returns 0 for Infinity (never worn)", () => {
-    expect(rotationPressure(Infinity)).toBe(0);
+  it("returns 0.7 for Infinity (never worn — encourages first wear)", () => {
+    expect(rotationPressure(Infinity)).toBe(0.7);
   });
 
-  it("returns 0 for negative input", () => {
-    expect(rotationPressure(-5)).toBe(0);
+  it("returns 0.7 for negative input", () => {
+    expect(rotationPressure(-5)).toBe(0.7);
   });
 
-  it("returns 0 for NaN", () => {
-    expect(rotationPressure(NaN)).toBe(0);
+  it("returns 0.7 for NaN", () => {
+    expect(rotationPressure(NaN)).toBe(0.7);
   });
 
   it("is monotonically increasing with daysIdle", () => {

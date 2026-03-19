@@ -47,7 +47,7 @@ const TABS = [
 ];
 
 function AppContent() {
-  const { ready, status } = useBootstrap();
+  const { ready, status, syncError, retrySync } = useBootstrap();
   const { mode }          = useThemeStore();
   const isDark            = mode === "dark";
 
@@ -116,6 +116,22 @@ function AppContent() {
         <LoadingSkeleton />
       ) : (
         <>
+          {syncError && (
+            <div style={{
+              background: isDark ? "#3b1010" : "#fef2f2",
+              border: `1px solid ${isDark ? "#7f1d1d" : "#fca5a5"}`,
+              borderRadius: 10, padding: "10px 14px", marginBottom: 12,
+              display: "flex", alignItems: "center", gap: 10,
+              color: isDark ? "#fca5a5" : "#991b1b", fontSize: 13,
+            }}>
+              <span style={{ flex: 1 }}>Sync failed: {syncError}</span>
+              <button onClick={retrySync} style={{
+                background: "#3b82f6", color: "#fff", border: "none",
+                borderRadius: 6, padding: "6px 14px", cursor: "pointer",
+                fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+              }}>Retry sync</button>
+            </div>
+          )}
           {/* Tab bar — top on desktop, bottom on mobile */}
           <style>{`
             .wa-tab-bar {

@@ -114,8 +114,8 @@ describe("strapStore", () => {
     expect(strap.id).toBe("snowflake-grey-alligator");
   });
 
-  it("getActiveStrapObj returns null for watch without straps", () => {
-    const strap = useStrapStore.getState().getActiveStrapObj("laureato");
+  it("getActiveStrapObj returns null for unknown watch", () => {
+    const strap = useStrapStore.getState().getActiveStrapObj("nonexistent-watch");
     expect(strap).toBeNull();
   });
 
@@ -127,8 +127,8 @@ describe("strapStore", () => {
     expect(straps.map(s => s.id)).toContain("snowflake-navy-alligator");
   });
 
-  it("getStrapsForWatch returns empty array for watch without straps", () => {
-    const straps = useStrapStore.getState().getStrapsForWatch("laureato");
+  it("getStrapsForWatch returns empty array for unknown watch", () => {
+    const straps = useStrapStore.getState().getStrapsForWatch("nonexistent-watch");
     expect(straps.length).toBe(0);
   });
 

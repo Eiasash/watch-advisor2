@@ -1,4 +1,5 @@
 import { scoreWatchForDay } from "./dayProfile.js";
+import { recentWatchIds } from "../domain/historyWindow.js";
 
 const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -17,10 +18,8 @@ export function genWeekRotation(watches, history = [], weekCtx = [], onCallDates
   const active = watches.filter(w => w.status === "active" || !w.status);
   if (!active.length) return [];
 
-  // Build recent-wear set to favour unworn pieces
-  const recentIds = new Set(
-    history.slice(-14).map(h => h.watchId).filter(Boolean)
-  );
+  // Build recent-wear set to favour unworn pieces (calendar-day window)
+  const recentIds = recentWatchIds(history, 14);
 
   const today  = new Date();
   const result = [];

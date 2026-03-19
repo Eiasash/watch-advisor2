@@ -1,13 +1,14 @@
 import { scoreWatchForDay } from "./dayProfile.js";
+import { recentWatchIds } from "../domain/historyWindow.js";
 
 /**
- * Basic rotation: avoid last-7 worn watches if alternatives exist.
+ * Basic rotation: avoid watches worn in the last 7 calendar days.
  * Day-profile-aware when profile is supplied.
  */
 export function pickWatch(watches, history = [], dayProfile = "smart-casual") {
   if (!watches.length) return null;
 
-  const recentIds = new Set(history.slice(-7).map(h => h.watchId));
+  const recentIds = recentWatchIds(history, 7);
   const fresh = watches.filter(w => !recentIds.has(w.id));
   const pool = fresh.length ? fresh : watches;
 
@@ -24,7 +25,7 @@ export function pickWatch(watches, history = [], dayProfile = "smart-casual") {
 export function pickWatchPair(watches, history = [], dayProfile = "smart-casual") {
   if (!watches.length) return { primary: null, backup: null };
 
-  const recentIds = new Set(history.slice(-7).map(h => h.watchId));
+  const recentIds = recentWatchIds(history, 7);
   const fresh = watches.filter(w => !recentIds.has(w.id));
   const pool = fresh.length ? fresh : watches;
 
