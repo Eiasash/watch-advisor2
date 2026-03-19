@@ -6,7 +6,7 @@
  * Values = garment colors that pair well with that dial
  */
 export const DIAL_COLOR_MAP = {
-  "silver-white": ["black", "navy", "gray", "grey", "white", "beige", "slate", "charcoal", "blue"],
+  "silver-white": ["black", "navy", "white", "beige", "slate", "charcoal", "blue", "light blue", "cream", "indigo", "dark navy"],
   "green":        ["olive", "beige", "brown", "gray", "grey", "khaki", "cream", "tan", "green", "charcoal"],
   "grey":         ["black", "white", "navy", "gray", "grey", "stone", "beige", "charcoal", "blue", "burgundy"],
   "blue":         ["navy", "gray", "grey", "white", "beige", "stone", "black", "charcoal", "blue"],
