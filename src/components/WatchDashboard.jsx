@@ -37,9 +37,11 @@ const DIAL_SWATCH = {
 function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
   if (!watch) return null;
   const swatch = DIAL_SWATCH[watch.dial] ?? "#444";
-  // Show active strap from strapStore so card reflects the strap actually in use today
   const activeStrapObj = useStrapStore(s => s.getActiveStrapObj?.(watch.id));
   const strapLabel = activeStrapObj?.label ?? watch.strap ?? null;
+  const allStraps = useStrapStore(s => s.getStrapsForWatch(watch.id));
+  const setActive = useStrapStore(s => s.setActiveStrap);
+  const [showStraps, setShowStraps] = useState(false);
 
   return (
     <div style={{
@@ -47,32 +49,55 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
       borderRadius: 14,
       padding: "14px 16px",
       border: `1px solid ${accent}33`,
-      display: "flex", gap: 14, alignItems: "flex-start",
     }}>
-      <div style={{
-        width: 52, height: 52, borderRadius: "50%",
-        background: swatch,
-        border: `3px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
-        flexShrink: 0,
-        boxShadow: `0 0 12px ${swatch}44`,
-      }} />
-      <div>
-        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: accent, marginBottom: 3, textTransform: "uppercase" }}>{label}</div>
-        <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.2, color: isDark ? "#e2e8f0" : "#1f2937" }}>{watch.model}</div>
-        <div style={{ fontSize: 13, color: "#8b93a7", marginTop: 2 }}>{watch.brand} &middot; {watch.ref}</div>
-        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>
-          {watch.dualDial
-            ? <>{watch.dualDial.sideA} / {watch.dualDial.sideB} dial &middot; </>
-            : <>{watch.dial} dial &middot; </>
-          }
-          {watch.style} &middot; formality {watch.formality}/10
-        </div>
-        {strapLabel && (
-          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, fontStyle: "italic" }}>
-            {strapLabel}
+      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%",
+          background: swatch,
+          border: `3px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
+          flexShrink: 0,
+          boxShadow: `0 0 12px ${swatch}44`,
+        }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: accent, marginBottom: 3, textTransform: "uppercase" }}>{label}</div>
+          <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.2, color: isDark ? "#e2e8f0" : "#1f2937" }}>{watch.model}</div>
+          <div style={{ fontSize: 13, color: "#8b93a7", marginTop: 2 }}>{watch.brand} &middot; {watch.ref}</div>
+          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>
+            {watch.dualDial
+              ? <>{watch.dualDial.sideA} / {watch.dualDial.sideB} dial &middot; </>
+              : <>{watch.dial} dial &middot; </>
+            }
+            {watch.style} &middot; formality {watch.formality}/10
           </div>
-        )}
+          {strapLabel && (
+            <div
+              onClick={() => allStraps.length > 1 && setShowStraps(s => !s)}
+              style={{ fontSize: 11, color: showStraps ? "#3b82f6" : "#6b7280", marginTop: 2,
+                       fontStyle: "italic", cursor: allStraps.length > 1 ? "pointer" : "default" }}>
+              {strapLabel} {allStraps.length > 1 ? (showStraps ? "▲" : "▼ change") : ""}
+            </div>
+          )}
+        </div>
       </div>
+      {/* Inline strap picker */}
+      {showStraps && allStraps.length > 1 && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 10, paddingTop: 10,
+                      borderTop: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}` }}>
+          {allStraps.map(s => (
+            <button key={s.id}
+              onClick={() => { setActive(watch.id, s.id); setShowStraps(false); }}
+              style={{
+                padding: "4px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
+                border: `1px solid ${s.id === activeStrapObj?.id ? "#3b82f6" : (isDark ? "#2b3140" : "#d1d5db")}`,
+                background: s.id === activeStrapObj?.id ? "#3b82f622" : "transparent",
+                color: s.id === activeStrapObj?.id ? "#3b82f6" : (isDark ? "#8b93a7" : "#6b7280"),
+                cursor: "pointer",
+              }}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -262,6 +287,7 @@ export default function WatchDashboard() {
   const [watchRecLoading, setWatchRecLoading] = useState(false);
   const [watchRecResult, setWatchRecResult] = useState(null);
   const [outfitLogged, setOutfitLogged] = useState(false);
+  const [lastCheckinRef, setLastCheckinRef] = useState(null); // for undo
   const [overrideOutfit, setOverrideOutfit] = useState(null);
   const [shuffleSeed, setShuffleSeed] = useState(0);
   // Per-slot manual overrides: { shirt: garmentObj, pants: garmentObj, ... }
@@ -521,36 +547,64 @@ export default function WatchDashboard() {
           )}
 
           {/* Quick watch check-in — logs just the watch, no outfit required */}
-          <button
-            onClick={() => {
-              const todayIso = new Date().toISOString().slice(0,10);
-              const existingToday = useHistoryStore.getState().entries.find(e => e.date === todayIso);
-              const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(selectedWatch.id);
-              useHistoryStore.getState().upsertEntry({
-                id: existingToday?.id ?? `checkin-${Date.now()}`,
-                date: todayIso,
-                watchId: selectedWatch.id,
-                garmentIds: existingToday?.garmentIds ?? [],
-                context: todayContext ?? existingToday?.context ?? "smart-casual",
-                strapId: activeStrapObj?.id ?? null,
-                strapLabel: activeStrapObj?.label ?? null,
-                notes: existingToday?.notes ?? null,
-                loggedAt: new Date().toISOString(),
-              });
-              setOutfitLogged(true);
-              setTimeout(() => setOutfitLogged(false), 3000);
-            }}
-            disabled={outfitLogged}
-            style={{
-              width: "100%", marginBottom: 14, padding: "10px 0", borderRadius: 8,
-              border: "none", cursor: outfitLogged ? "default" : "pointer",
-              background: outfitLogged ? "#166534" : "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-              color: "#fff", fontSize: 13, fontWeight: 700,
-              boxShadow: outfitLogged ? "none" : "0 2px 8px #3b82f633",
-            }}
-          >
-            {outfitLogged ? "✅ Checked In!" : `⌚ Check In — ${selectedWatch.model}`}
-          </button>
+          <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+            <button
+              onClick={() => {
+                const todayIso = new Date().toISOString().slice(0,10);
+                const existingToday = useHistoryStore.getState().entries.find(e => e.date === todayIso);
+                const activeStrapObj = useStrapStore.getState().getActiveStrapObj?.(selectedWatch.id);
+                // Save previous state for undo
+                setLastCheckinRef(existingToday ? { ...existingToday } : null);
+                const entryId = existingToday?.id ?? `checkin-${Date.now()}`;
+                useHistoryStore.getState().upsertEntry({
+                  id: entryId,
+                  date: todayIso,
+                  watchId: selectedWatch.id,
+                  garmentIds: existingToday?.garmentIds ?? [],
+                  context: todayContext ?? existingToday?.context ?? "smart-casual",
+                  strapId: activeStrapObj?.id ?? null,
+                  strapLabel: activeStrapObj?.label ?? null,
+                  notes: existingToday?.notes ?? null,
+                  loggedAt: new Date().toISOString(),
+                });
+                setOutfitLogged(true);
+                setTimeout(() => { setOutfitLogged(false); setLastCheckinRef(null); }, 10000);
+              }}
+              disabled={outfitLogged}
+              style={{
+                flex: 1, padding: "10px 0", borderRadius: 8,
+                border: "none", cursor: outfitLogged ? "default" : "pointer",
+                background: outfitLogged ? "#166534" : "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+                color: "#fff", fontSize: 13, fontWeight: 700,
+                boxShadow: outfitLogged ? "none" : "0 2px 8px #3b82f633",
+              }}
+            >
+              {outfitLogged ? "✅ Checked In!" : `⌚ Check In — ${selectedWatch.model}`}
+            </button>
+            {outfitLogged && (
+              <button
+                onClick={() => {
+                  if (lastCheckinRef) {
+                    useHistoryStore.getState().upsertEntry(lastCheckinRef);
+                  } else {
+                    const todayIso = new Date().toISOString().slice(0,10);
+                    const entry = useHistoryStore.getState().entries.find(e => e.date === todayIso);
+                    if (entry) useHistoryStore.getState().removeEntry(entry.id);
+                  }
+                  setOutfitLogged(false);
+                  setLastCheckinRef(null);
+                }}
+                style={{
+                  padding: "10px 14px", borderRadius: 8,
+                  border: `1px solid ${isDark ? "#374151" : "#d1d5db"}`,
+                  background: "transparent", color: isDark ? "#9ca3af" : "#6b7280",
+                  fontSize: 12, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Undo
+              </button>
+            )}
+          </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <div style={{ fontSize: 13, color: overrideOutfit ? "#8b5cf6" : "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
