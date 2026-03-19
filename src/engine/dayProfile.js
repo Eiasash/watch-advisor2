@@ -125,15 +125,30 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   // Style suitability
   const styleScore = suitableStyles.includes(watch.style) ? 1 : 0.3;
 
-  // Recency penalty: worn in last 7? penalise.
+  // Recency + rotation: worn in last 7? hard penalise.
+  // v2 fix (March 2026): old model used binary 0/1 recencyScore. This caused
+  // never-worn watches (daysIdle=Infinity) to score 1.0 every day forever,
+  // permanently beating any watch worn more than 7 days ago.
+  // New model uses continuous pressure so idle watches cycle naturally:
+  //   - Worn today/yesterday → 0.0 (penalised)
+  //   - Worn 7 days ago      → 0.5 (moderate, can still win)
+  //   - Worn 14+ days ago    → 1.0 (full pressure, prioritised)
+  //   - Never worn           → 0.75 (high but capped — first wear encouraged
+  //                                  without permanently dominating rotation)
   const recentIds = new Set(history.slice(-7).map(h => h.watchId));
-  const recencyScore = recentIds.has(watch.id) ? 0 : 1;
-
-  // Cooldown: use canonical daysIdle from domain layer.
-  // Infinity when never worn — watchCooldownScore treats undefined as 1.0 (fully rested).
   const todayStr = new Date().toISOString().slice(0, 10);
   const idle = daysIdle(watch.id, history);
-  const daysSinceWear = isFinite(idle) ? idle : undefined;
+  let recencyScore;
+  if (recentIds.has(watch.id)) {
+    recencyScore = 0; // worn recently — hard penalty
+  } else if (!Number.isFinite(idle)) {
+    recencyScore = 0.75; // never worn — high but capped so it doesn't win forever
+  } else {
+    recencyScore = Math.min(idle / 14, 1.0); // linear 0→1 over 14 days
+  }
+
+  // Cooldown: use canonical daysIdle from domain layer.
+  const daysSinceWear = isFinite(idle) ? idle : 14; // treat never-worn as 14 days idle
   const cooldown = watchCooldownScore(daysSinceWear);
 
   // Replica penalty: strong penalty in professional contexts

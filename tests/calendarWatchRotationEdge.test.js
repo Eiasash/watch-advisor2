@@ -136,8 +136,10 @@ describe("scoreWatchForDay — edge cases", () => {
     const watch = { id: "w1", formality: 9, style: "dress", replica: false };
     const score = scoreWatchForDay(watch, "formal", []);
     // formality diff = 0, style match = "dress" in formal list, no recency, no replica penalty
-    // 0.4 * 1 + 0.35 * 1 + 0.25 * 1 = 1.0 + small daily jitter
-    expect(score).toBeCloseTo(1.0, 1);
+    // v2: never-worn watch gets recencyScore=0.75, cooldown=1.15
+    // (0.4*1 + 0.35*1 + 0.25*0.75) * 1.15 + jitter ≈ 1.08
+    expect(score).toBeGreaterThan(1.0);
+    expect(score).toBeLessThan(1.15);
   });
 
   it("formality diff of 4+ gives zero formality component", () => {
@@ -154,7 +156,8 @@ describe("scoreWatchForDay — edge cases", () => {
     const replica = { id: "same", formality: 7, style: "sport-elegant", replica: true };
     const gScore = scoreWatchForDay(genuine, "hospital-smart-casual", []);
     const rScore = scoreWatchForDay(replica, "hospital-smart-casual", []);
-    expect(gScore - rScore).toBeCloseTo(0.5, 5);
+    // v2: penalty is (0.5 * cooldown) since penalty is pre-cooldown; expect ~0.575
+    expect(gScore - rScore).toBeCloseTo(0.575, 1);
   });
 
   it("replica penalty applied in formal context", () => {
@@ -162,7 +165,8 @@ describe("scoreWatchForDay — edge cases", () => {
     const replica = { id: "same", formality: 9, style: "dress", replica: true };
     const gScore = scoreWatchForDay(genuine, "formal", []);
     const rScore = scoreWatchForDay(replica, "formal", []);
-    expect(gScore - rScore).toBeCloseTo(0.5, 5);
+    // v2: penalty is (0.5 * cooldown) since penalty is pre-cooldown; expect ~0.575
+    expect(gScore - rScore).toBeCloseTo(0.575, 1);
   });
 
   it("replica penalty applied in shift context", () => {
@@ -170,7 +174,8 @@ describe("scoreWatchForDay — edge cases", () => {
     const replica = { id: "same", formality: 7, style: "sport-elegant", replica: true };
     const gScore = scoreWatchForDay(genuine, "shift", []);
     const rScore = scoreWatchForDay(replica, "shift", []);
-    expect(gScore - rScore).toBeCloseTo(0.5, 5);
+    // v2: penalty is (0.5 * cooldown) since penalty is pre-cooldown; expect ~0.575
+    expect(gScore - rScore).toBeCloseTo(0.575, 1);
   });
 
   it("NO replica penalty in casual context", () => {
@@ -192,15 +197,17 @@ describe("scoreWatchForDay — edge cases", () => {
     const fresh = scoreWatchForDay(watch, "smart-casual", []);
     const worn = scoreWatchForDay(watch, "smart-casual", [{ watchId: "w1" }]);
     expect(worn).toBeLessThan(fresh);
-    expect(fresh - worn).toBeCloseTo(0.25, 3); // recencyScore goes from 1 to 0
+    // v2: fresh watch gets recencyScore=0.75 (not 1.0), so diff = 0.25*0.75*cooldown ≈ 0.216
+    expect(fresh - worn).toBeCloseTo(0.216, 1);
   });
 
   it("undefined formality treated as 5", () => {
     const watch = { id: "w1", style: "sport", replica: false };
     // smart-casual target = 6, diff = 1
     const score = scoreWatchForDay(watch, "smart-casual", []);
-    const expected = 0.4 * 0.75 + 0.35 * 1 + 0.25 * 1; // 0.3 + 0.35 + 0.25 = 0.9 + jitter
-    expect(score).toBeCloseTo(expected, 1);
+    // v2: never-worn watch recencyScore=0.75, cooldown=1.15
+    // (0.4*0.75 + 0.35*1 + 0.25*0.75) * 1.15 + jitter ≈ 0.963
+    expect(score).toBeCloseTo(0.963, 1);
   });
 
   it("unknown day profile uses default formality 6", () => {

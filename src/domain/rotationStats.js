@@ -139,7 +139,14 @@ export function buildRotationTable(watches, history) {
  * @returns {number} pressure in [0, 1)
  */
 export function rotationPressure(daysIdleValue) {
-  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0;
+  // v2 fix (March 2026): previously returned 0 for Infinity (never-worn garments).
+  // This caused never-worn garments to receive zero rotation pressure, making them
+  // permanently invisible to the rotation system. They would never cycle in or out —
+  // the same garments kept winning because they had good base scores but no
+  // rotation pressure countering them.
+  // Fix: never-worn garments get 0.7 pressure (high, to encourage first wear,
+  // but below the 1.0 ceiling so heavily-rested worn garments can beat them).
+  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0.7;
   const midpoint  = 14;
   const steepness = 0.25;
   return 1 / (1 + Math.exp(-steepness * (daysIdleValue - midpoint)));

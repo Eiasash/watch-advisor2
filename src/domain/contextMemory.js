@@ -45,5 +45,7 @@ export function recentGarments(history) {
  */
 export function repetitionPenalty(garmentId, history) {
   const recent = recentGarments(history);
-  return recent.has(garmentId) ? -0.15 : 0;
+  // v2 fix: penalty raised -0.15 → -0.28 so recently-worn garments
+  // are meaningfully deprioritised vs never-worn ones in the rotation cycle.
+  return recent.has(garmentId) ? -0.28 : 0;
 }
