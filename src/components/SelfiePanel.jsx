@@ -81,8 +81,9 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
     const totalAfter = Math.min(currentCount + files.length, 3);
     // Scale down when sending multiple images to prevent Netlify function timeout.
     // 1 photo: 800px/0.82q. 2 photos: 640px/0.75q. 3 photos: 512px/0.68q.
-    const maxPx = totalAfter <= 1 ? 800 : totalAfter <= 2 ? 640 : 512;
-    const quality = totalAfter <= 1 ? 0.82 : totalAfter <= 2 ? 0.75 : 0.68;
+    // v2: reduced 1-photo from 800→640px — 800px was overkill for outfit analysis and contributed to 504s on mobile proxy.
+    const maxPx = totalAfter <= 1 ? 640 : totalAfter <= 2 ? 512 : 420;
+    const quality = totalAfter <= 1 ? 0.80 : totalAfter <= 2 ? 0.72 : 0.65;
     for (const file of files) {
       const dataUrl = await resizeImage(file, maxPx, quality);
       newPhotos.push({ id: Date.now() + Math.random(), dataUrl });

@@ -117,7 +117,7 @@ Return ONLY valid JSON, no markdown:
 
         const res = await callClaude(apiKey, {
         model: "claude-sonnet-4-6",
-        max_tokens: 1400, // Reduced from 2000 — 2000 was causing 504 on 2-image submissions (Netlify 10s wall)
+        max_tokens: 1100, // Reduced from 1400 — mobile carrier proxy cuts at ~7s. 1100 keeps total under 6s.
         messages: [{ role: "user", content: [...imageBlocks, { type: "text", text: prompt }] }],
       }, { maxAttempts: 1 });
     const data = res;
