@@ -64,12 +64,20 @@ function _isCasualJacket(name) {
 
 /**
  * Cross-slot coherence — scores how well a candidate garment harmonizes with
- * already-assigned outfit slots. Rewards palette coherence, penalizes exact
- * color duplication and warm/cool clashes.
+ * already-assigned outfit slots.
  *
- * Returns a RAW value in the range -0.4 to +0.25.
- * Callers (specifically _scoreCandidate) are responsible for scaling this
- * relative to baseScore — do NOT add raw coherence directly to a multiplicative score.
+ * v2 logic (March 2026):
+ *   The old model penalised warm/cool contrast (-0.15), which was backwards.
+ *   Brick sweater + navy chinos IS the intended styling — deliberate contrast,
+ *   not a failure. New model rewards contrast and only penalises monotone stacking.
+ *
+ *   - Exact color repeat                        → -0.40 (always bad)
+ *   - Neutral candidate (grey, white, stone…)   → +0.10 (bridges any palette)
+ *   - Warm/cool contrast introduced             → +0.20 (intentional contrast)
+ *   - Same tone as dominant, 1 existing         → +0.15 (tonal layering, fine)
+ *   - Same tone as dominant, 2+ existing        → -0.05 (palette getting monotone)
+ *
+ * Returns raw value in range -0.40 to +0.20. Callers scale relative to baseScore.
  */
 const _WARM = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive","brick","rust"]);
 const _COOL = new Set(["black","navy","grey","slate","charcoal","indigo","dark navy"]);
@@ -88,9 +96,13 @@ function _crossSlotCoherence(candidate, filledColors) {
     else if (_COOL.has(c)) cool++;
   }
   const dominant = warm >= cool ? "warm" : "cool";
+  const dominantCount = warm >= cool ? warm : cool;
 
-  if (candidateTone === dominant) return 0.25;
-  return -0.15;
+  // Candidate introduces contrast → reward deliberate warm/cool pairing
+  if (candidateTone !== dominant) return 0.20;
+
+  // Same tone as dominant: fine for first, slightly penalise monotone accumulation
+  return dominantCount >= 2 ? -0.05 : 0.15;
 }
 
 // ── Pair-harmony helpers ──────────────────────────────────────────────────────
@@ -135,15 +147,22 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   // Flat rejection penalty — not a factor because it's a global veto, not a scoring nudge
   if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= 0.30;
 
+  // Replica context penalty — collection philosophy: zero replica in clinic/formal/shift.
+  // Applied as a strong score reduction (not a hard gate) so the engine still has
+  // candidates in edge cases where only replicas exist in the wardrobe.
+  const FORMAL_CONTEXTS = new Set(["clinic","formal","hospital-smart-casual","shift"]);
+  if (watch.replica && FORMAL_CONTEXTS.has(context)) score -= baseScore * 0.60;
+
   // Preference weight — formality lean derived from wear history
   if (preferenceWeights && preferenceWeights.formality !== 1) {
     score += (preferenceWeights.formality - 1) * 0.1 * baseScore;
   }
 
-  // Coherence bonus/penalty: scale to ±25% of base score
+  // Coherence bonus/penalty: scale to ±20% of base score.
+  // raw range is -0.40 to +0.20 — normalised by 0.60 then scaled to 0.20.
   if (filledColors.length > 0) {
-    const coherence = _crossSlotCoherence(garment, filledColors); // raw: -0.4 to +0.25
-    score += baseScore * (coherence / 0.65) * 0.25;
+    const coherence = _crossSlotCoherence(garment, filledColors); // raw: -0.40 to +0.20
+    score += baseScore * (coherence / 0.60) * 0.20;
   }
 
   // Floor: never allow post-score adjustments to disqualify a hard-gate-passing garment
