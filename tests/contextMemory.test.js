@@ -49,9 +49,9 @@ describe("recentGarments", () => {
 });
 
 describe("repetitionPenalty", () => {
-  it("returns -0.15 when garment is in recent history", () => {
+  it("returns -0.28 when garment is in recent history", () => {
     const history = makeHistory([["g1", "g2"]]);
-    expect(repetitionPenalty("g1", history)).toBe(-0.15);
+    expect(repetitionPenalty("g1", history)).toBe(-0.28);
   });
 
   it("returns 0 when garment is NOT in recent history", () => {

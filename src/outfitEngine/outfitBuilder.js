@@ -9,6 +9,7 @@
  * 5. Fill remaining slots (jacket, sweater, layer, belt) with per-slot scoring
  */
 
+import { recentHistory } from "../domain/historyWindow.js";
 import { STYLE_TO_SLOTS } from "./watchStyles.js";
 import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore, filterShoesByStrap, clearScoreCache,
   colorMatchScore, formalityMatchScore, watchCompatibilityScore } from "./scoring.js";
@@ -600,12 +601,17 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   return outfit;
 }
 
+/** Calendar-day-aware recent history for diversity scoring. */
+function _recentHistoryForDiversity(history) {
+  return recentHistory(history ?? [], 7);
+}
+
 /**
  * Diversity penalty — avoid repeating garments from recent history.
  */
 function diversityBonus(garment, history) {
-  // 7-day window: matches the recency window used in scoreWatchForDay.
-  const recent = (history ?? []).slice(-7);
+  // 7-day calendar window: matches the recency window used in scoreWatchForDay.
+  const recent = _recentHistoryForDiversity(history);
   const usedCount = recent.filter(e => {
     const o = e.outfit ?? e.payload?.outfit ?? {};
     if (Object.values(o).includes(garment.id)) return true;

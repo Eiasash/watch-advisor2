@@ -194,28 +194,32 @@ describe("scoreWatchForDay — edge cases", () => {
 
   it("recency penalty: recently worn watch scores lower", () => {
     const watch = { id: "w1", formality: 6, style: "sport", replica: false };
-    const fresh = scoreWatchForDay(watch, "smart-casual", []);
+    // Use non-empty histories for both to avoid empty-history jitter boost
+    const notWorn = scoreWatchForDay(watch, "smart-casual", [{ watchId: "other" }]);
     const worn = scoreWatchForDay(watch, "smart-casual", [{ watchId: "w1" }]);
-    expect(worn).toBeLessThan(fresh);
-    // v2: fresh watch gets recencyScore=0.75 (not 1.0), so diff = 0.25*0.75*cooldown ≈ 0.216
-    expect(fresh - worn).toBeCloseTo(0.216, 1);
+    expect(worn).toBeLessThan(notWorn);
+    // recency diff = 0.25 * 0.75 * cooldown ≈ 0.216
+    expect(notWorn - worn).toBeCloseTo(0.216, 1);
   });
 
   it("undefined formality treated as 5", () => {
     const watch = { id: "w1", style: "sport", replica: false };
-    // smart-casual target = 6, diff = 1
+    // smart-casual target = 6, diff = 1 → formalityScore = 0.75
+    // sport in smart-casual suitability → styleScore = 1.0
+    // never-worn → recencyScore = 0.75, cooldown = 1.15
+    // (0.4*0.75 + 0.35*1 + 0.25*0.75) * 1.15 ≈ 0.963 + jitter + empty-history boost
     const score = scoreWatchForDay(watch, "smart-casual", []);
-    // v2: never-worn watch recencyScore=0.75, cooldown=1.15
-    // (0.4*0.75 + 0.35*1 + 0.25*0.75) * 1.15 + jitter ≈ 0.963
-    expect(score).toBeCloseTo(0.963, 1);
+    expect(score).toBeGreaterThan(0.95);
+    expect(score).toBeLessThan(1.10);
   });
 
   it("unknown day profile uses default formality 6", () => {
     const watch = { id: "w1", formality: 6, style: "sport", replica: false };
     const score = scoreWatchForDay(watch, "nonexistent-profile", []);
-    // diff = 0, no suitable styles → 0.3, no recency
-    // 0.4 * 1 + 0.35 * 0.3 + 0.25 * 1 = 0.755 + jitter
-    expect(score).toBeCloseTo(0.755, 1);
+    // diff = 0, no suitable styles → 0.3, recencyScore = 0.75, cooldown = 1.15
+    // (0.4*1 + 0.35*0.3 + 0.25*0.75) * 1.15 ≈ 0.796 + jitter + empty-history boost
+    expect(score).toBeGreaterThan(0.75);
+    expect(score).toBeLessThan(0.95);
   });
 
   it("history beyond 7 entries: only last 7 checked", () => {
@@ -226,9 +230,10 @@ describe("scoreWatchForDay — edge cases", () => {
       ...Array.from({ length: 7 }, () => ({ watchId: "other" })),
     ];
     const score = scoreWatchForDay(watch, "smart-casual", history);
-    // w1 is NOT in last 7, so no recency penalty
-    const fresh = scoreWatchForDay(watch, "smart-casual", []);
-    expect(score).toBe(fresh);
+    // w1 is NOT in last 7, so same as if w1 was never worn
+    const noTarget = Array.from({ length: 7 }, () => ({ watchId: "other" }));
+    const notWorn = scoreWatchForDay(watch, "smart-casual", noTarget);
+    expect(score).toBe(notWorn);
   });
 });
 

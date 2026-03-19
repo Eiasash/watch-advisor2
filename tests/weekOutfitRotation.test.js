@@ -103,16 +103,18 @@ describe("generateOutfit for weekly rotation", () => {
 });
 
 describe("shuffle-style diversity via heavy fake history", () => {
+  const today = new Date().toISOString().slice(0, 10);
+
   it("heavy history penalty forces different shirt pick", () => {
     // First pick with no history
     const outfit1 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, []);
     const firstShirt = outfit1.shirt?.id;
     expect(firstShirt).toBeTruthy();
 
-    // Now build heavy history that poisons the first shirt pick (5 entries)
+    // Poison the first shirt with garmentIds (more reliable than outfit.shirt)
     const poisonHistory = [];
     for (let i = 0; i < 5; i++) {
-      poisonHistory.push({ outfit: { shirt: firstShirt } });
+      poisonHistory.push({ garmentIds: [firstShirt], outfit: { shirt: firstShirt }, date: today });
     }
 
     const outfit2 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, poisonHistory);
@@ -122,36 +124,31 @@ describe("shuffle-style diversity via heavy fake history", () => {
   });
 
   it("per-slot fake history causes shirt rotation", () => {
-    // Poison shirt slot — shirt should change
     const outfit1 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, []);
     const shirtHistory = [];
     for (let i = 0; i < 5; i++) {
-      shirtHistory.push({ outfit: { shirt: outfit1.shirt?.id } });
+      shirtHistory.push({ garmentIds: [outfit1.shirt?.id], outfit: { shirt: outfit1.shirt?.id }, date: today });
     }
 
     const outfit2 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, shirtHistory);
     // Shirt should change due to diversity penalty
     expect(outfit2.shirt?.id).not.toBe(outfit1.shirt?.id);
-    // Pants may or may not change due to combo beam-search cross-slot coherence
     expect(outfit2.pants).toBeTruthy();
   });
 
   it("iterative poisoning surfaces different picks on double shuffle", () => {
-    // Round 0: get top pick
     const r0 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, []);
-    // Round 1: heavily poison top pick to force 2nd best
+    // Round 1: heavily poison top pick
     const h1 = [];
-    for (let i = 0; i < 5; i++) h1.push({ outfit: { shirt: r0.shirt?.id } });
+    for (let i = 0; i < 5; i++) h1.push({ garmentIds: [r0.shirt?.id], outfit: { shirt: r0.shirt?.id }, date: today });
     const r1 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, h1);
 
-    // At least 2nd pick should differ from 1st (diversity penalty in action)
     expect(r1.shirt?.id).not.toBe(r0.shirt?.id);
 
-    // Round 2: poison both top picks — may surface 3rd or cycle back
+    // Round 2: poison both top picks
     const h2 = [...h1];
-    for (let i = 0; i < 5; i++) h2.push({ outfit: { shirt: r1.shirt?.id } });
+    for (let i = 0; i < 5; i++) h2.push({ garmentIds: [r1.shirt?.id], outfit: { shirt: r1.shirt?.id }, date: today });
     const r2 = generateOutfit(MOCK_WATCH, MOCK_GARMENTS, { tempC: 18 }, {}, h2);
-    // Should differ from at least the most-recent poisoned pick
     expect(r2.shirt?.id).not.toBe(r1.shirt?.id);
   });
 

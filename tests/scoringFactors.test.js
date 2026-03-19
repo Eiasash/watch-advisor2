@@ -83,17 +83,8 @@ describe("scoringFactors — registerFactor", () => {
 });
 
 describe("scoringFactors — individual factor modules", () => {
-  it("colorFactor returns candidate.colorScore or 0", async () => {
-    const { default: colorFactor } = await import("../src/outfitEngine/scoringFactors/colorFactor.js");
-    expect(colorFactor({ colorScore: 0.8 })).toBe(0.8);
-    expect(colorFactor({})).toBe(0);
-  });
-
-  it("formalityFactor returns candidate.formalityScore or 0", async () => {
-    const { default: formalityFactor } = await import("../src/outfitEngine/scoringFactors/formalityFactor.js");
-    expect(formalityFactor({ formalityScore: 0.6 })).toBe(0.6);
-    expect(formalityFactor({})).toBe(0);
-  });
+  // colorFactor and formalityFactor were removed — those dimensions are already
+  // in baseScore from scoreGarment() and were always returning 0.
 
   it("diversityFactor returns candidate.diversityBonus or 0", async () => {
     const { default: diversityFactor } = await import("../src/outfitEngine/scoringFactors/diversityFactor.js");
@@ -101,17 +92,17 @@ describe("scoringFactors — individual factor modules", () => {
     expect(diversityFactor({})).toBe(0);
   });
 
-  it("repetitionFactor returns -0.15 for recently-worn garment", async () => {
+  it("repetitionFactor returns -0.28 for recently-worn garment", async () => {
     const { default: repetitionFactor } = await import("../src/outfitEngine/scoringFactors/repetitionFactor.js");
     const ctx = { history: [{ garmentIds: ["g1"], date: "2026-03-14" }] };
-    expect(repetitionFactor({ garment: { id: "g1" } }, ctx)).toBe(-0.15);
+    expect(repetitionFactor({ garment: { id: "g1" } }, ctx)).toBe(-0.28);
     expect(repetitionFactor({ garment: { id: "g99" } }, { history: [] })).toBe(0);
   });
 
-  it("rotationFactor returns value in [0, 0.2]", async () => {
+  it("rotationFactor returns value in [0, 0.40]", async () => {
     const { default: rotationFactor } = await import("../src/outfitEngine/scoringFactors/rotationFactor.js");
     const val = rotationFactor({ garment: { id: "g1" } }, { history: [] });
     expect(val).toBeGreaterThanOrEqual(0);
-    expect(val).toBeLessThanOrEqual(0.2);
+    expect(val).toBeLessThanOrEqual(0.40);
   });
 });

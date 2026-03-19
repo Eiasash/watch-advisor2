@@ -147,8 +147,10 @@ describe("scoreWatchForDay", () => {
     const history = Array.from({ length: 8 }, (_, i) => ({ watchId: `other-${i}` }));
     history.unshift({ watchId: "reverso" }); // oldest entry
     const score = scoreWatchForDay(dressWatch, "formal", history);
-    const freshScore = scoreWatchForDay(dressWatch, "formal", []);
-    expect(score).toBe(freshScore);
+    // Compare against non-empty history without target (not empty, which gets extra jitter)
+    const noTarget = Array.from({ length: 8 }, (_, i) => ({ watchId: `other-${i}` }));
+    const notWornScore = scoreWatchForDay(dressWatch, "formal", noTarget);
+    expect(score).toBe(notWornScore);
   });
 
   it("handles missing formality gracefully (defaults to 5)", () => {
