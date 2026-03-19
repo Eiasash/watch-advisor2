@@ -395,36 +395,50 @@ export default function TodayPanel() {
 
         <SelfiePanel context={todayEntry?.context ?? "smart-casual"} watchId={todayEntry?.watchId ?? null} />
 
-        {/* Quick watch swap — change today's watch without editing the full log */}
-        <details style={{ marginBottom: 12 }}>
-          <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#3b82f6",
-                            padding: "10px 0", listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
-            <span>⌚ Switch watch</span>
-          </summary>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 0" }}>
-            {watches.filter(w => w.id !== todayEntry.watchId).map(w => (
-              <button key={w.id}
-                onClick={() => {
-                  upsertEntry({
-                    ...todayEntry,
-                    watchId: w.id,
-                    strapId: activeStrap[w.id] ?? null,
-                    strapLabel: (activeStrap[w.id] && straps[activeStrap[w.id]]?.label) ?? null,
-                    loggedAt: new Date().toISOString(),
-                  });
-                }}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
-                         borderRadius: 8, border: `1px solid ${border}`, background: "transparent",
-                         color: text, fontSize: 12, cursor: "pointer", textAlign: "left" }}>
-                <span style={{ fontSize: 18 }}>{w.emoji ?? "⌚"}</span>
-                <span style={{ fontWeight: 600 }}>{w.brand} {w.model}</span>
-                <span style={{ color: muted, marginLeft: "auto", fontSize: 10 }}>
-                  {w.replica ? "replica" : "genuine"}
-                </span>
-              </button>
-            ))}
+        {/* Quick watch check-in — always visible, prominent */}
+        <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", textTransform: "uppercase",
+                        letterSpacing: "0.06em", marginBottom: 10 }}>
+            ⌚ Wearing a different watch?
           </div>
-        </details>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 6 }}>
+            {watches.filter(w => w.id !== todayEntry.watchId).slice(0, 8).map(w => {
+              const strapObj = activeStrap[w.id] && straps[activeStrap[w.id]];
+              return (
+                <button key={w.id}
+                  onClick={() => {
+                    upsertEntry({
+                      ...todayEntry,
+                      watchId: w.id,
+                      strapId: activeStrap[w.id] ?? null,
+                      strapLabel: strapObj?.label ?? null,
+                      loggedAt: new Date().toISOString(),
+                    });
+                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+                           borderRadius: 8, border: `1px solid ${border}`, background: isDark ? "#0f131a" : "#f9fafb",
+                           color: text, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{w.emoji ?? "⌚"}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {w.model}
+                    </div>
+                    <div style={{ fontSize: 10, color: muted }}>
+                      {w.replica ? "replica" : "genuine"}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {watches.length > 9 && (
+            <button
+              onClick={() => { setWatchId(todayEntry.watchId); setLogged(false); }}
+              style={{ marginTop: 8, fontSize: 11, color: "#3b82f6", background: "none", border: "none", cursor: "pointer" }}>
+              Show all {watches.length} watches →
+            </button>
+          )}
+        </div>
 
         <button onClick={() => {
           // Reload form state from the logged entry before switching to edit mode
