@@ -319,33 +319,52 @@ export default function GarmentEditor({ garment, onClose }) {
     addToast?.("New item added — tap to label it", "success");
   }
 
-  // ── Angle upload ────────────────────────────────────────────────────────────
+  // ── Angle upload — supports multiple files (gallery multi-select or camera) ──
   async function handleAngleUpload(e) {
-    const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = async () => {
-        const c = document.createElement("canvas");
-        const scale = Math.min(1, 300 / Math.max(img.width, img.height));
-        c.width = Math.round(img.width * scale);
-        c.height = Math.round(img.height * scale);
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        const thumb = c.toDataURL("image/jpeg", 0.7);
-        addAngle(garment.id, thumb);
-        const newAngles = (garment.photoAngles ?? []).concat([thumb]);
-        const upd = garments.map(g => g.id === garment.id ? { ...g, photoAngles: newAngles } : g);
-        setCachedState({ watches, garments: upd, history }).catch(() => {});
-        setAngleIdx(angles.length);
-        try {
-          const url = await uploadAngle(garment.id, (garment.photoAngles ?? []).length, thumb);
-          if (url) pushGarment({ ...garment, photoAngles: [...(garment.photoAngles??[]).filter(u=>!u.startsWith("data:")), url] }).catch(()=>{});
-        } catch { /* local only */ }
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
+    if (!files.length) return;
+    // Cap at 5 total angles (primary + up to 4 extras)
+    const currentCount = 1 + (garment.photoAngles ?? []).length;
+    const toProcess = files.slice(0, Math.max(0, 5 - currentCount));
+    if (!toProcess.length) return;
+    for (const file of toProcess) {
+      await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = async () => {
+            const c = document.createElement("canvas");
+            const scale = Math.min(1, 300 / Math.max(img.width, img.height));
+            c.width = Math.round(img.width * scale);
+            c.height = Math.round(img.height * scale);
+            c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+            const thumb = c.toDataURL("image/jpeg", 0.7);
+            // Read fresh garment state each iteration so angles accumulate correctly
+            const latest = useWardrobeStore.getState().garments.find(g => g.id === garment.id) ?? garment;
+            const newAngles = (latest.photoAngles ?? []).concat([thumb]);
+            addAngle(garment.id, thumb);
+            const upd = useWardrobeStore.getState().garments.map(g =>
+              g.id === garment.id ? { ...g, photoAngles: newAngles } : g
+            );
+            setCachedState({ watches, garments: upd, history }).catch(() => {});
+            setAngleIdx(newAngles.length); // jump to latest added
+            try {
+              const url = await uploadAngle(garment.id, (latest.photoAngles ?? []).length, thumb);
+              if (url) {
+                pushGarment({
+                  ...latest,
+                  photoAngles: [...(latest.photoAngles ?? []).filter(u => !u.startsWith("data:")), url],
+                }).catch(() => {});
+              }
+            } catch { /* local only */ }
+            resolve();
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
   }
 
   // ── Styles ──────────────────────────────────────────────────────────────────
@@ -406,12 +425,28 @@ export default function GarmentEditor({ garment, onClose }) {
                   </button>
                 ))}
                 {angles.length < 5 && (
-                  <label style={{ width:40, height:40, borderRadius:8, border:`2px dashed ${border}`,
-                                  display:"flex", alignItems:"center", justifyContent:"center",
-                                  fontSize:20, cursor:"pointer", color:sub, flexShrink:0 }}>
-                    +
-                    <input type="file" accept="image/*" onChange={handleAngleUpload} style={{ display:"none" }} />
-                  </label>
+                  <div style={{ display:"flex", flexDirection:"column", gap:4, flexShrink:0 }}>
+                    {/* Gallery — multi-select */}
+                    <label title="Add from gallery" style={{
+                      width:40, height:40, borderRadius:8, border:`2px dashed ${border}`,
+                      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                      fontSize:14, cursor:"pointer", color:sub, gap:1,
+                    }}>
+                      📁
+                      <span style={{ fontSize:7, fontWeight:600, letterSpacing:"0.04em" }}>GALL</span>
+                      <input type="file" accept="image/*" multiple onChange={handleAngleUpload} style={{ display:"none" }} />
+                    </label>
+                    {/* Camera — single capture */}
+                    <label title="Take photo" style={{
+                      width:40, height:40, borderRadius:8, border:`2px dashed ${border}`,
+                      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                      fontSize:14, cursor:"pointer", color:sub, gap:1,
+                    }}>
+                      📷
+                      <span style={{ fontSize:7, fontWeight:600, letterSpacing:"0.04em" }}>CAM</span>
+                      <input type="file" accept="image/*" capture="environment" onChange={handleAngleUpload} style={{ display:"none" }} />
+                    </label>
+                  </div>
                 )}
               </div>
             </div>
