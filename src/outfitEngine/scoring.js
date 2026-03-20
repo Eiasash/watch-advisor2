@@ -1,8 +1,8 @@
 /**
  * Outfit scoring system — additive weighted model.
  *
- * score = (colorMatch × 2) + (formalityMatch × 3) + (watchCompatibility × 3)
- *       + (weatherLayer × 1) + (contextFormality × 1)
+ * score = (colorMatch × 2.5) + (formalityMatch × 3) + (watchCompatibility × 3)
+ *       + (weatherLayer × 1) + (contextFormality × 1.5)
  *
  * Hard gates (return -Infinity so they sort BELOW strap-shoe 0.0 violations):
  *   - contextFormality === -Infinity  (garment below context formality floor)
@@ -199,10 +199,6 @@ function _styleLearnMult(garment) {
 // ── Score refinement helpers ──────────────────────────────────────────────────
 
 /**
- * Sharpen a score by raising it to a power > 1.
- * Widens the gap between good and mediocre scores — mid-range values drop more
- * than high scores, making the engine more decisive about quality differences.
-/**
  * Brightness balance: nudge scores slightly based on garment lightness.
  * Dark garments are slightly penalised (tend toward heavy outfits);
  * light garments are slightly boosted (tend toward airy, daytime-appropriate outfits).
@@ -223,8 +219,8 @@ function brightnessScore(color) {
  * Score a garment against a watch + context using the additive weighted model.
  *
  * Formula (when all gates pass):
- *   base = (colorMatch×2) + (formalityMatch×3) + (watchCompatibility×3)
- *        + (weatherLayer×1) + (contextFormality×1)
+ *   base = (colorMatch×2.5) + (formalityMatch×3) + (watchCompatibility×3)
+ *        + (weatherLayer×1) + (contextFormality×1.5)
  *   score = max(1e-6, base × styleLearnMult + brightnessNudge)
  *
  * Return values:
@@ -295,8 +291,8 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   // Already computed above in the hard gate check — use it directly in formula.
 
   // ── Additive weighted formula ───────────────────────────────────────────────
-  // score = (colorMatch × 2) + (formalityMatch × 3) + (watchCompatibility × 3)
-  //       + (weatherLayer × 1) + (contextFormality × 1)
+  // score = (colorMatch × 2.5) + (formalityMatch × 3) + (watchCompatibility × 3)
+  //       + (weatherLayer × 1) + (contextFormality × 1.5)
   // Additive model: a weak dimension hurts but cannot zero-out a valid garment
   // (hard gates above handle true exclusions — context floor, strap-shoe mismatch).
   let base =

@@ -44,6 +44,10 @@ function _ensureFactors() {
 
 const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
+// Contexts where replica watches receive a scoring penalty.
+// Module-scoped to avoid rebuilding the Set on every _scoreCandidate call.
+const FORMAL_CONTEXTS = new Set(["clinic","formal","hospital-smart-casual","shift"]);
+
 // Subtype keywords for sweater differentiation.
 // Pullovers layer under zip-ups; two pullovers stacked = structural failure.
 const OVER_LAYER_KEYWORDS = ["zip", "cardigan", "hoodie", "vest", "gilet"];
@@ -151,7 +155,6 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   // Replica context penalty — collection philosophy: zero replica in clinic/formal/shift.
   // Applied as a strong score reduction (not a hard gate) so the engine still has
   // candidates in edge cases where only replicas exist in the wardrobe.
-  const FORMAL_CONTEXTS = new Set(["clinic","formal","hospital-smart-casual","shift"]);
   if (watch.replica && FORMAL_CONTEXTS.has(context)) score -= baseScore * 0.60;
 
   // Preference weight — formality lean derived from wear history
@@ -291,7 +294,7 @@ function _fillJacket(outfit, wearable, watchWithStrap, weather, history, outfitF
     .filter(Boolean);
   const scored = jackets.map(candidate => ({
     garment: candidate,
-    score: _scoreCandidate(watchWithStrap, candidate, weather, history, null, context, rejectState, jFilledColors, preferenceWeights),
+    score: _scoreCandidate(watchWithStrap, candidate, weather, history, outfitFormality, context, rejectState, jFilledColors, preferenceWeights),
   }));
   scored.sort((a, b) => b.score - a.score);
   if (scored[0]?.score > 0) outfit.jacket = scored[0].garment;
