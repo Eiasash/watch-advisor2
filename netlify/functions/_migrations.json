@@ -1,0 +1,162 @@
+[
+  {
+    "name": "20250101000000_init",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20250228000000_post_upgrade_security",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20250228000001_create_shared_shifts",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260228133815_fix_rls_performance_and_index",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260228134535_fix_shared_shifts_rls_restrict_select_by_code",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260228184840_fix_version_bigint_and_cleanup_constraints",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260301193512_shared_shifts_collab",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260301194938_shared_shifts_anon_read",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260303122932_shared_shifts_guest_update_policy",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260304211402_storage_bucket_limits_and_index_cleanup",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260305055545_consolidate_shared_shifts_policies",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307153757_fix_supabase_integration",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307154208_fix_storage_bucket_policies",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307154300_make_photos_bucket_public",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307155957_remove_gpt5_authenticated_policies",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307163205_drop_dead_tables",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307180657_drop_unused_history_index",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307181936_add_trgm_gin_indexes",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307181942_add_garment_embedding_column",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307181950_add_cron_purge_old_history",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260307182104_add_match_garments_rpc",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260309053901_push_subscriptions",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260309070913_add_material_to_garments",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260309124134_add_missing_garment_fields",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260309204838_add_exclude_from_wardrobe_column",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260311053037_add_subtype_to_garments",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260311054829_fix_outfit_photo_exclude_flag",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260311110444_cleanup_duplicates_fix_watch_garments_march2026",
+    "sql": "-- remote migration stub: applied directly to DB before local tracking was established\n-- version is recorded here so Supabase CI can verify migration history is consistent\n"
+  },
+  {
+    "name": "20260311120000_cleanup_duplicates_fix_watch_garments",
+    "sql": "-- Applied 2026-03-11 via Supabase MCP (remote-first)\n\n-- 1. Delete duplicate outfit-photos\nDELETE FROM garments WHERE id IN (\n  'g_1773180562059_px3zk','g_1773180561668_tolj1','g_1773180561192_zdxzt',\n  'g_1773180546252_b12if','g_1773180545855_mvggt'\n);\n\n-- 2. Delete misclassified first-pass garments\nDELETE FROM garments WHERE id IN (\n  'g_1773177575565_yiv3n','g_1773177577296_uzvb9',\n  'g_1773177578844_o2oul','g_1773177580313_kufwc'\n);\n\n-- 3. Exclude watch-type garments from wardrobe scoring\nUPDATE garments SET exclude_from_wardrobe = true\nWHERE id IN (\n  'g_1773224702524_69i5q','g_1773169071099_jww7m','g_1773169079680_e4e6c'\n);\n\n-- 4. Fix Black Elastic Waist Shorts color: navy -> black\nUPDATE garments SET color = 'black' WHERE id = 'g_1773224666434_2s07g';\n\n-- 5. Flag mystery tan accessory for review\nUPDATE garments SET needs_review = true WHERE id = 'g_1773169025564_t4x15';\n"
+  },
+  {
+    "name": "20260315200800_create_app_settings",
+    "sql": "-- app_settings: single-row table for cross-device settings sync.\n-- Stores weekCtx, onCallDates, active straps, and custom strap definitions.\n-- pullSettings / pushSettings in supabaseSync.js read/write the 'default' row.\n\nCREATE TABLE IF NOT EXISTS public.app_settings (\n  id            text PRIMARY KEY DEFAULT 'default',\n  week_ctx      jsonb,\n  on_call_dates jsonb,\n  active_straps jsonb,\n  custom_straps jsonb,\n  updated_at    timestamptz DEFAULT now()\n);\n\n-- Seed the default row so upsert never needs to INSERT\nINSERT INTO public.app_settings (id) VALUES ('default')\nON CONFLICT (id) DO NOTHING;\n\nALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY \"allow_all_authenticated\" ON public.app_settings\n  FOR ALL USING (true) WITH CHECK (true);\n"
+  },
+  {
+    "name": "20260315210000_add_weight_fit_to_garments",
+    "sql": "-- Add weight and fit columns to garments table.\n-- These are tagged by bulk-tag.js but were previously dropped silently\n-- (not in schema, not in push/pull mappings).\n-- weight: ultralight|light|medium|heavy\n-- fit: slim|regular|relaxed|oversized|null (null for shoes/accessories)\n\nALTER TABLE public.garments\n  ADD COLUMN IF NOT EXISTS weight text,\n  ADD COLUMN IF NOT EXISTS fit    text;\n"
+  },
+  {
+    "name": "20260319070000_exclude_seed_garments_and_olive_duplicate",
+    "sql": "-- Exclude all seed garments (w_ prefix) — no photos, superseded by photo-uploaded versions.\n-- 53 seed garments exist; all excluded in this pass.\nUPDATE garments\nSET exclude_from_wardrobe = true\nWHERE id LIKE 'w_%'\n  AND (exclude_from_wardrobe IS NOT TRUE);\n\n-- Exclude the older Olive Knit Zip Jacket duplicate (keep the newer one g_1773169011458_nij7k).\nUPDATE garments\nSET exclude_from_wardrobe = true\nWHERE id = 'g_1773168990895_augrn';\n"
+  },
+  {
+    "name": "20260319073000_exclude_ghost_photos_and_burst_duplicates",
+    "sql": "-- Exclude ghost/pile/raw-filename photos (not real garments).\nUPDATE garments SET exclude_from_wardrobe = true\nWHERE id IN (\n  'g_1773169213103_kg0wa',  -- Folded Denim Jeans Stack (pile photo)\n  'g_1773168928327_447vb',  -- Mixed Denim Jeans Lot (pile photo)\n  'g_1773169177472_c7otr',  -- IMG 20260207 WA0339 (raw filename)\n  'g_1773169208217_shajj'   -- Stacked Cable Knit Sweaters (pile photo)\n);\n\n-- Exclude sub-1-second camera-burst duplicates (keep oldest, drop rest).\nUPDATE garments SET exclude_from_wardrobe = true\nWHERE id IN (\n  'g_1773169016668_0v06a',  -- Tan Leather Jacket (burst dupe of Tan Zip Bomber)\n  'g_1773169016760_lldlx',  -- Tan Zip Jacket (burst dupe of Tan Zip Bomber)\n  'g_1773605818964_wqyjx',  -- Red Solid Crewneck Pullover (burst dupe of Red Crewneck)\n  'g_1773169094325_z5llp',  -- Light Blue Dress Shirt (burst dupe of Light Blue Button Shirt)\n  'g_1773169062272_rp3l2',  -- Cream Cotton Polo Shirt (burst dupe of Cream GANT Polo)\n  'g_1773177581902_04itl',  -- Tan Knit Sweater (burst dupe of Tan Textured Knit)\n  'g_1773169030000_jv6ez',  -- Plaid Tweed Shirt (burst dupe of Blue Plaid Flannel)\n  'g_1773168921247_rs1ov'   -- Tan Knit Zip Sweater (burst dupe of Tan Knit Half-Zip)\n);\n"
+  },
+  {
+    "name": "20260319080000_exclude_all_remaining_dupes_and_outfit_photos",
+    "sql": "-- Exclude exact name+type duplicates (keep oldest photo-uploaded version per garment).\nUPDATE garments SET exclude_from_wardrobe = true\nWHERE id IN (\n  'g_1773168949332_cilx0','g_1773168970942_lgqdn','g_1773168980454_n6t1x',\n  'g_1773168980870_2f1pz','g_1773168985946_3stwu','g_1773168986109_zndoj',\n  'g_1773168996926_tqnij','g_1773168997301_da1qm','g_1773169025458_kxw2b',\n  'g_1773169030200_l19z6','g_1773169057176_jzmvg','g_1773169062375_nyfxh',\n  'g_1773169066930_w74k4','g_1773169070882_6jmve','g_1773169089352_9ldth',\n  'g_1773169099289_qoqxs','g_1773169108083_ssvde','g_1773169116678_x90l4',\n  'g_1773169120897_ev6k1','g_1773169130342_cewzc','g_1773169185616_2xgai',\n  'g_1773169185671_pidcf','g_1773177564662_to038','g_1773177564977_5oj56',\n  'g_1773180556291_zn7qo','g_1773488386248_c6ddw','g_1773488472007_o7x7t',\n  'g_1773488495515_gojyp','g_1773490029572_l7vmn','g_1773490558087_6ii23',\n  'g_1773605827435_02can','g_1773605891260_njifc','g_1773605895542_0lmeq',\n  'g_1773605942720_b4iqh','g_1773605988780_wg1t4','g_1773605997441_pdimq',\n  'g_1773606041798_lzzvn','g_1773612125301_hrudr','g_1773612156503_k9022'\n);\n\n-- Exclude ALL outfit-photos (selfie/outfit shots are not wardrobe items).\nUPDATE garments SET exclude_from_wardrobe = true\nWHERE type = 'outfit-photo';\n\n-- Exclude watch entries (not wardrobe items).\nUPDATE garments SET exclude_from_wardrobe = true\nWHERE type = 'watch';\n"
+  },
+  {
+    "name": "20260319090000_restore_olive_quartzip_and_fix_garments",
+    "sql": "-- Restore olive quarter-zip Gant sweater (excluded during dedup incorrectly)\nUPDATE garments SET exclude_from_wardrobe = false\nWHERE id = 'g_1773169203624_uwz1z';\n\n-- Correct its metadata: quarter-zip, Gant, olive\nUPDATE garments SET\n  name    = 'Olive Green Quarter-Zip Knit Sweater',\n  color   = 'olive',\n  brand   = 'Gant',\n  subtype = 'quarter-zip'\nWHERE id = 'g_1773169203624_uwz1z';\n\n-- Rename grey shirt to grey melange Rosenöbel (correct brand/name)\nUPDATE garments SET\n  name  = 'Grey Melange Jersey Shirt',\n  brand = 'Rosenöbel',\n  color = 'grey'\nWHERE id = 'g_1773169098961_de9s7';\n\n-- Restore stone dress trousers (Kiral PNT-5050) excluded as seed dupe\nUPDATE garments SET\n  exclude_from_wardrobe = false,\n  name  = 'Stone Dress Trousers (Kiral PNT-5050)',\n  color = 'stone',\n  brand = 'Kiral'\nWHERE id = 'g_1773177558140_j65uo';\n\n-- Brand Geox brown lace-up Oxford shoes\nUPDATE garments SET brand = 'Geox'\nWHERE id = 'g_1773168996440_gk2f4';\n"
+  },
+  {
+    "name": "20260319091000_add_garmentids_to_history",
+    "sql": "-- Add garmentIds to history entries that were logged watch-only.\n\n-- Mar 19 Laureato clinic: grey melange shirt + brick cable knit + navy chinos + tan Eccos\nUPDATE history SET payload = jsonb_set(\n  payload, '{garmentIds}',\n  '[\"g_1773169098961_de9s7\",\"g_1773169194500_uyzod\",\"g_1773606000942_d3ka5\",\"g_1773168921553_0guwf\"]'\n) WHERE id = 'wear-2026-03-19-laureato';\n\n-- Mar 16 BB41 on-call: olive quarter-zip + stone dress trousers + tan Eccos + camel jacket\nUPDATE history SET payload = jsonb_set(\n  payload, '{garmentIds}',\n  '[\"g_1773169203624_uwz1z\",\"g_1773177558140_j65uo\",\"g_1773168921553_0guwf\",\"g_1773169108194_dztr2\"]'\n) WHERE id = 'wear-2026-03-16-blackbay';\n\n-- Mar 15 GMT evening: beige bomber + olive quarter-zip + dark brown cords + Geox boots\n-- (logged via manual INSERT earlier today)\nUPDATE history SET payload = jsonb_set(\n  payload, '{outfit,sweater}',\n  '\"Olive Green Quarter-Zip Knit Sweater (Gant)\"'\n) WHERE id = 'wear-2026-03-15-gmt';\n"
+  },
+  {
+    "name": "20260319140000_fix_garments_and_history_garmentids",
+    "sql": "-- Fix garment names, brands, and restore excluded items incorrectly swept during dedup.\n-- Also backfills garmentIds into manually-logged history entries.\n\n-- 1. Grey melange shirt: rename to match brand + add Rosenöbel brand\nUPDATE garments SET\n  name = 'Grey Melange Jersey Shirt',\n  brand = 'Rosenöbel',\n  color = 'grey'\nWHERE id = 'g_1773169098961_de9s7';\n\n-- 2. Olive quarter-zip: fix name (was logged as half-zip), confirm brand Gant\nUPDATE garments SET\n  name = 'Olive Green Quarter-Zip Knit Sweater',\n  brand = 'Gant',\n  color = 'olive',\n  subtype = 'quarter-zip'\nWHERE id = 'g_1773169203624_uwz1z';\n\n-- 3. Restore stone dress trousers (Kiral PNT-5050) — incorrectly excluded as dupe of seed\nUPDATE garments SET\n  exclude_from_wardrobe = false,\n  name = 'Stone Dress Trousers (Kiral PNT-5050)',\n  color = 'stone',\n  brand = 'Kiral'\nWHERE id = 'g_1773177558140_j65uo';\n\n-- 4. Brown Leather Oxford Shoes: brand = Geox (confirmed from photos)\nUPDATE garments SET brand = 'Geox' WHERE id = 'g_1773168996440_gk2f4';\n\n-- 5. Backfill garmentIds on Mar 19 Laureato clinic entry (manually logged, missing garmentIds)\n-- Outfit: grey melange shirt + brick cable knit + navy chinos + tan Eccos\nUPDATE history SET payload = jsonb_set(\n  payload,\n  '{garmentIds}',\n  '[\"g_1773169098961_de9s7\",\"g_1773169194500_uyzod\",\"g_1773606000942_d3ka5\",\"g_1773168921553_0guwf\"]'::jsonb\n)\nWHERE id = 'wear-2026-03-19-laureato';\n\n-- 6. Backfill garmentIds on Mar 16 BB41 on-call entry (manually logged, missing garmentIds)\n-- Outfit: olive quarter-zip + stone dress trousers + tan Eccos + camel jacket\nUPDATE history SET payload = jsonb_set(\n  payload,\n  '{garmentIds}',\n  '[\"g_1773169203624_uwz1z\",\"g_1773177558140_j65uo\",\"g_1773168921553_0guwf\",\"g_1773169108194_dztr2\"]'::jsonb\n)\nWHERE id = 'wear-2026-03-16-blackbay';\n"
+  },
+  {
+    "name": "20260319141000_restore_olive_halfzip_and_log_gmt_mar15",
+    "sql": "-- Restore olive quarter-zip sweater (Gant) — excluded during bulk dedup, is a real garment.\nUPDATE garments SET exclude_from_wardrobe = false\nWHERE id = 'g_1773169203624_uwz1z';\n\n-- Log GMT-Master II wear on Mar 15 evening (smart-casual, beige bomber + olive quarter-zip + dark brown cords + Geox boots)\nINSERT INTO history (id, watch_id, date, payload, created_at)\nVALUES (\n  'wear-2026-03-15-gmt',\n  'gmt',\n  '2026-03-15',\n  '{\n    \"context\": \"smart-casual\",\n    \"outfit\": {\n      \"jacket\": \"Tan Zip Bomber Jacket (Kiral beige/stone)\",\n      \"sweater\": \"Olive Green Quarter-Zip Knit Sweater (Gant)\",\n      \"pants\": \"Dark Brown Corduroy Pants\",\n      \"shoes\": \"Brown Leather Oxford Shoes (Geox)\"\n    },\n    \"garmentIds\": [\n      \"g_1773169016572_b0mtv\",\n      \"g_1773169203624_uwz1z\",\n      \"g_1773168902914_qwpsw\",\n      \"g_1773168996440_gk2f4\"\n    ],\n    \"strap\": \"Steel Oyster bracelet\",\n    \"strapId\": \"gmt-oyster\",\n    \"strapLabel\": \"Steel Oyster bracelet\",\n    \"notes\": \"Evening out. Beige Kiral bomber over Gant olive quarter-zip. Dark brown cords. Geox brown lace-up boots. GMT on Oyster.\",\n    \"score\": 8.0,\n    \"loggedAt\": \"2026-03-19T14:00:00.000Z\"\n  }'::jsonb,\n  NOW()\n)\nON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload;\n"
+  },
+  {
+    "name": "20260320_add_errors_table_and_config_table",
+    "sql": "-- Error logging table\nCREATE TABLE IF NOT EXISTS errors (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  level text NOT NULL DEFAULT 'error',\n  source text,\n  message text NOT NULL,\n  payload jsonb,\n  app_version text,\n  created_at timestamptz DEFAULT NOW()\n);\nCREATE INDEX IF NOT EXISTS errors_created_at_idx ON errors(created_at DESC);\n\n-- App config key-value store\nCREATE TABLE IF NOT EXISTS app_config (\n  key text PRIMARY KEY,\n  value jsonb NOT NULL,\n  updated_at timestamptz DEFAULT NOW()\n);\n\nINSERT INTO app_config (key, value) VALUES\n  ('claude_model', '\"claude-sonnet-4-20250514\"'),\n  ('claude_model_updated_at', '\"2026-03-20\"'),\n  ('monthly_token_usage', '{\"input\":0,\"output\":0,\"month\":\"2026-03\",\"cost_usd\":0}'),\n  ('supabase_keepalive_last', '\"2026-03-20T00:00:00Z\"'),\n  ('payload_schema_version', '\"v1\"'),\n  ('outfit_quality_baseline', '{\"avg_score\":0,\"sample_count\":0,\"since\":\"2026-03-20\"}'),\n  ('app_version', '\"phase4-complete\"'),\n  ('wardrobe_health_threshold', '{\"max_per_category\":25,\"min_wear_rate\":0.30}')\nON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();\n"
+  },
+  {
+    "name": "20260320_add_time_slot_to_history",
+    "sql": "ALTER TABLE history ADD COLUMN IF NOT EXISTS time_slot TEXT CHECK (time_slot IN ('morning','afternoon','evening','night'));\n"
+  }
+]
