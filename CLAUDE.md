@@ -128,7 +128,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **1988+ tests across 108 files** — run `npm test` to see current count
+- **2020+ tests across 109 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -144,6 +144,7 @@ supabase/
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
+  addOutfitModal.test.js       AddOutfitModal garment selection, slot swap, confirm payload, entry creation
   additionalStores.test.js     rejectStore, styleLearnStore, prefStore, themeStore
   aiDupeDetection.test.js      AI duplicate detection function
   appShell.test.js             AppShell component
@@ -307,9 +308,9 @@ tests/
 |--------|-------|
 | Source files | 71 |
 | Source LOC | ~8,600 |
-| Test files | 108 |
-| Test LOC | ~17,000 |
-| Tests | 1988+ |
+| Test files | 109 |
+| Test LOC | ~17,400 |
+| Tests | 2020+ |
 | Test pass rate | 100% |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |

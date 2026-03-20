@@ -270,11 +270,20 @@ export default function TodayPanel() {
           </div>
           <div style={{ fontSize: 13, color: muted, marginBottom: 16 }}>{TODAY_ISO}</div>
 
-          {todayEntries.map(te => {
+          {todayEntries.map((te, teIdx) => {
             const watch = watches.find(w => w.id === te.watchId);
             const wornGarments = garments.filter(g => (te.garmentIds ?? []).includes(g.id));
+            const slotLabel = te.timeSlot
+              ? { morning: "\u{1F305} Morning", afternoon: "\u2600\uFE0F Afternoon", evening: "\u{1F306} Evening", night: "\u{1F319} Night" }[te.timeSlot]
+              : null;
             return (
               <div key={te.id} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${border}` }}>
+                {(slotLabel || todayEntries.length > 1) && (
+                  <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6,
+                                color: te.timeSlot ? "#3b82f6" : "#22c55e" }}>
+                    {slotLabel ?? (teIdx === 0 ? "Primary" : `Outfit ${teIdx + 1}`)}
+                  </div>
+                )}
                 {watch && (
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10,
                                 padding: "10px 14px", borderRadius: 10, background: isDark ? "#0f131a" : "#f3f4f6",
