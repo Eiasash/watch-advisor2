@@ -53,7 +53,7 @@ export function useRecommendationEngine({ watches, garments, entries, weather })
           .map(w => ({ watch: w, score: scoreWatchForDay(w, "smart-casual", entries) }))
           .sort((a, b) => b.score - a.score)[0]?.watch ?? watches[0];
         const outfit = forecastRecommendation(
-          (c) => buildOutfit(bestWatch, c.garments, { tempC: c.tempC ?? 18 }, c.history, [], {}),
+          (c) => buildOutfit(bestWatch, c.garments, { tempC: c.tempC ?? 18 }, c.history, [], {}, {}, "smart-casual"),
           ctx
         );
         setTomorrowPreview(outfit ? { watch: bestWatch, outfit } : null);
