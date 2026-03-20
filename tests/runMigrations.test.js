@@ -19,23 +19,14 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ rpc: mockRpc, from: mockFrom }),
 }));
 
-// ── Mock node:fs/node:url/node:path so the top-level dynamic import works ─
+// ── Mock the bundled JSON import ──────────────────────────────────────────
 const MOCK_MIGRATIONS = [
   { name: "20260101_init", sql: "CREATE TABLE IF NOT EXISTS foo (id text PRIMARY KEY);" },
   { name: "20260102_add_bar", sql: "ALTER TABLE foo ADD COLUMN bar text;" },
 ];
 
-vi.mock("node:fs", () => ({
-  readFileSync: () => JSON.stringify(MOCK_MIGRATIONS),
-}));
-
-vi.mock("node:url", () => ({
-  fileURLToPath: (u) => u.replace("file://", ""),
-}));
-
-vi.mock("node:path", () => ({
-  dirname: (p) => p.split("/").slice(0, -1).join("/"),
-  join: (...args) => args.join("/"),
+vi.mock("../netlify/functions/_migrations.json", () => ({
+  default: MOCK_MIGRATIONS,
 }));
 
 // ── Import handler after mocks ───────────────────────────────────────────
