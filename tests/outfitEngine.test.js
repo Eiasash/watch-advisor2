@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateOutfit, explainOutfit, garmentScore } from "../src/engine/outfitEngine.js";
+import { generateOutfit, explainOutfit, garmentScore } from "./helpers/legacyShim.js";
 import { pickWatch, pickWatchPair } from "../src/engine/watchRotation.js";
 import { inferDayProfile, scoreWatchForDay } from "../src/engine/dayProfile.js";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";

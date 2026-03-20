@@ -13,6 +13,7 @@
 import { strapShoeScore } from "./scoring.js";
 
 const EXEMPT_TYPES = new Set(["bracelet", "integrated"]);
+const FORMAL_CONTEXTS = new Set(["clinic", "formal", "hospital-smart-casual", "shift"]);
 
 /** Simulated strap-shoe compatibility using the existing strapShoeScore. */
 function scoreStrapForOutfit(strap, shoes, context) {
@@ -32,7 +33,6 @@ function scoreStrapForOutfit(strap, shoes, context) {
 
   // Context bonus: leather straps score higher in clinic/formal
   let contextBonus = 0;
-  const FORMAL_CONTEXTS = new Set(["clinic", "formal", "hospital-smart-casual", "shift"]);
   if (FORMAL_CONTEXTS.has(context)) {
     if (strapType === "leather") contextBonus = 0.1;
     else if (strapType === "canvas" || strapType === "nato" || strapType === "rubber") contextBonus = -0.1;

@@ -1,33 +1,25 @@
 /**
- * Legacy outfit engine — compatibility shim.
+ * Test-only legacy API shim.
  *
- * Primary engine: src/outfitEngine/outfitBuilder.js (buildOutfit).
- * This file preserves the API that outfitEngine.test.js depends on.
- * Do NOT add new logic here.
+ * Preserves the old generateOutfit/garmentScore/explainOutfit signatures
+ * so existing tests don't need rewriting. Delegates to the real engine.
+ *
+ * NOT shipped in the production bundle — lives under tests/.
  */
 
-import { buildOutfit }  from "../outfitEngine/outfitBuilder.js";
-import { scoreGarment } from "../outfitEngine/scoring.js";
-import { pantsShoeHarmony } from "../outfitEngine/scoring.js";
+import { buildOutfit }      from "../../src/outfitEngine/outfitBuilder.js";
+import { scoreGarment }     from "../../src/outfitEngine/scoring.js";
+import { pantsShoeHarmony } from "../../src/outfitEngine/scoring.js";
 
-/**
- * Score a single garment — delegates to multiplicative engine.
- */
 export function garmentScore(watch, garment, weather = {}, history = [], dayProfile = "smart-casual") {
   return scoreGarment(watch, garment, weather, null, dayProfile);
 }
 
-/**
- * Generate an outfit — wraps buildOutfit.
- */
 export function generateOutfit(watch, wardrobe, weather = {}, profile = {}, history = []) {
   const context = typeof profile === "string" ? profile : (profile?.context ?? "smart-casual");
   return buildOutfit(watch, wardrobe, weather, history, [], {}, {}, context);
 }
 
-/**
- * Explain an outfit — returns a plain string (legacy interface).
- */
 export function explainOutfit(watch, outfit, context = "smart-casual") {
   const filled = Object.values(outfit).filter(x => x && typeof x === "object" && x.name);
   if (!filled.length) {

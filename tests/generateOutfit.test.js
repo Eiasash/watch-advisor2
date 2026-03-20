@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateOutfit } from "../src/engine/outfitEngine.js";
+import { generateOutfit } from "./helpers/legacyShim.js";
 
 const shirt   = { id: "s1", type: "shirt", color: "white" };
 const pants   = { id: "p1", type: "pants", color: "navy" };

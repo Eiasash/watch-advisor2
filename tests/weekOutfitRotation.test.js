@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { generateOutfit, garmentScore } from "../src/engine/outfitEngine.js";
+import { generateOutfit, garmentScore } from "./helpers/legacyShim.js";
 
 const MOCK_WATCH = {
   id: "w1", brand: "Omega", model: "Speedmaster",

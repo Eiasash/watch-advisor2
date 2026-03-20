@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   garmentScore,
   generateOutfit,
-} from "../src/engine/outfitEngine.js";
+} from "./helpers/legacyShim.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 const mkWatch = (overrides = {}) => ({
