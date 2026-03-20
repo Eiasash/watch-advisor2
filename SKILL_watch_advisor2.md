@@ -14,7 +14,7 @@
 | Source files | 71 |
 | Source LOC | ~8,600 |
 | Test files | 113 |
-| Tests | 2051+ |
+| Tests | 2084+ |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |
 | Zustand stores | 8 |
@@ -163,7 +163,7 @@ contextFormality:   1.5
 - `thumbnail` → `thumbnail_url`
 
 ### Test rules
-- 2051+ tests across 113 files — ALL must pass before push
+- 2084+ tests across 113 files — ALL must pass before push
 - Every feature/fix MUST include new or updated tests
 - Mock architecture is frozen — do not change mock structure
 - Run `npm test` before every push

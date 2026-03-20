@@ -128,7 +128,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2051+ tests across 111 files** — run `npm test` to see current count
+- **2084+ tests across 113 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -140,7 +140,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (111 files)
+### Test file inventory (113 files)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -310,9 +310,9 @@ tests/
 |--------|-------|
 | Source files | 71 |
 | Source LOC | ~8,600 |
-| Test files | 111 |
+| Test files | 113 |
 | Test LOC | ~17,600 |
-| Tests | 2051+ |
+| Tests | 2084+ |
 | Test pass rate | 100% |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |
