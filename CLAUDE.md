@@ -128,7 +128,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2020+ tests across 109 files** — run `npm test` to see current count
+- **2051+ tests across 111 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -140,7 +140,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (108 files)
+### Test file inventory (111 files)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -173,6 +173,7 @@ tests/
   dayProfile.test.js           day profile inference + scoring
   dayProfileEdge.test.js       day profile keyword + scoring boundaries
   duplicateDetection.test.js   dHash duplicate detection
+  eidFamilyContext.test.js    eid-celebration/family-event context scoring + shoe rule relaxation
   explain.test.js              outfit explanation engine
   extractOutfit.test.js        outfit extraction from selfies (scoring, dedup, confidence)
   garmentDaysIdle.test.js      garment idle days calculation
@@ -231,6 +232,7 @@ tests/
   strapStore.test.js           strap store
   supabaseSync.test.js         Supabase sync (pull, push)
   supabaseSyncCrud.test.js     uploadPhoto, deleteGarment, fuzzy/semantic search
+  tailorFlag.test.js           tailor flag detection + exclusion from formal contexts
   syncBar.test.js              sync bar component
   todayPanel.test.js           daysSinceWorn, garment type ordering
   utilizationScore.test.js     utilization scoring
@@ -308,9 +310,9 @@ tests/
 |--------|-------|
 | Source files | 71 |
 | Source LOC | ~8,600 |
-| Test files | 109 |
-| Test LOC | ~17,400 |
-| Tests | 2020+ |
+| Test files | 111 |
+| Test LOC | ~17,600 |
+| Tests | 2051+ |
 | Test pass rate | 100% |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |
