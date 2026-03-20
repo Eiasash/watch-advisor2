@@ -84,8 +84,8 @@ function _isCasualJacket(name) {
  *
  * Returns raw value in range -0.40 to +0.20. Callers scale relative to baseScore.
  */
-const _WARM = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive","brick","rust"]);
-const _COOL = new Set(["black","navy","grey","slate","charcoal","indigo","dark navy"]);
+const _WARM = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive","brick","rust","yellow","coral"]);
+const _COOL = new Set(["black","navy","grey","slate","charcoal","indigo","dark navy","denim","blue","light blue","teal","lavender"]);
 function _crossSlotCoherence(candidate, filledColors) {
   const cc = (candidate.color ?? "").toLowerCase();
   if (!cc || !filledColors.length) return 0;

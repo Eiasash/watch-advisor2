@@ -315,8 +315,8 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
 
 // ── Palette coherence — post-build scoring ────────────────────────────────────
 
-const WARM_COLORS = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive"]);
-const COOL_COLORS = new Set(["black","navy","grey","slate","charcoal","indigo"]);
+const WARM_COLORS = new Set(["brown","tan","cognac","dark brown","khaki","beige","cream","stone","camel","sand","ecru","burgundy","olive","brick","rust","yellow","coral"]);
+const COOL_COLORS = new Set(["black","navy","grey","slate","charcoal","indigo","denim","blue","light blue","teal","lavender"]);
 
 function _colorTone(color) {
   const c = (color ?? "").toLowerCase();
