@@ -24,27 +24,35 @@ export const useHistoryStore = create((set, get) => ({
   setEntries: entries => set({ entries }),
 
   addEntry: entry => {
+    // Stamp payload version for schema evolution
+    const stamped = entry.payload && !entry.payload.payload_version
+      ? { ...entry, payload: { ...entry.payload, payload_version: "v1" } }
+      : entry;
     // 1. Zustand — synchronous, UI sees it immediately
-    set(state => ({ entries: [...state.entries, entry] }));
+    set(state => ({ entries: [...state.entries, stamped] }));
     // 2. IDB — async, fire-and-forget
-    getPersistence().then(m => m.upsert(entry)).catch(() => {});
+    getPersistence().then(m => m.upsert(stamped)).catch(() => {});
     // 3. Cloud — fire-and-forget
-    pushHistoryEntry(entry).catch(() => {});
+    pushHistoryEntry(stamped).catch(() => {});
   },
 
   upsertEntry: entry => {
+    // Stamp payload version for schema evolution
+    const stamped = entry.payload && !entry.payload.payload_version
+      ? { ...entry, payload: { ...entry.payload, payload_version: "v1" } }
+      : entry;
     // 1. Zustand — synchronous
     set(state => {
-      const idx = state.entries.findIndex(e => e.id === entry.id);
+      const idx = state.entries.findIndex(e => e.id === stamped.id);
       const next = idx >= 0
-        ? state.entries.map((e, i) => i === idx ? { ...e, ...entry } : e)
-        : [...state.entries, entry];
+        ? state.entries.map((e, i) => i === idx ? { ...e, ...stamped } : e)
+        : [...state.entries, stamped];
       return { entries: next };
     });
     // 2. IDB — async, fire-and-forget
-    getPersistence().then(m => m.upsert(entry)).catch(() => {});
+    getPersistence().then(m => m.upsert(stamped)).catch(() => {});
     // 3. Cloud — fire-and-forget
-    pushHistoryEntry(entry).catch(() => {});
+    pushHistoryEntry(stamped).catch(() => {});
   },
 
   removeEntry: id => {

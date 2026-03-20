@@ -17,5 +17,8 @@ ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "allow_all_authenticated" ON public.app_settings
-  FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  CREATE POLICY "allow_all_authenticated" ON public.app_settings
+    FOR ALL USING (true) WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

@@ -85,6 +85,38 @@ export async function handler() {
   }
 
   try {
+    // Check for no-wear gap — if no outfit logged in 7+ days, send reminder instead
+    const supabase = sb();
+    const { data: latestHistory } = await supabase
+      .from('history')
+      .select('date')
+      .order('date', { ascending: false })
+      .limit(1);
+    const lastWearDate = latestHistory?.[0]?.date;
+    if (lastWearDate) {
+      const daysSince = Math.floor((Date.now() - new Date(lastWearDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince >= 7) {
+        const noWearPayload = JSON.stringify({
+          title: "⌚ Rotation engine going blind",
+          body: `No outfit logged in ${daysSince} days — open the app to keep rotation accurate`,
+          data: { url: "https://watch-advisor2.netlify.app/" },
+          icon: "/icon-192.png",
+          badge: "/icon-96.png",
+        });
+        const { data: subs2 } = await supabase.from("push_subscriptions").select("*");
+        if (subs2?.length) {
+          await Promise.allSettled(subs2.map(sub =>
+            webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              noWearPayload, { TTL: 3600 }
+            ).catch(() => {})
+          ));
+          console.log(`[push-brief] No-wear reminder sent (${daysSince}d gap)`);
+        }
+        return { statusCode: 200 };
+      }
+    }
+
     const brief = await buildBrief(apiKey);
     const title = `${brief.icon ?? "⌚"} ${brief.title ?? "Morning Brief"}`;
     const body  = `${brief.watch} · ${brief.outfit}`;
