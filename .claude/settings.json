@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Bash(timeout:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(PUPPETEER_SKIP_DOWNLOAD:*)",
+      "Read",
+      "Edit",
+      "Write",
+      "Skill"
+    ]
+  },
+  "env": {
+    "PUPPETEER_SKIP_DOWNLOAD": "1",
+    "NODE_ENV": "test"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; echo \"$f\" | grep -qE '\\.(js|jsx)$' && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Source file edited — remember to run tests before committing.\"}}' || true; }",
+            "timeout": 5,
+            "statusMessage": "Checking edited file..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\":\"Before compacting: preserve current git branch, test status, todo list state, and any in-progress file edits in the compacted summary.\"}'",
+            "timeout": 5,
+            "statusMessage": "Preparing compaction context..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/watch-advisor2 && STATUS=$(git status --porcelain 2>/dev/null | head -5); if [ -n \"$STATUS\" ]; then echo \"{\\\"systemMessage\\\":\\\"Uncommitted changes detected:\\n$STATUS\\\"}\"; fi",
+            "timeout": 10,
+            "statusMessage": "Checking git status..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/watch-advisor2 && [ -d node_modules ] || PUPPETEER_SKIP_DOWNLOAD=1 npm install --silent 2>&1 | tail -3",
+            "timeout": 60,
+            "statusMessage": "Verifying project setup..."
+          }
+        ]
+      }
+    ]
+  }
+}
