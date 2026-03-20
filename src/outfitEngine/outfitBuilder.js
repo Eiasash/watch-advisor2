@@ -334,7 +334,14 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     watchWithStrap.dial = watch.dualDial.sideA;
   }
 
-  const wearable = wardrobe.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe);
+  const TAILOR_RE = /tailor|pulls at chest|billows|wide in torso/i;
+  const formalContext = FORMAL_CONTEXTS.has(context);
+  const wearable = wardrobe.filter(g => {
+    if (ACCESSORY_TYPES.has(g.type ?? g.category) || g.excludeFromWardrobe) return false;
+    // Exclude tailor-flagged garments from clinic/formal contexts
+    if (formalContext && TAILOR_RE.test(g.notes ?? "")) return false;
+    return true;
+  });
 
   // Formality anchor: if slots are pinned, score others to complement them
   const pinnedList = Object.values(pinnedSlots).filter(Boolean);
@@ -377,7 +384,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     });
     // Shoes: pre-filter by strap–shoe rule BEFORE scoring so hard mismatches
     // can never be rescued by diversity / coherence bonuses in the shortlist.
-    if (slotName === "shoes") pool = filterShoesByStrap(watchWithStrap, pool);
+    if (slotName === "shoes") pool = filterShoesByStrap(watchWithStrap, pool, context);
     coreSlotCandidates[slotName] = pool;
   }
 
@@ -520,7 +527,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   if (outfit.pants && outfit.shoes && !pinnedSlots.pants && !pinnedSlots.shoes) {
     const harmony = pantsShoeHarmony(outfit.pants, outfit.shoes);
     if (harmony <= 0.4) {
-      const strapLocked = strapShoeScore(watchWithStrap, outfit.shoes) === 1.0
+      const strapLocked = strapShoeScore(watchWithStrap, outfit.shoes, context) === 1.0
         && watchWithStrap.strap !== "bracelet" && watchWithStrap.strap !== "integrated";
 
       if (strapLocked) {
@@ -596,7 +603,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const cm = colorMatchScore(watchWithStrap, g);
     const fm = formalityMatchScore(watchWithStrap, g, outfitFormality);
     const wc = watchCompatibilityScore(watchWithStrap, g);
-    const ss = strapShoeScore(watchWithStrap, g);
+    const ss = strapShoeScore(watchWithStrap, g, context);
     _slotSignals[slotName] = { colorMatch: cm, formalityMatch: fm, watchCompat: wc, strapShoe: ss };
   }
   outfit._slotSignals = _slotSignals;

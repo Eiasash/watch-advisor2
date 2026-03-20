@@ -47,6 +47,8 @@ export const CONTEXT_FORMALITY = {
   "date-night":            { min: 4, target: 7 },
   "riviera":               { min: 3, target: 5 },
   "shift":                 { min: 5, target: 7 },
+  "eid-celebration":       { min: 4, target: 7 },
+  "family-event":          { min: 4, target: 7 },
 };
 
 // ── Memoization cache ─────────────────────────────────────────────────────────
@@ -111,7 +113,7 @@ export function weatherLayerScore(garment, weather) {
  * Non-negotiable: leather strap → matching leather shoe color.
  * Returns 0–1. Returns 0.0 on hard strap–shoe mismatch.
  */
-export function strapShoeScore(watch, garment) {
+export function strapShoeScore(watch, garment, context) {
   if ((garment.type ?? garment.category) !== "shoes") return 1.0;
 
   const strap = (watch.strap ?? "").toLowerCase();
@@ -150,8 +152,11 @@ export function strapShoeScore(watch, garment) {
         && !strap.includes("navy") && !strap.includes("green") && !strap.includes("teal"))
   );
 
-  if (isBlack) return BLACK_SHOE_COLORS.includes(shoeColor) ? 1.0 : 0.0;
-  if (isBrown) return BROWN_SHOE_COLORS.includes(shoeColor) ? 1.0 : 0.0;
+  // Eid/family context: relax strict color matching (brown strap + navy shoes acceptable)
+  const relaxed = context === "eid-celebration" || context === "family-event";
+  const relaxedFallback = relaxed ? 0.6 : 0.0;
+  if (isBlack) return BLACK_SHOE_COLORS.includes(shoeColor) ? 1.0 : relaxedFallback;
+  if (isBrown) return BROWN_SHOE_COLORS.includes(shoeColor) ? 1.0 : relaxedFallback;
 
   return ["white", "black"].includes(shoeColor) ? 0.85 : 0.5;
 }
@@ -165,9 +170,9 @@ export function strapShoeScore(watch, garment) {
  *
  * Falls back to full pool if filtering would leave zero candidates.
  */
-export function filterShoesByStrap(watch, shoes) {
+export function filterShoesByStrap(watch, shoes, context) {
   if (!shoes?.length) return shoes ?? [];
-  const compatible = shoes.filter(g => strapShoeScore(watch, g) > 0.0);
+  const compatible = shoes.filter(g => strapShoeScore(watch, g, context) > 0.0);
   // Graceful fallback: never return empty — prefer any shoe over none
   return compatible.length > 0 ? compatible : shoes;
 }
@@ -281,7 +286,7 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   }
 
   // Strap-shoe rule (applies only to shoes slot)
-  const ss = strapShoeScore(watch, garment);
+  const ss = strapShoeScore(watch, garment, context);
   if (slot === "shoes" && ss === 0.0) {
     _scoreCache.set(cacheKey, 0.0);
     return 0.0;

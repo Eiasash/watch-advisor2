@@ -924,6 +924,104 @@ export function PhotoVerifierPanel() {
           })}
         </div>
       )}
+
+      {/* ── Orphaned History Entries ──────────────────────────────────────────── */}
+      <OrphanedHistoryPatch isDark={isDark} />
+    </div>
+  );
+}
+
+/** Patch tool for history entries missing garmentIds */
+function OrphanedHistoryPatch({ isDark }) {
+  const history = useHistoryStore(s => s.entries);
+  const garments = useWardrobeStore(s => s.garments);
+  const watches = useWatchStore(s => s.watches);
+  const upsertEntry = useHistoryStore(s => s.upsertEntry);
+
+  const orphaned = history.filter(e => !e.garmentIds?.length);
+  const [patchMap, setPatchMap] = useState({});
+  const [expanded, setExpanded] = useState(null);
+
+  if (orphaned.length === 0) return null;
+
+  const wearable = garments.filter(g =>
+    !g.excludeFromWardrobe && g.type !== "outfit-photo" && g.type !== "watch"
+  );
+  const bg = isDark ? "#0f131a" : "#f3f4f6";
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const sub = isDark ? "#8b93a7" : "#6b7280";
+
+  function toggleGarment(entryId, garmentId) {
+    setPatchMap(prev => {
+      const current = prev[entryId] ?? [];
+      const next = current.includes(garmentId)
+        ? current.filter(id => id !== garmentId)
+        : [...current, garmentId];
+      return { ...prev, [entryId]: next };
+    });
+  }
+
+  function applyPatch(entry) {
+    const ids = patchMap[entry.id];
+    if (!ids?.length) return;
+    upsertEntry({ ...entry, garmentIds: ids });
+    setPatchMap(prev => { const n = { ...prev }; delete n[entry.id]; return n; });
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b", marginBottom: 8 }}>
+        ⚠ {orphaned.length} history {orphaned.length === 1 ? "entry" : "entries"} missing outfit data
+      </div>
+      {orphaned.map(entry => {
+        const watch = watches.find(w => w.id === entry.watchId);
+        const isExpanded = expanded === entry.id;
+        const selected = patchMap[entry.id] ?? [];
+        return (
+          <div key={entry.id} style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 8,
+                                        background: bg, border: `1px solid ${border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+                          cursor: "pointer" }}
+                 onClick={() => setExpanded(isExpanded ? null : entry.id)}>
+              <div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1f2937" }}>
+                  {entry.date}
+                </span>
+                <span style={{ fontSize: 11, color: sub, marginLeft: 8 }}>
+                  {watch?.brand ?? "?"} {watch?.model ?? entry.watchId}
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: sub }}>{isExpanded ? "▲" : "▼"}</span>
+            </div>
+            {isExpanded && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 11, color: sub, marginBottom: 6 }}>Select garments worn:</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, maxHeight: 160, overflowY: "auto" }}>
+                  {wearable.map(g => (
+                    <button key={g.id} onClick={() => toggleGarment(entry.id, g.id)}
+                      style={{
+                        fontSize: 10, padding: "3px 8px", borderRadius: 6, cursor: "pointer",
+                        border: selected.includes(g.id) ? "2px solid #3b82f6" : `1px solid ${border}`,
+                        background: selected.includes(g.id) ? (isDark ? "#1e3a5f" : "#dbeafe") : "transparent",
+                        color: isDark ? "#e2e8f0" : "#1f2937",
+                      }}>
+                      {g.name || `${g.color} ${g.type}`}
+                    </button>
+                  ))}
+                </div>
+                {selected.length > 0 && (
+                  <button onClick={() => applyPatch(entry)}
+                    style={{ marginTop: 8, width: "100%", padding: "7px 0", borderRadius: 8,
+                             border: "none", background: "#3b82f6", color: "#fff",
+                             fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    Patch {selected.length} garment{selected.length > 1 ? "s" : ""} → {entry.date}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
