@@ -1,3 +1,36 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Module-scope cache — one DB read per cold start
+let _cachedModel = null;
+
+/**
+ * Read the active Claude model from app_config table.
+ * Falls back to hardcoded default if DB read fails.
+ */
+export async function getConfiguredModel() {
+  if (_cachedModel) return _cachedModel;
+  const DEFAULT_MODEL = "claude-sonnet-4-6";
+  try {
+    const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !key) return DEFAULT_MODEL;
+    const supabase = createClient(url, key);
+    const { data } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'claude_model')
+      .single();
+    const model = data?.value ? JSON.parse(data.value) : DEFAULT_MODEL;
+    _cachedModel = model;
+    return model;
+  } catch {
+    return DEFAULT_MODEL;
+  }
+}
+
+// Reset cache (for testing)
+export function _resetModelCache() { _cachedModel = null; }
+
 /**
  * Shared Claude API client with exponential backoff retry.
  * Handles 529 (overloaded) and 503 with Retry-After header.
@@ -48,7 +81,29 @@ export async function callClaude(apiKey, payload, opts = {}) {
       }
       throw new Error(`Claude API error: ${res.status}${body ? ` — ${body.slice(0, 200)}` : ""}`);
     }
-    return await res.json();
+    const data = await res.json();
+    // Fire-and-forget token usage logging (don't block response)
+    if (data?.usage) {
+      _logTokenUsage(data.usage.input_tokens ?? 0, data.usage.output_tokens ?? 0);
+    }
+    return data;
   }
   throw lastErr ?? new Error("Claude API: max retries exceeded");
+}
+
+/**
+ * Fire-and-forget: increment monthly token usage in app_config.
+ * Never throws — failures are silent to avoid breaking API callers.
+ */
+function _logTokenUsage(input, output) {
+  try {
+    const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !key) return;
+    const supabase = createClient(url, key);
+    supabase.rpc('increment_token_usage', { p_input: input, p_output: output }).then(
+      () => {},
+      (err) => console.warn('[token-usage] rpc failed:', err.message)
+    );
+  } catch { /* swallow */ }
 }

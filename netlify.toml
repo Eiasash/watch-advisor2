@@ -11,6 +11,9 @@
 [functions."push-brief"]
   schedule = "30 6 * * *"
 
+[functions."supabase-keepalive"]
+  schedule = "0 6 */5 * *"
+
 # Bulk/AI functions need extra time for Claude retries (up to 2s+8s backoff)
 [functions."bulk-tag"]
   timeout = 26

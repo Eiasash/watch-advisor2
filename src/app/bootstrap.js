@@ -72,6 +72,17 @@ export function useBootstrap() {
         setCachedState({ styleLearning: migrated, prefProfile: null }).catch(() => {});
       }
 
+      // ── Storage quota check — warn if IDB eviction risk ──────────────
+      if (navigator.storage?.estimate) {
+        try {
+          const { usage, quota } = await navigator.storage.estimate();
+          const pct = quota ? (usage / quota) * 100 : 0;
+          if (pct > 70) {
+            console.warn(`[bootstrap] Storage at ${pct.toFixed(0)}% — garment images at risk of eviction`, { usage, quota });
+          }
+        } catch { /* non-critical */ }
+      }
+
       setReady(true);
       setStatus("Ready");
 

@@ -1,0 +1,24 @@
+name: Weekly Autonomous Audit
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday 6am UTC
+  workflow_dispatch:       # Manual trigger too
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@beta
+        with:
+          prompt: |
+            Run /audit-fix-deploy — full autonomous cycle.
+            Focus on Phase 5 self-improvement.
+            Commit all findings to IMPROVEMENTS.md.
+            Push all changes.
+          allowed_tools: "Bash,Read,Write,Edit"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
