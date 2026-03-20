@@ -18,7 +18,7 @@ const LAYER_TYPES = new Set(["jacket", "sweater", "coat", "layer", "outerwear"])
 
 export default function weightFactor(candidate, context) {
   const { garment } = candidate;
-  if (!garment?.weight) return 0;
+  if (!garment?.weight || typeof garment.weight !== "string") return 0;
 
   const tempC = context?.weather?.tempC ?? null;
   if (tempC === null) return 0;

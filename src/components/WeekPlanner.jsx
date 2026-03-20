@@ -324,12 +324,16 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
       setOutfitSlots({});
       return;
     }
-    const outfit = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], {}, {}, day?.ctx ?? "smart-casual");
-    const slots = {};
-    for (const slot of OUTFIT_SLOTS) {
-      if (outfit[slot]) slots[slot] = outfit[slot];
+    try {
+      const outfit = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], {}, {}, day?.ctx ?? "smart-casual");
+      const slots = {};
+      for (const slot of OUTFIT_SLOTS) {
+        if (outfit[slot]) slots[slot] = outfit[slot];
+      }
+      setOutfitSlots(slots);
+    } catch (_e) {
+      setOutfitSlots({});
     }
-    setOutfitSlots(slots);
   }, [watchId, selectedWatch, wearable, history, day?.ctx]);
 
   const handleSlotSwap = (slot, garment) => {
@@ -508,7 +512,7 @@ function PhotoLightbox({ src, alt, onClose }) {
 }
 
 // ── Outfit Slot Chip — tap to swap garment, long-press photo to zoom ────────
-function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates }) {
+function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates = [] }) {
   const [open, setOpen] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const icon = SLOT_ICONS[slot] ?? "\u2022";
@@ -890,7 +894,14 @@ export default function WeekPlanner() {
       for (const slot of OUTFIT_SLOTS) shuffleExcluded[slot] = new Set();
 
       for (let round = 0; round <= shuffleSeed; round++) {
-        outfit = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments, shuffleExcluded, day.ctx);
+        try {
+          outfit = buildOutfit(enrichedWatch, wearable, weather, iterHistory, [], pinnedSlotGarments, shuffleExcluded, day.ctx);
+        } catch (_e) {
+          // Graceful fallback — empty outfit rather than crash
+          outfit = { shirt: null, pants: null, shoes: null, jacket: null, sweater: null, layer: null, belt: null,
+            _score: 0, _confidence: 0, _confidenceLabel: "none", _explanation: ["Outfit generation failed — try shuffling."] };
+          break;
+        }
         if (round < shuffleSeed) {
           // Poison this round's picks so next iteration picks runner-up.
           // IMPORTANT: must be ONE combined entry per push (not per-slot batches).
@@ -1205,7 +1216,7 @@ export default function WeekPlanner() {
                         garment={dayOutfit[slot]}
                         isDark={isDark}
                         border={border}
-                        candidates={slotCandidates[slot]}
+                        candidates={slotCandidates[slot] ?? []}
                         onSwap={(s, g) => handleSwapGarment(day.date, s, g)}
                       />
                     ))}

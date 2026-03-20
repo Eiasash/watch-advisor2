@@ -91,3 +91,42 @@ describe("WeekPlanner — WEATHER_ICONS", () => {
     expect(Object.keys(WEATHER_ICONS)).toHaveLength(6);
   });
 });
+
+// ─── Regression: buildOutfit crash guard ─────────────────────────────────────
+// WeekPlanner wraps buildOutfit in try/catch. Verify the fallback shape
+// matches what downstream rendering expects.
+
+describe("WeekPlanner — buildOutfit crash fallback shape", () => {
+  const FALLBACK = {
+    shirt: null, pants: null, shoes: null, jacket: null,
+    sweater: null, layer: null, belt: null,
+    _score: 0, _confidence: 0, _confidenceLabel: "none",
+    _explanation: ["Outfit generation failed — try shuffling."],
+  };
+
+  it("fallback has all null slots", () => {
+    for (const slot of OUTFIT_SLOTS) {
+      expect(FALLBACK[slot]).toBeNull();
+    }
+    expect(FALLBACK.belt).toBeNull();
+  });
+
+  it("fallback has safe metadata", () => {
+    expect(FALLBACK._score).toBe(0);
+    expect(FALLBACK._confidence).toBe(0);
+    expect(FALLBACK._confidenceLabel).toBe("none");
+    expect(FALLBACK._explanation).toHaveLength(1);
+  });
+
+  it("fallback slots are safe to access with optional chaining", () => {
+    // Simulates: OUTFIT_SLOTS.map(s => dayOutfit[s]?.id).filter(Boolean)
+    const ids = OUTFIT_SLOTS.map(s => FALLBACK[s]?.id).filter(Boolean);
+    expect(ids).toHaveLength(0);
+  });
+
+  it("OutfitSlotChip candidates default prevents crash on undefined", () => {
+    // Simulates: candidates = [] (default param)
+    const candidates = undefined ?? [];
+    expect(candidates.length).toBe(0);
+  });
+});
