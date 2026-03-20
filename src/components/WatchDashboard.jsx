@@ -8,7 +8,6 @@ import { buildOutfit, explainOutfitChoice } from "../outfitEngine/outfitBuilder.
 import { recommendStrap } from "../outfitEngine/strapRecommender.js";
 import { fetchWeather, formatWeatherText, getLayerRecommendation } from "../weather/weatherService.js";
 import WatchSelector from "../features/watch/WatchSelector.jsx";
-import StrapPanel from "./StrapPanel.jsx";
 import { useStrapStore } from "../stores/strapStore.js";
 import { useRejectStore } from "../stores/rejectStore.js";
 import { normalizeType } from "../classifier/normalizeType.js";
@@ -403,6 +402,11 @@ export default function WatchDashboard() {
     return recommendStrap(selectedWatch, mergedOutfit, todayContext);
   }, [selectedWatch, mergedOutfit, todayContext]);
 
+  // Hide when today already has logged entries — TodayPanel handles that view
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayHasEntries = history.some(e => e.date === todayIso);
+  if (todayHasEntries) return null;
+
   return (
     <div style={{
       padding: "18px 20px", borderRadius: 18, marginBottom: 20,
@@ -695,22 +699,39 @@ export default function WatchDashboard() {
             {outfitLogged ? "Logged! Check History tab" : "Wear This Outfit"}
           </button>
 
+          {/* Compact explanation */}
           <div style={{
-            fontSize: 14, lineHeight: 1.6, color: isDark ? "#a1a9b8" : "#4b5563",
-            background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 10,
-            padding: "12px 14px", borderLeft: "3px solid #3b82f6",
-            marginBottom: 14,
+            fontSize: 12, lineHeight: 1.5, color: isDark ? "#8b93a7" : "#6b7280",
+            background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 8,
+            padding: "10px 12px", borderLeft: "3px solid #3b82f6",
+            marginBottom: 12, maxHeight: 72, overflow: "hidden",
           }}>
             {explanation}
           </div>
 
-          <StrapPanel watch={selectedWatch} isDark={isDark} />
-        </>
-      )}
+          {/* Inline strap recommendation — not a full panel */}
+          {strapRec?.recommended && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+              borderRadius: 8, border: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+              marginBottom: 12, fontSize: 12,
+            }}>
+              <span>🔗</span>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 700, color: "#3b82f6" }}>Strap: </span>
+                <span style={{ color: isDark ? "#a1a9b8" : "#4b5563" }}>
+                  {strapRec.recommended.label}
+                </span>
+                {strapRec.alternatives?.length > 0 && (
+                  <span style={{ color: isDark ? "#6b7280" : "#9ca3af", marginLeft: 6, fontSize: 11 }}>
+                    · also: {strapRec.alternatives[0].label}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
-      {/* Reject current suggestion */}
-      {selectedWatch && (
-        <div style={{ marginTop: 14 }}>
+          {/* Skip — compact inline */}
           <button onClick={() => {
             if (!selectedWatch) return;
             const garmentIds = ["shirt","sweater","layer","pants","shoes","jacket"]
@@ -719,10 +740,10 @@ export default function WatchDashboard() {
             addRejection(selectedWatch.id, garmentIds, todayContext ?? "smart-casual");
           }}
           style={{ fontSize:11, color:isDark?"#4b5563":"#9ca3af", background:"none", border:"none",
-                   cursor:"pointer", width:"100%", padding:"4px 0", textAlign:"center" }}>
-            ✕ Skip this suggestion
+                   cursor:"pointer", width:"100%", padding:"4px 0", textAlign:"center", marginBottom: 4 }}>
+            ✕ Skip this outfit
           </button>
-        </div>
+        </>
       )}
     </div>
   );
