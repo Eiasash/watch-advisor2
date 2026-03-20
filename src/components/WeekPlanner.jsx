@@ -17,6 +17,8 @@ const CONTEXTS = [
   { key:"formal",                  label:"Formal" },
   { key:"casual",                  label:"Casual" },
   { key:"shift",                   label:"On-Call Shift" },
+  { key:"eid-celebration",         label:"Eid Celebration" },
+  { key:"family-event",            label:"Family Event" },
 ];
 
 const OUTFIT_SLOTS = ["shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];

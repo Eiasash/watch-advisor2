@@ -177,6 +177,10 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
           </div>
 
           <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+            {/tailor|pulls at chest|billows|wide in torso/i.test(item.notes ?? "") && (
+              <span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:4,
+                             background:"#7c2d12", color:"#fdba74", textTransform:"uppercase" }}>needs tailor</span>
+            )}
             {needsReview && (
               <span style={{ fontSize:9, fontWeight:700, padding:"1px 5px", borderRadius:4,
                              background:"#451a03", color:"#f97316", textTransform:"uppercase" }}>review</span>

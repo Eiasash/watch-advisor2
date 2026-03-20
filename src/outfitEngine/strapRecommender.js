@@ -29,7 +29,7 @@ function scoreStrapForOutfit(strap, shoes, context) {
 
   // Create a fake watch object with this strap to reuse strapShoeScore
   const fakeWatch = { strap: strapLabel };
-  const shoeScore = shoes ? strapShoeScore(fakeWatch, shoes) : 0.5;
+  const shoeScore = shoes ? strapShoeScore(fakeWatch, shoes, context) : 0.5;
 
   // Context bonus: leather straps score higher in clinic/formal
   let contextBonus = 0;

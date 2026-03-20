@@ -101,9 +101,10 @@ describe("strapStore", () => {
   });
 
   it("deleteStrap sets active to null when no fallback exists", () => {
-    // Delete both straps
+    // Delete all straps
     useStrapStore.getState().deleteStrap("snowflake-grey-alligator");
     useStrapStore.getState().deleteStrap("snowflake-navy-alligator");
+    useStrapStore.getState().deleteStrap("snowflake-titanium-bracelet");
     expect(useStrapStore.getState().activeStrap["snowflake"]).toBe(null);
   });
 
@@ -122,9 +123,10 @@ describe("strapStore", () => {
   // ─── getStrapsForWatch ───────────────────────────────────────────────────
   it("getStrapsForWatch returns all straps for a watch", () => {
     const straps = useStrapStore.getState().getStrapsForWatch("snowflake");
-    expect(straps.length).toBe(2);
+    expect(straps.length).toBe(3);
     expect(straps.map(s => s.id)).toContain("snowflake-grey-alligator");
     expect(straps.map(s => s.id)).toContain("snowflake-navy-alligator");
+    expect(straps.map(s => s.id)).toContain("snowflake-titanium-bracelet");
   });
 
   it("getStrapsForWatch returns empty array for unknown watch", () => {

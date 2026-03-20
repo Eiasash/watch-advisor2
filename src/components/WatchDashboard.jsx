@@ -658,7 +658,7 @@ export default function WatchDashboard() {
             onClick={() => {
               const slots = ["shirt","sweater","layer","pants","shoes","jacket","belt"];
               const garmentIds = slots.map(s => mergedOutfit[s]?.id).filter(Boolean);
-              if (garmentIds.length === 0) return;
+              if (garmentIds.length === 0) return; // never log empty outfits
               // Store slot→id map so diversityBonus + rejectStore can reference it
               const outfitMap = {};
               for (const s of slots) { if (mergedOutfit[s]?.id) outfitMap[s] = mergedOutfit[s].id; }
@@ -666,6 +666,7 @@ export default function WatchDashboard() {
               const upsertEntry = useHistoryStore.getState().upsertEntry;
               const todayIso = new Date().toISOString().slice(0,10);
               const existingToday = useHistoryStore.getState().entries.find(e => e.date === todayIso);
+              const outfitScore = typeof mergedOutfit._score === "number" ? mergedOutfit._score : 7.0;
               upsertEntry({
                 id: existingToday?.id ?? `dash-${Date.now()}`,
                 date: todayIso,
@@ -673,6 +674,7 @@ export default function WatchDashboard() {
                 garmentIds,
                 outfit: outfitMap,
                 context: existingToday?.context ?? todayContext ?? "smart-casual",
+                score: outfitScore,
                 notes: existingToday?.notes ?? null,
                 loggedAt: new Date().toISOString(),
               });

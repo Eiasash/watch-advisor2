@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
-import { pushGarment, deleteGarment, deleteStoragePhoto, uploadAngle } from "../services/supabaseSync.js";
+import { pushGarment, deleteGarment, deleteStoragePhoto, uploadAngle, uploadPhoto } from "../services/supabaseSync.js";
+import { saveImage } from "../services/localCache.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
@@ -70,7 +71,7 @@ const PATTERNS = [
 ];
 
 const SEASONS  = ["spring","summer","autumn","winter","all-season"];
-const CONTEXTS = ["casual","smart-casual","clinic","formal","date-night","riviera"];
+const CONTEXTS = ["casual","smart-casual","clinic","formal","date-night","riviera","eid-celebration","family-event"];
 
 const FORMALITY_LABELS = {
   1:"Very casual",2:"Casual",3:"Relaxed",4:"Smart casual light",5:"Smart casual",
@@ -367,6 +368,34 @@ export default function GarmentEditor({ garment, onClose }) {
     }
   }
 
+  // ── Primary photo upload (for garments without photos) ──────────────────
+  async function handlePrimaryPhotoUpload(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = async () => {
+        const c = document.createElement("canvas");
+        const scale = Math.min(1, 400 / Math.max(img.width, img.height));
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const thumbnail = c.toDataURL("image/jpeg", 0.75);
+        updateGarment(garment.id, { thumbnail });
+        const updated = garments.map(g => g.id === garment.id ? { ...g, thumbnail } : g);
+        setCachedState({ watches, garments: updated, history }).catch(() => {});
+        saveImage(garment.id, thumbnail).catch(() => {});
+        pushGarment({ ...garment, thumbnail }).catch(() => {});
+        uploadPhoto(garment.id, thumbnail, "thumbnail").catch(() => {});
+        addToast?.("Photo added", "success");
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   // ── Styles ──────────────────────────────────────────────────────────────────
   const bg     = isDark ? "#171a21" : "#fff";
   const panelBg = isDark ? "#0f131a" : "#f3f4f6";
@@ -449,6 +478,30 @@ export default function GarmentEditor({ garment, onClose }) {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Add photo — shown when garment has no photo */}
+          {angles.length === 0 && (
+            <div style={{ marginBottom:16, display:"flex", gap:8 }}>
+              <label style={{
+                flex:1, padding:"16px 0", borderRadius:10, border:`2px dashed ${border}`,
+                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                gap:4, cursor:"pointer", color:sub, fontSize:13, fontWeight:600, minHeight:80,
+              }}>
+                📁 Add Photo
+                <span style={{ fontSize:10, fontWeight:400 }}>from gallery</span>
+                <input type="file" accept="image/*" onChange={handlePrimaryPhotoUpload} style={{ display:"none" }} />
+              </label>
+              <label style={{
+                flex:1, padding:"16px 0", borderRadius:10, border:`2px dashed ${border}`,
+                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                gap:4, cursor:"pointer", color:sub, fontSize:13, fontWeight:600, minHeight:80,
+              }}>
+                📷 Take Photo
+                <span style={{ fontSize:10, fontWeight:400 }}>camera</span>
+                <input type="file" accept="image/*" capture="environment" onChange={handlePrimaryPhotoUpload} style={{ display:"none" }} />
+              </label>
             </div>
           )}
 
@@ -634,6 +687,20 @@ export default function GarmentEditor({ garment, onClose }) {
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               rows={2} style={{ ...inp, resize:"vertical" }}
               placeholder="Fit, condition, pairing ideas…" />
+            {/tailor|pulls at chest|billows|wide in torso/i.test(notes) && (
+              <div style={{ marginTop:6, padding:"6px 10px", borderRadius:8,
+                            background:isDark?"#431407":"#fff7ed",
+                            border:"1px solid #f97316", fontSize:11, color:"#f97316",
+                            display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <span style={{ fontWeight:700 }}>⚠️ NEEDS TAILOR — excluded from clinic/formal outfits</span>
+                <button onClick={() => setNotes(notes.replace(/tailor|pulls at chest|billows|wide in torso/gi, "").replace(/\s{2,}/g," ").trim())}
+                  style={{ background:"none", border:"1px solid #f97316", borderRadius:6,
+                           color:"#f97316", fontSize:10, fontWeight:700, padding:"2px 8px",
+                           cursor:"pointer", flexShrink:0, marginLeft:8 }}>
+                  Clear flag
+                </button>
+              </div>
+            )}
           </Section>
 
           {/* Last worn */}
