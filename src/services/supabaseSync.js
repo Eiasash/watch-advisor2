@@ -79,6 +79,7 @@ async function _doPull() {
         id:         row.id,
         watchId:    row.watch_id,
         date:       row.date,
+        timeSlot:   row.time_slot ?? row.payload?.timeSlot ?? null,
         outfit:     row.payload?.outfit      ?? {},
         garmentIds: row.payload?.garmentIds  ?? [],
         strapId:    row.payload?.strapId     ?? null,
@@ -369,15 +370,17 @@ export async function pushHistoryEntry(entry) {
   setSyncState({ queued: syncState.queued + 1 });
   try {
     const { error } = await supabase.from("history").upsert({
-      id:       entry.id,
-      watch_id: entry.watchId,
-      date:     entry.date,
+      id:        entry.id,
+      watch_id:  entry.watchId,
+      date:      entry.date,
+      time_slot: entry.timeSlot ?? null,
       payload:  {
         outfit:       entry.outfit      ?? {},
         garmentIds:   entry.garmentIds  ?? [],
         strapId:      entry.strapId     ?? null,
         strapLabel:   entry.strapLabel  ?? null,
         context:      entry.context     ?? null,
+        timeSlot:     entry.timeSlot    ?? null,
         notes:        entry.notes       ?? null,
         // outfitPhoto excluded from cloud — could be large base64; keep local only
         loggedAt:     entry.loggedAt    ?? null,

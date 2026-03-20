@@ -295,6 +295,134 @@ function LogConfirmModal({ isDark, onConfirm, onCancel }) {
   );
 }
 
+// ── Add Another Outfit Modal — second/evening outfit with time slot + watch picker ──
+const TIME_SLOTS = [
+  { key: "morning",   label: "Morning",   emoji: "🌅" },
+  { key: "afternoon", label: "Afternoon", emoji: "☀️" },
+  { key: "evening",   label: "Evening",   emoji: "🌆" },
+  { key: "night",     label: "Night",     emoji: "🌙" },
+];
+
+function AddOutfitModal({ isDark, watches, garments, day, onConfirm, onCancel }) {
+  const [timeSlot,  setTimeSlot]  = useState("evening");
+  const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches[0]?.id ?? null);
+  const [notes,     setNotes]     = useState("");
+  const bg     = isDark ? "#171a21" : "#fff";
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const text   = isDark ? "#e2e8f0" : "#1f2937";
+  const muted  = isDark ? "#6b7280" : "#9ca3af";
+  const sub    = isDark ? "#94a3b8" : "#64748b";
+
+  const selectedWatch = watches.find(w => w.id === watchId);
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9000,
+      background: "rgba(0,0,0,0.6)",
+      display: "flex", alignItems: "flex-end", justifyContent: "center",
+      padding: "0 0 env(safe-area-inset-bottom,0)",
+    }}>
+      <div style={{
+        width: "100%", maxWidth: 480,
+        background: bg, borderRadius: "20px 20px 0 0",
+        border: `1px solid ${border}`, padding: "20px 16px 28px",
+        maxHeight: "85vh", overflowY: "auto",
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: text, marginBottom: 6 }}>
+          + Add Another Outfit
+        </div>
+        <div style={{ fontSize: 11, color: muted, marginBottom: 16 }}>
+          {day?.dateLabel ?? day?.date} — second outfit for this day
+        </div>
+
+        {/* Time slot */}
+        <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+          Time of Day
+        </div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          {TIME_SLOTS.map(ts => (
+            <button key={ts.key}
+              onClick={() => setTimeSlot(ts.key)}
+              style={{
+                flex: 1, padding: "8px 4px", borderRadius: 8, cursor: "pointer",
+                border: `1px solid ${timeSlot === ts.key ? "#3b82f6" : border}`,
+                background: timeSlot === ts.key ? "#3b82f622" : "transparent",
+                color: timeSlot === ts.key ? "#3b82f6" : muted,
+                fontSize: 11, fontWeight: 600, display: "flex", flexDirection: "column",
+                alignItems: "center", gap: 2,
+              }}>
+              <span style={{ fontSize: 16 }}>{ts.emoji}</span>
+              {ts.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Watch picker */}
+        <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+          Watch
+        </div>
+        <div style={{ border: `1px solid ${border}`, borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
+          {watches.map(w => {
+            const isSelected = watchId === w.id;
+            return (
+              <div key={w.id}
+                onClick={() => setWatchId(w.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", cursor: "pointer",
+                  background: isSelected ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
+                  borderBottom: `1px solid ${border}`,
+                }}>
+                <span style={{ fontSize: 16 }}>{w.emoji ?? "⌚"}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: text }}>{w.brand} {w.model}</div>
+                  <div style={{ fontSize: 10, color: muted }}>{w.dial} · {w.replica ? "replica" : "genuine"}</div>
+                </div>
+                {isSelected && <span style={{ color: "#3b82f6", fontWeight: 700 }}>✓</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Notes */}
+        <textarea
+          placeholder="Notes (optional) — e.g. Eid evening, date night…"
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          rows={2}
+          style={{
+            width: "100%", background: isDark ? "#0f131a" : "#f9fafb",
+            border: `1px solid ${border}`, borderRadius: 10,
+            padding: "10px 12px", color: text, fontSize: 13,
+            resize: "none", fontFamily: "inherit", boxSizing: "border-box",
+            outline: "none", marginBottom: 12,
+          }}
+        />
+
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button onClick={onCancel}
+            style={{
+              flex: 1, padding: "11px 0", borderRadius: 10,
+              border: `1px solid ${border}`, background: "transparent",
+              color: muted, fontSize: 13, fontWeight: 600, cursor: "pointer",
+            }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm({ timeSlot, watchId, notes: notes.trim() || null })}
+            disabled={!watchId}
+            style={{
+              flex: 2, padding: "11px 0", borderRadius: 10,
+              border: "none", background: watchId ? "#3b82f6" : "#374151",
+              color: "#fff", fontSize: 13, fontWeight: 700, cursor: watchId ? "pointer" : "default",
+            }}>
+            + Log Outfit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Photo Lightbox — full-screen zoom on tap ────────────────────────────────
 function PhotoLightbox({ src, alt, onClose }) {
   if (!src) return null;
@@ -553,6 +681,8 @@ export default function WeekPlanner() {
   const [shuffleSeeds, setShuffleSeeds]   = useState({});
   // pendingLog: holds the day offset + pre-built garmentIds while modal is open
   const [pendingLog, setPendingLog] = useState(null);
+  // pendingAddOutfit: day data for the "add another outfit" modal
+  const [pendingAddOutfit, setPendingAddOutfit] = useState(null);
   const [pickingDay, setPickingDay]         = useState(null);
   // Per-day per-slot garment overrides: { [YYYY-MM-DD]: { shirt: garmentId, ... } }
   // Keyed by ISO date (not offset) so overrides survive midnight correctly.
@@ -1039,25 +1169,85 @@ export default function WeekPlanner() {
               )}
 
               {/* Wear This Outfit (today, not yet logged) / Log This Outfit (future days) */}
-              {showOutfits && day.watch && !dayOutfit._isLogged && (
-                <button
-                  onClick={() => {
-                    const garmentIds = OUTFIT_SLOTS
-                      .map(s => dayOutfit[s]?.id)
-                      .filter(Boolean);
-                    setPendingLog({ day, garmentIds });
-                  }}
-                  style={{
-                    width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8,
-                    background: isToday ? "#22c55e" : isDark ? "#1e293b" : "#f1f5f9",
-                    color: isToday ? "#fff" : isDark ? "#94a3b8" : "#64748b",
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    border: isToday ? "none" : `1px solid ${border}`,
-                  }}
-                >
-                  {isToday ? "Wear This Outfit" : "Log This Outfit"}
-                </button>
-              )}
+              {showOutfits && day.watch && !dayOutfit._isLogged && (() => {
+                const dayEntries = history.filter(h => h.date === day.date);
+                return dayEntries.length === 0 ? (
+                  <button
+                    onClick={() => {
+                      const garmentIds = OUTFIT_SLOTS
+                        .map(s => dayOutfit[s]?.id)
+                        .filter(Boolean);
+                      setPendingLog({ day, garmentIds });
+                    }}
+                    style={{
+                      width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8,
+                      background: isToday ? "#22c55e" : isDark ? "#1e293b" : "#f1f5f9",
+                      color: isToday ? "#fff" : isDark ? "#94a3b8" : "#64748b",
+                      fontSize: 12, fontWeight: 700, cursor: "pointer",
+                      border: isToday ? "none" : `1px solid ${border}`,
+                    }}
+                  >
+                    {isToday ? "Wear This Outfit" : "Log This Outfit"}
+                  </button>
+                ) : null;
+              })()}
+
+              {/* Multi-outfit: show all logged entries for the day + Add Another button */}
+              {showOutfits && (() => {
+                const dayEntries = history.filter(h => h.date === day.date);
+                if (dayEntries.length === 0) return null;
+                return (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${border}` }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                      Logged Outfits ({dayEntries.length})
+                    </div>
+                    {dayEntries.map((entry, i) => {
+                      const slotLabel = entry.timeSlot
+                        ? { morning: "🌅 Morning", afternoon: "☀️ Afternoon", evening: "🌆 Evening", night: "🌙 Night" }[entry.timeSlot] ?? entry.timeSlot
+                        : i === 0 ? "Primary" : `Outfit ${i + 1}`;
+                      const entryWatch = watches.find(w => w.id === (entry.watchId ?? entry.watch_id));
+                      return (
+                        <div key={entry.id} style={{
+                          marginBottom: 8, padding: "8px 10px", borderRadius: 8,
+                          background: isDark ? "#0f131a" : "#f8fafc",
+                          border: `1px solid ${border}`,
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "#22c55e" }}>{slotLabel}</span>
+                            {entryWatch && (
+                              <span style={{ fontSize: 10, color: sub }}>
+                                {entryWatch.emoji ?? "⌚"} {entryWatch.brand} {entryWatch.model}
+                              </span>
+                            )}
+                          </div>
+                          {entry.notes && (
+                            <div style={{ fontSize: 10, color: muted, fontStyle: "italic" }}>{entry.notes}</div>
+                          )}
+                          {(entry.garmentIds?.length > 0) && (
+                            <div style={{ fontSize: 10, color: sub, marginTop: 2 }}>
+                              {entry.garmentIds.length} garments logged
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {/* Add Another Outfit button */}
+                    <button
+                      onClick={() => setPendingAddOutfit(day)}
+                      style={{
+                        width: "100%", padding: "8px 0", borderRadius: 8,
+                        background: "transparent",
+                        color: isDark ? "#3b82f6" : "#2563eb",
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        border: `1px dashed ${isDark ? "#3b82f6" : "#93c5fd"}`,
+                        marginTop: 4,
+                      }}
+                    >
+                      + Add Another Outfit
+                    </button>
+                  </div>
+                );
+              })()}
 
               {day.backup && (
                 <div style={{ marginTop:6, paddingTop:6, borderTop:`1px solid ${border}` }}>
@@ -1105,6 +1295,31 @@ export default function WeekPlanner() {
               }).catch(() => {});
             }
             setPendingLog(null);
+          }}
+        />
+      )}
+
+      {/* Add Another Outfit modal */}
+      {pendingAddOutfit && (
+        <AddOutfitModal
+          isDark={isDark}
+          watches={watches}
+          garments={garments}
+          day={pendingAddOutfit}
+          onCancel={() => setPendingAddOutfit(null)}
+          onConfirm={({ timeSlot, watchId, notes }) => {
+            const chosenWatch = watches.find(w => w.id === watchId);
+            addEntry({
+              id: `rotation-${pendingAddOutfit.date}-${timeSlot}-${Date.now()}`,
+              date: pendingAddOutfit.date,
+              watchId,
+              garmentIds: [],
+              context: pendingAddOutfit.ctx ?? "smart-casual",
+              timeSlot,
+              notes: notes ?? null,
+              loggedAt: new Date().toISOString(),
+            });
+            setPendingAddOutfit(null);
           }}
         />
       )}
