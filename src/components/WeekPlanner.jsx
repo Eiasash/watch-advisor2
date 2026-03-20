@@ -303,10 +303,11 @@ const TIME_SLOTS = [
   { key: "night",     label: "Night",     emoji: "🌙" },
 ];
 
-function AddOutfitModal({ isDark, watches, garments, day, onConfirm, onCancel }) {
+function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slotCandidates, onConfirm, onCancel }) {
   const [timeSlot,  setTimeSlot]  = useState("evening");
   const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches[0]?.id ?? null);
   const [notes,     setNotes]     = useState("");
+  const [outfitSlots, setOutfitSlots] = useState({});
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
@@ -314,6 +315,26 @@ function AddOutfitModal({ isDark, watches, garments, day, onConfirm, onCancel })
   const sub    = isDark ? "#94a3b8" : "#64748b";
 
   const selectedWatch = watches.find(w => w.id === watchId);
+
+  // Build outfit whenever watch changes
+  useEffect(() => {
+    if (!selectedWatch || !wearable?.length) {
+      setOutfitSlots({});
+      return;
+    }
+    const outfit = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], {}, {}, day?.ctx ?? "smart-casual");
+    const slots = {};
+    for (const slot of OUTFIT_SLOTS) {
+      if (outfit[slot]) slots[slot] = outfit[slot];
+    }
+    setOutfitSlots(slots);
+  }, [watchId, selectedWatch, wearable, history, day?.ctx]);
+
+  const handleSlotSwap = (slot, garment) => {
+    setOutfitSlots(prev => ({ ...prev, [slot]: garment }));
+  };
+
+  const garmentIds = OUTFIT_SLOTS.map(s => outfitSlots[s]?.id).filter(Boolean);
 
   return (
     <div style={{
@@ -383,6 +404,28 @@ function AddOutfitModal({ isDark, watches, garments, day, onConfirm, onCancel })
           })}
         </div>
 
+        {/* Outfit slots — auto-generated from buildOutfit, swappable */}
+        {garmentIds.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              Outfit
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 16 }}>
+              {OUTFIT_SLOTS.map(slot => (
+                <OutfitSlotChip
+                  key={slot}
+                  slot={slot}
+                  garment={outfitSlots[slot]}
+                  isDark={isDark}
+                  border={border}
+                  candidates={slotCandidates?.[slot] ?? []}
+                  onSwap={handleSlotSwap}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Notes */}
         <textarea
           placeholder="Notes (optional) — e.g. Eid evening, date night…"
@@ -408,14 +451,14 @@ function AddOutfitModal({ isDark, watches, garments, day, onConfirm, onCancel })
             Cancel
           </button>
           <button
-            onClick={() => onConfirm({ timeSlot, watchId, notes: notes.trim() || null })}
+            onClick={() => onConfirm({ timeSlot, watchId, notes: notes.trim() || null, garmentIds })}
             disabled={!watchId}
             style={{
               flex: 2, padding: "11px 0", borderRadius: 10,
               border: "none", background: watchId ? "#3b82f6" : "#374151",
               color: "#fff", fontSize: 13, fontWeight: 700, cursor: watchId ? "pointer" : "default",
             }}>
-            + Log Outfit
+            + Log Outfit {garmentIds.length > 0 && `(${garmentIds.length} items)`}
           </button>
         </div>
       </div>
@@ -1223,11 +1266,32 @@ export default function WeekPlanner() {
                           {entry.notes && (
                             <div style={{ fontSize: 10, color: muted, fontStyle: "italic" }}>{entry.notes}</div>
                           )}
-                          {(entry.garmentIds?.length > 0) && (
-                            <div style={{ fontSize: 10, color: sub, marginTop: 2 }}>
-                              {entry.garmentIds.length} garments logged
-                            </div>
-                          )}
+                          {(entry.garmentIds?.length > 0) && (() => {
+                            const wornGs = entry.garmentIds.map(id => garments.find(g => g.id === id)).filter(Boolean);
+                            return (
+                              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                                {wornGs.map(g => {
+                                  const photo = g.thumbnail || g.photoUrl;
+                                  return (
+                                    <div key={g.id} style={{
+                                      display: "flex", alignItems: "center", gap: 4,
+                                      padding: "2px 6px", borderRadius: 6,
+                                      background: isDark ? "#171a2188" : "#f3f4f688",
+                                      border: `1px solid ${border}`,
+                                      fontSize: 10,
+                                    }}>
+                                      {photo ? (
+                                        <img src={photo} alt="" style={{ width: 16, height: 16, borderRadius: 3, objectFit: "cover" }} />
+                                      ) : (
+                                        <span style={{ fontSize: 10 }}>{SLOT_ICONS[normalizeType(g.type ?? "")] ?? "•"}</span>
+                                      )}
+                                      <span style={{ color: text, fontWeight: 600 }}>{g.color ?? ""} {g.type ?? ""}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })}
@@ -1306,19 +1370,30 @@ export default function WeekPlanner() {
           watches={watches}
           garments={garments}
           day={pendingAddOutfit}
+          history={history}
+          wearable={wearable}
+          slotCandidates={slotCandidates}
           onCancel={() => setPendingAddOutfit(null)}
-          onConfirm={({ timeSlot, watchId, notes }) => {
-            const chosenWatch = watches.find(w => w.id === watchId);
+          onConfirm={({ timeSlot, watchId, notes, garmentIds }) => {
             addEntry({
               id: `rotation-${pendingAddOutfit.date}-${timeSlot}-${Date.now()}`,
               date: pendingAddOutfit.date,
               watchId,
-              garmentIds: [],
+              garmentIds: garmentIds ?? [],
               context: pendingAddOutfit.ctx ?? "smart-casual",
               timeSlot,
               notes: notes ?? null,
               loggedAt: new Date().toISOString(),
             });
+            // Feed style learning for worn garments
+            if (garmentIds?.length > 0) {
+              const wornG = garmentIds.map(id => garments.find(g => g.id === id)).filter(Boolean);
+              if (wornG.length > 0) {
+                import("../stores/styleLearnStore.js").then(({ useStyleLearnStore }) => {
+                  useStyleLearnStore.getState().recordWear(wornG);
+                }).catch(() => {});
+              }
+            }
             setPendingAddOutfit(null);
           }}
         />
