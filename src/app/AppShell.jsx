@@ -216,13 +216,13 @@ function AppContent() {
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
               <WeekPlanner />
               <WatchRotationPanel />
-              <StatsPanel />
             </Suspense>
           </TabPane>
 
           <TabPane active={tab === "history"}>
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading…</div>}>
               <OutfitHistory />
+              <StatsPanel />
             </Suspense>
           </TabPane>
 

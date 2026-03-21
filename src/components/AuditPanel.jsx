@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
@@ -6,6 +6,8 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { pushGarment, deleteGarment as deleteGarmentCloud } from "../services/supabaseSync.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { enqueueTask, getPendingTasks, subscribeQueue } from "../services/backgroundQueue.js";
+
+const DebugConsole = lazy(() => import("./DebugConsole.jsx"));
 
 async function runAudit(garments, watches, history) {
   const garmentsSummary = garments
@@ -927,6 +929,39 @@ export function PhotoVerifierPanel() {
 
       {/* ── Orphaned History Entries ──────────────────────────────────────────── */}
       <OrphanedHistoryPatch isDark={isDark} />
+
+      {/* ── App Health & Debug ────────────────────────────────────────────────── */}
+      <DebugSection isDark={isDark} />
+    </div>
+  );
+}
+
+/** Collapsible App Health & Debug — surfaces DebugConsole in Audit tab */
+function DebugSection({ isDark }) {
+  const [open, setOpen] = useState(false);
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const text = isDark ? "#e2e8f0" : "#1f2937";
+  const sub = isDark ? "#8b93a7" : "#6b7280";
+  return (
+    <div style={{ marginTop: 20, borderRadius: 10, border: `1px solid ${border}`,
+                  background: isDark ? "#0f131a" : "#f9fafb", overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "10px 14px", border: "none", background: "transparent",
+          color: text, fontSize: 13, fontWeight: 700, cursor: "pointer",
+        }}>
+        <span>🪲 App Health & Debug</span>
+        <span style={{ fontSize: 11, color: sub }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0 14px 14px" }}>
+          <Suspense fallback={<div style={{ padding: 12, fontSize: 12, color: sub }}>Loading…</div>}>
+            <DebugConsole isDark={isDark} />
+          </Suspense>
+        </div>
+      )}
     </div>
   );
 }
@@ -935,12 +970,15 @@ export function PhotoVerifierPanel() {
 function OrphanedHistoryPatch({ isDark }) {
   const history = useHistoryStore(s => s.entries);
   const garments = useWardrobeStore(s => s.garments);
+  const addGarment = useWardrobeStore(s => s.addGarment);
   const watches = useWatchStore(s => s.watches);
   const upsertEntry = useHistoryStore(s => s.upsertEntry);
 
-  const orphaned = history.filter(e => !e.garmentIds?.length);
+  const orphaned = history.filter(e => !e.garmentIds?.length && !e.quickLog && !e.legacy);
   const [patchMap, setPatchMap] = useState({});
   const [expanded, setExpanded] = useState(null);
+  const [searchMap, setSearchMap] = useState({});
+  const [addingPhoto, setAddingPhoto] = useState(null); // entryId currently adding photo to
 
   if (orphaned.length === 0) return null;
 
@@ -968,6 +1006,53 @@ function OrphanedHistoryPatch({ isDark }) {
     setPatchMap(prev => { const n = { ...prev }; delete n[entry.id]; return n; });
   }
 
+  async function handlePhotoAdd(entryId, file) {
+    if (!file) return;
+    setAddingPhoto(entryId);
+    try {
+      // Classify the image via Netlify function
+      const reader = new FileReader();
+      const base64 = await new Promise((res, rej) => {
+        reader.onload = () => res(reader.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const resp = await fetch("/.netlify/functions/classify-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64 }),
+      });
+
+      if (!resp.ok) throw new Error("Classification failed");
+      const cls = await resp.json();
+
+      // Create a new garment from classification
+      const newId = `g_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const garment = {
+        id: newId,
+        name: cls.name || `${cls.color ?? "Unknown"} ${cls.type ?? "garment"}`,
+        type: cls.type ?? "shirt",
+        color: cls.color ?? "unknown",
+        formality: cls.formality ?? 5,
+        material: cls.material ?? null,
+        subtype: cls.subtype ?? null,
+        seasons: cls.seasons ?? [],
+        contexts: cls.contexts ?? [],
+        excludeFromWardrobe: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      addGarment(garment);
+      // Auto-select the new garment for this entry
+      toggleGarment(entryId, newId);
+    } catch (e) {
+      console.error("[orphan-patch] Photo add failed:", e.message);
+    } finally {
+      setAddingPhoto(null);
+    }
+  }
+
   return (
     <div style={{ marginTop: 20 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b", marginBottom: 8 }}>
@@ -977,6 +1062,10 @@ function OrphanedHistoryPatch({ isDark }) {
         const watch = watches.find(w => w.id === entry.watchId);
         const isExpanded = expanded === entry.id;
         const selected = patchMap[entry.id] ?? [];
+        const search = (searchMap[entry.id] ?? "").toLowerCase();
+        const filtered = search
+          ? wearable.filter(g => (g.name || `${g.color} ${g.type}`).toLowerCase().includes(search))
+          : wearable;
         return (
           <div key={entry.id} style={{ marginBottom: 8, padding: "8px 10px", borderRadius: 8,
                                         background: bg, border: `1px solid ${border}` }}>
@@ -996,8 +1085,43 @@ function OrphanedHistoryPatch({ isDark }) {
             {isExpanded && (
               <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 11, color: sub, marginBottom: 6 }}>Select garments worn:</div>
+                {/* Search + photo add row */}
+                <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="Search garments…"
+                    value={searchMap[entry.id] ?? ""}
+                    onChange={e => setSearchMap(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                    style={{
+                      flex: 1, padding: "5px 8px", borderRadius: 6, fontSize: 11,
+                      border: `1px solid ${border}`, background: isDark ? "#171a21" : "#fff",
+                      color: isDark ? "#e2e8f0" : "#1f2937", outline: "none",
+                    }}
+                  />
+                  <label style={{
+                    display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
+                    borderRadius: 6, border: `1px solid ${border}`, fontSize: 11, fontWeight: 600,
+                    color: "#3b82f6", cursor: addingPhoto === entry.id ? "default" : "pointer",
+                    opacity: addingPhoto === entry.id ? 0.5 : 1,
+                    background: isDark ? "#171a21" : "#fff",
+                  }}>
+                    📷 {addingPhoto === entry.id ? "Adding…" : "Add"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      style={{ display: "none" }}
+                      disabled={addingPhoto === entry.id}
+                      onChange={e => {
+                        const f = e.target.files?.[0];
+                        if (f) handlePhotoAdd(entry.id, f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4, maxHeight: 160, overflowY: "auto" }}>
-                  {wearable.map(g => (
+                  {filtered.map(g => (
                     <button key={g.id} onClick={() => toggleGarment(entry.id, g.id)}
                       style={{
                         fontSize: 10, padding: "3px 8px", borderRadius: 6, cursor: "pointer",
@@ -1008,6 +1132,9 @@ function OrphanedHistoryPatch({ isDark }) {
                       {g.name || `${g.color} ${g.type}`}
                     </button>
                   ))}
+                  {filtered.length === 0 && search && (
+                    <span style={{ fontSize: 10, color: sub, padding: "4px 8px" }}>No matches — try 📷 to add from photo</span>
+                  )}
                 </div>
                 {selected.length > 0 && (
                   <button onClick={() => applyPatch(entry)}

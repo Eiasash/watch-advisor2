@@ -87,6 +87,8 @@ async function _doPull() {
         context:    row.payload?.context     ?? null,
         notes:      row.payload?.notes       ?? null,
         loggedAt:   row.payload?.loggedAt    ?? null,
+        quickLog:   row.payload?.quickLog    ?? false,
+        legacy:     row.payload?.legacy      ?? false,
       })),
     };
   } catch (e) {
@@ -375,15 +377,18 @@ export async function pushHistoryEntry(entry) {
       date:      entry.date,
       time_slot: entry.timeSlot ?? null,
       payload:  {
-        outfit:       entry.outfit      ?? {},
-        garmentIds:   entry.garmentIds  ?? [],
-        strapId:      entry.strapId     ?? null,
-        strapLabel:   entry.strapLabel  ?? null,
-        context:      entry.context     ?? null,
-        timeSlot:     entry.timeSlot    ?? null,
-        notes:        entry.notes       ?? null,
+        outfit:           entry.outfit        ?? {},
+        garmentIds:       entry.garmentIds    ?? [],
+        strapId:          entry.strapId       ?? null,
+        strapLabel:       entry.strapLabel    ?? null,
+        context:          entry.context       ?? null,
+        timeSlot:         entry.timeSlot      ?? null,
+        notes:            entry.notes         ?? null,
         // outfitPhoto excluded from cloud — could be large base64; keep local only
-        loggedAt:     entry.loggedAt    ?? null,
+        loggedAt:         entry.loggedAt      ?? null,
+        quickLog:         entry.quickLog      ?? false,
+        legacy:           entry.legacy        ?? false,
+        payload_version:  "v1",
       },
     }, { onConflict: "id" });
     if (error) console.warn("[supabaseSync] pushHistoryEntry error:", error.message);
