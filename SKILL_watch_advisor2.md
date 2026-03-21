@@ -15,7 +15,7 @@
 | Source LOC | ~8,600 |
 | Test files | 113 |
 | Tests | 2084+ |
-| Netlify functions | 15 (+2 helpers) |
+| Netlify functions | 14 (+2 helpers) |
 | Components | 26 JSX |
 | Zustand stores | 8 |
 | Build output | 571 kB (167 kB gzip) |
@@ -38,13 +38,13 @@ src/
   data/           watchSeed.js (IMMUTABLE — 23 watches)
   aiStylist/      claudeStylist.js
   workers/        photoWorker.js (USE_WORKER=false)
-netlify/functions/  15 serverless functions
-supabase/           schema.sql
+netlify/functions/  14 serverless functions
+supabase/           migrations/ (SQL audit trail)
 ```
 
 ---
 
-## §3 Scoring System (last audited: 2026-03-20)
+## §3 Scoring System (last audited: 2026-03-21)
 
 ### Base formula
 ```
@@ -105,11 +105,12 @@ Range: 0.85–1.15 (nudge +0.02, decay ×0.98). Never overrides hard constraints
 - Garments table column: `category` (not `type`) — `pushGarment` maps `garment.type → category`
 - `pullCloudState` maps `row.category → type` on return
 - `thumbnail_url` (not `thumbnail`) in DB; `photo_url` (not `photoUrl`)
-- No migrations dir — schema managed via `supabase/schema.sql`
+- No migrations dir — schema managed via `supabase/migrations/` (committed after every apply_migration)
 
-### Current counts (as of 2026-03-20)
+### Current counts (as of 2026-03-21)
 - **Active garments:** 76
-- **History entries:** 19
+- **History entries:** 19 (6 legacy with empty garmentIds, stamped legacy:true)
+- **Orphaned history:** 0 (legacy entries excluded from health check)
 
 ---
 
@@ -170,3 +171,13 @@ contextFormality:   1.5
 
 ### watchSeed.js
 **IMMUTABLE.** 23 watches. Never modify.
+
+### app_config JSONB gotcha
+Supabase JS auto-parses JSONB columns — `data.value` is already a JS value, not a JSON string.
+Never double-parse with `JSON.parse(data.value)`. The pattern in `_claudeClient.js` tries
+JSON.parse first (handles quoted-string test mocks), falls back to raw value.
+
+### DebugConsole health dashboard
+`DebugConsole.jsx` fetches `/.netlify/functions/skill-snapshot` on mount.
+Shows: monthly API cost, garment/history counts, health checks, wardrobe wear rate bars.
+Active Claude model shown with yellow warning if "unknown".
