@@ -1,5 +1,107 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+describe("getConfiguredModel", () => {
+  let getConfiguredModel, _resetModelCache;
+  const ORIG_ENV = { ...process.env };
+
+  beforeEach(async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    vi.resetModules();
+    // Restore env and then strip Supabase vars
+    Object.assign(process.env, ORIG_ENV);
+    delete process.env.SUPABASE_URL;
+    delete process.env.VITE_SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SERVICE_KEY;
+    delete process.env.VITE_SUPABASE_ANON_KEY;
+    const mod = await import("../netlify/functions/_claudeClient.js");
+    getConfiguredModel = mod.getConfiguredModel;
+    _resetModelCache = mod._resetModelCache;
+    _resetModelCache();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns DEFAULT_MODEL when env vars are missing", async () => {
+    const model = await getConfiguredModel();
+    expect(model).toBe("claude-sonnet-4-6");
+    // Supabase should never be called when credentials absent
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns DEFAULT_MODEL when Supabase REST call throws (network error)", async () => {
+    process.env.SUPABASE_URL = "https://fake.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-key";
+    vi.resetModules();
+    _resetModelCache?.();
+    const mod2 = await import("../netlify/functions/_claudeClient.js");
+    fetch.mockRejectedValue(new Error("Network error"));
+    const model = await mod2.getConfiguredModel();
+    expect(model).toBe("claude-sonnet-4-6");
+  });
+
+  it("returns DEFAULT_MODEL when DB returns no matching row (null body)", async () => {
+    process.env.SUPABASE_URL = "https://fake.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-key";
+    vi.resetModules();
+    _resetModelCache?.();
+    const mod2 = await import("../netlify/functions/_claudeClient.js");
+    // PostgREST 406 when single() matches zero rows
+    fetch.mockResolvedValue({
+      ok: false,
+      status: 406,
+      statusText: "Not Acceptable",
+      text: () => Promise.resolve(""),
+      headers: { get: () => null },
+    });
+    const model = await mod2.getConfiguredModel();
+    expect(model).toBe("claude-sonnet-4-6");
+  });
+
+  it("returns model from DB when app_config has claude_model row", async () => {
+    process.env.SUPABASE_URL = "https://fake.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-key";
+    vi.resetModules();
+    const mod2 = await import("../netlify/functions/_claudeClient.js");
+    mod2._resetModelCache();
+    // PostgREST single() with Accept: application/vnd.pgrst.object+json returns a plain JSON object
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: () => Promise.resolve(JSON.stringify({ value: '"claude-opus-4-6"' })),
+      headers: { get: (h) => h === "content-type" ? "application/vnd.pgrst.object+json" : null },
+    });
+    const model = await mod2.getConfiguredModel();
+    expect(model).toBe("claude-opus-4-6");
+  });
+
+  it("caches model after first successful DB read", async () => {
+    process.env.SUPABASE_URL = "https://fake.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-key";
+    vi.resetModules();
+    const mod2 = await import("../netlify/functions/_claudeClient.js");
+    mod2._resetModelCache();
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: () => Promise.resolve(JSON.stringify({ value: '"claude-opus-4-6"' })),
+      headers: { get: (h) => h === "content-type" ? "application/vnd.pgrst.object+json" : null },
+    });
+    const first  = await mod2.getConfiguredModel();
+    const second = await mod2.getConfiguredModel();
+    const third  = await mod2.getConfiguredModel();
+    // First call reads from DB; remaining calls use in-memory cache
+    expect(first).toBe("claude-opus-4-6");
+    expect(second).toBe("claude-opus-4-6");
+    expect(third).toBe("claude-opus-4-6");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("callClaude", () => {
   let callClaude;
 

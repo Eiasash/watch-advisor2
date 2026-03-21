@@ -3,7 +3,6 @@
  *
  * Shows a sticky banner when a new app version is waiting to activate.
  * Tapping "Update" sends SKIP_WAITING to the new SW and reloads the page.
- * Also exports a VersionChip component for use in the header/settings.
  *
  * The current build version (__APP_VERSION__ = "YYYY-MM-DD · {hash}") is
  * injected at build time by vite.config.js.
@@ -121,43 +120,3 @@ export default function UpdateBanner({ isDark }) {
   );
 }
 
-// ── VersionChip — shows current build hash, tapping checks for update ─────────
-
-export function VersionChip({ isDark, style }) {
-  const { hasUpdate, applyUpdate } = useServiceWorkerUpdate();
-
-  const handleClick = () => {
-    if (hasUpdate) {
-      applyUpdate();
-    } else {
-      // Manually trigger SW update check
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.ready
-          .then(reg => reg.update())
-          .catch(() => {});
-      }
-    }
-  };
-
-  const hash = (typeof __COMMIT_HASH__ !== "undefined") ? __COMMIT_HASH__ : "dev";
-
-  const bg      = hasUpdate ? (isDark ? "#1e3a5f" : "#dbeafe") : "transparent";
-  const color   = hasUpdate ? "#2563eb" : (isDark ? "#374151" : "#9ca3af");
-  const border  = hasUpdate ? "1px solid #2563eb" : "none";
-
-  return (
-    <span
-      onClick={handleClick}
-      title={hasUpdate ? "Update available — tap to update" : `Build ${hash} — tap to check for updates`}
-      style={{
-        fontSize: 11, fontWeight: hasUpdate ? 700 : 400,
-        color, background: bg, border, borderRadius: 4,
-        padding: hasUpdate ? "2px 6px" : "0",
-        cursor: "pointer", letterSpacing: "0.02em",
-        userSelect: "none",
-        ...style,
-      }}>
-      {hasUpdate ? `⬆ Update` : `v${hash}`}
-    </span>
-  );
-}

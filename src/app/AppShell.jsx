@@ -47,7 +47,7 @@ const TABS = [
 ];
 
 function AppContent() {
-  const { ready, status, syncError, retrySync } = useBootstrap();
+  const { ready, status, syncError, retrySync, storageWarnPct } = useBootstrap();
   const { mode }          = useThemeStore();
   const isDark            = mode === "dark";
 
@@ -91,6 +91,17 @@ function AppContent() {
   useEffect(() => {
     if (ready && toast) toast.addToast("Watch Advisor ready", "success", 2000);
   }, [ready]); // eslint-disable-line
+
+  // Show persistent warning toast when storage is nearly full (>70%)
+  useEffect(() => {
+    if (storageWarnPct && toast) {
+      toast.addToast(
+        `Storage ${storageWarnPct}% full — old garment photos may be evicted. Export a backup.`,
+        "warning",
+        10000,
+      );
+    }
+  }, [storageWarnPct]); // eslint-disable-line
 
   const handlePaletteAction = useCallback(action => {
     if (action === "settings") setShowSettings(true);

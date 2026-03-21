@@ -76,32 +76,3 @@ export function detectDominantColor(imageData, width, height) {
   return top?.[0] ?? null;
 }
 
-/**
- * Extract dominant color from a data URL thumbnail string.
- * Uses canvas to decode the image.
- */
-export async function detectDominantColorFromDataURL(thumbnailDataURL) {
-  if (!thumbnailDataURL || !thumbnailDataURL.startsWith("data:")) return null;
-  try {
-    const SIZE = 48;
-    const img = await loadImage(thumbnailDataURL);
-    const canvas = document.createElement("canvas");
-    canvas.width = SIZE;
-    canvas.height = SIZE;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, SIZE, SIZE);
-    const imageData = ctx.getImageData(0, 0, SIZE, SIZE);
-    return detectDominantColor(imageData, SIZE, SIZE);
-  } catch {
-    return null;
-  }
-}
-
-function loadImage(src) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => res(img);
-    img.onerror = () => rej(new Error("img decode failed"));
-    img.src = src;
-  });
-}

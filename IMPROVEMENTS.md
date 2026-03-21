@@ -98,3 +98,16 @@ Current scoring weights (unchanged):
 3. **Add DebugConsole panel** — display monthly token cost + wardrobe health from skill-snapshot
 4. **Persist storage quota warnings** — show a toast in UI when >70% storage, not just console.warn
 5. **Model migration path** — test `getConfiguredModel()` fallback when Anthropic deprecates current model
+
+## Session 2026-03-21 — Dead Code Cleanup + Observability
+
+### Changes Made
+| Item | File | Action |
+|------|------|--------|
+| Remove `VersionChip` dead export | `src/components/UpdateBanner.jsx` | Deleted lines 124–163 (export never imported) |
+| Remove `detectDominantColorFromDataURL` + `loadImage` | `src/classifier/colorDetection.js` | Deleted lines 79–107 (async overload never called) |
+| Storage quota UI toast | `src/app/bootstrap.js` + `src/app/AppShell.jsx` | Exposes `storageWarnPct` from `useBootstrap()`; fires 10-second warning toast via `useToast()` when storage >70% |
+| `getConfiguredModel()` fallback tests | `tests/claudeClient.test.js` | Added 5 new tests: missing env vars, network error, no row, reads model from DB, caching (12 total, all passing) |
+
+### Test Count
+2089 tests across 113 files — all passing.
