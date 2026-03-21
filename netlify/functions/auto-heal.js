@@ -119,14 +119,17 @@ export async function handler() {
     }
 
     // ── 5. Untagged garments needing BulkTagger ───────────────────────────
-    const { data: untagged } = await supabase
-      .from("garments")
-      .select("id, name, category")
-      .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
-      .not("category", "in", "(outfit-photo,watch)")
-      .or("seasons.is.null,contexts.is.null,material.is.null");
-
-    const untaggedCount = untagged?.length ?? 0;
+    let untaggedCount = 0;
+    try {
+      const { data: allActive } = await supabase
+        .from("garments")
+        .select("id, seasons, contexts, material")
+        .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
+        .not("category", "in", "(outfit-photo,watch)");
+      untaggedCount = (allActive ?? []).filter(g =>
+        !g.material || !g.seasons || g.seasons.length === 0 || !g.contexts || g.contexts.length === 0
+      ).length;
+    } catch { /* non-fatal */ }
     if (untaggedCount > 10) {
       log.push({
         check: "untagged_garments",
