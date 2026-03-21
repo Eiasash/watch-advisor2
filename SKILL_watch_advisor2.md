@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.5.3 |
+| Version | 1.5.4 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 70 |
 | Source LOC | ~8,600 |
@@ -187,7 +187,7 @@ Monthly cost visible in DebugConsole + `app_config.monthly_token_usage`.
 ### Supabase Tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | 82 active (4 belts, 4 jackets, check skill-snapshot for live count) |
+| `garments` | Wardrobe items | 75 active (post-dedup March 21, check skill-snapshot for live count) |
 | `history` | Wear log | 23+ entries. 6 legacy stamped. quickLog + legacy fields preserved. |
 | `app_config` | Key-value config | Model, token usage, keepalive, auto_heal_log. Values are JSONB. |
 | `errors` | Error logging | |
