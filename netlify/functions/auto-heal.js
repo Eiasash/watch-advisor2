@@ -161,11 +161,16 @@ export async function handler() {
     }
 
     // ── 7. Idle garment percentage ────────────────────────────────────────
-    const { count: activeCount } = await supabase
-      .from("garments")
-      .select("*", { count: "exact", head: true })
-      .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
-      .not("category", "in", "(outfit-photo,watch)");
+    let activeCount = 0;
+    try {
+      const { data: allGarments } = await supabase
+        .from("garments")
+        .select("id, exclude_from_wardrobe, category");
+      const active = (allGarments ?? []).filter(g =>
+        !g.exclude_from_wardrobe && !["outfit-photo", "watch"].includes(g.category)
+      );
+      activeCount = active.length;
+    } catch { /* non-fatal */ }
 
     const wornGarmentIds = new Set();
     (allHistory ?? []).forEach(e => (e.payload?.garmentIds ?? []).forEach(id => wornGarmentIds.add(id)));
@@ -193,7 +198,7 @@ export async function handler() {
 
     await supabase.from("app_config").upsert({
       key: "auto_heal_log",
-      value: JSON.stringify(healResult),
+      value: healResult,
       updated_at: now,
     }, { onConflict: "key" });
 
