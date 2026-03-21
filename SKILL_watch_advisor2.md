@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.5.1 |
+| Version | 1.5.2 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 70 |
 | Source LOC | ~8,600 |
@@ -155,7 +155,7 @@ Runs 7 diagnostic checks, auto-fixes what it can, logs results to `app_config.au
 |-------|----------|-----------|
 | Orphaned history entries | Stamps quickLog/legacy | Any unstamped empty garmentIds |
 | Watch rotation stagnation | Flags for rotationFactor increase | Same watch >40% of last 10 |
-| Garment slot stagnation | Flags for repetitionPenalty increase | Same garment >3× in 14d |
+| Garment slot stagnation | Flags for repetitionPenalty increase | Same garment >5× in 14d |
 | Context distribution | Flags broken UI | >80% null contexts |
 | Untagged garments | Flags for BulkTagger | >10 missing season/context/material |
 | Score distribution | Flags stuck scoring | All scores identical |
