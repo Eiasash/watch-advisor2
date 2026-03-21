@@ -187,8 +187,8 @@ Monthly cost visible in DebugConsole + `app_config.monthly_token_usage`.
 ### Supabase Tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | 76 active as of March 21 2026 |
-| `history` | Wear log | 19 entries. 6 legacy stamped. quickLog + legacy fields preserved. |
+| `garments` | Wardrobe items | ~73 active (check skill-snapshot for live count) |
+| `history` | Wear log | 21+ entries. 6 legacy stamped. quickLog + legacy fields preserved. |
 | `app_config` | Key-value config | Model, token usage, keepalive, auto_heal_log. Values are JSONB. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
