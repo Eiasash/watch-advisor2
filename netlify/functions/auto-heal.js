@@ -61,11 +61,15 @@ export async function handler() {
     });
 
     // ── 4. Garment repetition (>3× same garment in 14 days) ──────────────
+    // ── 4. Garment repetition (>5× same garment in 14 days) ──────────────
+    // Threshold 5 (not 3) — daily driver shoes and on-call anchor sweaters
+    // naturally repeat 4-5× in 14 days with a small wardrobe. Only flag
+    // genuine stagnation where the engine is clearly stuck.
     const cutoff14d = new Date(Date.now() - 14 * 864e5).toISOString().split("T")[0];
     const recent14d = hist.filter(h => h.date >= cutoff14d);
     const gFreq = {};
     recent14d.forEach(e => (e.payload?.garmentIds ?? []).forEach(gid => { gFreq[gid] = (gFreq[gid] ?? 0) + 1; }));
-    const stagnantG = Object.entries(gFreq).filter(([, n]) => n > 3);
+    const stagnantG = Object.entries(gFreq).filter(([, n]) => n > 5);
     log.push({
       check: "garment_stagnation",
       found: stagnantG.length > 0 ? stagnantG.map(([id, n]) => `${id}:${n}`).join(", ") : "healthy",
@@ -109,7 +113,11 @@ export async function handler() {
     });
 
     // ── 8. Never-worn percentage ──────────────────────────────────────────
+    // Only flag if history has enough entries to have reasonably covered the
+    // wardrobe. With 21 entries × ~4 garments each = ~84 slots, vs 73 garments,
+    // high never-worn % is expected data sparsity — not an engine problem.
     let neverWornPct = 0;
+    let historyDepthSufficient = false;
     try {
       const { data: allG2 } = await supabase
         .from("garments")
@@ -118,11 +126,14 @@ export async function handler() {
       const worn = new Set();
       hist.forEach(e => (e.payload?.garmentIds ?? []).forEach(id => worn.add(id)));
       neverWornPct = active.length > 0 ? ((active.length - worn.size) / active.length) * 100 : 0;
+      // Only flag when user has logged enough outfits (2× garment count) to
+      // expect reasonable coverage — otherwise it's just a new app with sparse data
+      historyDepthSufficient = hist.length >= active.length * 2;
     } catch { /* non-fatal */ }
     log.push({
       check: "never_worn",
-      found: `${Math.round(neverWornPct)}%`,
-      action: neverWornPct > 50 ? "rotation pressure increase needed" : "none",
+      found: `${Math.round(neverWornPct)}% (${hist.length} entries / ${historyDepthSufficient ? "sufficient" : "sparse"} data)`,
+      action: (neverWornPct > 50 && historyDepthSufficient) ? "rotation pressure increase needed" : "none",
     });
 
     // ── Write results to app_config ───────────────────────────────────────
