@@ -94,6 +94,17 @@ export async function handler(event) {
       tokenUsage = tokenRow?.value ? (typeof tokenRow.value === 'string' ? JSON.parse(tokenRow.value) : tokenRow.value) : null;
     } catch { /* non-fatal */ }
 
+    // Auto-heal last run
+    let autoHeal = null;
+    try {
+      const { data: healRow } = await supabase
+        .from('app_config')
+        .select('value')
+        .eq('key', 'auto_heal_log')
+        .single();
+      autoHeal = healRow?.value ? (typeof healRow.value === 'string' ? JSON.parse(healRow.value) : healRow.value) : null;
+    } catch { /* non-fatal */ }
+
     // Outfit quality trend — weekly average scores for last 12 weeks
     let outfitQualityTrend = null;
     try {
@@ -160,6 +171,7 @@ export async function handler(event) {
       scoringWeights,
       activeModel: activeModel ?? "unknown",
       tokenUsage,
+      autoHeal,
       outfitQualityTrend,
       wardrobeHealth,
       health: {
@@ -169,6 +181,7 @@ export async function handler(event) {
         wardrobeHealth: wardrobeHealth?.some(c => c.cnt > 25 && parseFloat(c.wear_rate_30d) < 0.30)
           ? `WARN: category over-saturated with low wear rate`
           : "ok",
+        autoHeal: autoHeal?.healthy === true ? "ok" : autoHeal?.healthy === false ? "WARN: issues found" : "unknown — never run",
       },
       skillFileNote: "Run /update-skill in Claude Code to sync SKILL_watch_advisor2.md with this snapshot"
     };

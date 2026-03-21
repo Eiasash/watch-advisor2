@@ -126,6 +126,37 @@ function AppHealthPanel({ isDark }) {
         </div>
       )}
 
+      {/* Row 4: Auto-Heal status */}
+      {snapshot.autoHeal && (
+        <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: sub, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Auto-Heal {snapshot.autoHeal.healthy ? "✓" : "⚠"}
+          </div>
+          <div style={{ fontSize: 10, color: sub, marginBottom: 4 }}>
+            Last run: {snapshot.autoHeal.ranAt ? new Date(snapshot.autoHeal.ranAt).toLocaleString() : "never"}
+          </div>
+          {(snapshot.autoHeal.findings ?? []).filter(f => f.action !== "none").map((f, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 10 }}>
+              <span style={{ color: text }}>{f.check}</span>
+              <span style={{
+                color: f.action === "stamped" || f.action === "minor" ? green : f.action.startsWith("CRITICAL") ? red : yellow,
+                fontWeight: 600, maxWidth: "60%", textAlign: "right",
+              }}>
+                {f.action}
+              </span>
+            </div>
+          ))}
+          {(snapshot.autoHeal.findings ?? []).every(f => f.action === "none") && (
+            <div style={{ fontSize: 10, color: green }}>All checks passed — no issues</div>
+          )}
+          {snapshot.autoHeal.fixesList?.length > 0 && (
+            <div style={{ fontSize: 10, color: green, marginTop: 4 }}>
+              Fixes applied: {snapshot.autoHeal.fixesList.join(", ")}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Refresh */}
       <button
         onClick={fetchSnapshot}

@@ -11,6 +11,9 @@
 [functions."push-brief"]
   schedule = "30 6 * * *"
 
+[functions."auto-heal"]
+  schedule = "0 5 * * *"
+
 [functions."supabase-keepalive"]
   schedule = "0 6 */5 * *"
 
