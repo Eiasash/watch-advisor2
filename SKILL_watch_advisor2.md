@@ -9,15 +9,15 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.5.0 |
+| Version | 1.5.1 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 71 |
+| Source files | 70 |
 | Source LOC | ~8,600 |
 | Test files | 113 |
 | Tests | 2084+ |
 | Netlify functions | 17 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 26 JSX |
+| Components | 29 JSX |
 | Zustand stores | 8 |
 | Build output | 571 kB (167 kB gzip) |
 | Live URL | https://watch-advisor2.netlify.app |
@@ -187,8 +187,8 @@ Monthly cost visible in DebugConsole + `app_config.monthly_token_usage`.
 ### Supabase Tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | ~73 active (check skill-snapshot for live count) |
-| `history` | Wear log | 21+ entries. 6 legacy stamped. quickLog + legacy fields preserved. |
+| `garments` | Wardrobe items | ~76 active (4 belts, check skill-snapshot for live count) |
+| `history` | Wear log | 23+ entries. 6 legacy stamped. quickLog + legacy fields preserved. |
 | `app_config` | Key-value config | Model, token usage, keepalive, auto_heal_log. Values are JSONB. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
