@@ -1,56 +1,50 @@
 /**
  * auto-heal.js — Daily autonomous self-healing cron.
  * Schedule: 5:00 UTC daily (before push-brief at 6:30)
- *
- * Runs diagnostic checks and auto-fixes common issues:
- * 1. Stamp orphaned history entries (quickLog/legacy)
- * 2. Detect watch rotation stagnation
- * 3. Detect garment slot stagnation
- * 4. Auto-tune scoring weights if thresholds breached
- * 5. Flag untagged garments needing BulkTagger
- * 6. Log all findings to app_config.auto_heal_log
- *
- * NO CORS headers — cron only, never browser-called.
+ * NO CORS — cron only, never browser-called.
  */
 import { createClient } from "@supabase/supabase-js";
 
-function sb() {
-  return createClient(
-    process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
-  );
-}
+export async function handler(event) {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
 
-export async function handler() {
-  const supabase = sb();
+  if (!url || !key) {
+    console.error("[auto-heal] Missing SUPABASE env vars");
+    return { statusCode: 500, body: JSON.stringify({ error: "Missing env vars" }) };
+  }
+
+  const supabase = createClient(url, key);
   const log = [];
   const fixes = [];
   const now = new Date().toISOString();
 
   try {
-    // ── 1. Stamp orphaned history entries ──────────────────────────────────
-    const { data: allHistory } = await supabase
+    // ── 1. Fetch all history ──────────────────────────────────────────────
+    const { data: allHistory, error: hErr } = await supabase
       .from("history")
       .select("id, date, watch_id, payload")
       .order("date", { ascending: false });
 
-    const orphans = (allHistory ?? []).filter(h => {
+    if (hErr) {
+      log.push({ check: "history_fetch", found: hErr.message, action: "ERROR" });
+    }
+
+    const hist = allHistory ?? [];
+
+    // ── 2. Stamp orphaned entries ─────────────────────────────────────────
+    const orphans = hist.filter(h => {
       const p = h.payload ?? {};
-      const hasGarments = p.garmentIds?.length > 0;
-      const isStamped = p.legacy || p.quickLog;
-      return !hasGarments && !isStamped;
+      return !(p.garmentIds?.length > 0) && !p.legacy && !p.quickLog;
     });
 
     if (orphans.length > 0) {
       for (const o of orphans) {
-        // If it's a today-* or dash-* ID, stamp as legacy; otherwise quickLog
         const isLegacy = o.id.startsWith("today-") || o.id.startsWith("dash-");
-        const field = isLegacy ? "legacy" : "quickLog";
+        const flag = isLegacy ? "legacy" : "quickLog";
         await supabase
           .from("history")
-          .update({
-            payload: { ...o.payload, [field]: true, payload_version: "v1" }
-          })
+          .update({ payload: { ...(o.payload ?? {}), [flag]: true, payload_version: "v1" } })
           .eq("id", o.id);
       }
       fixes.push(`stamped ${orphans.length} orphaned entries`);
@@ -59,134 +53,83 @@ export async function handler() {
       log.push({ check: "orphans", found: 0, action: "none" });
     }
 
-    // ── 2. Watch rotation stagnation (same watch >40% of last 10) ─────────
-    const recent10 = (allHistory ?? []).slice(0, 10);
+    // ── 3. Watch rotation stagnation ──────────────────────────────────────
+    const recent10 = hist.slice(0, 10);
     const watchFreq = {};
-    recent10.forEach(e => {
-      if (e.watch_id) watchFreq[e.watch_id] = (watchFreq[e.watch_id] ?? 0) + 1;
+    recent10.forEach(e => { if (e.watch_id) watchFreq[e.watch_id] = (watchFreq[e.watch_id] ?? 0) + 1; });
+    const stagnant = Object.entries(watchFreq).find(([, n]) => n / Math.max(1, recent10.length) > 0.4);
+    log.push({
+      check: "watch_stagnation",
+      found: stagnant ? `${stagnant[0]} at ${Math.round(stagnant[1] / recent10.length * 100)}%` : "healthy",
+      action: stagnant ? "flagged" : "none",
     });
-    const maxWatchPct = Math.max(0, ...Object.values(watchFreq)) / Math.max(1, recent10.length);
-    const stagnantWatch = Object.entries(watchFreq).find(([, n]) => n / recent10.length > 0.4);
 
-    if (stagnantWatch) {
-      log.push({
-        check: "watch_stagnation",
-        found: `${stagnantWatch[0]} at ${Math.round(maxWatchPct * 100)}%`,
-        action: "flagged — rotationFactor may need increase",
-      });
-    } else {
-      log.push({ check: "watch_stagnation", found: "healthy", action: "none" });
-    }
-
-    // ── 3. Garment slot stagnation (same garment >3× in 14 days) ──────────
+    // ── 4. Garment repetition ─────────────────────────────────────────────
     const cutoff14d = new Date(Date.now() - 14 * 864e5).toISOString().split("T")[0];
-    const recent14d = (allHistory ?? []).filter(h => h.date >= cutoff14d);
-    const garmentFreq = {};
-    recent14d.forEach(e => {
-      (e.payload?.garmentIds ?? []).forEach(gid => {
-        garmentFreq[gid] = (garmentFreq[gid] ?? 0) + 1;
-      });
+    const recent14d = hist.filter(h => h.date >= cutoff14d);
+    const gFreq = {};
+    recent14d.forEach(e => (e.payload?.garmentIds ?? []).forEach(gid => { gFreq[gid] = (gFreq[gid] ?? 0) + 1; }));
+    const stagnantG = Object.entries(gFreq).filter(([, n]) => n > 3);
+    log.push({
+      check: "garment_stagnation",
+      found: stagnantG.length > 0 ? stagnantG.map(([id, n]) => `${id}:${n}`).join(", ") : "healthy",
+      action: stagnantG.length > 0 ? "flagged" : "none",
     });
-    const stagnantGarments = Object.entries(garmentFreq).filter(([, n]) => n > 3);
 
-    if (stagnantGarments.length > 0) {
-      log.push({
-        check: "garment_stagnation",
-        found: stagnantGarments.map(([id, n]) => `${id}:${n}`).join(", "),
-        action: "flagged — repetitionPenalty may need increase",
-      });
-    } else {
-      log.push({ check: "garment_stagnation", found: "healthy", action: "none" });
-    }
-
-    // ── 4. Context distribution (>80% null = broken UI) ───────────────────
-    const contextCounts = {};
-    (allHistory ?? []).forEach(e => {
-      const ctx = e.payload?.context ?? "null";
-      contextCounts[ctx] = (contextCounts[ctx] ?? 0) + 1;
+    // ── 5. Context distribution ───────────────────────────────────────────
+    const ctxCounts = {};
+    hist.forEach(e => { const c = e.payload?.context ?? "null"; ctxCounts[c] = (ctxCounts[c] ?? 0) + 1; });
+    const nullPct = ((ctxCounts["null"] ?? 0) / Math.max(1, hist.length)) * 100;
+    log.push({
+      check: "context_distribution",
+      found: nullPct > 80 ? `${Math.round(nullPct)}% null` : "healthy",
+      action: nullPct > 80 ? "CRITICAL" : "none",
     });
-    const total = (allHistory ?? []).length;
-    const nullPct = ((contextCounts["null"] ?? 0) / Math.max(1, total)) * 100;
 
-    if (nullPct > 80) {
-      log.push({
-        check: "context_distribution",
-        found: `${Math.round(nullPct)}% null contexts`,
-        action: "CRITICAL — context selector UI is being skipped",
-      });
-    } else {
-      log.push({ check: "context_distribution", found: "healthy", action: "none" });
-    }
-
-    // ── 5. Untagged garments needing BulkTagger ───────────────────────────
+    // ── 6. Untagged garments ──────────────────────────────────────────────
     let untaggedCount = 0;
     try {
-      const { data: allActive } = await supabase
+      const { data: allG } = await supabase
         .from("garments")
-        .select("id, seasons, contexts, material")
-        .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
-        .not("category", "in", "(outfit-photo,watch)");
-      untaggedCount = (allActive ?? []).filter(g =>
-        !g.material || !g.seasons || g.seasons.length === 0 || !g.contexts || g.contexts.length === 0
+        .select("id, exclude_from_wardrobe, category, seasons, contexts, material");
+      untaggedCount = (allG ?? []).filter(g =>
+        !g.exclude_from_wardrobe && !["outfit-photo", "watch"].includes(g.category) &&
+        (!g.material || !g.seasons || (Array.isArray(g.seasons) && g.seasons.length === 0))
       ).length;
     } catch { /* non-fatal */ }
-    if (untaggedCount > 10) {
-      log.push({
-        check: "untagged_garments",
-        found: `${untaggedCount} garments missing season/context/material tags`,
-        action: "BulkTagger re-run needed",
-      });
-    } else {
-      log.push({ check: "untagged_garments", found: untaggedCount, action: untaggedCount > 0 ? "minor" : "none" });
-    }
+    log.push({
+      check: "untagged_garments",
+      found: untaggedCount,
+      action: untaggedCount > 10 ? "BulkTagger needed" : untaggedCount > 0 ? "minor" : "none",
+    });
 
-    // ── 6. Score distribution (all 7.0 = score not being set) ─────────────
-    const scores = (allHistory ?? [])
-      .map(e => e.payload?.score)
-      .filter(s => s != null && !isNaN(s));
-    const allSameScore = scores.length > 5 && new Set(scores.map(s => Math.round(s * 10))).size === 1;
+    // ── 7. Score distribution ─────────────────────────────────────────────
+    const scores = hist.map(e => e.payload?.score).filter(s => s != null && !isNaN(s));
+    const allSame = scores.length > 5 && new Set(scores.map(s => Math.round(s * 10))).size === 1;
+    log.push({
+      check: "score_distribution",
+      found: scores.length > 0 ? `${Math.min(...scores)}–${Math.max(...scores)}` : "no scores",
+      action: allSame ? "WARN — stuck" : "none",
+    });
 
-    if (allSameScore) {
-      log.push({
-        check: "score_distribution",
-        found: `all scores = ${scores[0]}`,
-        action: "WARN — score not being varied during logging",
-      });
-    } else {
-      log.push({
-        check: "score_distribution",
-        found: scores.length > 0 ? `${Math.min(...scores)}–${Math.max(...scores)}` : "no scores",
-        action: "none",
-      });
-    }
-
-    // ── 7. Idle garment percentage ────────────────────────────────────────
-    let activeCount = 0;
+    // ── 8. Never-worn percentage ──────────────────────────────────────────
+    let neverWornPct = 0;
     try {
-      const { data: allGarments } = await supabase
+      const { data: allG2 } = await supabase
         .from("garments")
         .select("id, exclude_from_wardrobe, category");
-      const active = (allGarments ?? []).filter(g =>
-        !g.exclude_from_wardrobe && !["outfit-photo", "watch"].includes(g.category)
-      );
-      activeCount = active.length;
+      const active = (allG2 ?? []).filter(g => !g.exclude_from_wardrobe && !["outfit-photo", "watch"].includes(g.category));
+      const worn = new Set();
+      hist.forEach(e => (e.payload?.garmentIds ?? []).forEach(id => worn.add(id)));
+      neverWornPct = active.length > 0 ? ((active.length - worn.size) / active.length) * 100 : 0;
     } catch { /* non-fatal */ }
+    log.push({
+      check: "never_worn",
+      found: `${Math.round(neverWornPct)}%`,
+      action: neverWornPct > 50 ? "rotation pressure increase needed" : "none",
+    });
 
-    const wornGarmentIds = new Set();
-    (allHistory ?? []).forEach(e => (e.payload?.garmentIds ?? []).forEach(id => wornGarmentIds.add(id)));
-    const neverWornPct = activeCount > 0 ? ((activeCount - wornGarmentIds.size) / activeCount) * 100 : 0;
-
-    if (neverWornPct > 50) {
-      log.push({
-        check: "never_worn",
-        found: `${Math.round(neverWornPct)}% of wardrobe never worn`,
-        action: "rotation engine may need neverWornRotationPressure increase",
-      });
-    } else {
-      log.push({ check: "never_worn", found: `${Math.round(neverWornPct)}%`, action: "none" });
-    }
-
-    // ── Write log to app_config ───────────────────────────────────────────
+    // ── Write log ─────────────────────────────────────────────────────────
     const healResult = {
       ranAt: now,
       checks: log.length,
@@ -196,17 +139,21 @@ export async function handler() {
       healthy: log.every(l => l.action === "none" || l.action === "stamped" || l.action === "minor"),
     };
 
-    await supabase.from("app_config").upsert({
+    const { error: upsertErr } = await supabase.from("app_config").upsert({
       key: "auto_heal_log",
       value: healResult,
       updated_at: now,
     }, { onConflict: "key" });
 
-    console.log(`[auto-heal] ${log.length} checks, ${fixes.length} fixes applied`, JSON.stringify(healResult));
+    if (upsertErr) {
+      console.error("[auto-heal] upsert error:", upsertErr.message);
+    }
+
+    console.log(`[auto-heal] ${log.length} checks, ${fixes.length} fixes`);
     return { statusCode: 200, body: JSON.stringify(healResult) };
 
   } catch (err) {
-    console.error("[auto-heal] Error:", err.message);
+    console.error("[auto-heal] Error:", err.message, err.stack);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 }
