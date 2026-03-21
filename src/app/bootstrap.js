@@ -12,6 +12,7 @@ import { useHistoryStore }  from "../stores/historyStore.js";
 import { useStrapStore }         from "../stores/strapStore.js";
 import { useRejectStore, hydrateRejectStore } from "../stores/rejectStore.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
+import { pushDebugEntry } from "../stores/debugStore.js";
 
 export function useBootstrap() {
   const [ready,  setReady]  = useState(false);
@@ -81,6 +82,12 @@ export function useBootstrap() {
           if (pct > 70) {
             console.warn(`[bootstrap] Storage at ${pct.toFixed(0)}% — garment images at risk of eviction`, { usage, quota });
             setStorageWarnPct(Math.round(pct));
+            pushDebugEntry({
+              level: "warn",
+              source: "app",
+              msg: `Storage at ${Math.round(pct)}% — garment images at risk of eviction`,
+              detail: `Usage: ${(usage / 1024 / 1024).toFixed(1)} MB / Quota: ${(quota / 1024 / 1024).toFixed(0)} MB`,
+            });
           }
         } catch { /* non-critical */ }
       }
