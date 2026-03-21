@@ -18,6 +18,7 @@ export function useBootstrap() {
   const [status, setStatus] = useState("Loading…");
   const [syncError, setSyncError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [storageWarnPct, setStorageWarnPct] = useState(null);
 
   const setWatches      = useWatchStore(s => s.setWatches);
   const setGarments     = useWardrobeStore(s => s.setGarments);
@@ -79,6 +80,7 @@ export function useBootstrap() {
           const pct = quota ? (usage / quota) * 100 : 0;
           if (pct > 70) {
             console.warn(`[bootstrap] Storage at ${pct.toFixed(0)}% — garment images at risk of eviction`, { usage, quota });
+            setStorageWarnPct(Math.round(pct));
           }
         } catch { /* non-critical */ }
       }
@@ -224,5 +226,5 @@ export function useBootstrap() {
     setRetryCount(c => c + 1);
   };
 
-  return { ready, status, syncError, retrySync };
+  return { ready, status, syncError, retrySync, storageWarnPct };
 }
