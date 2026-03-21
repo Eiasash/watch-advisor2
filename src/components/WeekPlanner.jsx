@@ -310,6 +310,7 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
   const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches[0]?.id ?? null);
   const [notes,     setNotes]     = useState("");
   const [outfitSlots, setOutfitSlots] = useState({});
+  const [slotOverrides, setSlotOverrides] = useState({});
   const [shuffleSeed, setShuffleSeed] = useState(0);
   const [context, setContext]     = useState(day?.ctx ?? "smart-casual");
   const bg     = isDark ? "#171a21" : "#fff";
@@ -322,7 +323,7 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
 
   const CONTEXTS = ["smart-casual","clinic","casual","formal","date-night","eid-celebration","family-event","riviera","shift"];
 
-  // Build outfit with shuffle support — same excluded-set mechanism as WatchDashboard
+  // Build outfit with shuffle + pin support — same pattern as WatchDashboard
   useEffect(() => {
     if (!selectedWatch || !wearable?.length) {
       setOutfitSlots({});
@@ -331,9 +332,10 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
     try {
       const shuffleExcluded = {};
       for (const slot of OUTFIT_SLOTS) shuffleExcluded[slot] = new Set();
+      const hasPins = Object.keys(slotOverrides).length > 0;
       let result = {};
       for (let round = 0; round <= shuffleSeed; round++) {
-        result = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], {}, shuffleExcluded, context);
+        result = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], hasPins ? slotOverrides : {}, shuffleExcluded, context);
         if (round < shuffleSeed) {
           for (const slot of OUTFIT_SLOTS) {
             if (result[slot]?.id) shuffleExcluded[slot].add(result[slot].id);
@@ -344,15 +346,22 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
       for (const slot of OUTFIT_SLOTS) {
         if (result[slot]) slots[slot] = result[slot];
       }
-      setOutfitSlots(slots);
+      // Merge overrides on top — engine already adapted other slots to pins
+      setOutfitSlots({ ...slots, ...slotOverrides });
     } catch (_e) {
       setOutfitSlots({});
     }
-  }, [watchId, selectedWatch, wearable, history, context, shuffleSeed]);
+  }, [watchId, selectedWatch, wearable, history, context, shuffleSeed, slotOverrides]);
 
   const handleSlotSwap = (slot, garment) => {
-    setOutfitSlots(prev => ({ ...prev, [slot]: garment }));
+    if (garment) {
+      setSlotOverrides(prev => ({ ...prev, [slot]: garment }));
+    } else {
+      setSlotOverrides(prev => { const n = { ...prev }; delete n[slot]; return n; });
+    }
   };
+
+  const hasCustomizations = Object.keys(slotOverrides).length > 0 || shuffleSeed > 0;
 
   const garmentIds = OUTFIT_SLOTS.map(s => outfitSlots[s]?.id).filter(Boolean);
 
@@ -404,7 +413,7 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 16 }}>
           {CONTEXTS.map(c => (
-            <button key={c} onClick={() => { setContext(c); setShuffleSeed(0); }}
+            <button key={c} onClick={() => { setContext(c); setShuffleSeed(0); setSlotOverrides({}); }}
               style={{
                 padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: "pointer",
                 border: `1px solid ${context === c ? "#3b82f6" : border}`,
@@ -425,7 +434,7 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
             const isSelected = watchId === w.id;
             return (
               <div key={w.id}
-                onClick={() => { setWatchId(w.id); setShuffleSeed(0); }}
+                onClick={() => { setWatchId(w.id); setShuffleSeed(0); setSlotOverrides({}); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", cursor: "pointer",
                   background: isSelected ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
@@ -442,25 +451,38 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
           })}
         </div>
 
-        {/* Outfit slots + shuffle */}
+        {/* Outfit slots + shuffle + reset */}
         {garmentIds.length > 0 && (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Outfit
               </div>
-              <button
-                onClick={() => setShuffleSeed(s => s + 1)}
-                title="Shuffle to next best outfit"
-                style={{
-                  padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                  cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-                  border: `1px solid ${shuffleSeed > 0 ? "#6366f1" : border}`,
-                  background: shuffleSeed > 0 ? "#6366f122" : "transparent",
-                  color: shuffleSeed > 0 ? "#6366f1" : muted,
-                }}>
-                🔀 {shuffleSeed > 0 ? `#${shuffleSeed + 1}` : "Shuffle"}
-              </button>
+              <div style={{ display: "flex", gap: 4 }}>
+                {hasCustomizations && (
+                  <button
+                    onClick={() => { setSlotOverrides({}); setShuffleSeed(0); }}
+                    style={{
+                      padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600,
+                      cursor: "pointer", border: `1px solid ${border}`,
+                      background: "transparent", color: muted,
+                    }}>
+                    ↺ Reset
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShuffleSeed(s => s + 1); setSlotOverrides({}); }}
+                  title="Shuffle to next best outfit"
+                  style={{
+                    padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                    border: `1px solid ${shuffleSeed > 0 ? "#6366f1" : border}`,
+                    background: shuffleSeed > 0 ? "#6366f122" : "transparent",
+                    color: shuffleSeed > 0 ? "#6366f1" : muted,
+                  }}>
+                  🔀 {shuffleSeed > 0 ? `#${shuffleSeed + 1}` : "Shuffle"}
+                </button>
+              </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 16 }}>
               {OUTFIT_SLOTS.map(slot => (
@@ -470,8 +492,16 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
                   garment={outfitSlots[slot]}
                   isDark={isDark}
                   border={border}
+                  isOverridden={!!slotOverrides[slot]}
                   candidates={slotCandidates?.[slot] ?? []}
-                  onSwap={handleSlotSwap}
+                  onSwap={(s, g) => {
+                    if (g) {
+                      handleSlotSwap(s, g);
+                    } else {
+                      // Unpin — remove override so engine re-picks
+                      setSlotOverrides(prev => { const n = { ...prev }; delete n[s]; return n; });
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -558,7 +588,7 @@ function PhotoLightbox({ src, alt, onClose }) {
 }
 
 // ── Outfit Slot Chip — tap to swap garment, long-press photo to zoom ────────
-function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates = [] }) {
+function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates = [], isOverridden = false }) {
   const [open, setOpen] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const icon = SLOT_ICONS[slot] ?? "\u2022";
@@ -572,7 +602,8 @@ function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates = []
         style={{
           display: "flex", alignItems: "center", gap: 6,
           padding: "5px 10px", borderRadius: 8,
-          border: `1px solid ${border}`,
+          border: `1px solid ${isOverridden ? "#6366f1" : border}`,
+          borderLeft: isOverridden ? "3px solid #6366f1" : `1px solid ${border}`,
           background: isDark ? "#0f131a" : "#f9fafb",
           cursor: candidates.length > 0 ? "pointer" : "default",
           minHeight: 36,

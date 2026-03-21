@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.4.0 |
+| Version | 1.5.0 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 71 |
 | Source LOC | ~8,600 |
