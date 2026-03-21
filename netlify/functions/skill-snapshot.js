@@ -41,12 +41,12 @@ export async function handler(event) {
       .from('history')
       .select('*', { count: 'exact', head: true });
 
-    // History entries missing garmentIds (health check) — excludes legacy-stamped entries
+    // History entries missing garmentIds (health check) — excludes legacy + quickLog entries
     const { data: _rawOrphans } = await supabase
       .from('history')
       .select('id, date, payload')
       .or('payload->garmentIds.is.null,payload->garmentIds.eq.[]');
-    const orphanedHistory = (_rawOrphans ?? []).filter(h => !h.payload?.legacy);
+    const orphanedHistory = (_rawOrphans ?? []).filter(h => !h.payload?.legacy && !h.payload?.quickLog);
 
     // Latest migration version
     let latestMigration = null;
