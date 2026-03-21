@@ -343,6 +343,7 @@ export default function GarmentEditor({ garment, onClose }) {
             const thumb = c.toDataURL("image/jpeg", 0.7);
             // Read fresh garment state each iteration so angles accumulate correctly
             const latest = useWardrobeStore.getState().garments.find(g => g.id === garment.id) ?? garment;
+            const angleIndex = (latest.photoAngles ?? []).length;
             const newAngles = (latest.photoAngles ?? []).concat([thumb]);
             addAngle(garment.id, thumb);
             const upd = useWardrobeStore.getState().garments.map(g =>
@@ -351,14 +352,23 @@ export default function GarmentEditor({ garment, onClose }) {
             setCachedState({ watches, garments: upd, history }).catch(() => {});
             setAngleIdx(newAngles.length); // jump to latest added
             try {
-              const url = await uploadAngle(garment.id, (latest.photoAngles ?? []).length, thumb);
+              const url = await uploadAngle(garment.id, angleIndex, thumb);
               if (url) {
-                pushGarment({
-                  ...latest,
-                  photoAngles: [...(latest.photoAngles ?? []).filter(u => !u.startsWith("data:")), url],
-                }).catch(() => {});
+                // Read FRESH state after async upload — garment may have changed
+                const fresh = useWardrobeStore.getState().garments.find(g => g.id === garment.id);
+                if (fresh) {
+                  // Replace the specific base64 entry with the Storage URL
+                  const updatedAngles = (fresh.photoAngles ?? []).map(a => a === thumb ? url : a);
+                  const { updateGarment: storeUpdate } = useWardrobeStore.getState();
+                  storeUpdate(garment.id, { photoAngles: updatedAngles });
+                  // Persist to IDB
+                  const allGarments = useWardrobeStore.getState().garments;
+                  setCachedState({ watches, garments: allGarments, history }).catch(() => {});
+                  // Push to cloud with URLs intact (base64 filtered by pushGarment)
+                  pushGarment({ ...fresh, photoAngles: updatedAngles }).catch(() => {});
+                }
               }
-            } catch { /* local only */ }
+            } catch { /* local only — base64 stays in IDB until next upload attempt */ }
             resolve();
           };
           img.src = reader.result;

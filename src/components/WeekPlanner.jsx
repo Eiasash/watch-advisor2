@@ -310,6 +310,8 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
   const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches[0]?.id ?? null);
   const [notes,     setNotes]     = useState("");
   const [outfitSlots, setOutfitSlots] = useState({});
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+  const [context, setContext]     = useState(day?.ctx ?? "smart-casual");
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
@@ -318,23 +320,35 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
 
   const selectedWatch = watches.find(w => w.id === watchId);
 
-  // Build outfit whenever watch changes
+  const CONTEXTS = ["smart-casual","clinic","casual","formal","date-night","eid-celebration","family-event","riviera","shift"];
+
+  // Build outfit with shuffle support — same excluded-set mechanism as WatchDashboard
   useEffect(() => {
     if (!selectedWatch || !wearable?.length) {
       setOutfitSlots({});
       return;
     }
     try {
-      const outfit = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], {}, {}, day?.ctx ?? "smart-casual");
+      const shuffleExcluded = {};
+      for (const slot of OUTFIT_SLOTS) shuffleExcluded[slot] = new Set();
+      let result = {};
+      for (let round = 0; round <= shuffleSeed; round++) {
+        result = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], {}, shuffleExcluded, context);
+        if (round < shuffleSeed) {
+          for (const slot of OUTFIT_SLOTS) {
+            if (result[slot]?.id) shuffleExcluded[slot].add(result[slot].id);
+          }
+        }
+      }
       const slots = {};
       for (const slot of OUTFIT_SLOTS) {
-        if (outfit[slot]) slots[slot] = outfit[slot];
+        if (result[slot]) slots[slot] = result[slot];
       }
       setOutfitSlots(slots);
     } catch (_e) {
       setOutfitSlots({});
     }
-  }, [watchId, selectedWatch, wearable, history, day?.ctx]);
+  }, [watchId, selectedWatch, wearable, history, context, shuffleSeed]);
 
   const handleSlotSwap = (slot, garment) => {
     setOutfitSlots(prev => ({ ...prev, [slot]: garment }));
@@ -384,16 +398,34 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
           ))}
         </div>
 
+        {/* Context */}
+        <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+          Context
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 16 }}>
+          {CONTEXTS.map(c => (
+            <button key={c} onClick={() => { setContext(c); setShuffleSeed(0); }}
+              style={{
+                padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: "pointer",
+                border: `1px solid ${context === c ? "#3b82f6" : border}`,
+                background: context === c ? "#3b82f622" : "transparent",
+                color: context === c ? "#3b82f6" : muted,
+              }}>
+              {c}
+            </button>
+          ))}
+        </div>
+
         {/* Watch picker */}
         <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
           Watch
         </div>
-        <div style={{ border: `1px solid ${border}`, borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
+        <div style={{ border: `1px solid ${border}`, borderRadius: 10, overflow: "hidden", maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
           {watches.map(w => {
             const isSelected = watchId === w.id;
             return (
               <div key={w.id}
-                onClick={() => setWatchId(w.id)}
+                onClick={() => { setWatchId(w.id); setShuffleSeed(0); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", cursor: "pointer",
                   background: isSelected ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
@@ -410,11 +442,25 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
           })}
         </div>
 
-        {/* Outfit slots — auto-generated from buildOutfit, swappable */}
+        {/* Outfit slots + shuffle */}
         {garmentIds.length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-              Outfit
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Outfit
+              </div>
+              <button
+                onClick={() => setShuffleSeed(s => s + 1)}
+                title="Shuffle to next best outfit"
+                style={{
+                  padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                  border: `1px solid ${shuffleSeed > 0 ? "#6366f1" : border}`,
+                  background: shuffleSeed > 0 ? "#6366f122" : "transparent",
+                  color: shuffleSeed > 0 ? "#6366f1" : muted,
+                }}>
+                🔀 {shuffleSeed > 0 ? `#${shuffleSeed + 1}` : "Shuffle"}
+              </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 16 }}>
               {OUTFIT_SLOTS.map(slot => (
@@ -457,7 +503,7 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
             Cancel
           </button>
           <button
-            onClick={() => onConfirm({ timeSlot, watchId, notes: notes.trim() || null, garmentIds })}
+            onClick={() => onConfirm({ timeSlot, watchId, notes: notes.trim() || null, garmentIds, context })}
             disabled={!watchId}
             style={{
               flex: 2, padding: "11px 0", borderRadius: 10,
@@ -1387,13 +1433,13 @@ export default function WeekPlanner() {
           wearable={wearable}
           slotCandidates={slotCandidates}
           onCancel={() => setPendingAddOutfit(null)}
-          onConfirm={({ timeSlot, watchId, notes, garmentIds }) => {
+          onConfirm={({ timeSlot, watchId, notes, garmentIds, context }) => {
             addEntry({
               id: `rotation-${pendingAddOutfit.date}-${timeSlot}-${Date.now()}`,
               date: pendingAddOutfit.date,
               watchId,
               garmentIds: garmentIds ?? [],
-              context: pendingAddOutfit.ctx ?? "smart-casual",
+              context: context ?? pendingAddOutfit.ctx ?? "smart-casual",
               timeSlot,
               notes: notes ?? null,
               loggedAt: new Date().toISOString(),
