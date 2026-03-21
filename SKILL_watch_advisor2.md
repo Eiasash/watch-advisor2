@@ -261,7 +261,7 @@ VALUES (
 | Dead code removed | VersionChip, detectDominantColorFromDataURL — deleted March 21. |
 | Storage quota | Boot warns >70% via toast + debugStore. |
 | Worker | USE_WORKER = false. Don't re-enable. |
-| auto-heal.js | Cron at 5am UTC. No CORS. Logs to app_config.auto_heal_log. |
+| auto-heal.js | Cron at 5am UTC. No CORS. Cannot be invoked via HTTP — Netlify rejects it. Trigger via dashboard. |
 
 ---
 
@@ -285,9 +285,9 @@ timeout 120 node node_modules/.bin/vitest run
 ```
 
 ### Manual auto-heal trigger
-```
-curl -X POST https://watch-advisor2.netlify.app/.netlify/functions/auto-heal
-```
+Netlify scheduled functions CANNOT be invoked via HTTP (returns Internal Error).
+Trigger via: Netlify dashboard → Functions → auto-heal → Trigger button.
+Or wait for next cron run at 5:00 UTC daily.
 
 ### DebugConsole
 → Audit tab → 🪲 App Health & Debug (collapsible).
