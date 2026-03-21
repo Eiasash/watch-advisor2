@@ -41,11 +41,12 @@ export async function handler(event) {
       .from('history')
       .select('*', { count: 'exact', head: true });
 
-    // History entries missing garmentIds (health check)
-    const { data: orphanedHistory } = await supabase
+    // History entries missing garmentIds (health check) — excludes legacy-stamped entries
+    const { data: _rawOrphans } = await supabase
       .from('history')
-      .select('id, date')
+      .select('id, date, payload')
       .or('payload->garmentIds.is.null,payload->garmentIds.eq.[]');
+    const orphanedHistory = (_rawOrphans ?? []).filter(h => !h.payload?.legacy);
 
     // Latest migration version
     let latestMigration = null;
@@ -74,7 +75,12 @@ export async function handler(event) {
         .select('value')
         .eq('key', 'claude_model')
         .single();
-      activeModel = modelRow?.value ? JSON.parse(modelRow.value) : null;
+      const raw = modelRow?.value;
+      if (typeof raw === 'string') {
+        try { activeModel = JSON.parse(raw); } catch { activeModel = raw; }
+      } else {
+        activeModel = raw ?? null;
+      }
     } catch { /* non-fatal */ }
 
     // Monthly token usage from app_config

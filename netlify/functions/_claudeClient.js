@@ -20,8 +20,17 @@ export async function getConfiguredModel() {
       .select('value')
       .eq('key', 'claude_model')
       .single();
-    const model = data?.value ? JSON.parse(data.value) : DEFAULT_MODEL;
-    _cachedModel = model;
+    const raw = data?.value;
+    // Supabase auto-parses JSONB — value is usually already a JS string.
+    // But some clients/tests pass JSON-encoded strings like '"model-name"'.
+    // Try JSON.parse first (handles quoted strings), fall back to raw string.
+    let model = DEFAULT_MODEL;
+    if (typeof raw === "string") {
+      try { model = JSON.parse(raw); } catch { model = raw; }
+    } else if (raw) {
+      model = String(raw);
+    }
+    _cachedModel = model || DEFAULT_MODEL;
     return model;
   } catch {
     return DEFAULT_MODEL;
