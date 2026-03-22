@@ -111,6 +111,11 @@ const PILOT_FORMALITY_FLOOR = {
 export function scoreWatchForDay(watch, dayProfile, history = []) {
   if (watch.retired) return 0;
 
+  // Shift context: only watches explicitly flagged as shift-appropriate score.
+  // Prevents precious/dress pieces (Snowflake, Pasha, Reverso, etc.) from
+  // appearing on on-call shift days. shiftWatch set on: BB41, Speedmaster, Hanhart.
+  if (dayProfile === "shift" && !watch.shiftWatch) return 0;
+
   const targetFormality = TARGET_FORMALITY[dayProfile] ?? 6;
   const suitableStyles = STYLE_SUITABILITY[dayProfile] ?? [];
 

@@ -412,6 +412,10 @@ export default function WatchDashboard() {
   const todayHasEntries = history.some(e => e.date === todayIso);
   if (todayHasEntries) return null;
 
+  // When on-call, OnCallPlanner (rendered in TodayPanel) handles outfit generation.
+  // Showing a second outfit here would be confusing duplicate advice.
+  if (todayContext === "shift") return null;
+
   return (
     <div style={{
       padding: "18px 20px", borderRadius: 18, marginBottom: 20,

@@ -170,12 +170,19 @@ describe("scoreWatchForDay — edge cases", () => {
   });
 
   it("replica penalty applied in shift context", () => {
-    const genuine = { id: "same", formality: 7, style: "sport-elegant", replica: false };
-    const replica = { id: "same", formality: 7, style: "sport-elegant", replica: true };
+    const genuine = { id: "same", formality: 7, style: "sport-elegant", replica: false, shiftWatch: true };
+    const replica = { id: "same", formality: 7, style: "sport-elegant", replica: true, shiftWatch: true };
     const gScore = scoreWatchForDay(genuine, "shift", []);
     const rScore = scoreWatchForDay(replica, "shift", []);
     // v2: penalty is (0.5 * cooldown) since penalty is pre-cooldown; expect ~0.575
     expect(gScore - rScore).toBeCloseTo(0.575, 1);
+  });
+
+  it("shift context hard-gates watches without shiftWatch flag", () => {
+    const withFlag    = { id: "w1", formality: 7, style: "sport", shiftWatch: true };
+    const withoutFlag = { id: "w2", formality: 7, style: "sport" };
+    expect(scoreWatchForDay(withFlag, "shift", [])).toBeGreaterThan(0);
+    expect(scoreWatchForDay(withoutFlag, "shift", [])).toBe(0);
   });
 
   it("NO replica penalty in casual context", () => {

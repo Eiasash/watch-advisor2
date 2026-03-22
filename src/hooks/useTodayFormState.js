@@ -18,11 +18,18 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { useWardrobeStore } from "../stores/wardrobeStore.js";
 
 export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
   const [selected,   setSelected]   = useState(() => new Set(todayEntry?.garmentIds ?? []));
   const [watchId,    setWatchId]    = useState(() => defaultWatchId);
-  const [context,    setContext]    = useState(() => todayEntry?.context ?? "smart-casual");
+  const [context,    setContext]    = useState(() => {
+    if (todayEntry?.context) return todayEntry.context;
+    // Auto-detect on-call if today is in onCallDates
+    const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return onCallDates.includes(todayIso) ? "shift" : "smart-casual";
+  });
   const [notes,      setNotes]      = useState(() => todayEntry?.notes ?? "");
   const [extraImgs,  setExtraImgs]  = useState(() =>
     todayEntry?.outfitPhotos ?? (todayEntry?.outfitPhoto ? [todayEntry.outfitPhoto] : [])

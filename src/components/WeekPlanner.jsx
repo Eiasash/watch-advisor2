@@ -942,7 +942,12 @@ export default function WeekPlanner() {
 
       // Enrich watch with active strap for this day (shoe-strap coordination)
       const dayWatchId = watchOverrides[day.date] ?? day.watch?.id;
-      const dayStrapId = strapOverrides[day.date]
+      // strapOverrides may hold a strap from a PREVIOUS watch if the watch was
+      // overridden after the strap was tapped. Scope to current watch only.
+      const rawStrapOverride = strapOverrides[day.date];
+      const scopedStrapOverride = (rawStrapOverride && straps[rawStrapOverride]?.watchId === dayWatchId)
+        ? rawStrapOverride : null;
+      const dayStrapId = scopedStrapOverride
         ?? (dayWatchId && activeStrap[dayWatchId]) ?? null;
       const dayStrapObj = dayStrapId ? straps[dayStrapId] : null;
       let enrichedWatch = day.watch;
@@ -1234,9 +1239,14 @@ export default function WeekPlanner() {
                 if (!dayWatchId) return null;
                 const dayStraps = Object.values(straps).filter(s => s.watchId === dayWatchId);
                 if (dayStraps.length <= 1) return null;
-                const activeStrapId = strapOverrides[day.date]
-                  ?? Object.values(straps).find(s => s.watchId === dayWatchId && activeStrap[dayWatchId] === s.id)?.id
-                  ?? dayStraps[0]?.id;
+                const activeStrapId = (() => {
+                  // strapOverrides may hold a strap from a PREVIOUS watch if the watch
+                  // was overridden after the strap was tapped. Scope it to the current watch.
+                  const overrideId = strapOverrides[day.date];
+                  if (overrideId && straps[overrideId]?.watchId === dayWatchId) return overrideId;
+                  return Object.values(straps).find(s => s.watchId === dayWatchId && activeStrap[dayWatchId] === s.id)?.id
+                    ?? dayStraps[0]?.id;
+                })();
                 return (
                   <div style={{ marginTop: 8 }}>
                     <div style={{ fontSize: 10, color: sub, fontWeight: 600, marginBottom: 5 }}>STRAP</div>

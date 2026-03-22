@@ -172,14 +172,10 @@ export default function OnCallPlanner({ isDark: propDark }) {
   );
 
   // Pick best genuine watch for shift using the same scoring engine as the rotation picker.
-  // Excludes style:"dress" watches (Reverso, etc.) — too fragile and formal for a 24hr shift.
+  // Only shift-flagged watches are candidates — Speedmaster, BB41, Hanhart.
+  // shiftWatch flag in watchSeed.js is the single source of truth.
   const shiftWatch = useMemo(() => {
-    const candidates = watches.filter(w =>
-      !w.retired &&
-      w.genuine !== false &&
-      w.style !== "dress" &&        // dress watches inappropriate for shift
-      (w.formality ?? 5) >= 6
-    );
+    const candidates = watches.filter(w => !w.retired && w.shiftWatch);
     if (!candidates.length) return watches.find(w => w.genuine !== false && !w.retired) ?? watches.find(w => !w.retired) ?? null;
     const scored = candidates.map(w => ({
       watch: w,
