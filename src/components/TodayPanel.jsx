@@ -70,7 +70,8 @@ function daysSinceWorn(watchId, history) {
 /** Get top AI-recommended watches for today's context with scores */
 function getWatchRecommendations(watches, history, context) {
   if (!watches.length) return [];
-  const scored = watches.map(w => ({
+  const active = watches.filter(w => !w.retired);
+  const scored = active.map(w => ({
     watch: w,
     score: scoreWatchForDay(w, context, history),
     daysSince: daysSinceWorn(w.id, history),
@@ -165,7 +166,7 @@ export default function TodayPanel() {
   const defaultWatchId = useMemo(() => {
     if (todayEntry?.watchId) return todayEntry.watchId;
     const recs = getWatchRecommendations(watches, entries, "smart-casual");
-    return recs[0]?.watch?.id ?? watches[0]?.id ?? null;
+    return recs[0]?.watch?.id ?? watches.find(w => !w.retired)?.id ?? null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Form state — encapsulated in hook

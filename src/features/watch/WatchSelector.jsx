@@ -1,13 +1,16 @@
 import React from "react";
 
 export default function WatchSelector({ watches, activeWatch, onChange, isDark = false }) {
+  // Filter retired (traded) watches from the selection dropdown.
+  // Retired watches remain in the store for history display lookups.
+  const selectable = watches.filter(w => !w.retired);
   return (
     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
       <label style={{ fontSize:12, fontWeight:600, color: isDark ? "#8b93a7" : "#6b7280", whiteSpace:"nowrap" }}>Watch</label>
       <select
         value={activeWatch?.id ?? ""}
         onChange={e => {
-          const watch = watches.find(w => w.id === e.target.value);
+          const watch = selectable.find(w => w.id === e.target.value);
           if (watch) onChange(watch);
         }}
         style={{
@@ -19,7 +22,7 @@ export default function WatchSelector({ watches, activeWatch, onChange, isDark =
           maxWidth:180,
         }}
       >
-        {watches.map(w => (
+        {selectable.map(w => (
           <option key={w.id} value={w.id}>
             {w.model} — {w.dualDial ? `${w.dualDial.sideA} / ${w.dualDial.sideB}` : w.dial}
           </option>

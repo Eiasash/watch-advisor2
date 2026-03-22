@@ -300,7 +300,7 @@ export default function WatchDashboard() {
     return () => clearTimeout(t);
   }, []);
 
-  const selectedWatch = activeWatch ?? watches[0] ?? null;
+  const selectedWatch = activeWatch ?? watches.find(w => !w.retired) ?? null;
 
   // Clear manual overrides when watch changes
   useEffect(() => {

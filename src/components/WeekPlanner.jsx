@@ -307,7 +307,7 @@ const TIME_SLOTS = [
 
 function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slotCandidates, onConfirm, onCancel }) {
   const [timeSlot,  setTimeSlot]  = useState("evening");
-  const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches[0]?.id ?? null);
+  const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches.find(w => !w.retired)?.id ?? null);
   const [notes,     setNotes]     = useState("");
   const [outfitSlots, setOutfitSlots] = useState({});
   const [slotOverrides, setSlotOverrides] = useState({});
