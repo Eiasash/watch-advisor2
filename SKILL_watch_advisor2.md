@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.5.5 |
+| Version | 1.5.6 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 70 |
 | Source LOC | ~8,600 |
@@ -263,13 +263,14 @@ VALUES (
 | Worker | USE_WORKER = false. Don't re-enable. |
 | auto-heal.js | Cron at 5am UTC. No CORS. Cannot be invoked via HTTP — Netlify rejects it. Trigger via dashboard. |
 | Retired watches | 3 retired entries in watchSeed.js (SBGW267, Sinn 613, Rolex Date 15203). Filtered from all UI selectors, rotation engine, recommendations, neglectedGenuine(). Kept in store for history display. |
+| SCORE_CEILING | `confidence.js` ceiling = 30 (additive engine). Was 0.60 (multiplicative, broken). Never lower without recalibrating labels. |
+| AddOutfitModal weather | Must receive `forecast` prop from WeekPlanner parent. Was hardcoded 22°C (no jackets/sweaters). |
 
 ---
 
 ## §8a TODO (not yet implemented)
 
-1. **BulkTagger shirts** — 16/20 shirts idle due to missing season/context/material tags. Run BulkTagger → shirt category in browser.
-2. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check flagged in DB but need physical tailor visit. Block from clinic/formal until cleared.
+1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check flagged in DB but need physical tailor visit. Block from clinic/formal until cleared.
 
 ---
 
