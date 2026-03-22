@@ -305,7 +305,7 @@ const TIME_SLOTS = [
   { key: "night",     label: "Night",     emoji: "🌙" },
 ];
 
-function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slotCandidates, onConfirm, onCancel }) {
+function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wearable, slotCandidates, onConfirm, onCancel }) {
   const [timeSlot,  setTimeSlot]  = useState("evening");
   const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches.find(w => !w.retired)?.id ?? null);
   const [notes,     setNotes]     = useState("");
@@ -324,6 +324,11 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
   const CONTEXTS = ["smart-casual","clinic","casual","formal","date-night","eid-celebration","family-event","riviera","shift"];
 
   // Build outfit with shuffle + pin support — same pattern as WatchDashboard
+  const dayWeather = useMemo(() => {
+    const dayForecast = forecast?.find(f => f.date === day?.date);
+    return dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
+  }, [forecast, day?.date]);
+
   useEffect(() => {
     if (!selectedWatch || !wearable?.length) {
       setOutfitSlots({});
@@ -335,7 +340,7 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
       const hasPins = Object.keys(slotOverrides).length > 0;
       let result = {};
       for (let round = 0; round <= shuffleSeed; round++) {
-        result = buildOutfit(selectedWatch, wearable, { tempC: 22 }, history ?? [], [], hasPins ? slotOverrides : {}, shuffleExcluded, context);
+        result = buildOutfit(selectedWatch, wearable, dayWeather, history ?? [], [], hasPins ? slotOverrides : {}, shuffleExcluded, context);
         if (round < shuffleSeed) {
           for (const slot of OUTFIT_SLOTS) {
             if (result[slot]?.id) shuffleExcluded[slot].add(result[slot].id);
@@ -351,7 +356,7 @@ function AddOutfitModal({ isDark, watches, garments, day, history, wearable, slo
     } catch (_e) {
       setOutfitSlots({});
     }
-  }, [watchId, selectedWatch, wearable, history, context, shuffleSeed, slotOverrides]);
+  }, [watchId, selectedWatch, wearable, history, context, shuffleSeed, slotOverrides, dayWeather]);
 
   const handleSlotSwap = (slot, garment) => {
     if (garment) {
@@ -1460,6 +1465,7 @@ export default function WeekPlanner() {
           watches={watches}
           garments={garments}
           day={pendingAddOutfit}
+          forecast={forecast}
           history={history}
           wearable={wearable}
           slotCandidates={slotCandidates}

@@ -2,8 +2,8 @@
  * Outfit confidence scoring.
  *
  * Converts a raw outfit score into a 0–1 confidence value and a human label.
- * Score scale is open-ended (multiplicative engine produces ~0.01–0.5 typical range),
- * so we normalise against a known ceiling rather than assuming a fixed max.
+ * The additive engine produces combo scores = sum of 3 garment scores + coherence
+ * bonuses, multiplied by pair-harmony. Typical range: 5–33.
  *
  * Labels:
  *   "strong"    ≥ 0.75  — engine is very confident, wear without second-guessing
@@ -12,10 +12,17 @@
  *   "weak"      < 0.35  — engine is guessing; consider changing watch or context
  */
 
-// Empirical ceiling for the multiplicative formula with sharpen(1.35).
-// cm=1.0, fm=1.0, wc=1.0, cf=1.0, wl=1.0 → base = 1.0 → sharpen → 1.0 → prefMult ~1.15
-// In practice ~0.55 is an excellent real-world outfit. Ceiling set at 0.60 for normalisation.
-const SCORE_CEILING = 0.60;
+// Additive engine ceiling (March 2026 recalibration).
+//
+// Per-garment max: (1.0×2.5)+(1.0×3)+(1.0×3)+(1.0×1)+(1.0×1.5) = 11
+// 3 garments × 11 = 33, harmony ~1.0, coherence ~+0.3 → ~33.3 theoretical max.
+// Typical "decent" outfit: 3× ~6.0 = 18, harmony 0.9 → ~16.4.
+// Ceiling set at 30 so: perfect → 1.0 "strong", decent → 0.55 "good",
+// mixed → 0.40 "moderate", bad → 0.17 "weak".
+//
+// Previously was 0.60 (calibrated for an old multiplicative engine that no longer
+// exists), causing every real outfit to score 1.0 "strong" regardless of quality.
+const SCORE_CEILING = 30;
 
 /**
  * @param {number} score - raw scoreGarment-scale outfit score (sum of slot scores)
