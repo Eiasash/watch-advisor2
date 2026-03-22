@@ -1,44 +1,33 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-03-22
+Generated: 2026-03-22 (full session)
 
 ## Audit Summary
-- **Engine integrity**: All 11 checks PASS
-- **Supabase**: 75 active garments, 0 exact dupes, 0 orphans, app_config healthy
+- **Engine integrity**: All checks PASS (11 static + 6 Supabase + snapshot)
+- **Supabase**: 75 active garments, 0 dupes, 0 orphans, 75/75 fully tagged
 - **Tests**: All 2084+ passing (113 files)
-- **Snapshot**: All health "ok", autoHeal healthy (ran 05:01 UTC today)
+- **Snapshot**: All health "ok", autoHeal healthy
 - **Crons**: 3/3 scheduled, weekly GitHub Action present
 - **Build**: 571 kB (167 kB gzip)
 - **Token usage**: $1.92 for March 2026
 
-## Fixes Applied This Session
-1. **Retired watch UI leak** — SBGW267, Sinn 613, Rolex Date 15203 appeared in WatchSelector dropdown, TodayPanel recommendations, WatchDashboard default, WeekPlanner modal, OnCallPlanner candidates, and neglectedGenuine(). Fixed in 6 files.
+## All Fixes Shipped This Session
 
-## Findings (Not Auto-Fixed)
+### v1.5.5
+1. **Retired watch UI leak** — SBGW267, Sinn 613, Rolex Date 15203 appeared in 6 UI paths (WatchSelector, WatchDashboard, TodayPanel, WeekPlanner, OnCallPlanner, neglectedGenuine). All filtered with `!w.retired`.
 
-### Watch Rotation
-- Tudor BB41 worn 4/10 recent entries (40%) — exactly at stagnation threshold
-- Laureato worn 2/10, Speedmaster/Snowflake/Pasha/Laco 1 each
-- **Action**: Monitor. If BB41 hits 5/10 next audit, auto-heal will flag and rotationFactor may need bump to 0.45
+### v1.5.6
+2. **CRITICAL: Confidence SCORE_CEILING** — Was 0.60 (multiplicative era), every outfit scored "strong". Fixed to 30 (additive engine). Now: strong >=24, good >=16.5, moderate >=10.5, weak <10.5.
+3. **AddOutfitModal weather hardcoded** — Was {tempC: 22}, no jackets/sweaters in modal. Now threads forecast prop from WeekPlanner, resolves per-day.
+4. **explainSeasonContext timezone** — Used raw `new Date().getMonth()` instead of Jerusalem timezone. Now uses `Asia/Jerusalem` matching seasonContextFactor.js.
+5. **Shuffle fake history missing garmentIds** — `repetitionPenalty` (-0.28) never fired on shuffled-away picks. Added `.garmentIds` to all 3 shuffle paths.
+6. **On-call UX duplicate** — WatchDashboard + OnCallPlanner both generated shift outfits. WatchDashboard now returns null when todayContext="shift".
+7. **On-call auto-detect** — `useTodayFormState` now checks onCallDates for today, auto-defaults to "shift" context.
+8. **Test fix** — calendarWatchRotationEdge "replica penalty in shift" predated shiftWatch gate. Added `shiftWatch:true` to fixtures + new shiftWatch gate test.
 
-### Garment Utilization
-- **61% of wearable garments never worn** (44/72) — high but expected with only 25 history entries
-- **16/20 shirts idle** — most missing season/context/material tags, invisible to scoring engine
-- 3 garments worn 4x in 14 days (borderline stagnation, threshold is >5)
-- **Action**: Run BulkTagger on shirt category in browser to unblock scoring. This is the single highest-impact action available.
+### Data fixes
+9. **Grey Melange Kiral trousers** — missing `material` tag. Set to `cotton-blend`. 75/75 now fully tagged.
 
-### Fuzzy Duplicates (Same Color + Category — Not Bugs)
-- 4x light blue shirts — legitimate (button, dress, micro-dot, stripe)
-- 3x cream sweaters — legitimate (cable knit Kiral, plain, ribbed zip)
-- 3x brown belts — legitimate (Blundstone, Italian, Sarar)
-- 3x black sweaters — legitimate (cable knit Gant, hoodie, zip)
-- No action needed — all are distinct garments
-
-### Auto-Heal Health
-- 1 untagged garment flagged (minor)
-- Never-worn at 63% — auto-heal correctly notes sparse data, no action triggered
-- All other checks: healthy
-
-## Scoring Weights (Verified — No Changes)
+## Scoring Weights (Verified — No Changes Needed)
 | Weight | Value | Status |
 |--------|-------|--------|
 | rotationFactor | 0.40 | Correct |
@@ -47,10 +36,10 @@ Generated: 2026-03-22
 | neverWornRotationPressure | 0.70 | Correct |
 | warm/cool coherence | +0.20 | Correct |
 | diversityFactor | -0.12 | Correct |
+| SCORE_CEILING | 30 | **FIXED** (was 0.60) |
 
-## Proposed Next Session (Ranked by Impact)
-1. **BulkTagger re-run on shirts** — 16/20 shirts idle. #1 bottleneck for outfit diversity. Open app -> BulkTagger -> shirt category.
-2. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check DB-flagged. Physical tailor visit needed.
-3. **Pasha navy alligator strap** — pending DayDayWatchband delivery. Move from PENDING_STRAPS to pasha.straps[] when arrived.
-4. **Tudor canvas straps** — navy + olive pending. Move to blackbay.straps[] when delivered.
-5. **Scoring weight review** — if BB41 stagnation persists after 50+ entries, consider rotationFactor 0.40 -> 0.45.
+## Remaining TODO
+1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check DB-flagged. Physical tailor visit needed.
+2. **Pasha navy alligator strap** — pending DayDayWatchband delivery. Move from PENDING_STRAPS to pasha.straps[] when arrived.
+3. **Tudor canvas straps** — navy + olive pending. Move to blackbay.straps[] when delivered.
+4. **Scoring weight review** — if BB41 stagnation persists after 50+ entries, consider rotationFactor 0.40 -> 0.45.
