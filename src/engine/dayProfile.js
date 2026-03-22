@@ -109,6 +109,8 @@ const PILOT_FORMALITY_FLOOR = {
  * Adds daily jitter to break ties so the same watch doesn't always win.
  */
 export function scoreWatchForDay(watch, dayProfile, history = []) {
+  if (watch.retired) return 0;
+
   const targetFormality = TARGET_FORMALITY[dayProfile] ?? 6;
   const suitableStyles = STYLE_SUITABILITY[dayProfile] ?? [];
 
