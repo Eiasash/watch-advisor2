@@ -134,9 +134,13 @@ export function explainSeasonContext(signals = {}) {
   const { shirtSeasons = [], shirtContexts = [], outfitContext } = signals;
 
   if (shirtSeasons.length > 0 && !shirtSeasons.includes("all-season") && !shirtSeasons.includes("all")) {
-    const season = new Date().getMonth();
+    // Use Jerusalem timezone — must match seasonContextFactor.js currentSeason()
+    const month = parseInt(
+      new Date().toLocaleDateString("en-US", { month: "numeric", timeZone: "Asia/Jerusalem" }),
+      10
+    ) - 1;
     const cur = ["winter","winter","spring","spring","spring","summer",
-                 "summer","summer","autumn","autumn","autumn","winter"][season];
+                 "summer","summer","autumn","autumn","autumn","winter"][month];
     if (shirtSeasons.includes(cur)) {
       lines.push(`Seasonal fit: shirt tagged for ${cur} — right pick for this time of year.`);
     } else {

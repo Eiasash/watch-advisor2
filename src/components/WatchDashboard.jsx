@@ -371,12 +371,17 @@ export default function WatchDashboard() {
       result = buildOutfit(enrichedWatch, wearable, weatherObj, iterHistory, [], hasPins ? slotOverrides : {}, shuffleExcluded, todayContext);
       if (round < shuffleSeed) {
         const combined = { outfit: {} };
+        const allIds = [];
         for (const slot of ["shirt","sweater","pants","shoes","jacket"]) {
           if (result[slot]?.id) {
             combined.outfit[slot] = result[slot].id;
+            allIds.push(result[slot].id);
             shuffleExcluded[slot].add(result[slot].id);
           }
         }
+        // garmentIds needed so repetitionPenalty (contextMemory.js) also fires
+        // on fake shuffle entries — not just diversityBonus which reads .outfit
+        combined.garmentIds = allIds;
         for (let i = 0; i < 5; i++) iterHistory.push(combined);
       }
     }

@@ -339,12 +339,21 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
       for (const slot of OUTFIT_SLOTS) shuffleExcluded[slot] = new Set();
       const hasPins = Object.keys(slotOverrides).length > 0;
       let result = {};
+      let iterHistory = [...(history ?? [])];
       for (let round = 0; round <= shuffleSeed; round++) {
-        result = buildOutfit(selectedWatch, wearable, dayWeather, history ?? [], [], hasPins ? slotOverrides : {}, shuffleExcluded, context);
+        result = buildOutfit(selectedWatch, wearable, dayWeather, iterHistory, [], hasPins ? slotOverrides : {}, shuffleExcluded, context);
         if (round < shuffleSeed) {
+          const combined = { outfit: {} };
+          const allIds = [];
           for (const slot of OUTFIT_SLOTS) {
-            if (result[slot]?.id) shuffleExcluded[slot].add(result[slot].id);
+            if (result[slot]?.id) {
+              combined.outfit[slot] = result[slot].id;
+              allIds.push(result[slot].id);
+              shuffleExcluded[slot].add(result[slot].id);
+            }
           }
+          combined.garmentIds = allIds;
+          for (let i = 0; i < 5; i++) iterHistory.push(combined);
         }
       }
       const slots = {};
@@ -991,13 +1000,17 @@ export default function WeekPlanner() {
           // outside the window — only jacket (last slot) would get penalized.
           // Combined entries ensure all slots appear in every history entry.
           const combined = { outfit: {} };
+          const allIds = [];
           for (const slot of OUTFIT_SLOTS) {
             if (outfit[slot]?.id) {
               combined.outfit[slot] = outfit[slot].id;
+              allIds.push(outfit[slot].id);
               // Also permanently exclude this pick from future shuffle rounds
               shuffleExcluded[slot].add(outfit[slot].id);
             }
           }
+          // garmentIds needed so repetitionPenalty (contextMemory.js) also fires
+          combined.garmentIds = allIds;
           for (let i = 0; i < 5; i++) iterHistory.push(combined);
         }
       }
