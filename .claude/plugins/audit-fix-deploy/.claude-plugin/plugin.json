@@ -1,0 +1,11 @@
+{
+  "name": "audit-fix-deploy",
+  "version": "1.0.0",
+  "description": "Full audit → fix → improve → skill update cycle for watch-advisor2",
+  "skills": ["skills/audit-fix-deploy/SKILL.md"],
+  "commands": ["commands/audit.md"],
+  "references": [
+    "references/backlog.md",
+    "references/hard-constraints.md"
+  ]
+}
