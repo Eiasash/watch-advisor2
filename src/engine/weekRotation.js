@@ -15,7 +15,8 @@ const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 export function genWeekRotation(watches, history = [], weekCtx = [], onCallDates = []) {
   if (!watches.length) return [];
 
-  const active = watches.filter(w => w.status === "active" || !w.status);
+  const activeWatches = watches.filter(w => !w.retired);
+  const active = activeWatches.filter(w => w.status === "active" || !w.status);
   if (!active.length) return [];
 
   // Build recent-wear set to favour unworn pieces (calendar-day window)

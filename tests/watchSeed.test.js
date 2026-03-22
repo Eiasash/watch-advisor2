@@ -2,18 +2,23 @@ import { describe, it, expect } from "vitest";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 
 describe("watchSeed data integrity", () => {
-  it("contains exactly 23 watches", () => {
-    expect(WATCH_COLLECTION).toHaveLength(23);
+  it("contains exactly 26 watches (23 active + 3 retired)", () => {
+    expect(WATCH_COLLECTION).toHaveLength(26);
   });
 
-  it("has 13 genuine watches", () => {
-    const genuine = WATCH_COLLECTION.filter(w => !w.replica);
+  it("has 13 active genuine watches", () => {
+    const genuine = WATCH_COLLECTION.filter(w => !w.replica && !w.retired);
     expect(genuine).toHaveLength(13);
   });
 
   it("has 10 replica watches", () => {
     const replicas = WATCH_COLLECTION.filter(w => w.replica);
     expect(replicas).toHaveLength(10);
+  });
+
+  it("has 3 retired watches", () => {
+    const retired = WATCH_COLLECTION.filter(w => w.retired);
+    expect(retired).toHaveLength(3);
   });
 
   it("all watches have unique IDs", () => {
