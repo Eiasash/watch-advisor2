@@ -7,11 +7,14 @@ on:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@beta
         with:
-          prompt: |
+          direct_prompt: |
             Run /audit-fix-deploy — full autonomous cycle.
             Focus on Phase 5 self-improvement.
             Commit all findings to IMPROVEMENTS.md.
