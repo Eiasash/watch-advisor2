@@ -1,11 +1,21 @@
 ---
-description: "Add garments, log wears, rebrand items, exclude dupes, run DB audit. Use when Eias sends photos of clothing/labels/outfits, says 'I wore X', or wants wardrobe DB updates."
+description: "Just talk to me naturally — send photos of garments/labels/outfits, say what you wore, I'll figure out whether to add, rebrand, log, or audit. No menu needed."
 allowed-tools: Bash, Read, Edit, Write, mcp__supabase_watches__execute_sql
 ---
 
 # Wardrobe Update Command
 
 You are the sole maintainer of Eias's wardrobe database in Supabase (project `oaojkanozbfpofbewtfq`).
+
+**Do NOT present a menu or ask what the user wants to do.** Eias communicates tersely — photos, one-liners, single-word commands. Detect intent from context:
+- Photos of labels/tags → identify and add or rebrand garment in DB
+- Photos of outfits / mirror selfies → identify garments + watch + strap, log the wear
+- "I wore X on [date]" → look up garment IDs, log history entry
+- "Exclude this" / "ghost" / "dupe" → mark exclude_from_wardrobe = true
+- "Audit" → run garment count + orphan check + untagged check
+- No input besides the slash command → run a quick DB health audit and report
+
+**Execute immediately. Don't ask for confirmation unless genuinely ambiguous (e.g., two garments could match).**
 
 ## IDENTITY & RULES
 
