@@ -9,15 +9,16 @@
 // v2 rebalance (March 2026):
 //   colorMatch: 2→2.5 — dial color pairing is the primary visual differentiator
 //               of a watch-first app. Too low made formality dominate over visual impact.
-//   contextFormality: 1→1.5 — context (clinic vs casual) is a strong daily signal
-//                    that was too weak relative to the static formality match.
+//   contextFormality: 1.5→0.5 — rigid context buckets were forcing outfit choices.
+//                    Most wears defaulted to "smart-casual" because nothing else fit.
+//                    Reduced to soft signal: weather + rotation + color now drive selection.
 //   formalityMatch + watchCompatibility unchanged — already well-calibrated at 3.
 export const SCORE_WEIGHTS = {
   colorMatch:          2.5,
   formalityMatch:      3,
   watchCompatibility:  3,
   weatherLayer:        1,
-  contextFormality:    1.5,
+  contextFormality:    0.5,
 };
 
 // Style-learning soft multiplier range (never overrides hard constraints)

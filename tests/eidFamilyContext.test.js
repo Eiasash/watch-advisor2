@@ -37,9 +37,9 @@ describe("eid/family context formality", () => {
     expect(CONTEXT_FORMALITY["family-event"]).toEqual({ min: 4, target: 7 });
   });
 
-  it("eid-celebration hard-gates garments below formality 4", () => {
+  it("eid-celebration soft-penalises garments below formality 4", () => {
     const lowFormality = { type: "shirt", color: "white", formality: 3 };
-    expect(contextFormalityScore(lowFormality, "eid-celebration")).toBe(-Infinity);
+    expect(contextFormalityScore(lowFormality, "eid-celebration")).toBe(0.1);
   });
 
   it("eid-celebration passes garments at formality 4+", () => {

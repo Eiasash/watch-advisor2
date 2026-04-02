@@ -12,12 +12,13 @@ import { setCachedState } from "../services/localCache.js";
 import { fetchWeatherForecast, getLayerRecommendation } from "../weather/weatherService.js";
 
 const CONTEXTS = [
+  { key: null,                      label:"Any Vibe" },
   { key:"smart-casual",            label:"Smart Casual" },
-  { key:"hospital-smart-casual",   label:"Clinic/Hospital" },
-  { key:"formal",                  label:"Formal" },
+  { key:"clinic",                  label:"Clinic" },
   { key:"casual",                  label:"Casual" },
+  { key:"date-night",             label:"Date Night" },
   { key:"shift",                   label:"On-Call Shift" },
-  { key:"eid-celebration",         label:"Eid Celebration" },
+  { key:"eid-celebration",         label:"Eid" },
   { key:"family-event",            label:"Family Event" },
 ];
 
@@ -312,7 +313,7 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
   const [outfitSlots, setOutfitSlots] = useState({});
   const [slotOverrides, setSlotOverrides] = useState({});
   const [shuffleSeed, setShuffleSeed] = useState(0);
-  const [context, setContext]     = useState(day?.ctx ?? "smart-casual");
+  const [context, setContext]     = useState(day?.ctx ?? null);
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
@@ -321,7 +322,8 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
 
   const selectedWatch = watches.find(w => w.id === watchId);
 
-  const CONTEXTS = ["smart-casual","clinic","casual","formal","date-night","eid-celebration","family-event","riviera","shift"];
+  const CONTEXTS = [null,"smart-casual","clinic","casual","date-night","eid-celebration","family-event","riviera","shift"];
+  const CONTEXT_LABELS = { [null]: "Any Vibe", "smart-casual": "Smart Casual", clinic: "Clinic", casual: "Casual", "date-night": "Date Night", "eid-celebration": "Eid", "family-event": "Family", riviera: "Riviera", shift: "On-Call" };
 
   // Build outfit with shuffle + pin support — same pattern as WatchDashboard
   const dayWeather = useMemo(() => {
@@ -427,14 +429,14 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 16 }}>
           {CONTEXTS.map(c => (
-            <button key={c} onClick={() => { setContext(c); setShuffleSeed(0); setSlotOverrides({}); }}
+            <button key={c ?? "__any"} onClick={() => { setContext(c); setShuffleSeed(0); setSlotOverrides({}); }}
               style={{
                 padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: "pointer",
                 border: `1px solid ${context === c ? "#3b82f6" : border}`,
                 background: context === c ? "#3b82f622" : "transparent",
                 color: context === c ? "#3b82f6" : muted,
               }}>
-              {c}
+              {CONTEXT_LABELS[c] ?? c}
             </button>
           ))}
         </div>
@@ -1499,7 +1501,7 @@ export default function WeekPlanner() {
               date: pendingAddOutfit.date,
               watchId,
               garmentIds: garmentIds ?? [],
-              context: context ?? pendingAddOutfit.ctx ?? "smart-casual",
+              context: context ?? pendingAddOutfit.ctx ?? null,
               timeSlot,
               notes: notes ?? null,
               loggedAt: new Date().toISOString(),

@@ -44,11 +44,12 @@ function useTodayKey() {
 }
 
 const CONTEXT_OPTIONS = [
-  { key: "smart-casual",          label: "Smart Casual" },
-  { key: "hospital-smart-casual", label: "Clinic / Hospital" },
-  { key: "formal",                label: "Formal" },
-  { key: "casual",                label: "Casual" },
-  { key: "shift",                 label: "On-Call" },
+  { key: null,                     label: "Any Vibe" },
+  { key: "smart-casual",           label: "Smart Casual" },
+  { key: "clinic",                 label: "Clinic" },
+  { key: "casual",                 label: "Casual" },
+  { key: "date-night",             label: "Date Night" },
+  { key: "shift",                  label: "On-Call" },
 ];
 // Normalised to lowercase to match garment.type values (DB stores lowercase)
 const GARMENT_PRIORITY = ["shoes", "pants", "shirt", "sweater", "jacket", "coat"];
@@ -165,7 +166,7 @@ export default function TodayPanel() {
   // Default watch: prefer today's already-logged watch, else top recommendation
   const defaultWatchId = useMemo(() => {
     if (todayEntry?.watchId) return todayEntry.watchId;
-    const recs = getWatchRecommendations(watches, entries, "smart-casual");
+    const recs = getWatchRecommendations(watches, entries, null);
     return recs[0]?.watch?.id ?? watches.find(w => !w.retired)?.id ?? null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -293,7 +294,7 @@ export default function TodayPanel() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{watch.brand} {watch.model}</div>
                       <div style={{ fontSize: 11, color: muted }}>
-                        {te.strapLabel ?? watch.dial + " dial"} · {te.context ?? "smart-casual"}
+                        {te.strapLabel ?? watch.dial + " dial"} · {te.context ?? "any vibe"}
                       </div>
                     </div>
                   </div>
@@ -330,7 +331,7 @@ export default function TodayPanel() {
           })}
         </div>
 
-        <SelfiePanel context={todayEntry?.context ?? "smart-casual"} watchId={todayEntry?.watchId ?? null} />
+        <SelfiePanel context={todayEntry?.context ?? null} watchId={todayEntry?.watchId ?? null} />
 
         {/* Quick watch check-in — adds a NEW entry, doesn't overwrite */}
         <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
@@ -350,7 +351,7 @@ export default function TodayPanel() {
                       watchId: w.id,
                       garmentIds: [],
                       quickLog: true,
-                      context: "smart-casual",
+                      context: context ?? null,
                       strapId: activeStrap[w.id] ?? null,
                       strapLabel: strapObj?.label ?? null,
                       loggedAt: new Date().toISOString(),
@@ -386,7 +387,7 @@ export default function TodayPanel() {
           if (todayEntry) {
             setSelected(new Set(todayEntry.garmentIds ?? []));
             setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
-            setContext(todayEntry.context ?? "smart-casual");
+            setContext(todayEntry.context ?? null);
             setNotes(todayEntry.notes ?? "");
             setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
           }
@@ -411,7 +412,7 @@ export default function TodayPanel() {
                       letterSpacing: "0.06em", marginBottom: 10 }}>Context</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {CONTEXT_OPTIONS.map(c => (
-            <button key={c.key} onClick={() => setContext(c.key)}
+            <button key={c.key ?? "__any"} onClick={() => setContext(c.key)}
               style={{ padding: "6px 12px", borderRadius: 20, border: "none", fontSize: 12, fontWeight: 600,
                        cursor: "pointer",
                        background: context === c.key ? "#3b82f6" : (isDark ? "#1a1f2b" : "#f3f4f6"),

@@ -2,10 +2,10 @@
  * Outfit scoring system — additive weighted model.
  *
  * score = (colorMatch × 2.5) + (formalityMatch × 3) + (watchCompatibility × 3)
- *       + (weatherLayer × 1) + (contextFormality × 1.5)
+ *       + (weatherLayer × 1) + (contextFormality × 0.5)
  *
- * Hard gates (return -Infinity so they sort BELOW strap-shoe 0.0 violations):
- *   - contextFormality === -Infinity  (garment below context formality floor)
+ * Context is a soft nudge (0.5 weight, no hard gate). Weather + rotation + color
+ * are the primary drivers. Hard gates remain only for:
  *   - formalityMatch === 0 for non-shoe slots (total formality incompatibility)
  *   - weatherLayer === 0 (layer garment in extreme heat)
  *
@@ -181,14 +181,15 @@ export function filterShoesByStrap(watch, shoes, context) {
 
 /**
  * Score how well a garment's formality matches the context target.
- * Returns -Infinity for garments below the context minimum floor (hard gate).
  * Returns 0.75 (neutral) when no context is set.
+ * Soft penalty for mismatches — no hard gates. Context is a nudge, not a wall.
  */
 export function contextFormalityScore(garment, context) {
   const ctx = CONTEXT_FORMALITY[context];
   if (!ctx) return 0.75;
   const gf = garment.formality ?? 5;
-  if (gf < ctx.min) return -Infinity; // hard gate — sorts below all valid scores
+  // Soft penalty for below-minimum: 0.1 instead of -Infinity
+  if (gf < ctx.min) return 0.1;
   const diff = Math.abs(ctx.target - gf);
   return Math.max(0, 1 - diff / 5);
 }
@@ -225,19 +226,17 @@ function brightnessScore(color) {
  *
  * Formula (when all gates pass):
  *   base = (colorMatch×2.5) + (formalityMatch×3) + (watchCompatibility×3)
- *        + (weatherLayer×1) + (contextFormality×1.5)
+ *        + (weatherLayer×1) + (contextFormality×0.5)
  *   score = max(1e-6, base × styleLearnMult + brightnessNudge)
  *
  * Return values:
- *   -Infinity  context formality floor violated (garment.formality < context.min)
  *   -Infinity  total formality mismatch: fm === 0, non-shoe garments only
  *   -Infinity  weather hard rejection: layer garment in heat (wl === 0)
  *    0.0       strap-shoe hard mismatch (shoes slot only)
  *    > 0       valid — higher is better
  *
- * Shoes are exempt from the formality hard gate. They are scored primarily on
- * strap-shoe compatibility; a formality diff ≥ 5 produces a low score but does
- * NOT eliminate the shoe — that would leave the engine with no footwear.
+ * Context formality is a SOFT signal (0.1 penalty, not -Infinity).
+ * Shoes are exempt from the formality hard gate.
  *
  * Memoized per (watchId|brand, garmentId|type:color:formality, context, strap, tempC, outfitFormality).
  */
@@ -263,11 +262,8 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   const wc = watchCompatibilityScore(watch, garment);
   const cf = contextFormalityScore(garment, context);
 
-  // Hard gate: context formality floor
-  if (!isFinite(cf)) {
-    _scoreCache.set(cacheKey, -Infinity);
-    return -Infinity;
-  }
+  // Context formality is now a soft signal (0.1 for mismatch, not -Infinity).
+  // No hard gate — context nudges the ranking, doesn't eliminate garments.
 
   // Hard gate: formality mismatch is total (diff ≥ 5) — incompatible piece.
   // Shoes are exempt: they are accessories scored primarily on strap-shoe compatibility,
@@ -297,9 +293,8 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
 
   // ── Additive weighted formula ───────────────────────────────────────────────
   // score = (colorMatch × 2.5) + (formalityMatch × 3) + (watchCompatibility × 3)
-  //       + (weatherLayer × 1) + (contextFormality × 1.5)
-  // Additive model: a weak dimension hurts but cannot zero-out a valid garment
-  // (hard gates above handle true exclusions — context floor, strap-shoe mismatch).
+  //       + (weatherLayer × 1) + (contextFormality × 0.5)
+  // Context is a soft nudge — weather + rotation + color drive selection.
   let base =
     (cm * SCORE_WEIGHTS.colorMatch) +
     (fm * SCORE_WEIGHTS.formalityMatch) +

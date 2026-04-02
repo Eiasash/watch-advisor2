@@ -56,7 +56,7 @@ describe("buildOutfit — empty wardrobe triggers safe fallback", () => {
 
 describe("buildOutfit — every garment fails context formality constraint", () => {
   // Context "formal" requires min formality 6.
-  // All garments here have formality 1 → all fail the hard gate → -Infinity → shortlists empty.
+  // All garments have formality 1 → formalityMatch with Reverso (formality 7) = 0 → -Infinity via fm hard gate.
   const tooInformal = [
     { id: "s1", type: "shirt",   name: "Casual Tee",   color: "white",  formality: 1 },
     { id: "p1", type: "pants",   name: "Jogger",       color: "grey",   formality: 1 },

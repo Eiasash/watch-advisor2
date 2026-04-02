@@ -28,7 +28,7 @@ export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
     // Auto-detect on-call if today is in onCallDates
     const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
     const todayIso = new Date().toISOString().slice(0, 10);
-    return onCallDates.includes(todayIso) ? "shift" : "smart-casual";
+    return onCallDates.includes(todayIso) ? "shift" : null;
   });
   const [notes,      setNotes]      = useState(() => todayEntry?.notes ?? "");
   const [extraImgs,  setExtraImgs]  = useState(() =>
@@ -46,7 +46,7 @@ export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
     prevEntryId.current = todayEntry.id;
     setSelected(new Set(todayEntry.garmentIds ?? []));
     setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
-    setContext(todayEntry.context ?? "smart-casual");
+    setContext(todayEntry.context ?? null);
     setNotes(todayEntry.notes ?? "");
     setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
     setLogged(true);

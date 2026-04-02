@@ -331,7 +331,7 @@ export default function WatchDashboard() {
     const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
     const weekCtx = useWardrobeStore.getState().weekCtx ?? [];
     const todayDayIdx = new Date().getDay(); // 0=Sun
-    const baseCtx = weekCtx[todayDayIdx] ?? "smart-casual";
+    const baseCtx = weekCtx[todayDayIdx] ?? null;
     return onCallDates.includes(todayIso) ? "shift" : baseCtx;
   }, []);
 
@@ -525,7 +525,7 @@ export default function WatchDashboard() {
                   date: todayIso,
                   watchId: selectedWatch.id,
                   garmentIds: existingForWatch?.garmentIds ?? [],
-                  context: todayContext ?? existingForWatch?.context ?? "smart-casual",
+                  context: todayContext ?? existingForWatch?.context ?? null,
                   strapId: activeStrapObj?.id ?? null,
                   strapLabel: activeStrapObj?.label ?? null,
                   notes: existingForWatch?.notes ?? null,
@@ -682,7 +682,7 @@ export default function WatchDashboard() {
                 watchId: selectedWatch.id,
                 garmentIds,
                 outfit: outfitMap,
-                context: existingToday?.context ?? todayContext ?? "smart-casual",
+                context: existingToday?.context ?? todayContext ?? null,
                 score: outfitScore,
                 notes: existingToday?.notes ?? null,
                 loggedAt: new Date().toISOString(),
@@ -748,7 +748,7 @@ export default function WatchDashboard() {
             const garmentIds = ["shirt","sweater","layer","pants","shoes","jacket"]
               .map(s => mergedOutfit[s]?.id).filter(Boolean);
             if (garmentIds.length === 0) return;
-            addRejection(selectedWatch.id, garmentIds, todayContext ?? "smart-casual");
+            addRejection(selectedWatch.id, garmentIds, todayContext ?? null);
           }}
           style={{ fontSize:11, color:isDark?"#4b5563":"#9ca3af", background:"none", border:"none",
                    cursor:"pointer", width:"100%", padding:"4px 0", textAlign:"center", marginBottom: 4 }}>

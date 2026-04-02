@@ -8,10 +8,10 @@
  * This factor:
  *   - Rewards garments whose season tag matches the current season (+0.3)
  *   - Soft-penalises out-of-season garments that aren't "all-season" (-0.2)
- *   - Rewards garments whose context tag matches the outfit context (+0.25)
+ *   - Rewards garments whose context tag matches the outfit context (+0.10)
  *   - Does nothing for untagged garments (0) — neutral, no false negatives
  *
- * Max contribution: +0.55 (in-season + right context)
+ * Max contribution: +0.40 (in-season + right context)
  * Max penalty: -0.2 (wrong season only; context mismatch is silent)
  */
 
@@ -64,9 +64,10 @@ export default function seasonContextFactor(candidate, context) {
   }
 
   // ── Context ────────────────────────────────────────────────────────────────
+  // Soft bonus — context is a nudge, not a gate. Reduced from 0.25 to 0.10.
   if (contexts.length > 0 && context.outfitContext) {
     if (contexts.includes(context.outfitContext)) {
-      score += 0.25;
+      score += 0.10;
     }
   }
 
