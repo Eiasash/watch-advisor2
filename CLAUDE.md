@@ -128,7 +128,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2084+ tests across 113 files** — run `npm test` to see current count
+- **2087+ tests across 113 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -312,7 +312,7 @@ tests/
 | Source LOC | ~8,600 |
 | Test files | 113 |
 | Test LOC | ~17,600 |
-| Tests | 2084+ |
+| Tests | 2087+ |
 | Test pass rate | 100% |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |

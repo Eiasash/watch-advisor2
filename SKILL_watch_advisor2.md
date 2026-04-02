@@ -14,7 +14,7 @@
 | Source files | 70 |
 | Source LOC | ~8,600 |
 | Test files | 113 |
-| Tests | 2084+ |
+| Tests | 2087+ |
 | Netlify functions | 17 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
 | Components | 29 JSX |
