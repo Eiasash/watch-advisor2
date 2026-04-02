@@ -2,11 +2,12 @@
 Generated: 2026-04-02 (full session)
 
 ## Audit Summary
-- **Engine integrity**: Context flexibility shipped (v1.5.7)
+- **Engine integrity**: All 9 values verified correct (April 2 re-audit)
 - **Supabase**: 77 active garments, 0 dupes, 0 orphans, 77/77 fully tagged
-- **Tests**: 258 critical tests passing (10 targeted files), full suite passes on Netlify CI
+- **Tests**: 2087 passing (113 files), 9 failures fixed this session
+- **Static analysis**: No circular deps (dynamic imports safe), no console.log leaks, all Vision maxAttempts=1
 - **Snapshot**: garments ok, history ok, orphans ok, wardrobeHealth ok
-- **Deploy**: ready (commit 4ffd6be)
+- **Dead code**: run-migrations.js uncalled from client (expected — external utility)
 
 ## v1.5.7 — Flexible Context System (April 2 2026)
 1. **contextFormality weight**: 1.5 → 0.5 — context is a soft nudge, not dominant

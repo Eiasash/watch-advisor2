@@ -62,8 +62,8 @@ describe("integration — day profile → watch selection → scoring", () => {
     const profile = inferDayProfile(["On-call night shift"]);
     expect(profile).toBe("shift");
 
-    const genuineScore = scoreWatchForDay(SAMPLE_WATCHES[0], profile, []);
-    const replicaScore = scoreWatchForDay(SAMPLE_WATCHES[5], profile, []);
+    const genuineScore = scoreWatchForDay({ ...SAMPLE_WATCHES[0], shiftWatch: true }, profile, []);
+    const replicaScore = scoreWatchForDay({ ...SAMPLE_WATCHES[5], shiftWatch: true }, profile, []);
     expect(genuineScore).toBeGreaterThan(replicaScore);
   });
 });

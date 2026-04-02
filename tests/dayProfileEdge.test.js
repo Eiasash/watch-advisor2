@@ -129,7 +129,7 @@ describe("scoreWatchForDay — replica penalty (-0.5 × cooldown)", () => {
   });
 
   it("shift replica penalty is 0.575", () => {
-    const diff = scoreWatchForDay(genuine, "shift") - scoreWatchForDay(watch, "shift");
+    const diff = scoreWatchForDay({ ...genuine, shiftWatch: true }, "shift") - scoreWatchForDay({ ...watch, shiftWatch: true }, "shift");
     expect(diff).toBeCloseTo(0.575, 2);
   });
 
