@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.5.6 |
+| Version | 1.5.7 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 70 |
 | Source LOC | ~8,600 |
@@ -21,7 +21,7 @@
 | Zustand stores | 8 |
 | Build output | 571 kB (167 kB gzip) |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-03-22 |
+| Last audited | 2026-04-02 |
 
 ---
 
@@ -119,7 +119,7 @@ tests/                    — 113 Vitest test files (2084+ tests)
 ### Base formula
 ```
 scoreGarment = (colorMatch × 2.5) + (formalityMatch × 3) + (watchCompatibility × 3)
-             + (weatherLayer × 1) + (contextFormality × 1.5)
+             + (weatherLayer × 1) + (contextFormality × 0.5)
 ```
 All weights live exclusively in `src/config/scoringWeights.js`. Never inline.
 
@@ -132,7 +132,7 @@ All weights live exclusively in `src/config/scoringWeights.js`. Never inline.
 | rejectPenalty | -0.30 | rejectStore |
 | replicaPenalty | -60% of baseScore in clinic/formal/shift | `outfitBuilder.js` |
 | seasonMatch | +0.30 (in-season), -0.80 (opposite season) | `seasonContextFactor.js` |
-| contextMatch | +0.25 | `seasonContextFactor.js` |
+| contextMatch | +0.10 | `seasonContextFactor.js` |
 | weightFactor | ±0.15 max (heavy in heat / ultralight in cold) | `weightFactor.js` |
 | coherenceBonus | ±20% of baseScore (scaled from -0.40 to +0.20 raw) | `outfitBuilder.js _crossSlotCoherence()` |
 | brightnessNudge | ±0.05 (dark penalty / light boost) | `scoring.js` |
@@ -234,8 +234,8 @@ Visible in DebugConsole + `app_config.monthly_token_usage`.
 ### Supabase Tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | 75 active, fully tagged (seasons/contexts/material/weight) |
-| `history` | Wear log | 25+ entries. `payload_version: "v1"` on all entries |
+| `garments` | Wardrobe items | 77 active, fully tagged (seasons/contexts/material/weight) |
+| `history` | Wear log | 37+ entries. `payload_version: "v1"` on all entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
@@ -302,6 +302,8 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 | **rotationFactor** | 0.40. Do not lower. |
 | **repetitionPenalty** | -0.28 in `contextMemory.js`. |
 | **SCORE_CEILING** | `confidence.js` ceiling = 30 (additive engine). Was 0.60 (broken). Never lower without recalibrating. |
+| **Context soft nudge** | `contextFormality` weight = 0.5 (was 1.5). No -Infinity hard gate. Context is optional — null = "Any Vibe" (0.75 neutral). Shift mode still hard-gates via dayProfile.js shiftWatch flag. |
+| **contextMatch** | seasonContextFactor bonus = 0.10 (was 0.25). Context is a nudge, weather+rotation+color drive selection. |
 | **AddOutfitModal weather** | Must receive `forecast` prop. Was hardcoded 22°C. Fixed March 22. |
 | **Shuffle garmentIds** | Fake history entries MUST include `.garmentIds` array so repetitionPenalty fires. |
 | **Season timezone** | Both `seasonContextFactor.js` and `explain.js` use Asia/Jerusalem. Must match. |

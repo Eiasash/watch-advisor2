@@ -329,6 +329,7 @@ tests/
 | `/wa-fix` | Apply targeted fix for a specific issue |
 | `/wa-deploy` | Run tests, build, commit, push |
 | `/wa-test` | Run tests and summarise failures with root cause |
+| `/wardrobe-update` | Add garments, log wears, rebrand items, run DB audit |
 
 ---
 

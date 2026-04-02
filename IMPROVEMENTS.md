@@ -1,13 +1,32 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-03-22 (full session)
+Generated: 2026-04-02 (full session)
 
 ## Audit Summary
-- **Engine integrity**: All checks PASS (11 static + 6 Supabase + snapshot)
-- **Supabase**: 75 active garments, 0 dupes, 0 orphans, 75/75 fully tagged
-- **Tests**: All 2084+ passing (113 files)
-- **Snapshot**: All health "ok", autoHeal healthy
-- **Crons**: 3/3 scheduled, weekly GitHub Action present
-- **Build**: 571 kB (167 kB gzip)
+- **Engine integrity**: Context flexibility shipped (v1.5.7)
+- **Supabase**: 77 active garments, 0 dupes, 0 orphans, 77/77 fully tagged
+- **Tests**: 258 critical tests passing (10 targeted files), full suite passes on Netlify CI
+- **Snapshot**: garments ok, history ok, orphans ok, wardrobeHealth ok
+- **Deploy**: ready (commit 4ffd6be)
+
+## v1.5.7 — Flexible Context System (April 2 2026)
+1. **contextFormality weight**: 1.5 → 0.5 — context is a soft nudge, not dominant
+2. **Removed -Infinity hard gate**: contextFormalityScore returns 0.1 for below-minimum garments (was -Infinity)
+3. **seasonContextFactor bonus**: 0.25 → 0.10 for context match
+4. **"Any Vibe" default**: null context = no constraint. Engine uses weather + rotation + color.
+5. **UI pills updated**: TodayPanel + WeekPlanner — "Any Vibe" first, kept On-Call for shift mode
+6. **Removed rigid contexts**: "hospital-smart-casual" and standalone "formal" dropped from pills
+7. **All smart-casual fallbacks → null** in WatchDashboard, TodayPanel, WeekPlanner, useTodayFormState
+
+## Wardrobe DB Updates (April 2 2026)
+- **New garments (5)**: Ecco Black Sneaker, Nautica Burgundy LS, Timberland Green Hoodie, TH Olive Hoodie, Nautica Burgundy Crewneck
+- **Rebranded (7)**: Navy Sweater→Kiral TV-4052, Dark Wash→TH Bleecker, Light Wash Straight→Levi's 502, Light Wash Denim→Gant Extra-Slim, Slate Denim→Fox East Village, Black Knit Zip→Greg Norman Navy QZ, Light Blue Cable Knit→Gant
+- **Excluded (2)**: Mixed Wash Denim Jeans, Olive Wash Denim Pants (ghosts)
+- **Wear logs (7)**: Apr 2 ×2, Mar 30, Mar 23 ×3, Mar 21
+- **Corrections**: Hanhart OEM = black leather white stitch (not teal)
+
+---
+
+# Previous Sessions
 - **Token usage**: $1.92 for March 2026
 
 ## All Fixes Shipped This Session
