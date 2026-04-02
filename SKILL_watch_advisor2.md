@@ -109,12 +109,12 @@ netlify/functions/
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
 supabase/migrations/      — SQL migration audit trail (commit .sql after every apply_migration)
-tests/                    — 113 Vitest test files (2084+ tests)
+tests/                    — 113 Vitest test files (2087+ tests)
 ```
 
 ---
 
-## §3 Scoring System (last audited: 2026-03-22)
+## §3 Scoring System (last audited: 2026-04-02)
 
 ### Base formula
 ```
@@ -352,7 +352,7 @@ Expected healthy state:
 
 ### Run tests
 ```bash
-timeout 120 node node_modules/.bin/vitest run   # 2084+ tests, zero failures
+timeout 120 node node_modules/.bin/vitest run   # 2087+ tests, zero failures
 ```
 
 ### Trigger auto-heal
