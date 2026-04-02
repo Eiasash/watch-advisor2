@@ -61,20 +61,46 @@ export async function fetchWeatherForecast() {
   try {
     const { latitude, longitude } = await getCoords();
     const res = await fetchRace(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum&timezone=auto`
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum&hourly=temperature_2m&timezone=Asia/Jerusalem`
     );
     const data = await res.json();
     const daily = data.daily;
+    const hourly = data.hourly;
     if (!daily?.time) return [];
-    return daily.time.map((date, i) => ({
-      date,
-      tempC: Math.round((daily.temperature_2m_max[i] + daily.temperature_2m_min[i]) / 2),
-      tempMin: Math.round(daily.temperature_2m_min[i]),
-      tempMax: Math.round(daily.temperature_2m_max[i]),
-      description: weatherCodeToDesc(daily.weathercode[i]),
-      precipitation: daily.precipitation_sum?.[i] ?? 0,
-      weathercode: daily.weathercode[i],
-    }));
+
+    return daily.time.map((date, i) => {
+      const dayAvg = Math.round((daily.temperature_2m_max[i] + daily.temperature_2m_min[i]) / 2);
+
+      // Extract hourly temps for this day (morning 7-10, midday 11-14, evening 17-20)
+      let tempMorning = null, tempMidday = null, tempEvening = null;
+      if (hourly?.time && hourly?.temperature_2m) {
+        const dayHours = hourly.time.reduce((acc, t, idx) => {
+          if (t.startsWith(date)) acc.push({ hour: parseInt(t.slice(11, 13), 10), temp: hourly.temperature_2m[idx] });
+          return acc;
+        }, []);
+        const avg = (hours) => {
+          const vals = dayHours.filter(h => hours.includes(h.hour)).map(h => h.temp);
+          return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+        };
+        tempMorning = avg([7, 8, 9, 10]);
+        tempMidday = avg([11, 12, 13, 14]);
+        tempEvening = avg([17, 18, 19, 20]);
+      }
+
+      return {
+        date,
+        tempC: tempMorning ?? dayAvg, // Use morning temp as primary — you dress for the morning
+        tempAvg: dayAvg,
+        tempMin: Math.round(daily.temperature_2m_min[i]),
+        tempMax: Math.round(daily.temperature_2m_max[i]),
+        tempMorning,
+        tempMidday,
+        tempEvening,
+        description: weatherCodeToDesc(daily.weathercode[i]),
+        precipitation: daily.precipitation_sum?.[i] ?? 0,
+        weathercode: daily.weathercode[i],
+      };
+    });
   } catch (err) {
     console.warn("[weather] fetchWeatherForecast failed:", err.message);
     return [];
@@ -94,13 +120,49 @@ function weatherCodeToDesc(code) {
 export function getLayerRecommendation(tempC) {
   if (tempC < 10) return { layer: "coat", label: "Heavy coat recommended" };
   if (tempC < 16) return { layer: "sweater", label: "Sweater recommended" };
-  if (tempC < 22) return { layer: "light-jacket", label: "Light jacket recommended" };
+  if (tempC < 22) return { layer: "light-jacket", label: "Light layer recommended" };
   return { layer: "none", label: "No extra layer needed" };
 }
 
-export function formatWeatherText(weather) {
+/**
+ * Transition-aware layer advice using hourly temps.
+ * Shows what to wear at different times of day.
+ */
+export function getLayerTransition(forecast) {
+  if (!forecast) return null;
+  const { tempMorning, tempMidday, tempEvening } = forecast;
+  if (tempMorning == null) return null;
+
+  const morningLayer = getLayerRecommendation(tempMorning);
+  const middayLayer = tempMidday != null ? getLayerRecommendation(tempMidday) : null;
+  const eveningLayer = tempEvening != null ? getLayerRecommendation(tempEvening) : null;
+
+  const parts = [];
+  parts.push(`${tempMorning}°C morning → ${morningLayer.label.toLowerCase()}`);
+
+  if (middayLayer && middayLayer.layer !== morningLayer.layer) {
+    if (middayLayer.layer === "none" || middayLayer.layer === "light-jacket" && morningLayer.layer === "coat") {
+      parts.push(`${tempMidday}°C midday → shed the ${morningLayer.layer}`);
+    } else {
+      parts.push(`${tempMidday}°C midday → ${middayLayer.label.toLowerCase()}`);
+    }
+  }
+
+  if (eveningLayer && eveningLayer.layer !== (middayLayer?.layer ?? morningLayer.layer)) {
+    if (eveningLayer.layer === "coat" || eveningLayer.layer === "sweater") {
+      parts.push(`${tempEvening}°C evening → grab a ${eveningLayer.layer}`);
+    }
+  }
+
+  return parts.join(" · ");
+}
+
+export function formatWeatherText(weather, forecast = null) {
   if (!weather) return null;
   const rec = getLayerRecommendation(weather.tempC);
   const city = weather.cityName ? `${weather.cityName} · ` : "";
-  return `${city}${weather.tempC}°C ${weather.description} — ${rec.label}`;
+  const transition = forecast ? getLayerTransition(forecast) : null;
+  return transition
+    ? `${city}${weather.tempC}°C ${weather.description} — ${transition}`
+    : `${city}${weather.tempC}°C ${weather.description} — ${rec.label}`;
 }

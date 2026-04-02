@@ -9,7 +9,7 @@ import { genWeekRotation } from "../engine/weekRotation.js";
 import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 
 import { setCachedState } from "../services/localCache.js";
-import { fetchWeatherForecast, getLayerRecommendation } from "../weather/weatherService.js";
+import { fetchWeatherForecast, getLayerRecommendation, getLayerTransition } from "../weather/weatherService.js";
 
 const CONTEXTS = [
   { key: null,                      label:"Any Vibe" },
@@ -328,7 +328,7 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
   // Build outfit with shuffle + pin support — same pattern as WatchDashboard
   const dayWeather = useMemo(() => {
     const dayForecast = forecast?.find(f => f.date === day?.date);
-    return dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
+    return dayForecast ? { tempC: dayForecast.tempC } : { tempC: 15 };
   }, [forecast, day?.date]);
 
   useEffect(() => {
@@ -704,17 +704,32 @@ function WeatherBadge({ forecast, isDark }) {
   if (!forecast) return null;
   const icon = WEATHER_ICONS[forecast.description] ?? "\u{1F321}\uFE0F";
   const layer = getLayerRecommendation(forecast.tempC);
+  const transition = getLayerTransition(forecast);
+  const hasHourly = forecast.tempMorning != null;
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 6,
       fontSize: 11, color: isDark ? "#8b93a7" : "#6b7280",
-      padding: "3px 8px", borderRadius: 6,
+      padding: "4px 8px", borderRadius: 6,
       background: isDark ? "#171a2188" : "#f3f4f688",
     }}>
-      <span>{icon}</span>
-      <span>{forecast.tempMin}{"\u00B0"}{"\u2013"}{forecast.tempMax}{"\u00B0"}C</span>
-      {layer.layer !== "none" && (
-        <span style={{ color: "#f97316", fontWeight: 600 }}>{"\u00B7"} {layer.label.replace(" recommended", "")}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span>{icon}</span>
+        <span>{forecast.tempMin}{"\u00B0"}{"\u2013"}{forecast.tempMax}{"\u00B0"}C</span>
+        {layer.layer !== "none" && (
+          <span style={{ color: "#f97316", fontWeight: 600 }}>{"\u00B7"} {layer.label.replace(" recommended", "")}</span>
+        )}
+      </div>
+      {hasHourly && (
+        <div style={{ fontSize: 10, marginTop: 3, color: isDark ? "#6b7280" : "#9ca3af" }}>
+          {forecast.tempMorning != null && <span>🌅 {forecast.tempMorning}°</span>}
+          {forecast.tempMidday != null && <span> · ☀️ {forecast.tempMidday}°</span>}
+          {forecast.tempEvening != null && <span> · 🌙 {forecast.tempEvening}°</span>}
+          {transition && layer.layer !== "none" && forecast.tempMidday > forecast.tempMorning + 4 && (
+            <div style={{ color: "#f97316", marginTop: 2 }}>
+              💡 Shed the layer after noon ({forecast.tempMidday}°C)
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -920,7 +935,7 @@ export default function WeekPlanner() {
     return rotation.map(day => {
       if (!day.watch) return {};
       const dayForecast = forecast.find(f => f.date === day.date);
-      const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
+      const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 15 };
 
       // For today: if already logged, use logged garments directly.
       // Engine re-scoring today would diverge from what was actually chosen.

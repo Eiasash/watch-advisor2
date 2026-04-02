@@ -216,7 +216,7 @@ function _pairHarmonyScore(shirt, pants, shoes) {
  * the same minified name (TDZ: "Cannot access 'k' before initialization").
  */
 function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights, pinnedSlots) {
-  const temp = weather?.tempC ?? 22;
+  const temp = weather?.tempC ?? 15;
   if (temp >= 22) return;
 
   const isFormalCtx = context === "formal" || context === "clinic"

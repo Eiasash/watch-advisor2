@@ -323,7 +323,7 @@ export default function WatchDashboard() {
     return { ...selectedWatch, strap: strapStr, _activeStrapLabel: activeStrapObj.label };
   }, [selectedWatch, strapActiveMap, strapStraps]);
 
-  const weatherObj = useMemo(() => ({ tempC: weather?.tempC ?? 22 }), [weather]);
+  const weatherObj = useMemo(() => ({ tempC: weather?.tempC ?? 15 }), [weather]);
 
   // Determine today's context from weekCtx / onCallDates
   const todayContext = useMemo(() => {
