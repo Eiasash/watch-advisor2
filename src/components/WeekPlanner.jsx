@@ -1084,6 +1084,7 @@ export default function WeekPlanner() {
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
   const sub    = isDark ? "#6b7280" : "#9ca3af";
+  const muted  = sub; // alias — used by history entry notes display
 
   return (
     <div style={{ padding:"18px 20px", borderRadius:16, background:bg, border:`1px solid ${border}`, marginBottom:16 }}>
