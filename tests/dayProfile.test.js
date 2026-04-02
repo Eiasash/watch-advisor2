@@ -125,8 +125,8 @@ describe("scoreWatchForDay", () => {
   });
 
   it("penalises replica in shift context", () => {
-    const genuineScore = scoreWatchForDay({ ...replicaWatch, replica: false }, "shift");
-    const replicaScore = scoreWatchForDay(replicaWatch, "shift");
+    const genuineScore = scoreWatchForDay({ ...replicaWatch, replica: false, shiftWatch: true }, "shift");
+    const replicaScore = scoreWatchForDay({ ...replicaWatch, shiftWatch: true }, "shift");
     expect(genuineScore).toBeGreaterThan(replicaScore);
   });
 
@@ -193,12 +193,13 @@ describe("scoreWatchForDay — pilot formality floor", () => {
   });
 
   it("Hanhart (pilot, formality 6) is NOT blocked on shift — meets floor", () => {
-    expect(scoreWatchForDay(hanhart, "shift")).toBeGreaterThan(0);
+    expect(scoreWatchForDay({ ...hanhart, shiftWatch: true }, "shift")).toBeGreaterThan(0);
   });
 
   it("Speedmaster (sport, formality 7) beats Laco on shift", () => {
+    // Laco has no shiftWatch flag and formality < floor → scores 0
     const lacoScore = scoreWatchForDay(laco, "shift");
-    const speedScore = scoreWatchForDay(speedmaster, "shift");
+    const speedScore = scoreWatchForDay({ ...speedmaster, shiftWatch: true }, "shift");
     expect(speedScore).toBeGreaterThan(lacoScore);
   });
 });

@@ -73,8 +73,8 @@ describe("seasonContextFactor — context scoring", () => {
   it("returns 0 for empty contexts array", () => {
     expect(seasonContextFactor(makeCandidate([],[]), makeCtx("clinic"))).toBe(0);
   });
-  it("returns +0.25 when context matches", () => {
-    expect(seasonContextFactor(makeCandidate([],["clinic","smart-casual"]), makeCtx("clinic"))).toBe(0.25);
+  it("returns +0.10 when context matches", () => {
+    expect(seasonContextFactor(makeCandidate([],["clinic","smart-casual"]), makeCtx("clinic"))).toBe(0.10);
   });
   it("returns 0 for context mismatch — no penalty", () => {
     expect(seasonContextFactor(makeCandidate([],["casual"]), makeCtx("clinic"))).toBe(0);
@@ -85,17 +85,17 @@ describe("seasonContextFactor — context scoring", () => {
 });
 
 describe("seasonContextFactor — combined", () => {
-  it("+0.55 for perfect match (in-season + right context)", () => {
+  it("+0.40 for perfect match (in-season + right context)", () => {
     expect(seasonContextFactor(
       makeCandidate(["spring"],["smart-casual"]),
       { outfitContext:"smart-casual", _season:"spring" }
-    )).toBeCloseTo(0.55);
+    )).toBeCloseTo(0.40);
   });
-  it("+0.10 for adjacent season + right context (0.25 - 0.15)", () => {
+  it("-0.05 for adjacent season + right context (0.10 - 0.15)", () => {
     expect(seasonContextFactor(
       makeCandidate(["winter"],["clinic"]),
       { outfitContext:"clinic", _season:"spring" }
-    )).toBeCloseTo(0.10);
+    )).toBeCloseTo(-0.05);
   });
   it("+0.3 for right season + no context tag", () => {
     expect(seasonContextFactor(makeCandidate(["spring"],[]), { outfitContext:"clinic", _season:"spring" })).toBe(0.3);
@@ -103,11 +103,11 @@ describe("seasonContextFactor — combined", () => {
   it("returns 0 for null garment", () => {
     expect(seasonContextFactor({ garment:null }, makeCtx("clinic"))).toBe(0);
   });
-  it("all-season + matching context = +0.25 only", () => {
+  it("all-season + matching context = +0.10 only", () => {
     expect(seasonContextFactor(
       makeCandidate(["all-season"],["clinic"]),
       { outfitContext:"clinic", _season:"spring" }
-    )).toBe(0.25);
+    )).toBe(0.10);
   });
 });
 
