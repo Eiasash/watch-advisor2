@@ -298,6 +298,60 @@ export default function StatsPanel() {
             </Section>
           )}
 
+          {/* Watch cost per wear */}
+          {(() => {
+            const watchCpw = watches
+              .filter(w => w.priceILS > 0 && !w.retired)
+              .map(w => {
+                const wears = entries.filter(e => e.watchId === w.id).length;
+                return { w, wears, cpw: wears > 0 ? Math.round(w.priceILS / wears) : null };
+              })
+              .sort((a, b) => (a.cpw ?? Infinity) - (b.cpw ?? Infinity));
+            const neverWorn = watchCpw.filter(x => x.wears === 0);
+            const worn = watchCpw.filter(x => x.wears > 0).slice(0, 8);
+            return (
+              <>
+                {worn.length > 0 && (
+                  <Section title="Watch Cost-per-Wear" isDark={isDark}>
+                    {worn.map(({ w, wears, cpw }) => (
+                      <div key={w.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "6px 10px", borderRadius: 6, marginBottom: 4,
+                        background: isDark ? "#0f131a" : "#f9fafb", fontSize: 11 }}>
+                        <span style={{ color: text }}>{w.brand} {w.model} {w.replica ? "🔄" : ""}</span>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <span style={{ color: muted }}>{wears}×</span>
+                          <span style={{ fontWeight: 700, color: cpw < 5000 ? "#10b981" : cpw < 15000 ? "#f59e0b" : "#ef4444" }}>
+                            ₪{cpw.toLocaleString()}/wear
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </Section>
+                )}
+                {neverWorn.length > 0 && (
+                  <Section title={`Never Worn (${neverWorn.length} watches)`} isDark={isDark}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {neverWorn.map(({ w }) => (
+                        <div key={w.id} style={{
+                          padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600,
+                          background: w.replica ? "#7f1d1d22" : "#78350f22",
+                          color: w.replica ? "#ef4444" : "#f59e0b",
+                          border: `1px solid ${w.replica ? "#ef444444" : "#f59e0b44"}`,
+                        }}>
+                          {w.brand} {w.model} {w.replica ? "· replica" : ""}
+                          {w.priceILS ? ` · ₪${(w.priceILS/1000).toFixed(0)}k` : ""}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 10, color: muted, marginTop: 8 }}>
+                      💡 Log these from the Today tab to build rotation history
+                    </div>
+                  </Section>
+                )}
+              </>
+            );
+          })()}
+
           {/* Color palette worn */}
           {colorFreq.length > 0 && (
             <Section title="Colors Worn" isDark={isDark}>
@@ -531,6 +585,65 @@ export default function StatsPanel() {
               ))}
             </Section>
           )}
+
+          {/* Trade Path Calculator */}
+          <Section title="🔄 Trade Path — GP Laureato Infinite Grey" isDark={isDark}>
+            <div style={{ fontSize: 11, lineHeight: 1.7, color: text }}>
+              <div><strong>Target:</strong> GP Laureato 42mm Infinite Grey Grand Feu · ~₪65,000</div>
+              <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 8, background: isDark ? "#0f131a" : "#f3f4f6" }}>
+                <div style={{ fontWeight: 700, color: "#3b82f6", marginBottom: 4 }}>GMT + Reverso → ₪90k value</div>
+                <div style={{ color: "#22c55e" }}>→ GP Laureato + ~₪25k cash back via Timor</div>
+              </div>
+              <div style={{ marginTop: 4, padding: "8px 10px", borderRadius: 8, background: isDark ? "#0f131a" : "#f3f4f6" }}>
+                <div style={{ fontWeight: 700, color: "#6366f1", marginBottom: 4 }}>GMT only → ₪55k value</div>
+                <div style={{ color: "#f59e0b" }}>→ GP Laureato + ~₪10k top-up</div>
+              </div>
+            </div>
+          </Section>
+
+          {/* Pending Strap Deliveries */}
+          <Section title="📦 Pending Straps" isDark={isDark}>
+            {[
+              { watch: "Pasha 41", strap: "Navy alligator YG-02", src: "DayDayWatchband", val: "$173" },
+              { watch: "Tudor BB41", strap: "Navy canvas #18", src: "DayDayWatchband", val: "~$80" },
+              { watch: "Tudor BB41", strap: "Olive canvas #21", src: "DayDayWatchband", val: "~$80" },
+            ].map((s, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between",
+                padding: "5px 10px", borderRadius: 6, marginBottom: 3,
+                background: isDark ? "#0f131a" : "#f9fafb", fontSize: 11 }}>
+                <span style={{ color: text }}><strong>{s.watch}</strong> · {s.strap}</span>
+                <span style={{ color: "#f59e0b", fontSize: 10 }}>{s.val}</span>
+              </div>
+            ))}
+          </Section>
+
+          {/* Stale garments — 60+ days with 0 wears */}
+          {(() => {
+            const cutoffMs = Date.now() - 60 * 864e5;
+            const stale = garments
+              .filter(g => !g.excludeFromWardrobe && g.createdAt
+                && !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type ?? g.category)
+                && new Date(g.createdAt).getTime() < cutoffMs
+                && entries.filter(e => (e.garmentIds ?? []).includes(g.id)).length === 0)
+              .slice(0, 10);
+            return stale.length > 0 ? (
+              <Section title={`🧹 Never Worn (${stale.length} items, 60+ days in wardrobe)`} isDark={isDark}>
+                {stale.map(g => (
+                  <div key={g.id} style={{ display: "flex", justifyContent: "space-between",
+                    padding: "5px 10px", borderRadius: 6, marginBottom: 3,
+                    background: isDark ? "#0f131a" : "#f9fafb", fontSize: 11 }}>
+                    <span style={{ color: text }}>{g.name}</span>
+                    <span style={{ color: "#ef4444", fontSize: 10 }}>
+                      {Math.floor((Date.now() - new Date(g.createdAt).getTime()) / 864e5)}d idle
+                    </span>
+                  </div>
+                ))}
+                <div style={{ fontSize: 10, color: muted, marginTop: 6 }}>
+                  Wear these or consider excluding from rotation
+                </div>
+              </Section>
+            ) : null;
+          })()}
         </>
       )}
     </div>
