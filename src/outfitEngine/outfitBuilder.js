@@ -11,6 +11,7 @@
 
 import { recentHistory } from "../domain/historyWindow.js";
 import { STYLE_TO_SLOTS } from "./watchStyles.js";
+import { recommendStrap as _recommendStrap } from "./strapRecommender.js";
 import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore, filterShoesByStrap, clearScoreCache,
   colorMatchScore, formalityMatchScore, watchCompatibilityScore } from "./scoring.js";
 import { useRejectStore } from "../stores/rejectStore.js";
@@ -529,28 +530,15 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   }
 
   // ── Strap auto-recommendation ────────────────────────────────────────────
-  // Recommend the best strap from the watch's available straps based on shoe color
+  // Use the full strapRecommender which considers shoe color, outfit palette,
+  // context formality, and dial harmony — not just shoe matching.
   if (outfit.shoes && watch.straps?.length > 1) {
-    const shoeColor = (outfit.shoes.color ?? "").toLowerCase();
-    const isBrownShoe = ["brown", "tan", "cognac", "camel", "rustic brown"].some(c => shoeColor.includes(c));
-    const isBlackShoe = shoeColor.includes("black");
-    let recommended = null;
-    if (isBrownShoe) {
-      recommended = watch.straps.find(s => s.type === "leather" && s.color?.toLowerCase().includes("brown"))
-        ?? watch.straps.find(s => s.type === "leather" && ["tan", "honey", "cognac", "light brown"].some(c => (s.color ?? "").toLowerCase().includes(c)));
-    } else if (isBlackShoe) {
-      recommended = watch.straps.find(s => s.type === "leather" && s.color?.toLowerCase().includes("black"));
+    const rec = _recommendStrap(watch, outfit, context);
+    if (rec?.recommended && rec.recommended.id !== watchWithStrap._activeStrapId) {
+      outfit._strapRecommendation = { id: rec.recommended.id, label: rec.recommended.label };
+    } else {
+      outfit._strapRecommendation = null;
     }
-    // Bracelet is always safe — use if no matching leather strap or if bracelet has poor fit flag
-    if (!recommended) {
-      recommended = watch.straps.find(s => s.type === "bracelet" && !s.poorFit);
-    }
-    // If bracelet has poorFit flag, prefer leather
-    if (recommended?.poorFit) {
-      const anyLeather = watch.straps.find(s => s.type === "leather");
-      if (anyLeather) recommended = anyLeather;
-    }
-    outfit._strapRecommendation = (recommended && recommended.id !== watchWithStrap._activeStrapId) ? { id: recommended.id, label: recommended.label } : null;
   }
 
   // ── Pants-shoe palette coherence swap ──────────────────────────────────────
