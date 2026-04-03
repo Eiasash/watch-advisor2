@@ -262,7 +262,7 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 | `OnCallPlanner.jsx` | Shift outfit. Watch pool: Speedmaster, BB41, Hanhart only (`shiftWatch` flag). |
 | `WeekPlanner.jsx` | 7-day rotation + AddOutfitModal. Weather-aware per-day. |
 | `SelfiePanel.jsx` | Photo analysis. 640/512/420px scaling. |
-| `AuditPanel.jsx` | AI audit + orphan patch (search + camera) + Debug section. |
+| `AuditPanel.jsx` | AI audit + orphan patch (search + camera) + Sync Angles backfill + Debug section. |
 | `StatsPanel.jsx` | Wear analytics. Lives under History tab. |
 | `DebugConsole.jsx` | Error log + App Health dashboard (tokens, wear rates, auto-heal). |
 | `GarmentEditor.jsx` | Metadata edit. Tailor badge for flagged garments. |
@@ -324,6 +324,8 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 | **Vitest command** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **Outfit overrides** | Keyed by ISO date string, not `day.offset`. |
 | **Rejection context** | Uses actual context, not hardcoded `"smart-casual"`. |
+| **upload-angle handler** | Must write publicUrl back to garment.photoAngles + pushGarment. Was broken (discarded URL) until April 3 2026 fix. |
+| **SyncAnglesPanel** | Audit tab backfill tool for garments with local-only base64 angles. Auto-hides when nothing to sync. |
 
 ---
 

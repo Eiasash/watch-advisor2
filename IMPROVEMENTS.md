@@ -23,6 +23,7 @@ Generated: 2026-04-03 (full session)
 7. **Logged outfit overrides** — weekOutfits memo was bypassing outfitOverrides for _isLogged entries. Now applies manual overrides on top of logged garments.
 8. **WeekPlanner crash (muted undefined)** — main component defined `sub` but not `muted`. Line 1387 referenced it for history notes.
 9. **Snapshot weights stale** — skill-snapshot.js had hardcoded contextFormality=1.5 → 0.5, contextMatch 0.25 → 0.10.
+10. **CRITICAL: Angle photos not persisted to Supabase** — `upload-angle` handler in bootstrap.js uploaded angle photos to Storage but discarded the returned public URL. `pushGarment()` filters out `data:` URLs from `photo_angles`, so DB always got empty arrays. 66/71 garments had empty `photo_angles` in DB despite local IDB angles. Fixed handler to write URL back + push garment. Added SyncAnglesPanel in Audit tab for backfill.
 
 ### DB Updates
 10. **18 garments renamed** — Kiral cardigan type fix, Wool Overcoat, Gant cable knits normalized, Geox shoes, etc.
