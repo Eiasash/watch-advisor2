@@ -1421,6 +1421,28 @@ export default function WeekPlanner() {
                       />
                     ))}
                   </div>
+
+                  {/* Strap recommendation */}
+                  {dayOutfit._strapRecommendation && !dayOutfit._isLogged && (
+                    <div style={{ marginTop: 6, fontSize: 10, color: "#f59e0b", padding: "3px 8px",
+                                  borderRadius: 5, background: isDark ? "#78350f22" : "#fef3c722" }}>
+                      ⌚ Suggested strap: <strong>{dayOutfit._strapRecommendation.label}</strong>
+                    </div>
+                  )}
+
+                  {/* Explanation — collapsible */}
+                  {dayOutfit._explanation?.length > 0 && !dayOutfit._isLogged && (
+                    <details style={{ marginTop: 6, fontSize: 10, color: muted }}>
+                      <summary style={{ cursor: "pointer", fontWeight: 600, color: isDark ? "#8b93a7" : "#6b7280" }}>
+                        Why this outfit?
+                      </summary>
+                      <div style={{ marginTop: 4, paddingLeft: 8, lineHeight: 1.6 }}>
+                        {dayOutfit._explanation.map((line, i) => (
+                          <div key={i}>{line}</div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
 
