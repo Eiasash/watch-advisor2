@@ -60,7 +60,6 @@ export async function handler() {
       action: stagnant ? "flagged — rotationFactor may need increase" : "none",
     });
 
-    // ── 4. Garment repetition (>3× same garment in 14 days) ──────────────
     // ── 4. Garment repetition (>5× same garment in 14 days) ──────────────
     // Threshold 5 (not 3) — daily driver shoes and on-call anchor sweaters
     // naturally repeat 4-5× in 14 days with a small wardrobe. Only flag
