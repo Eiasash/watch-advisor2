@@ -65,16 +65,16 @@ describe("generateOutfit", () => {
     expect(result.sweater).toBeNull();
   });
 
-  it("null weather → jacket still filled, no sweater (tempC defaults to 22)", () => {
+  it("null weather → jacket still filled, sweater added (tempC defaults to 15)", () => {
     const result = generateOutfit(watch, garments, null);
     expect(result.jacket).not.toBeNull();
-    expect(result.sweater).toBeNull();
+    expect(result.sweater).not.toBeNull();
   });
 
-  it("undefined weather → jacket still filled, no sweater", () => {
+  it("undefined weather → jacket still filled, sweater added (tempC defaults to 15)", () => {
     const result = generateOutfit(watch, garments, undefined);
     expect(result.jacket).not.toBeNull();
-    expect(result.sweater).toBeNull();
+    expect(result.sweater).not.toBeNull();
   });
 
   // ─── Edge cases ──────────────────────────────────────────────────────────
