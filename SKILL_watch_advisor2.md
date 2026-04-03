@@ -385,3 +385,10 @@ Netlify dashboard → Functions → `auto-heal` → Trigger button. (HTTP invoca
 - Primary outfit temp = morning temp (you dress for the morning)
 - WeatherBadge shows: 🌅 8° · ☀️ 15° · 🌙 10° + "Shed the layer after noon"
 - Default temp fallback: 22°C → 15°C everywhere (outfitBuilder, WatchDashboard, WeekPlanner)
+
+### Weekly AI Brief — push-brief.js enhanced April 3 2026
+- Mondays: buildWeeklyBrief() generates a 7-day watch rotation with outfit suggestions per day
+- Other days: buildBrief() with hourly weather (morning/midday temps from Open-Meteo)
+- Both include: layer transition tips, strap recommendations, Pasha bracelet avoidance
+- Weekly brief cached in app_config.weekly_brief
+- Daily brief includes layerTip field

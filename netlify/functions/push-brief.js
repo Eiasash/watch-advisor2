@@ -22,13 +22,39 @@ function sb() {
   );
 }
 
+async function fetchJerusalemWeather() {
+  try {
+    const res = await fetch(
+      "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&daily=temperature_2m_max,temperature_2m_min,weathercode&hourly=temperature_2m&timezone=Asia/Jerusalem&forecast_days=7"
+    );
+    const data = await res.json();
+    const hourly = data.hourly;
+    return (data.daily?.time ?? []).map((date, i) => {
+      const dayHours = (hourly?.time ?? []).reduce((acc, t, idx) => {
+        if (t.startsWith(date)) acc.push({ hour: parseInt(t.slice(11, 13), 10), temp: hourly.temperature_2m[idx] });
+        return acc;
+      }, []);
+      const avg = (hours) => {
+        const v = dayHours.filter(h => hours.includes(h.hour)).map(h => h.temp);
+        return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+      };
+      return {
+        date,
+        tempMin: Math.round(data.daily.temperature_2m_min[i]),
+        tempMax: Math.round(data.daily.temperature_2m_max[i]),
+        tempMorning: avg([7, 8, 9, 10]),
+        tempMidday: avg([11, 12, 13, 14]),
+        code: data.daily.weathercode[i],
+      };
+    });
+  } catch { return []; }
+}
+
 async function buildBrief(apiKey) {
-  // Get today's date and day
   const now = new Date();
   const dayName = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "Asia/Jerusalem" });
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Jerusalem" });
 
-  // Fetch recent history + garments from Supabase to inform suggestion
   const supabase = sb();
   const [{ data: history }, { data: garments }] = await Promise.all([
     supabase.from("history").select("date,watch_id,payload").order("date", { ascending: false }).limit(7),
@@ -38,38 +64,97 @@ async function buildBrief(apiKey) {
       .limit(100),
   ]);
 
+  const forecast = await fetchJerusalemWeather();
+  const todayWeather = forecast[0];
+  const weatherLine = todayWeather
+    ? `Morning ${todayWeather.tempMorning ?? todayWeather.tempMin}°C, midday ${todayWeather.tempMidday ?? todayWeather.tempMax}°C`
+    : "weather unknown";
+
   const recentWatches = (history ?? []).map(e => e.watch_id).filter(Boolean).slice(0, 5);
-  const recentContexts = (history ?? []).map(e => e.payload?.context).filter(Boolean).slice(0, 5);
   const garmentSummary = (garments ?? [])
     .filter(g => !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type))
     .slice(0, 80)
     .map(g => `${g.name ?? (g.color + " " + g.type)}${g.brand ? " (" + g.brand + ")" : ""}`)
     .join(", ");
 
-  const prompt = `You are a concise morning style advisor. Generate a sharp, specific morning brief for a watch collector and physician.
+  const prompt = `You are a concise morning style advisor. Generate a sharp morning brief for a watch collector and physician in Jerusalem.
 
 TODAY: ${dayName}, ${dateStr}
-RECENT WATCH IDs WORN: ${recentWatches.join(", ") || "none"}
-RECENT CONTEXTS: ${recentContexts.join(", ") || "smart-casual"}
+WEATHER: ${weatherLine}
+RECENT WATCHES WORN: ${recentWatches.join(", ") || "none"}
 WARDROBE: ${garmentSummary || "varied smart casual wardrobe"}
 
-COLLECTION (13 genuine): Grand Seiko Snowflake, Grand Seiko Rikka green, Cartier Pasha 41mm grey, Cartier Santos Large white/gold, Cartier Santos Octagon YG vintage, GP Laureato 42mm blue, JLC Reverso Duoface, Tudor BB41, TAG Monaco, Omega Speedmaster, Rolex GMT-Master II, Hanhart Pioneer Flyback, Laco Flieger. Replicas (10): AP Royal Oak green, VC Overseas burgundy, IWC Perpetual blue, IWC Ingenieur teal, Rolex Day-Date turquoise, Rolex OP grape, Rolex GMT Meteorite, Chopard Alpine Eagle red, Cartier Santos 35mm white, Breguet Tradition black.
+COLLECTION (13 genuine): Grand Seiko Snowflake, Grand Seiko Rikka green, Cartier Pasha 41mm grey (prefer black alligator strap over bracelet), Cartier Santos Large white/gold, Cartier Santos Octagon YG vintage, GP Laureato 42mm blue, JLC Reverso Duoface, Tudor BB41, TAG Monaco, Omega Speedmaster, Rolex GMT-Master II, Hanhart Pioneer Flyback, Laco Flieger. Replicas (10): AP Royal Oak green, VC Overseas burgundy, IWC Perpetual blue, IWC Ingenieur teal, Rolex Day-Date turquoise, Rolex OP grape, Rolex GMT Meteorite, Chopard Alpine Eagle red, Cartier Santos 35mm white, Breguet Tradition black.
 
-Generate a brief that feels like a smart friend texting you what to wear. Be direct, specific, no fluff.
+RULES: Brown strap = brown shoes. Black strap = black shoes. Bracelet = any shoes. No loafers. Layer tip if morning < midday by 5°+.
 
 Return ONLY valid JSON:
 {
   "title": "short punchy title (max 6 words)",
-  "watch": "specific watch name to wear today",
-  "strap": "strap recommendation (1 phrase)",
-  "outfit": "complete outfit in one sentence (colors + pieces)",
-  "why": "one sentence on why this combo works today",
-  "icon": "single emoji that captures today's vibe"
+  "watch": "specific watch name",
+  "strap": "strap recommendation",
+  "outfit": "complete outfit in one sentence",
+  "why": "one sentence why this works",
+  "layerTip": "layer transition tip or null",
+  "icon": "single emoji"
 }`;
 
   const data = await callClaude(apiKey, {
     model: "claude-sonnet-4-6",
-    max_tokens: 300,
+    max_tokens: 400,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const raw = data?.content?.[0]?.text ?? "{}";
+  return JSON.parse(raw.replace(/```json|```/g, "").trim());
+}
+
+async function buildWeeklyBrief(apiKey) {
+  const supabase = sb();
+  const [{ data: history }, { data: garments }] = await Promise.all([
+    supabase.from("history").select("date,watch_id,payload").order("date", { ascending: false }).limit(14),
+    supabase.from("garments").select("id,name,type,color,brand")
+      .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
+      .not("type", "in", "(outfit-photo,outfit-shot,watch)")
+      .limit(100),
+  ]);
+
+  const forecast = await fetchJerusalemWeather();
+  const weatherSummary = forecast.slice(0, 7).map(f => {
+    const day = new Date(f.date).toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Jerusalem" });
+    return `${day}: ${f.tempMin}-${f.tempMax}°C (morning ${f.tempMorning ?? "?"}°)`;
+  }).join("\n");
+
+  const recentWatches = (history ?? []).map(e => `${e.date}: ${e.watch_id}`).slice(0, 10).join(", ");
+  const garmentList = (garments ?? [])
+    .filter(g => !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type))
+    .slice(0, 60)
+    .map(g => `${g.name}`)
+    .join(", ");
+
+  const prompt = `You are a weekly wardrobe planner for a physician and watch collector in Jerusalem.
+
+7-DAY FORECAST:
+${weatherSummary}
+
+RECENT WATCHES (last 2 weeks): ${recentWatches || "none"}
+WARDROBE: ${garmentList}
+COLLECTION: 23 watches (13 genuine, 10 replica). Avoid repeating same watch within 3 days.
+
+Generate a 7-day watch rotation with one-line outfit suggestion per day. Be specific about garment names and watch+strap combos.
+
+Return ONLY valid JSON:
+{
+  "title": "Week of [date range] — [theme]",
+  "days": [
+    { "day": "Mon", "watch": "watch name", "strap": "strap", "outfit": "one sentence", "tip": "optional layer/weather tip or null" }
+  ],
+  "icon": "single emoji"
+}`;
+
+  const data = await callClaude(apiKey, {
+    model: "claude-sonnet-4-6",
+    max_tokens: 1000,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -117,13 +202,28 @@ export async function handler() {
       }
     }
 
-    const brief = await buildBrief(apiKey);
-    const title = `${brief.icon ?? "⌚"} ${brief.title ?? "Morning Brief"}`;
-    const body  = `${brief.watch} · ${brief.outfit}`;
+    // Monday = weekly brief, other days = daily brief
+    const isMonday = new Date().toLocaleDateString("en-US", { weekday: "long", timeZone: "Asia/Jerusalem" }) === "Monday";
+    let title, body;
+
+    if (isMonday) {
+      const weekly = await buildWeeklyBrief(apiKey);
+      title = `${weekly.icon ?? "📅"} ${weekly.title ?? "Weekly Rotation"}`;
+      const dayLines = (weekly.days ?? []).slice(0, 3).map(d => `${d.day}: ${d.watch}`).join(" · ");
+      body = dayLines || "Open the app for your weekly plan";
+      // Cache weekly brief
+      try { await sb().from("app_config").upsert({ key: "weekly_brief", value: weekly }, { onConflict: "key" }); } catch {}
+    } else {
+      const brief = await buildBrief(apiKey);
+      title = `${brief.icon ?? "⌚"} ${brief.title ?? "Morning Brief"}`;
+      body = `${brief.watch} · ${brief.outfit}`;
+      if (brief.layerTip) body += ` · 💡 ${brief.layerTip}`;
+    }
+
     const payload = JSON.stringify({
       title,
       body,
-      data: { brief, url: "https://watch-advisor2.netlify.app/" },
+      data: { url: "https://watch-advisor2.netlify.app/" },
       icon: "/icon-192.png",
       badge: "/icon-96.png",
     });
