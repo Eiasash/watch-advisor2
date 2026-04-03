@@ -161,7 +161,7 @@ export async function handler(event) {
       snapshotAt: new Date().toISOString(),
       appUrl: "https://watch-advisor2.netlify.app",
       supabaseProject: "oaojkanozbfpofbewtfq",
-      netliftSiteId: "4d21d73c-b37f-4d3a-8954-8347045536dd",
+      netlifySiteId: "4d21d73c-b37f-4d3a-8954-8347045536dd",
       garmentCount: garmentCount ?? null,
       historyCount: historyCount ?? null,
       orphanedHistoryCount: orphanedHistory?.length ?? 0,
