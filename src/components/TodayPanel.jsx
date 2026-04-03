@@ -22,6 +22,7 @@ import LogButton        from "./today/LogButton.jsx";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
+import ClaudePick from "./ClaudePick.jsx";
 
 // Live date key — recomputes every render, rolls over at midnight
 function useTodayKey() {
@@ -330,6 +331,8 @@ export default function TodayPanel() {
             );
           })}
         </div>
+
+        <ClaudePick />
 
         <SelfiePanel context={todayEntry?.context ?? null} watchId={todayEntry?.watchId ?? null} />
 

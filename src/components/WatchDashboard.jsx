@@ -337,7 +337,7 @@ export default function WatchDashboard() {
 
   // Candidates per slot — used by the inline swap pickers
   // normalizeType maps polo→shirt, jeans→pants, sneakers→shoes, blazer→jacket etc.
-  const ACCESSORY_EXCL = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
+  const ACCESSORY_EXCL = new Set(["sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
   const wearable = useMemo(() =>
     garments.filter(g => !ACCESSORY_EXCL.has(g.type ?? g.category) && !g.excludeFromWardrobe),
     [garments]

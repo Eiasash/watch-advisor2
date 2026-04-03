@@ -24,7 +24,7 @@ const CONTEXTS = [
 
 const OUTFIT_SLOTS = ["shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
 const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", layer:"\u{1F9E3}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}", belt:"\u{1FAA2}" };
-const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
+const ACCESSORY_TYPES = new Set(["sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
 const WEATHER_ICONS = {
   "Clear sky": "\u2600\uFE0F",
@@ -659,6 +659,21 @@ function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates = []
           border: `1px solid ${border}`, borderRadius: 8,
           boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
         }}>
+          {/* Clear / None option */}
+          <div
+            onClick={() => { onSwap(slot, null); setOpen(false); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "6px 10px", cursor: "pointer",
+              background: !garment ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
+              borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+              color: isDark ? "#6b7280" : "#9ca3af", fontStyle: "italic", fontSize: 11,
+            }}
+          >
+            <span style={{ fontSize: 14, width: 24, textAlign: "center" }}>✕</span>
+            <span>None — remove</span>
+            {!garment && <span style={{ color: "#3b82f6", fontWeight: 700, fontSize: 12, marginLeft: "auto" }}>{"\u2713"}</span>}
+          </div>
           {candidates.map(c => {
             const cPhoto = c.thumbnail || c.photoUrl;
             return (
@@ -938,20 +953,24 @@ export default function WeekPlanner() {
       const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 15 };
 
       // For today: if already logged, use logged garments directly.
-      // Engine re-scoring today would diverge from what was actually chosen.
+      // But still allow manual overrides (user can swap slots on a logged outfit).
       if (day.offset === 0) {
         const loggedEntry = history.find(h => h.date === day.date);
         const loggedIds = loggedEntry?.garmentIds ?? loggedEntry?.payload?.garmentIds ?? [];
         if (loggedIds.length > 0) {
           const loggedOutfit = { _isLogged: true };
+          const dayOverrides = outfitOverrides[day.date] ?? {};
           for (const slot of OUTFIT_SLOTS) {
-            // Resolve garment objects from logged IDs — match by any slot that normalizes correctly
-            const candidates = garments.filter(g => loggedIds.includes(g.id));
-            const match = candidates.find(g => normalizeType(g.type ?? g.category ?? "") === slot);
-            if (match) {
-              loggedOutfit[slot] = match;
-              if (match.id) usedPerSlot[slot].push(match.id);
+            // Check if user manually overrode this slot
+            if (slot in dayOverrides) {
+              const overrideId = dayOverrides[slot];
+              loggedOutfit[slot] = overrideId ? garments.find(g => g.id === overrideId) ?? null : null;
+            } else {
+              const candidates = garments.filter(g => loggedIds.includes(g.id));
+              const match = candidates.find(g => normalizeType(g.type ?? g.category ?? "") === slot);
+              if (match) loggedOutfit[slot] = match;
             }
+            if (loggedOutfit[slot]?.id) usedPerSlot[slot].push(loggedOutfit[slot].id);
           }
           return loggedOutfit;
         }
@@ -1076,7 +1095,7 @@ export default function WeekPlanner() {
   const handleSwapGarment = useCallback((date, slot, garment) => {
     setOutfitOverrides(prev => ({
       ...prev,
-      [date]: { ...(prev[date] ?? {}), [slot]: garment.id },
+      [date]: { ...(prev[date] ?? {}), [slot]: garment?.id ?? null },
     }));
     // Reset shuffle seed so non-pinned slots find their best complement for the new pick
     setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
