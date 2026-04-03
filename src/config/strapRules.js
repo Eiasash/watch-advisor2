@@ -31,6 +31,7 @@ export const SPECIAL_STRAP_RULES = {
   navy:  { allowed: ["black", "white", "brown", "tan", "cognac", "dark brown"], fallback: 0.0 },
   grey:  { allowed: ["black", "white", "grey"],  fallback: 0.3 },
   teal:  { allowed: ["white", "black"],           fallback: 0.3 },
-  olive: { allowed: ["white", "black"],           fallback: 0.3 },
-  green: { allowed: ["white", "black"],           fallback: 0.3 },
+  // Olive/green straps: brown/tan shoes valid (field/earth palette)
+  olive: { allowed: ["white", "black", "brown", "tan", "cognac"], fallback: 0.3 },
+  green: { allowed: ["white", "black", "brown", "tan", "cognac"], fallback: 0.3 },
 };
