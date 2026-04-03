@@ -331,7 +331,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const s0 = watch.straps[0];
     resolvedStrap = s0.label ?? (s0.color && s0.type ? `${s0.color} ${s0.type}` : s0.color ?? watch.strap);
   }
-  const watchWithStrap = { ...watch, strap: resolvedStrap };
+  const watchWithStrap = { ...watch, strap: resolvedStrap, _activeStrapId: activeStrapObj?.id ?? null };
 
   // ── Dual-dial: start with sideA, re-evaluate after outfit is built ──────────
   let _dualDialRec = null;
@@ -550,7 +550,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       const anyLeather = watch.straps.find(s => s.type === "leather");
       if (anyLeather) recommended = anyLeather;
     }
-    outfit._strapRecommendation = recommended ? { id: recommended.id, label: recommended.label } : null;
+    outfit._strapRecommendation = (recommended && recommended.id !== watchWithStrap._activeStrapId) ? { id: recommended.id, label: recommended.label } : null;
   }
 
   // ── Pants-shoe palette coherence swap ──────────────────────────────────────

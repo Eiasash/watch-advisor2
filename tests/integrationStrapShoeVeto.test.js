@@ -4,8 +4,9 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("../src/stores/rejectStore.js", () => ({
   useRejectStore: { getState: () => ({ isRecentlyRejected: () => false }) },
 }));
+const _strapMock = { getActiveStrapObj: () => null };
 vi.mock("../src/stores/strapStore.js", () => ({
-  useStrapStore: { getState: () => ({ getActiveStrapObj: () => null }) },
+  useStrapStore: { getState: () => _strapMock },
 }));
 
 import { strapShoeScore } from "../src/outfitEngine/scoring.js";
@@ -74,5 +75,57 @@ describe("Integration: buildOutfit strap-shoe veto", () => {
     expect(outfit.shoes).not.toBeNull();
     // With bracelet, black shoes should be accepted (not vetoed)
     expect(outfit.shoes.color).toBe("black");
+  });
+});
+
+describe("Integration: strap recommendation suppression", () => {
+  it("suppresses recommendation when recommended strap matches active strap", () => {
+    _strapMock.getActiveStrapObj = () => ({ id: "strap-brown", label: "Brown Leather", color: "brown", type: "leather" });
+
+    const watch = {
+      id: "w-strap-test", brand: "JLC", model: "Reverso", dial: "silver-white",
+      style: "dress", formality: 8, genuine: true,
+      strap: "brown leather",
+      straps: [
+        { id: "strap-brown", type: "leather", color: "brown", label: "Brown Leather" },
+        { id: "strap-black", type: "leather", color: "black", label: "Black Leather" },
+      ],
+    };
+    const garments = [
+      { id: "g1", type: "shirt", color: "white", formality: 7, name: "White shirt" },
+      { id: "g2", type: "pants", color: "grey", formality: 7, name: "Grey pants" },
+      { id: "g3", type: "shoes", color: "brown", formality: 7, name: "Brown shoes" },
+    ];
+    // Brown shoes → recommends brown leather strap → same as active → suppress
+    const outfit = buildOutfit(watch, garments, {}, [], [], {});
+    expect(outfit._strapRecommendation).toBeNull();
+
+    _strapMock.getActiveStrapObj = () => null;
+  });
+
+  it("shows recommendation when recommended strap differs from active strap", () => {
+    // Active strap is bracelet, but recommended will be brown leather (for brown shoes)
+    _strapMock.getActiveStrapObj = () => ({ id: "strap-bracelet", label: "Bracelet", type: "bracelet" });
+
+    const watch = {
+      id: "w-strap-test2", brand: "JLC", model: "Reverso", dial: "silver-white",
+      style: "dress", formality: 8, genuine: true,
+      strap: "bracelet",
+      straps: [
+        { id: "strap-brown", type: "leather", color: "brown", label: "Brown Leather" },
+        { id: "strap-bracelet", type: "bracelet", label: "Bracelet" },
+      ],
+    };
+    const garments = [
+      { id: "g1", type: "shirt", color: "white", formality: 7, name: "White shirt" },
+      { id: "g2", type: "pants", color: "grey", formality: 7, name: "Grey pants" },
+      { id: "g3", type: "shoes", color: "brown", formality: 7, name: "Brown shoes" },
+    ];
+    // Bracelet active → brown shoes picked → recommends brown leather → differs from bracelet → show
+    const outfit = buildOutfit(watch, garments, {}, [], [], {});
+    expect(outfit._strapRecommendation).not.toBeNull();
+    expect(outfit._strapRecommendation.id).toBe("strap-brown");
+
+    _strapMock.getActiveStrapObj = () => null;
   });
 });
