@@ -2,7 +2,7 @@
 Generated: 2026-04-03 (full session)
 
 ## Audit Summary (April 3 — v1.6.2)
-- **Supabase**: 71 active garments (23 with photos, 26 with angles), 38 history entries, 0 dupes, 0 orphans, 0 untagged
+- **Supabase**: 71 active garments (23 with photos, 26 with angles), 39 history entries, 0 dupes, 0 orphans, 0 untagged
 - **Tests**: 2087+ passing (27 test files)
 - **Engine integrity**: 15/15 checks PASS
 - **Snapshot**: garments ok, history ok, orphanedHistory ok, wardrobeHealth ok
@@ -42,7 +42,7 @@ Generated: 2026-04-03 (full session)
 10. **18 garments renamed** — Kiral cardigan type fix, Wool Overcoat, Gant cable knits normalized, Geox shoes, etc.
 11. **12 garment photos uploaded** to Supabase storage
 12. **1 phantom history entry deleted** (auto-logged empty outfit from Plan tab)
-13. **9 wear entries logged** across session (Mar 21, 23×3, 30, Apr 2×3, Apr 3)
+13. **10 wear entries logged** across session (Mar 21, 23×3, 30, Apr 2×3, Apr 3×2) — latest: Tudor BB41 distressed brown + olive bomber + camel crewneck + stone PNT-5050 + tan Eccos (Ramallah casual, 8.5/10)
 
 ---
 
