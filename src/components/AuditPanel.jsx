@@ -970,8 +970,10 @@ function DebugSection({ isDark }) {
 }
 
 /**
- * Sync Angles to Cloud — finds garments with local base64 angle photos
- * and uploads them to Supabase Storage, then updates the garment record.
+ * Sync Angles to Cloud — two modes:
+ * 1. Upload local base64 angle photos to Supabase Storage (for new imports)
+ * 2. Backfill photo_angles from existing photo_url for garments where angles
+ *    were lost (the original bug: upload-angle discarded public URLs)
  */
 function SyncAnglesPanel({ isDark }) {
   const garments = useWardrobeStore(s => s.garments);
@@ -980,27 +982,38 @@ function SyncAnglesPanel({ isDark }) {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState(null);
 
-  // Count garments with base64 angles (not yet uploaded to Storage)
-  const needSync = garments.filter(g =>
+  // Mode 1: garments with base64 data: angles not yet uploaded
+  const needUpload = garments.filter(g =>
     !g.excludeFromWardrobe &&
     (g.photoAngles ?? []).some(u => u && typeof u === "string" && u.startsWith("data:"))
   );
 
-  // Also count garments with angles stored only locally (empty in DB means never synced)
-  const hasLocalAngles = garments.filter(g =>
-    !g.excludeFromWardrobe &&
-    (g.photoAngles ?? []).length > 0
-  );
+  // Mode 2: garments with a Storage photo_url/thumbnail but empty photoAngles
+  // These had angles during import that were lost due to the upload-angle bug.
+  // We can at least seed photo_angles[0] from their existing thumbnail.
+  const needBackfill = garments.filter(g => {
+    if (g.excludeFromWardrobe) return false;
+    const angles = g.photoAngles ?? [];
+    if (angles.length > 0) return false; // already has angles
+    // Must have a non-blob, non-base64 photo URL (i.e., a Supabase Storage URL)
+    const url = g.photoUrl || g.thumbnail;
+    return url && typeof url === "string" && url.startsWith("https://");
+  });
+
+  const totalIssues = needUpload.length + needBackfill.length;
 
   async function handleSync() {
     setSyncing(true);
     setResult(null);
     let uploaded = 0;
+    let backfilled = 0;
     let errors = 0;
-    const total = needSync.length;
+    const total = needUpload.length + needBackfill.length;
     setProgress({ done: 0, total });
+    let step = 0;
 
-    for (const garment of needSync) {
+    // Mode 1: upload base64 angles
+    for (const garment of needUpload) {
       const angles = [...(garment.photoAngles ?? [])];
       const newAngles = [];
       let changed = false;
@@ -1015,7 +1028,7 @@ function SyncAnglesPanel({ isDark }) {
               changed = true;
               uploaded++;
             } else {
-              newAngles.push(url); // keep base64 if upload failed
+              newAngles.push(url);
               errors++;
             }
           } catch {
@@ -1023,18 +1036,34 @@ function SyncAnglesPanel({ isDark }) {
             errors++;
           }
         } else {
-          newAngles.push(url); // already a Storage URL
+          newAngles.push(url);
         }
       }
 
       if (changed) {
         updateGarment(garment.id, { photoAngles: newAngles });
         const updated = useWardrobeStore.getState().garments.find(g => g.id === garment.id);
-        if (updated) {
-          await pushGarment(updated).catch(() => { errors++; });
+        if (updated) await pushGarment(updated).catch(() => { errors++; });
+      }
+      step++;
+      setProgress({ done: step, total });
+    }
+
+    // Mode 2: backfill photo_angles[0] from existing photo_url
+    for (const garment of needBackfill) {
+      const url = garment.photoUrl || garment.thumbnail;
+      if (url) {
+        try {
+          updateGarment(garment.id, { photoAngles: [url] });
+          const updated = useWardrobeStore.getState().garments.find(g => g.id === garment.id);
+          if (updated) await pushGarment(updated).catch(() => { errors++; });
+          backfilled++;
+        } catch {
+          errors++;
         }
       }
-      setProgress({ done: needSync.indexOf(garment) + 1, total });
+      step++;
+      setProgress({ done: step, total });
     }
 
     // Persist IDB
@@ -1043,7 +1072,7 @@ function SyncAnglesPanel({ isDark }) {
     const allGarments = useWardrobeStore.getState().garments;
     await setCachedState({ garments: allGarments, watches, history }).catch(() => {});
 
-    setResult({ uploaded, errors, total });
+    setResult({ uploaded, backfilled, errors, total });
     setSyncing(false);
   }
 
@@ -1051,7 +1080,7 @@ function SyncAnglesPanel({ isDark }) {
   const text = isDark ? "#e2e8f0" : "#1f2937";
   const sub = isDark ? "#8b93a7" : "#6b7280";
 
-  if (needSync.length === 0 && !result) return null; // nothing to sync — hide panel
+  if (totalIssues === 0 && !result) return null;
 
   return (
     <div style={{ marginTop: 20, borderRadius: 10, border: `1px solid ${border}`,
@@ -1060,8 +1089,9 @@ function SyncAnglesPanel({ isDark }) {
         📸 Sync Angle Photos to Cloud
       </div>
       <div style={{ fontSize: 11, color: sub, marginBottom: 10 }}>
-        {needSync.length} garment{needSync.length !== 1 ? "s" : ""} with local-only angle photos
-        {hasLocalAngles.length > 0 && ` (${hasLocalAngles.length} total with angles)`}
+        {needUpload.length > 0 && `${needUpload.length} with local-only angles to upload`}
+        {needUpload.length > 0 && needBackfill.length > 0 && " · "}
+        {needBackfill.length > 0 && `${needBackfill.length} to backfill from existing photo`}
       </div>
 
       {!syncing && !result && (
@@ -1072,13 +1102,13 @@ function SyncAnglesPanel({ isDark }) {
             background: "#3b82f6", color: "#fff", fontSize: 12,
             fontWeight: 600, cursor: "pointer",
           }}>
-          Upload {needSync.length} angle set{needSync.length !== 1 ? "s" : ""} to Supabase
+          Sync {totalIssues} garment{totalIssues !== 1 ? "s" : ""}
         </button>
       )}
 
       {syncing && (
         <div style={{ fontSize: 12, color: sub }}>
-          Uploading… {progress.done}/{progress.total}
+          Syncing… {progress.done}/{progress.total}
           <div style={{ marginTop: 6, height: 4, borderRadius: 2, background: isDark ? "#1e293b" : "#e5e7eb" }}>
             <div style={{
               height: 4, borderRadius: 2, background: "#3b82f6",
@@ -1091,7 +1121,9 @@ function SyncAnglesPanel({ isDark }) {
 
       {result && (
         <div style={{ fontSize: 12, color: result.errors ? "#ef4444" : "#22c55e" }}>
-          ✅ Uploaded {result.uploaded} angle photo{result.uploaded !== 1 ? "s" : ""} across {result.total} garment{result.total !== 1 ? "s" : ""}
+          ✅ {result.uploaded > 0 ? `Uploaded ${result.uploaded} angles` : ""}
+          {result.uploaded > 0 && result.backfilled > 0 ? " · " : ""}
+          {result.backfilled > 0 ? `Backfilled ${result.backfilled} from photos` : ""}
           {result.errors > 0 && ` · ${result.errors} error${result.errors !== 1 ? "s" : ""}`}
         </div>
       )}
