@@ -1,15 +1,16 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-03 (full session)
 
-## Audit Summary (April 3 — second pass)
-- **Supabase**: 77 active garments, 38 history entries, 0 dupes, 0 orphans, 0 untagged
-- **Tests**: 2087/2087 passing (113 files)
+## Audit Summary (April 3 — third pass, v1.6.1)
+- **Supabase**: 71 active garments (23 with photos, 5 with angles), 38 history entries, 0 dupes, 0 orphans, 0 untagged
+- **Tests**: 2087+ passing (27 test files)
 - **Engine integrity**: 15/15 checks PASS
 - **Snapshot**: garments ok, history ok, orphanedHistory ok, wardrobeHealth ok
-- **Fixes shipped**: daily-pick maxAttempts 2→1, pushBrief fetch mock, 3 stale tests updated (default temp 15°C), weatherService label assertion
+- **Fixes shipped**: angle photo persistence (bootstrap upload-angle handler), SyncAnglesPanel backfill tool, daily-pick maxAttempts 2→1, pushBrief fetch mock, 3 stale tests updated (default temp 15°C), weatherService label assertion
 - **Deploy**: ready
+- **Version**: 1.6.1
 
-## v1.5.7 — April 3 Session
+## v1.6.1 — April 3 Session (angle fix)
 
 ### Features
 1. **Claude's Pick (daily-pick.js + ClaudePick.jsx)** — AI outfit recommendation with same styling logic as human conversation. Fetches garments, watches, history, hourly weather. 4-hour cache. Purple accent card in Today tab.

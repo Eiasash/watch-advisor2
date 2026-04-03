@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.6.0 |
+| Version | 1.6.1 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 105 |
 | Source LOC | ~17,700 |
@@ -31,7 +31,7 @@
 src/
   app/
     AppShell.jsx          — router, nav, theme, boot status, storage quota toast
-    bootstrap.js          — IDB load → cloud pull, task handlers, backup + storage quota + debugStore push
+    bootstrap.js          — IDB load → cloud pull, task handlers (incl. upload-angle with URL writeback), backup + storage quota + debugStore push
   components/             — 26 JSX UI components (see Key Components)
   config/
     scoringWeights.js     — SCORE_WEIGHTS + STYLE_LEARN — ONLY place to change weights
@@ -234,7 +234,7 @@ Visible in DebugConsole + `app_config.monthly_token_usage`.
 ### Supabase Tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | 77 active, fully tagged (seasons/contexts/material/weight) |
+| `garments` | Wardrobe items | 71 active, fully tagged (seasons/contexts/material/weight), 23 with photos, 5 with angle photos |
 | `history` | Wear log | 38+ entries. `payload_version: "v1"` on all entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
@@ -345,7 +345,7 @@ Returns: `garmentCount`, `orphanedHistoryCount`, `activeModel`, `tokenUsage`,
 `autoHeal`, `outfitQualityTrend`, `wardrobeHealth`, `health` checks.
 
 Expected healthy state:
-- `garmentCount >= 75`
+- `garmentCount >= 71`
 - `orphanedHistoryCount === 0`
 - `activeModel !== "unknown"`
 - All `health.*` === `"ok"`
