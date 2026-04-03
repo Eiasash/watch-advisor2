@@ -3,7 +3,7 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
-import { pushGarment, deleteGarment as deleteGarmentCloud } from "../services/supabaseSync.js";
+import { pushGarment, deleteGarment as deleteGarmentCloud, uploadAngle } from "../services/supabaseSync.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { enqueueTask, getPendingTasks, subscribeQueue } from "../services/backgroundQueue.js";
 
@@ -930,6 +930,9 @@ export function PhotoVerifierPanel() {
       {/* ── Orphaned History Entries ──────────────────────────────────────────── */}
       <OrphanedHistoryPatch isDark={isDark} />
 
+      {/* ── Sync Angles to Cloud ──────────────────────────────────────────────── */}
+      <SyncAnglesPanel isDark={isDark} />
+
       {/* ── App Health & Debug ────────────────────────────────────────────────── */}
       <DebugSection isDark={isDark} />
     </div>
@@ -960,6 +963,136 @@ function DebugSection({ isDark }) {
           <Suspense fallback={<div style={{ padding: 12, fontSize: 12, color: sub }}>Loading…</div>}>
             <DebugConsole isDark={isDark} />
           </Suspense>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Sync Angles to Cloud — finds garments with local base64 angle photos
+ * and uploads them to Supabase Storage, then updates the garment record.
+ */
+function SyncAnglesPanel({ isDark }) {
+  const garments = useWardrobeStore(s => s.garments);
+  const updateGarment = useWardrobeStore(s => s.updateGarment);
+  const [syncing, setSyncing] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [result, setResult] = useState(null);
+
+  // Count garments with base64 angles (not yet uploaded to Storage)
+  const needSync = garments.filter(g =>
+    !g.excludeFromWardrobe &&
+    (g.photoAngles ?? []).some(u => u && typeof u === "string" && u.startsWith("data:"))
+  );
+
+  // Also count garments with angles stored only locally (empty in DB means never synced)
+  const hasLocalAngles = garments.filter(g =>
+    !g.excludeFromWardrobe &&
+    (g.photoAngles ?? []).length > 0
+  );
+
+  async function handleSync() {
+    setSyncing(true);
+    setResult(null);
+    let uploaded = 0;
+    let errors = 0;
+    const total = needSync.length;
+    setProgress({ done: 0, total });
+
+    for (const garment of needSync) {
+      const angles = [...(garment.photoAngles ?? [])];
+      const newAngles = [];
+      let changed = false;
+
+      for (let i = 0; i < angles.length; i++) {
+        const url = angles[i];
+        if (url && typeof url === "string" && url.startsWith("data:")) {
+          try {
+            const publicUrl = await uploadAngle(garment.id, i, url);
+            if (publicUrl) {
+              newAngles.push(publicUrl);
+              changed = true;
+              uploaded++;
+            } else {
+              newAngles.push(url); // keep base64 if upload failed
+              errors++;
+            }
+          } catch {
+            newAngles.push(url);
+            errors++;
+          }
+        } else {
+          newAngles.push(url); // already a Storage URL
+        }
+      }
+
+      if (changed) {
+        updateGarment(garment.id, { photoAngles: newAngles });
+        const updated = useWardrobeStore.getState().garments.find(g => g.id === garment.id);
+        if (updated) {
+          await pushGarment(updated).catch(() => { errors++; });
+        }
+      }
+      setProgress({ done: needSync.indexOf(garment) + 1, total });
+    }
+
+    // Persist IDB
+    const { watches } = useWatchStore.getState();
+    const { entries: history } = useHistoryStore.getState();
+    const allGarments = useWardrobeStore.getState().garments;
+    await setCachedState({ garments: allGarments, watches, history }).catch(() => {});
+
+    setResult({ uploaded, errors, total });
+    setSyncing(false);
+  }
+
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const text = isDark ? "#e2e8f0" : "#1f2937";
+  const sub = isDark ? "#8b93a7" : "#6b7280";
+
+  if (needSync.length === 0 && !result) return null; // nothing to sync — hide panel
+
+  return (
+    <div style={{ marginTop: 20, borderRadius: 10, border: `1px solid ${border}`,
+                  background: isDark ? "#0f131a" : "#f9fafb", padding: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: text, marginBottom: 8 }}>
+        📸 Sync Angle Photos to Cloud
+      </div>
+      <div style={{ fontSize: 11, color: sub, marginBottom: 10 }}>
+        {needSync.length} garment{needSync.length !== 1 ? "s" : ""} with local-only angle photos
+        {hasLocalAngles.length > 0 && ` (${hasLocalAngles.length} total with angles)`}
+      </div>
+
+      {!syncing && !result && (
+        <button
+          onClick={handleSync}
+          style={{
+            padding: "8px 16px", borderRadius: 8, border: "none",
+            background: "#3b82f6", color: "#fff", fontSize: 12,
+            fontWeight: 600, cursor: "pointer",
+          }}>
+          Upload {needSync.length} angle set{needSync.length !== 1 ? "s" : ""} to Supabase
+        </button>
+      )}
+
+      {syncing && (
+        <div style={{ fontSize: 12, color: sub }}>
+          Uploading… {progress.done}/{progress.total}
+          <div style={{ marginTop: 6, height: 4, borderRadius: 2, background: isDark ? "#1e293b" : "#e5e7eb" }}>
+            <div style={{
+              height: 4, borderRadius: 2, background: "#3b82f6",
+              width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`,
+              transition: "width 0.3s",
+            }} />
+          </div>
+        </div>
+      )}
+
+      {result && (
+        <div style={{ fontSize: 12, color: result.errors ? "#ef4444" : "#22c55e" }}>
+          ✅ Uploaded {result.uploaded} angle photo{result.uploaded !== 1 ? "s" : ""} across {result.total} garment{result.total !== 1 ? "s" : ""}
+          {result.errors > 0 && ` · ${result.errors} error${result.errors !== 1 ? "s" : ""}`}
         </div>
       )}
     </div>

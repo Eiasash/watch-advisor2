@@ -109,7 +109,32 @@ export function useBootstrap() {
           setCachedState({ garments: updatedGarments, watches, history }).catch(() => {});
         }
       });
-      registerHandler("upload-angle", async (p) => { await uploadAngleSync(p.garmentId, p.index, p.source); });
+      registerHandler("upload-angle", async (p) => {
+        const publicUrl = await uploadAngleSync(p.garmentId, p.index, p.source);
+        if (publicUrl) {
+          // Write the Storage URL back to the garment's photoAngles array,
+          // replacing the base64 data URL at this index with the CDN URL.
+          const { updateGarment, garments } = useWardrobeStore.getState();
+          const garment = garments.find(g => g.id === p.garmentId);
+          if (garment) {
+            const angles = [...(garment.photoAngles ?? [])];
+            // Replace the base64 entry at this index, or append
+            if (p.index < angles.length) {
+              angles[p.index] = publicUrl;
+            } else {
+              angles.push(publicUrl);
+            }
+            updateGarment(p.garmentId, { photoAngles: angles });
+            // Push updated garment to Supabase so photo_angles column gets the Storage URLs
+            const updated = useWardrobeStore.getState().garments.find(g => g.id === p.garmentId);
+            if (updated) pushGarmentSync(updated).catch(() => {});
+            // Persist to IDB
+            const { history } = useHistoryStore.getState();
+            const { watches } = useWatchStore.getState();
+            setCachedState({ garments: useWardrobeStore.getState().garments, watches, history }).catch(() => {});
+          }
+        }
+      });
       registerHandler("verify-photo", async (p) => {
         const res = await fetch("/.netlify/functions/verify-garment-photo", {
           method: "POST", headers: { "Content-Type": "application/json" },
