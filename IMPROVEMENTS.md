@@ -1,14 +1,26 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-03 (full session)
 
-## Audit Summary (April 3 — third pass, v1.6.1)
-- **Supabase**: 71 active garments (23 with photos, 5 with angles), 38 history entries, 0 dupes, 0 orphans, 0 untagged
+## Audit Summary (April 3 — v1.6.2)
+- **Supabase**: 71 active garments (23 with photos, 26 with angles), 38 history entries, 0 dupes, 0 orphans, 0 untagged
 - **Tests**: 2087+ passing (27 test files)
 - **Engine integrity**: 15/15 checks PASS
 - **Snapshot**: garments ok, history ok, orphanedHistory ok, wardrobeHealth ok
-- **Fixes shipped**: angle photo persistence (bootstrap upload-angle handler), SyncAnglesPanel backfill tool, daily-pick maxAttempts 2→1, pushBrief fetch mock, 3 stale tests updated (default temp 15°C), weatherService label assertion
+- **Fixes shipped**: palette-aware strap recommender, angle photo persistence, SyncAnglesPanel, olive/green strap rules
 - **Deploy**: ready
-- **Version**: 1.6.1
+- **Version**: 1.6.2
+
+## v1.6.2 — April 3 (strap intelligence)
+
+### Features
+1. **Palette-aware strap recommendation** — `strapRecommender.js` rewritten. Scores each strap against shoe color (mandatory), outfit color palette affinity (color family matching), context formality, and watch dial harmony. Replaces shoe-only matching in both outfitBuilder (Plan tab) and WatchDashboard (Today tab).
+2. **Outfit-strap bidirectional logic** — strap selection gates shoe pre-filtering via `strapShoeScore` → shoes drive belt + palette. Strap recommendation reads outfit palette back. Full loop.
+
+### Bug Fixes
+3. **SyncAnglesPanel race condition** — panel was invisible because `pullThumbnails` (async Phase 2) hadn't hydrated `photoUrl` when panel rendered. Now queries Supabase directly on mount.
+4. **Olive/green strap shoe rules** — `strapRules.js` already had `olive` and `green` entries allowing brown/tan/white/black shoes. Confirmed working with Hanhart dark green suede + tan Eccos.
+
+---
 
 ## v1.6.1 — April 3 Session (angle fix)
 

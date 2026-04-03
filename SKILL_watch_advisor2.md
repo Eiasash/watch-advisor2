@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.6.1 |
+| Version | 1.6.2 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 105 |
 | Source LOC | ~17,700 |
@@ -54,6 +54,7 @@ src/
     confidence.js         — outfitConfidence() — SCORE_CEILING = 30 (additive engine)
     explain.js            — explainOutfit(), explainSeasonContext() — Jerusalem timezone
     watchStyles.js        — STYLE_TO_SLOTS, STYLE_FORMALITY_TARGET
+    strapRecommender.js   — recommendStrap() — palette-aware strap scoring (shoe + outfit + dial + context)
     scoringFactors/
       index.js            — registerFactor(), applyFactors() — factor pipeline
       diversityFactor.js  — diversity bonus
@@ -325,7 +326,9 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 | **Outfit overrides** | Keyed by ISO date string, not `day.offset`. |
 | **Rejection context** | Uses actual context, not hardcoded `"smart-casual"`. |
 | **upload-angle handler** | Must write publicUrl back to garment.photoAngles + pushGarment. Was broken (discarded URL) until April 3 2026 fix. |
-| **SyncAnglesPanel** | Audit tab backfill tool for garments with local-only base64 angles. Auto-hides when nothing to sync. |
+| **SyncAnglesPanel** | Audit tab backfill tool for garments with local-only base64 angles. Queries Supabase directly (not local state). Auto-hides when nothing to sync. |
+| **strapRecommender v2** | Scores straps against shoe color + outfit palette + dial harmony + context. Used by both outfitBuilder (Plan tab) and WatchDashboard (Today tab). Never revert to shoe-only matching. |
+| **strapRules.js** | Single source of truth for strap-shoe rules. olive/green straps allow brown/tan/white/black shoes. |
 
 ---
 
