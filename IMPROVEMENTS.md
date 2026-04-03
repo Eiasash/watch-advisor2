@@ -1,13 +1,36 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-02 (full session)
+Generated: 2026-04-03 (full session)
 
-## Audit Summary
-- **Engine integrity**: All 9 values verified correct (April 2 re-audit)
-- **Supabase**: 77 active garments, 0 dupes, 0 orphans, 77/77 fully tagged
-- **Tests**: 2087 passing (113 files), 9 failures fixed this session
-- **Static analysis**: No circular deps (dynamic imports safe), no console.log leaks, all Vision maxAttempts=1
-- **Snapshot**: garments ok, history ok, orphans ok, wardrobeHealth ok
-- **Dead code**: run-migrations.js uncalled from client (expected — external utility)
+## Audit Summary (April 3)
+- **Supabase**: 77 active garments, 39 history entries, 0 dupes, 0 orphans, 0 untagged
+- **Tests**: 116 critical passing (4 targeted files), full suite on Netlify CI
+- **Snapshot**: garments ok, history ok, orphanedHistory ok, wardrobeHealth ok
+- **Deploy**: ready (commit 864617d → latest)
+
+## v1.5.7 — April 3 Session
+
+### Features
+1. **Claude's Pick (daily-pick.js + ClaudePick.jsx)** — AI outfit recommendation with same styling logic as human conversation. Fetches garments, watches, history, hourly weather. 4-hour cache. Purple accent card in Today tab.
+2. **🤖 Ask Claude per day in Plan tab** — button per day card calls daily-pick with that day's weather, applies garment + watch overrides.
+3. **Hourly weather awareness** — fetchWeatherForecast requests hourly temps, shows morning/midday/evening (🌅 8° · ☀️ 15° · 🌙 10°). "Shed the layer after noon" tip.
+4. **Default temp 22°C → 15°C** — outfitBuilder, WatchDashboard, WeekPlanner all defaulted to summer/no-layer. Now defaults to neutral/light-layer.
+
+### Bug Fixes
+5. **Belt slot swappable** — removed "belt" from ACCESSORY_TYPES exclusion in WeekPlanner + WatchDashboard.
+6. **"None — remove" option** in OutfitSlotChip dropdown — clear any slot.
+7. **Logged outfit overrides** — weekOutfits memo was bypassing outfitOverrides for _isLogged entries. Now applies manual overrides on top of logged garments.
+8. **WeekPlanner crash (muted undefined)** — main component defined `sub` but not `muted`. Line 1387 referenced it for history notes.
+9. **Snapshot weights stale** — skill-snapshot.js had hardcoded contextFormality=1.5 → 0.5, contextMatch 0.25 → 0.10.
+
+### DB Updates
+10. **18 garments renamed** — Kiral cardigan type fix, Wool Overcoat, Gant cable knits normalized, Geox shoes, etc.
+11. **12 garment photos uploaded** to Supabase storage
+12. **1 phantom history entry deleted** (auto-logged empty outfit from Plan tab)
+13. **9 wear entries logged** across session (Mar 21, 23×3, 30, Apr 2×3, Apr 3)
+
+---
+
+# Previous Sessions
 
 ## v1.5.7 — Flexible Context System (April 2 2026)
 1. **contextFormality weight**: 1.5 → 0.5 — context is a soft nudge, not dominant

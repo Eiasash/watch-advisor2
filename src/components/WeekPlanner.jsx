@@ -856,6 +856,7 @@ export default function WeekPlanner() {
   // pendingAddOutfit: day data for the "add another outfit" modal
   const [pendingAddOutfit, setPendingAddOutfit] = useState(null);
   const [pickingDay, setPickingDay]         = useState(null);
+  const [aiLoadingDay, setAiLoadingDay]     = useState(null); // date string of day being AI-picked
   // Per-day per-slot garment overrides: { [YYYY-MM-DD]: { shirt: garmentId, ... } }
   // Keyed by ISO date (not offset) so overrides survive midnight correctly.
   // Offset-keyed overrides would shift: what was tomorrow (offset:1) becomes today
@@ -1114,6 +1115,54 @@ export default function WeekPlanner() {
     });
   }, []);
 
+  // Ask Claude for AI outfit recommendation for a specific day
+  const handleAskClaude = useCallback(async (date, dayForecast) => {
+    setAiLoadingDay(date);
+    try {
+      const weather = dayForecast ? {
+        tempC: dayForecast.tempC,
+        tempMorning: dayForecast.tempMorning,
+        tempMidday: dayForecast.tempMidday,
+        tempEvening: dayForecast.tempEvening,
+        description: dayForecast.description,
+      } : undefined;
+      const res = await fetch("/.netlify/functions/daily-pick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forceRefresh: true, weather }),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const pick = await res.json();
+      if (pick.error) throw new Error(pick.error);
+
+      // Map AI garment names to IDs
+      const overrides = {};
+      for (const slot of OUTFIT_SLOTS) {
+        const name = pick[slot];
+        if (!name || name === "null") { overrides[slot] = null; continue; }
+        const match = garments.find(g =>
+          g.name === name || g.name?.toLowerCase() === name?.toLowerCase()
+        );
+        if (match) overrides[slot] = match.id;
+      }
+
+      // Apply watch override if AI picked a different watch
+      if (pick.watchId) {
+        const aiWatch = watches.find(w => w.id === pick.watchId);
+        if (aiWatch) {
+          setWatchOverrides(prev => ({ ...prev, [date]: pick.watchId }));
+        }
+      }
+
+      setOutfitOverrides(prev => ({ ...prev, [date]: overrides }));
+      setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
+    } catch (e) {
+      console.warn("[WeekPlanner] AI pick failed:", e.message);
+    } finally {
+      setAiLoadingDay(null);
+    }
+  }, [garments, watches]);
+
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
@@ -1328,6 +1377,15 @@ export default function WeekPlanner() {
                     </div>
                     {!dayOutfit._isLogged && (
                     <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={() => handleAskClaude(day.date, dayForecast)}
+                        disabled={aiLoadingDay === day.date}
+                        title="Ask Claude for outfit recommendation"
+                        style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                                  border: "1px solid #8b5cf6",
+                                  background: aiLoadingDay === day.date ? "#8b5cf622" : "transparent",
+                                  color: "#8b5cf6", fontWeight: 600, opacity: aiLoadingDay === day.date ? 0.6 : 1 }}>
+                        {aiLoadingDay === day.date ? "..." : "\u{1F916}"}
+                      </button>
                       <button onClick={() => handleShuffle(day.date)}
                         title="Shuffle for alternative outfit"
                         style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",

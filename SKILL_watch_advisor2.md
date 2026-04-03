@@ -15,13 +15,13 @@
 | Source LOC | ~8,600 |
 | Test files | 113 |
 | Tests | 2087+ |
-| Netlify functions | 17 (+2 helpers) |
+| Netlify functions | 18 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 29 JSX |
+| Components | 30 JSX |
 | Zustand stores | 8 |
 | Build output | 571 kB (167 kB gzip) |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-04-02 |
+| Last audited | 2026-04-03 |
 
 ---
 
@@ -235,7 +235,7 @@ Visible in DebugConsole + `app_config.monthly_token_usage`.
 | Table | Purpose | Notes |
 |-------|---------|-------|
 | `garments` | Wardrobe items | 77 active, fully tagged (seasons/contexts/material/weight) |
-| `history` | Wear log | 37+ entries. `payload_version: "v1"` on all entries |
+| `history` | Wear log | 39+ entries. `payload_version: "v1"` on all entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
@@ -370,3 +370,18 @@ Netlify dashboard → Functions → `auto-heal` → Trigger button. (HTTP invoca
 - Never skip `garmentIds` + `payload_version: "v1"` in history payload
 - Never invoke `auto-heal.js` via HTTP
 - Never lower SCORE_CEILING without recalibrating confidence labels
+
+### Claude's Pick (daily-pick.js + ClaudePick.jsx) — Added April 3 2026
+- Netlify function `daily-pick.js` fetches garments, watches, 14d history, hourly weather
+- Calls Claude with full styling rules (same as human conversation)
+- Returns JSON: watch, strap, all garment slots, reasoning, score, layerTip
+- 4-hour cache in `app_config.daily_pick`, force-refresh button in UI
+- ClaudePick.jsx: purple accent card in Today tab, collapsible
+- Plan tab: "🤖" button per day calls daily-pick with that day's weather, applies as overrides
+
+### Hourly Weather — Added April 3 2026
+- `fetchWeatherForecast()` requests `hourly=temperature_2m` from Open-Meteo
+- Computes `tempMorning` (7-10am), `tempMidday` (11-14), `tempEvening` (17-20)
+- Primary outfit temp = morning temp (you dress for the morning)
+- WeatherBadge shows: 🌅 8° · ☀️ 15° · 🌙 10° + "Shed the layer after noon"
+- Default temp fallback: 22°C → 15°C everywhere (outfitBuilder, WatchDashboard, WeekPlanner)
