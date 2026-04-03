@@ -88,9 +88,9 @@ describe("buildOutfit — sweater temperature threshold", () => {
     expect(outfit.sweater).toBeTruthy();
   });
 
-  it("sweater with no weather → uses default 22°C (no sweater)", () => {
+  it("sweater with no weather → uses default 15°C (sweater added)", () => {
     const outfit = buildOutfit(snowflake, fullWardrobe);
-    expect(outfit.sweater).toBeNull();
+    expect(outfit.sweater).not.toBeNull();
   });
 });
 

@@ -28,7 +28,7 @@ describe("getLayerRecommendation", () => {
   it("includes a human-readable label", () => {
     expect(getLayerRecommendation(5).label).toContain("coat");
     expect(getLayerRecommendation(12).label).toContain("Sweater");
-    expect(getLayerRecommendation(18).label).toContain("Light jacket");
+    expect(getLayerRecommendation(18).label).toContain("Light layer");
     expect(getLayerRecommendation(25).label).toContain("No extra");
   });
 

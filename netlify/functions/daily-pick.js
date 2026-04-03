@@ -175,7 +175,7 @@ Respond ONLY with this JSON structure, no markdown:
       model,
       max_tokens: 800,
       messages: [{ role: "user", content: prompt }],
-    }, { maxAttempts: 2 });
+    }, { maxAttempts: 1 });
 
     // Parse response
     const text = result.content?.[0]?.text ?? "{}";

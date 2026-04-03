@@ -33,6 +33,12 @@ vi.mock("../netlify/functions/_claudeClient.js", () => ({
   callClaude: vi.fn(),
 }));
 
+// Mock global fetch for fetchJerusalemWeather
+const mockFetch = vi.fn().mockResolvedValue({
+  json: () => Promise.resolve({ daily: { time: [], temperature_2m_max: [], temperature_2m_min: [], weathercode: [] }, hourly: { time: [], temperature_2m: [] } }),
+});
+vi.stubGlobal("fetch", mockFetch);
+
 describe("push-brief handler", () => {
   let handler, callClaude, webpush;
 

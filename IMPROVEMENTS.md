@@ -1,11 +1,13 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-03 (full session)
 
-## Audit Summary (April 3)
-- **Supabase**: 77 active garments, 39 history entries, 0 dupes, 0 orphans, 0 untagged
-- **Tests**: 116 critical passing (4 targeted files), full suite on Netlify CI
+## Audit Summary (April 3 — second pass)
+- **Supabase**: 77 active garments, 38 history entries, 0 dupes, 0 orphans, 0 untagged
+- **Tests**: 2087/2087 passing (113 files)
+- **Engine integrity**: 15/15 checks PASS
 - **Snapshot**: garments ok, history ok, orphanedHistory ok, wardrobeHealth ok
-- **Deploy**: ready (commit 864617d → latest)
+- **Fixes shipped**: daily-pick maxAttempts 2→1, pushBrief fetch mock, 3 stale tests updated (default temp 15°C), weatherService label assertion
+- **Deploy**: ready
 
 ## v1.5.7 — April 3 Session
 
