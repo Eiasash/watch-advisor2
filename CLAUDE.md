@@ -12,7 +12,7 @@ Stack: React 18 (createElement, no JSX except .jsx files) + Vite 7 + Zustand 4 +
 ## Architecture — strict, do not violate
 
 ```
-src/                          68 files, ~10,200 LOC
+src/                          105 files, ~17,700 LOC
   app/            bootstrap.js (boot sequence), AppShell.jsx (layout + tabs)
   components/     UI only — no business logic (23 JSX files)
     WatchDashboard.jsx     today's watch + outfit builder + AI stylist
@@ -23,6 +23,7 @@ src/                          68 files, ~10,200 LOC
     WeekPlanner.jsx        7-day rotation + on-call calendar
     AuditPanel.jsx         AI wardrobe audit + PhotoVerifierPanel (type filter pills)
     SelfiePanel.jsx        selfie/outfit extraction
+    ClaudePick.jsx         AI outfit recommendation card (Today tab, calls daily-pick.js)
     OccasionPanel.jsx      occasion-based outfit suggestions
     OccasionPlanner.jsx    occasion planning flow
     StrapPanel.jsx         strap management + wrist shots
@@ -75,11 +76,12 @@ src/                          68 files, ~10,200 LOC
     watchSeed.js  ← NEVER REPLACE. 23 watches (13 genuine, 10 replica). Sacred.
   aiStylist/      claudeStylist.js — builds prompt + calls Netlify function
   workers/        photoWorker.js — image processing worker (USE_WORKER=false currently)
-netlify/functions/           15 serverless functions, ~1,350 LOC
-  _claudeClient.js     Claude API client helper (shared)
+netlify/functions/           19 serverless functions + 2 helpers, ~2,500 LOC
+  _claudeClient.js     Claude API client helper (shared, retry, model config, token logging)
   _blobCache.js        Netlify Blobs caching layer (shared)
   bulk-tag.js          bulk garment tagger — seasons/contexts/material/pattern (Haiku)
   claude-stylist.js    AI outfit critique via Claude API
+  daily-pick.js        Claude's Pick — AI outfit recommendation (Today tab + Plan tab 🤖)
   classify-image.js    Claude Vision fallback for low-confidence garments
   ai-audit.js          full wardrobe audit via Claude API
   detect-duplicate.js  AI duplicate detection
@@ -90,7 +92,10 @@ netlify/functions/           15 serverless functions, ~1,350 LOC
   selfie-check.js      validate selfie photos
   verify-garment-photo.js  validate garment photos
   watch-id.js          identify watches from photos (collection context + fixed cache key)
-  watch-rec.js         watch recommendations
+  auto-heal.js         daily self-healing cron (5am UTC)
+  push-brief.js        daily + Monday weekly AI brief push notification (6:30am UTC)
+  supabase-keepalive.js  Supabase ping every 5 days
+  skill-snapshot.js    live health endpoint (GET, no auth)
 supabase/
   schema.sql      garments, watches, history tables
 ```
@@ -336,7 +341,7 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (939+ tests)
+- `npm test → vitest (2087+ tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`

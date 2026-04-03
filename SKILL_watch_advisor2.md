@@ -9,16 +9,16 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.5.7 |
+| Version | 1.6.0 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 70 |
-| Source LOC | ~8,600 |
+| Source files | 105 |
+| Source LOC | ~17,700 |
 | Test files | 113 |
 | Tests | 2087+ |
-| Netlify functions | 18 (+2 helpers) |
+| Netlify functions | 19 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
 | Components | 30 JSX |
-| Zustand stores | 8 |
+| Zustand stores | 9 |
 | Build output | 571 kB (167 kB gzip) |
 | Live URL | https://watch-advisor2.netlify.app |
 | Last audited | 2026-04-03 |
@@ -235,7 +235,7 @@ Visible in DebugConsole + `app_config.monthly_token_usage`.
 | Table | Purpose | Notes |
 |-------|---------|-------|
 | `garments` | Wardrobe items | 77 active, fully tagged (seasons/contexts/material/weight) |
-| `history` | Wear log | 39+ entries. `payload_version: "v1"` on all entries |
+| `history` | Wear log | 38+ entries. `payload_version: "v1"` on all entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
