@@ -1,5 +1,25 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-03 (full session)
+Generated: 2026-04-04 (full session)
+
+## Audit Summary (April 4 — v1.6.3)
+- **Supabase**: 71+ active garments, history entries intact, 0 dupes, 0 orphans
+- **Tests**: 2228+ passing (122 test files)
+- **Engine integrity**: 15/15 checks PASS (all scoring weights verified)
+- **Static analysis**: no circular deps (lazy import OK), no dead code, no inlined constants
+- **Build**: 571 kB clean (no warnings)
+- **Fixes shipped**: sweater warm transition tests, test count sync
+- **Version**: 1.6.3
+
+## v1.6.3 — April 4 (audit + test expansion)
+
+### Test Expansion
+1. **sweaterWarmTransition.test.js** — 6 new tests: no sweater ≥22°C, warm transition zone 18–21°C requires score > 4.0, default temp fallback is 15 not 22, layer slot below 8°C.
+
+### Maintenance
+2. **Test counts synced** — CLAUDE.md, SKILL_watch_advisor2.md, IMPROVEMENTS.md all updated to 2228+ tests / 122 files.
+3. **Audit date updated** — skill file last-audited → 2026-04-04.
+
+---
 
 ## Audit Summary (April 3 — v1.6.2)
 - **Supabase**: 71 active garments (23 with photos, 26 with angles), 39 history entries, 0 dupes, 0 orphans, 0 untagged
