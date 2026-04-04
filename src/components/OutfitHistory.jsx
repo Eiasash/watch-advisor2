@@ -3,6 +3,7 @@ import { useHistoryStore } from "../stores/historyStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import OutfitReplay from "./history/OutfitReplay.jsx";
 
 export default function OutfitHistory() {
   const entries      = useHistoryStore(s => s.entries);
@@ -85,6 +86,15 @@ export default function OutfitHistory() {
                   {entry.context}
                 </span>
               )}
+              <OutfitReplay entry={entry} isDark={isDark} onReplay={(e) => {
+                // Dispatch custom event — AppShell listens and navigates to Today tab
+                window.dispatchEvent(new CustomEvent("outfit-replay", { detail: {
+                  garmentIds: e.garmentIds ?? e.payload?.garmentIds ?? [],
+                  watchId: e.watchId ?? e.watch_id,
+                  context: e.context ?? e.payload?.context,
+                  strapId: e.strapId ?? null,
+                }}));
+              }} />
               <button
                 onClick={() => { if (window.confirm(`Delete log for ${dayName}?`)) removeEntry(entry.id); }}
                 style={{ marginLeft: "auto", background: "none", border: "none",

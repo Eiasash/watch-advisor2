@@ -8,6 +8,7 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
 import { utilizationScore } from "../domain/rotationStats.js";
+import StrapHeatmap from "./stats/StrapHeatmap.jsx";
 
 const COLOR_SWATCH = {
   black:"#1f2937", white:"#f3f4f6", navy:"#1e3a5f", blue:"#2563eb", grey:"#9ca3af",
@@ -644,6 +645,8 @@ export default function StatsPanel() {
               </Section>
             ) : null;
           })()}
+          {/* Strap Heatmap */}
+          <StrapHeatmap history={filtered} watches={watches} isDark={isDark} />
         </>
       )}
     </div>

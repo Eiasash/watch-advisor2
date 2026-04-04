@@ -19,6 +19,8 @@ import StreakBadge      from "./today/StreakBadge.jsx";
 import NeglectedAlert   from "./today/NeglectedAlert.jsx";
 import TomorrowPreview  from "./today/TomorrowPreview.jsx";
 import LogButton        from "./today/LogButton.jsx";
+import NeverWornSpotlight from "./today/NeverWornSpotlight.jsx";
+import SeasonalTransition from "./today/SeasonalTransition.jsx";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
@@ -182,6 +184,7 @@ export default function TodayPanel() {
     filter,   setFilter,
   } = useTodayFormState({ todayEntry, watches, defaultWatchId });
 
+  const [outfitScore, setOutfitScore] = useState(7);
   const cameraRef = useRef();
 
   useEffect(() => {
@@ -239,6 +242,8 @@ export default function TodayPanel() {
       strapLabel: activeStrapObj?.label ?? null,
       garmentIds: [...selected],
       context,
+      score: outfitScore,
+      watch: selectedWatch ? `${selectedWatch.brand} ${selectedWatch.model}` : null,
       notes: notes.trim() || null,
       outfitPhoto: extraImgs[0] ?? null,
       outfitPhotos: extraImgs.length ? extraImgs : null,
@@ -261,7 +266,7 @@ export default function TodayPanel() {
 
     setLogged(true);
   }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImgs,
-      upsertEntry, updateGarment, garments, todayEntry, TODAY_ISO]);
+      outfitScore, selectedWatch, upsertEntry, updateGarment, garments, todayEntry, TODAY_ISO]);
 
   // ── Summary card when already logged ────────────────────────────────────────
   if (logged && todayEntries.length > 0) {
@@ -423,6 +428,15 @@ export default function TodayPanel() {
           ))}
         </div>
       </div>
+
+      {/* Never Worn Spotlight + Seasonal Transition */}
+      <NeverWornSpotlight
+        garments={garments}
+        history={entries}
+        isDark={isDark}
+        onSelect={(id) => setSelected(prev => new Set([...prev, id]))}
+      />
+      <SeasonalTransition garments={garments} isDark={isDark} />
 
       {/* OnCall Planner — shown when shift context selected */}
       {context === "shift" && (
@@ -603,6 +617,30 @@ export default function TodayPanel() {
 
       {/* Tomorrow Preview */}
       {!logged && <TomorrowPreview preview={tomorrowPreview} />}
+
+      {/* Outfit Score — quick 1-tap rating */}
+      <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 14, marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase",
+                      letterSpacing: "0.06em", marginBottom: 8 }}>Rate this outfit</div>
+        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+          {[5, 6, 7, 8, 9, 10].map(s => (
+            <button key={s} onClick={() => setOutfitScore(s)}
+              style={{
+                width: 40, height: 36, borderRadius: 8, border: "none", fontSize: 14, fontWeight: 700,
+                cursor: "pointer",
+                background: outfitScore === s ? "#3b82f6" : (isDark ? "#1a1f2b" : "#f3f4f6"),
+                color: outfitScore === s ? "#fff" : muted,
+              }}>{s}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Strap warning — remind to select a strap */}
+      {watchId && !activeStrapId && (
+        <div style={{ fontSize: 11, color: "#f59e0b", textAlign: "center", marginBottom: 8 }}>
+          ⚠️ No strap selected — tap the watch above to pick a strap for better tracking
+        </div>
+      )}
 
       {/* Log button */}
       <LogButton onLog={handleLog} disabled={!watchId} />
