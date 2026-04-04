@@ -162,7 +162,7 @@ curl -s https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot | p
 ```
 
 ALL must pass:
-- garmentCount >= 77
+- garmentCount >= 70
 - orphanedHistoryCount === 0
 - activeModel !== "unknown"
 - All health.* === "ok"

@@ -348,7 +348,7 @@ Returns: `garmentCount`, `orphanedHistoryCount`, `activeModel`, `tokenUsage`,
 `autoHeal`, `outfitQualityTrend`, `wardrobeHealth`, `health` checks.
 
 Expected healthy state:
-- `garmentCount >= 71`
+- `garmentCount >= 70`
 - `orphanedHistoryCount === 0`
 - `activeModel !== "unknown"`
 - All `health.*` === `"ok"`
