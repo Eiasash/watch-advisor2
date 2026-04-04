@@ -9,19 +9,19 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.7.0 |
+| Version | 1.8.0 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 105 |
-| Source LOC | ~17,700 |
+| Source files | 115 |
+| Source LOC | ~19,500 |
 | Test files | 122 |
 | Tests | 2228+ |
 | Netlify functions | 19 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 30 JSX |
+| Components | 40 JSX |
 | Zustand stores | 9 |
-| Build output | 571 kB (167 kB gzip) |
+| Build output | ~600 kB |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-04-04 |
+| Last audited | 2026-04-06 |
 
 ---
 
@@ -161,9 +161,9 @@ Valid: `clinic`, `smart-casual`, `formal`, `shift`, `casual`, `date-night`, `riv
 ### Watch Rotation — v2
 ```
 worn in last 7 days  → recencyScore 0.0
-never worn           → recencyScore 0.75 (not 1.0)
+never worn           → recencyScore 0.50 (gentle nudge, not aggressive)
 idle N days          → min(N/14, 1.0)
-rotationPressure(Infinity) = 0.70
+rotationPressure(Infinity) = 0.50
 ```
 
 ### On-Call / Shift Watch Pool
@@ -299,7 +299,7 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 | **DIAL_COLOR_MAP** | Only in `src/data/dialColorMap.js`. Never inline. |
 | **Scoring weights** | Only in `src/config/scoringWeights.js`. Never inline. |
 | **Coherence v2** | warm/cool contrast = +0.20. Do NOT revert to -0.15. |
-| **Never-worn** | recencyScore 0.75 (not 1.0). rotationPressure(Infinity) = 0.70. |
+| **Never-worn** | recencyScore 0.50 (gentle nudge). rotationPressure(Infinity) = 0.50. |
 | **rotationFactor** | 0.40. Do not lower. |
 | **repetitionPenalty** | -0.28 in `contextMemory.js`. |
 | **SCORE_CEILING** | `confidence.js` ceiling = 30 (additive engine). Was 0.60 (broken). Never lower without recalibrating. |

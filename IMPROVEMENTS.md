@@ -1,7 +1,62 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-04 (full session)
+Generated: 2026-04-06 (full session)
 
-## Audit Summary (April 4 — v1.6.3)
+## v1.8.0 — April 6 2026
+
+### Audit Summary
+- **Supabase**: 75 active garments, 42 history entries, 0 dupes, 0 orphans, 0 untagged
+- **Tests**: 42 files passing, 0 failures
+- **Snapshot**: All health checks pass (autoHeal WARN is informational — garment stagnation flag)
+- **Deploy**: Live and confirmed via skill-snapshot endpoint
+
+### Features Shipped
+1. **LastWornWithWatch** — shows previous outfit for selected watch in TodayPanel
+2. **TailorQueue** — dedicated UI in AuditPanel with "Mark as Done" button
+3. **StrapSuggestion** — weather-aware strap recommendation below watch picker
+4. **ScoreBackfill** — batch-rate 30 unscored history entries in History tab
+5. **WeekPlanLock** — save/lock weekly outfit plan, shows today's plan as daily card
+6. **HistoryOutfitPhotos** — garment thumbnails inline in history entries
+7. **NeverWornSpotlight** — gentle daily suggestion for never-logged garments
+8. **SeasonalTransition** — spring transition alert (pack away / bring out)
+9. **StrapHeatmap** — strap wear frequency visualization in StatsPanel
+10. **OutfitReplay** — "Wear again" button on history entries
+11. **WardrobeGapAnalysis** — context coverage gap detector in AuditPanel
+12. **Score selector** — 1-tap rating (5-10) in TodayPanel log flow
+13. **Strap warning** — alert when no strap selected before logging
+
+### Scoring Changes
+- Never-worn recencyScore: 0.75 → **0.50** (gentle nudge, not aggressive push)
+- Never-worn rotationPressure: 0.70 → **0.50**
+- Garment count health gate: 77 → **70**
+
+### Data Fixes
+- 39 history entries backfilled with watch names from watch_id mapping
+- Gant QZ color: olive → green
+- Ecco S-Lite Hybrid: tan/white sole → brown/dark sole (corrected)
+- Tommy micro-check → micro-dot (correct pattern name)
+- Kiral White Dress Shirt re-added (sleeves too long — tailor)
+- Gant White Oxford flagged (cuffs too wide — tailor)
+- Gant multistripe excluded (size 42 too tight, not worth tailoring)
+- Venti White Poplin excluded (can't find physically)
+- Pavarotti navy suit jacket flagged (tight on button — tailor)
+
+### New Garments Added
+- Venti Beige Twill Blazer (size 52)
+- Venti JerseyFlex Cream/Taupe Diagonal Twill Shirt (size 44 Body Fit)
+- Pavarotti Navy Pinstripe Suit Jacket + Trousers
+- Silitop Green Button-Down Shirt
+- Gant Blue/Tan Multistripe Shirt (excluded — tight)
+
+### Tailor Queue (5 pieces)
+1. Pavarotti navy jacket — let out waist seams
+2. Nautica white/navy stripe shirt — suppress side seams
+3. Tommy Hilfiger navy micro-dot — assess chest let-out
+4. Kiral white dress shirt — shorten sleeves
+5. Gant White Oxford — narrow cuffs
+
+---
+
+## Previous Session (April 4 — v1.6.3)
 - **Supabase**: 71+ active garments, history entries intact, 0 dupes, 0 orphans
 - **Tests**: 2228+ passing (122 test files)
 - **Engine integrity**: 15/15 checks PASS (all scoring weights verified)
