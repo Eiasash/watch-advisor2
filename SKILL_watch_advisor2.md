@@ -13,15 +13,15 @@
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 105 |
 | Source LOC | ~17,700 |
-| Test files | 113 |
-| Tests | 2087+ |
+| Test files | 122 |
+| Tests | 2228+ |
 | Netlify functions | 19 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
 | Components | 30 JSX |
 | Zustand stores | 9 |
 | Build output | 571 kB (167 kB gzip) |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-04-03 |
+| Last audited | 2026-04-04 |
 
 ---
 
