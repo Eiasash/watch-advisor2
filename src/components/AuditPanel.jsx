@@ -9,6 +9,7 @@ import { enqueueTask, getPendingTasks, subscribeQueue } from "../services/backgr
 
 const DebugConsole = lazy(() => import("./DebugConsole.jsx"));
 import WardrobeGapAnalysis from "./audit/WardrobeGapAnalysis.jsx";
+import TailorQueue from "./audit/TailorQueue.jsx";
 
 async function runAudit(garments, watches, history) {
   const garmentsSummary = garments
@@ -232,6 +233,13 @@ export default function AuditPanel() {
   return (
     <>
     <WardrobeGapAnalysis garments={garments} isDark={isDark} />
+    <TailorQueue garments={garments} onMarkDone={(id) => {
+      const g = garments.find(x => x.id === id);
+      if (g) {
+        const { updateGarment } = useWardrobeStore.getState();
+        updateGarment(id, { fit: "regular", notes: (g.notes ?? "").replace(/tailor|cuff|sleeve|billows|pulls at|too wide|too long/gi, "[FIXED]") });
+      }
+    }} isDark={isDark} />
     <div style={{ padding:"18px 20px", borderRadius:16, background:bg, border:`1px solid ${border}`, marginBottom:16 }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
         <h2 style={{ margin:0, fontSize:17, fontWeight:700, color:text }}>AI Wardrobe Audit</h2>

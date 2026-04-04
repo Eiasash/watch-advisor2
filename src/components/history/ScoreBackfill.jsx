@@ -1,0 +1,99 @@
+/**
+ * ScoreBackfill — shows unscored history entries for quick batch rating.
+ * Swipe through 5 at a time, tap a score, auto-saves.
+ */
+import React, { useState, useMemo } from "react";
+
+/**
+ * @param {{ entries: Array, watches: Array, garments: Array, onScore: (id: string, score: number) => void, isDark: boolean }} props
+ */
+export default function ScoreBackfill({ entries, watches, garments, onScore, isDark }) {
+  const [page, setPage] = useState(0);
+
+  const unscored = useMemo(() => {
+    return entries.filter(e => {
+      const s = e.score ?? e.payload?.score;
+      return s == null || s === undefined;
+    }).sort((a, b) => new Date(b.date || b.loggedAt) - new Date(a.date || a.loggedAt));
+  }, [entries]);
+
+  if (!unscored.length) return null;
+
+  const pageSize = 5;
+  const pageEntries = unscored.slice(page * pageSize, (page + 1) * pageSize);
+  const totalPages = Math.ceil(unscored.length / pageSize);
+
+  const card = isDark ? "#161b22" : "#fefce8";
+  const border = isDark ? "#854d0e30" : "#fef08a40";
+  const text = isDark ? "#fde68a" : "#92400e";
+  const muted = isDark ? "#d4a574" : "#a16207";
+
+  return (
+    <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 14, marginBottom: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: text, textTransform: "uppercase",
+                    letterSpacing: "0.05em", marginBottom: 10 }}>
+        ⭐ Rate past outfits ({unscored.length} unscored)
+      </div>
+
+      {pageEntries.map(entry => {
+        const watch = watches.find(w => w.id === (entry.watchId ?? entry.watch_id));
+        const gids = entry.garmentIds ?? entry.payload?.garmentIds ?? [];
+        const wornG = garments.filter(g => gids.includes(g.id));
+        const ctx = entry.context ?? entry.payload?.context;
+
+        return (
+          <div key={entry.id} style={{
+            padding: "8px 0", borderBottom: `1px solid ${isDark ? "#1a1f2b" : "#fef08a30"}`,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? "#fef3c7" : "#78350f" }}>
+                  {entry.date}
+                </span>
+                {watch && (
+                  <span style={{ fontSize: 10, color: muted, marginLeft: 6 }}>
+                    {watch.emoji ?? "⌚"} {watch.model}
+                  </span>
+                )}
+              </div>
+              {ctx && (
+                <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4,
+                               background: isDark ? "#1e3a5f" : "#dbeafe", color: "#3b82f6" }}>
+                  {ctx}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 10, color: muted, marginBottom: 6 }}>
+              {wornG.map(g => g.name?.slice(0, 18)).join(" · ") || "No garment data"}
+            </div>
+            <div style={{ display: "flex", gap: 3 }}>
+              {[5, 6, 7, 8, 9, 10].map(s => (
+                <button key={s} onClick={() => onScore(entry.id, s)}
+                  style={{
+                    width: 32, height: 28, borderRadius: 6, border: "none",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    background: isDark ? "#1a1f2b" : "#fef9c3",
+                    color: isDark ? "#fde68a" : "#92400e",
+                  }}>{s}</button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10 }}>
+          <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
+            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "none",
+                     cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.3 : 1,
+                     background: isDark ? "#1a1f2b" : "#f3f4f6", color: muted }}>← Prev</button>
+          <span style={{ fontSize: 10, color: muted, lineHeight: "28px" }}>{page + 1}/{totalPages}</span>
+          <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
+            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "none",
+                     cursor: page >= totalPages - 1 ? "default" : "pointer", opacity: page >= totalPages - 1 ? 0.3 : 1,
+                     background: isDark ? "#1a1f2b" : "#f3f4f6", color: muted }}>Next →</button>
+        </div>
+      )}
+    </div>
+  );
+}

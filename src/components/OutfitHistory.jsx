@@ -4,10 +4,13 @@ import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import OutfitReplay from "./history/OutfitReplay.jsx";
+import ScoreBackfill from "./history/ScoreBackfill.jsx";
+import HistoryOutfitPhotos from "./history/HistoryOutfitPhotos.jsx";
 
 export default function OutfitHistory() {
   const entries      = useHistoryStore(s => s.entries);
   const removeEntry  = useHistoryStore(s => s.removeEntry);
+  const upsertEntry  = useHistoryStore(s => s.upsertEntry);
   const watches      = useWatchStore(s => s.watches);
   const garments     = useWardrobeStore(s => s.garments);
   const { mode } = useThemeStore();
@@ -62,6 +65,18 @@ export default function OutfitHistory() {
           No outfits logged yet. Use "Wear This" on the Today or Wardrobe tab to log an outfit.
         </div>
       )}
+
+      {/* Score backfill for unscored entries */}
+      <ScoreBackfill
+        entries={entries}
+        watches={watches}
+        garments={garments}
+        onScore={(id, score) => {
+          const entry = entries.find(e => e.id === id);
+          if (entry) upsertEntry({ ...entry, score });
+        }}
+        isDark={isDark}
+      />
 
       {sorted.map(entry => {
         const watch = watches.find(w => w.id === entry.watchId);
@@ -138,6 +153,9 @@ export default function OutfitHistory() {
                 ))}
               </div>
             )}
+
+            {/* Garment photo gallery */}
+            <HistoryOutfitPhotos garmentIds={entry.garmentIds ?? []} garments={garments} isDark={isDark} />
 
             {entry.notes && (
               <div style={{ marginTop: 6, fontSize: 11, color: sub, fontStyle: "italic" }}>{entry.notes}</div>

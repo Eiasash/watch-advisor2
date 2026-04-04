@@ -10,6 +10,7 @@ import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 
 import { setCachedState } from "../services/localCache.js";
 import { fetchWeatherForecast, getLayerRecommendation, getLayerTransition } from "../weather/weatherService.js";
+import WeekPlanLock from "./plan/WeekPlanLock.jsx";
 
 const CONTEXTS = [
   { key: null,                      label:"Any Vibe" },
@@ -1190,6 +1191,16 @@ export default function WeekPlanner() {
           </button>
         </div>
       </div>
+
+      <WeekPlanLock
+        weekPlan={outfits.map((o, i) => ({
+          date: rotation[i]?.date,
+          watchId: rotation[i]?.watch?.id,
+          outfit: o ? { shirt: o.shirt?.name, pants: o.pants?.name, shoes: o.shoes?.name, sweater: o.sweater?.name, jacket: o.jacket?.name } : null,
+        }))}
+        watches={watches}
+        isDark={isDark}
+      />
 
       <RotationInsights rotation={rotation} history={history} isDark={isDark} />
 

@@ -21,6 +21,8 @@ import TomorrowPreview  from "./today/TomorrowPreview.jsx";
 import LogButton        from "./today/LogButton.jsx";
 import NeverWornSpotlight from "./today/NeverWornSpotlight.jsx";
 import SeasonalTransition from "./today/SeasonalTransition.jsx";
+import LastWornWithWatch from "./today/LastWornWithWatch.jsx";
+import StrapSuggestion from "./today/StrapSuggestion.jsx";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
@@ -494,6 +496,14 @@ export default function TodayPanel() {
           </div>
         )}
       </div>
+
+      {/* Last worn with this watch + strap suggestion */}
+      {watchId && !logged && (
+        <>
+          <LastWornWithWatch watchId={watchId} history={entries} garments={garments} isDark={isDark} />
+          <StrapSuggestion watchId={watchId} watches={active} straps={straps} weather={weather} context={context} isDark={isDark} />
+        </>
+      )}
 
       {/* Quick watch check-in — one tap, no garments needed */}
       {watchId && !logged && (
