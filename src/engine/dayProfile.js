@@ -150,7 +150,7 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   if (recentIds.has(watch.id)) {
     recencyScore = 0; // worn recently — hard penalty
   } else if (!Number.isFinite(idle)) {
-    recencyScore = 0.75; // never worn — high but capped so it doesn't win forever
+    recencyScore = 0.50; // never worn — moderate nudge, not aggressive push (April 2026: was 0.75)
   } else {
     recencyScore = Math.min(idle / 14, 1.0); // linear 0→1 over 14 days
   }

@@ -136,9 +136,9 @@ describe("scoreWatchForDay — edge cases", () => {
     const watch = { id: "w1", formality: 9, style: "dress", replica: false };
     const score = scoreWatchForDay(watch, "formal", []);
     // formality diff = 0, style match = "dress" in formal list, no recency, no replica penalty
-    // v2: never-worn watch gets recencyScore=0.75, cooldown=1.15
-    // (0.4*1 + 0.35*1 + 0.25*0.75) * 1.15 + jitter ≈ 1.08
-    expect(score).toBeGreaterThan(1.0);
+    // v2: never-worn watch gets recencyScore=0.50, cooldown=1.15
+    // (0.4*1 + 0.35*1 + 0.25*0.50) * 1.15 + jitter ≈ 1.01
+    expect(score).toBeGreaterThan(0.95);
     expect(score).toBeLessThan(1.15);
   });
 
@@ -146,8 +146,9 @@ describe("scoreWatchForDay — edge cases", () => {
     const watch = { id: "w1", formality: 1, style: "sport", replica: false };
     // formal target = 9, diff = 8, formalityScore = max(0, 1 - 8/4) = 0
     const score = scoreWatchForDay(watch, "formal", []);
-    // 0.4 * 0 + 0.35 * 0.3 (dress not in list) + 0.25 * 1 = 0.355 + jitter
-    expect(score).toBeCloseTo(0.355, 1);
+    // 0.4*0 + 0.35*0.3 + 0.25*0.50 = 0.23 * cooldown(1.15) ≈ 0.26 + jitter + empty-history boost
+    expect(score).toBeGreaterThan(0.2);
+    expect(score).toBeLessThan(0.45);
   });
 
   it("replica penalty applied in hospital context", () => {
@@ -205,27 +206,27 @@ describe("scoreWatchForDay — edge cases", () => {
     const notWorn = scoreWatchForDay(watch, "smart-casual", [{ watchId: "other" }]);
     const worn = scoreWatchForDay(watch, "smart-casual", [{ watchId: "w1" }]);
     expect(worn).toBeLessThan(notWorn);
-    // recency diff = 0.25 * 0.75 * cooldown ≈ 0.216
-    expect(notWorn - worn).toBeCloseTo(0.216, 1);
+    // recency diff = 0.25 * 0.50 * cooldown ≈ 0.144
+    expect(notWorn - worn).toBeCloseTo(0.144, 1);
   });
 
   it("undefined formality treated as 5", () => {
     const watch = { id: "w1", style: "sport", replica: false };
     // smart-casual target = 6, diff = 1 → formalityScore = 0.75
     // sport in smart-casual suitability → styleScore = 1.0
-    // never-worn → recencyScore = 0.75, cooldown = 1.15
-    // (0.4*0.75 + 0.35*1 + 0.25*0.75) * 1.15 ≈ 0.963 + jitter + empty-history boost
+    // never-worn → recencyScore = 0.50, cooldown = 1.15
+    // (0.4*0.75 + 0.35*1 + 0.25*0.50) * 1.15 ≈ 0.935 + jitter + empty-history boost
     const score = scoreWatchForDay(watch, "smart-casual", []);
-    expect(score).toBeGreaterThan(0.95);
+    expect(score).toBeGreaterThan(0.90);
     expect(score).toBeLessThan(1.10);
   });
 
   it("unknown day profile uses default formality 6", () => {
     const watch = { id: "w1", formality: 6, style: "sport", replica: false };
     const score = scoreWatchForDay(watch, "nonexistent-profile", []);
-    // diff = 0, no suitable styles → 0.3, recencyScore = 0.75, cooldown = 1.15
-    // (0.4*1 + 0.35*0.3 + 0.25*0.75) * 1.15 ≈ 0.796 + jitter + empty-history boost
-    expect(score).toBeGreaterThan(0.75);
+    // diff = 0, no suitable styles → 0.3, recencyScore = 0.50, cooldown = 1.15
+    // (0.4*1 + 0.35*0.3 + 0.25*0.50) * 1.15 ≈ 0.765 + jitter + empty-history boost
+    expect(score).toBeGreaterThan(0.70);
     expect(score).toBeLessThan(0.95);
   });
 

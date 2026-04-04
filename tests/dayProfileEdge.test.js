@@ -86,10 +86,10 @@ describe("scoreWatchForDay — formality calculations", () => {
     const score = scoreWatchForDay(watch, "hospital-smart-casual");
     // formalityDiff = 0, formalityScore = 1.0
     // dress-sport is suitable → styleScore = 1.0
-    // no history → recencyScore = 0.75 (never-worn cap), cooldown = 1.15
+    // no history → recencyScore = 0.50 (never-worn cap), cooldown = 1.15
     // no replica penalty, + daily jitter + empty-history boost
-    // (0.4*1 + 0.35*1 + 0.25*0.75) * 1.15 ≈ 1.08 + jitter
-    expect(score).toBeGreaterThan(1.0);
+    // (0.4*1 + 0.35*1 + 0.25*0.50) * 1.15 ≈ 1.01 + jitter
+    expect(score).toBeGreaterThan(0.95);
     expect(score).toBeLessThan(1.2);
   });
 

@@ -50,7 +50,7 @@ describe("empty-history jitter boost", () => {
     const emptyScore = scoreWatchForDay(watch, "smart-casual", []);
     const nonEmptyScore = scoreWatchForDay(watch, "smart-casual", [{ watchId: "other" }]);
 
-    // Both should get recencyScore=0.75 (never worn), but empty history gets extra jitter
+    // Both should get recencyScore=0.50 (never worn), but empty history gets extra jitter
     expect(emptyScore).toBeGreaterThan(nonEmptyScore);
   });
 });

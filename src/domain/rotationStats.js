@@ -144,9 +144,12 @@ export function rotationPressure(daysIdleValue) {
   // permanently invisible to the rotation system. They would never cycle in or out —
   // the same garments kept winning because they had good base scores but no
   // rotation pressure countering them.
-  // Fix: never-worn garments get 0.7 pressure (high, to encourage first wear,
-  // but below the 1.0 ceiling so heavily-rested worn garments can beat them).
-  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0.7;
+  // Fix: never-worn garments get moderate 0.50 pressure — a gentle nudge, not a
+  // hard push. Many garments have no history because they were worn pre-app, don't
+  // fit well, or the owner simply doesn't want to wear them often. Aggressive
+  // pressure (0.7+) penalised proven favourites to force untested pieces.
+  // Lowered 0.7 → 0.50 (April 2026) to let base scoring dominate.
+  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0.50;
   const midpoint  = 14;
   const steepness = 0.25;
   return 1 / (1 + Math.exp(-steepness * (daysIdleValue - midpoint)));
