@@ -42,6 +42,9 @@
 [functions."style-dna"]
   timeout = 26
 
+[functions."wardrobe-chat"]
+  timeout = 26
+
 # ── Lighthouse audit on every deploy ──────────────────────────────────────────
 [[plugins]]
   package = "@netlify/plugin-lighthouse"

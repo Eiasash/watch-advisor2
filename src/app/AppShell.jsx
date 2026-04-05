@@ -26,6 +26,7 @@ const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m 
 })));
 const SettingsPanel  = lazy(() => import("../components/SettingsPanel.jsx"));
 const OutfitHistory  = lazy(() => import("../components/OutfitHistory.jsx"));
+const WardrobeChat   = lazy(() => import("../components/WardrobeChat.jsx"));
 
 /**
  * TabPane — mounts children on first activation, then stays mounted but hidden.
@@ -70,6 +71,7 @@ function AppContent() {
     return () => window.removeEventListener("open-settings", handleOpenSettings);
   }, []);
   const [showPalette,  setShowPalette]  = useState(false);
+  const [showChat,     setShowChat]     = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -244,6 +246,44 @@ function AppContent() {
       )}
       {showPalette   && <Suspense fallback={null}><CommandPalette onClose={() => setShowPalette(false)} onAction={handlePaletteAction} /></Suspense>}
       <ScrollToTop />
+
+      {/* Chat FAB */}
+      {!showChat && (
+        <button onClick={() => setShowChat(true)} style={{
+          position: "fixed", bottom: 80, right: 16, zIndex: 100,
+          width: 52, height: 52, borderRadius: "50%",
+          background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+          border: "none", boxShadow: "0 4px 16px rgba(59,130,246,0.4)",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 22, color: "#fff",
+        }}>💬</button>
+      )}
+
+      {/* Chat overlay */}
+      {showChat && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9998,
+          background: isDark ? "#0a0c10" : "#f8fafc",
+          display: "flex", flexDirection: "column",
+        }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "8px 16px", borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>💬 Wardrobe AI</span>
+            <button onClick={() => setShowChat(false)} style={{
+              background: "none", border: "none", color: isDark ? "#6b7280" : "#9ca3af",
+              fontSize: 22, cursor: "pointer", padding: "4px 8px",
+            }}>✕</button>
+          </div>
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading chat...</div>}>
+              <WardrobeChat />
+            </Suspense>
+          </div>
+        </div>
+      )}
+
       <InstallPrompt isDark={isDark} />
     </div>
   );
