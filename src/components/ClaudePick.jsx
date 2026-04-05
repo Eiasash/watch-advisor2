@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useThemeStore } from "../stores/themeStore.js";
+import { useWardrobeStore } from "../stores/wardrobeStore.js";
 
 const SLOT_ICONS = { watch: "⌚", shirt: "👔", sweater: "🧶", layer: "🧥", pants: "👖", shoes: "👞", jacket: "🧥", belt: "🪢" };
 const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
@@ -11,6 +12,8 @@ export default function ClaudePick() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [expandedSlot, setExpandedSlot] = useState(null);
+  const garments = useWardrobeStore(s => s.garments);
 
   const bg = isDark ? "#0f131a" : "#f8fafc";
   const card = isDark ? "#171a21" : "#fff";
@@ -18,6 +21,25 @@ export default function ClaudePick() {
   const text = isDark ? "#e2e8f0" : "#1f2937";
   const muted = isDark ? "#6b7280" : "#9ca3af";
   const accent = "#8b5cf6";
+
+  // Match pick garment names to actual wardrobe garments (fuzzy by name)
+  const matchedGarments = useMemo(() => {
+    if (!pick || !garments.length) return {};
+    const matched = {};
+    for (const slot of SLOT_ORDER) {
+      if (slot === "watch" || !pick[slot] || pick[slot] === "null") continue;
+      const pickName = pick[slot].toLowerCase().trim();
+      // Exact match first, then substring match
+      const exact = garments.find(g => g.name?.toLowerCase().trim() === pickName);
+      if (exact) { matched[slot] = exact; continue; }
+      const partial = garments.find(g => {
+        const gn = g.name?.toLowerCase().trim() ?? "";
+        return gn.includes(pickName) || pickName.includes(gn);
+      });
+      if (partial) matched[slot] = partial;
+    }
+    return matched;
+  }, [pick, garments]);
 
   const fetchPick = async (force = false) => {
     setLoading(true);
@@ -114,20 +136,51 @@ export default function ClaudePick() {
             </div>
           )}
 
-          {/* Garment slots */}
+          {/* Garment slots — tappable to expand details */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {slots.filter(s => s !== "watch").map(slot => {
               const name = pick[slot];
               if (!name || name === "null") return null;
+              const garment = matchedGarments[slot];
+              const photo = garment?.thumbnail || garment?.photoUrl;
+              const isExpanded = expandedSlot === slot;
               return (
-                <div key={slot} style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "5px 10px", borderRadius: 6,
-                  background: bg, fontSize: 11,
-                }}>
-                  <span style={{ width: 20, textAlign: "center" }}>{SLOT_ICONS[slot] ?? "•"}</span>
-                  <span style={{ color: muted, textTransform: "uppercase", fontSize: 9, width: 52 }}>{slot}</span>
-                  <span style={{ color: text, fontWeight: 600, flex: 1 }}>{name}</span>
+                <div key={slot}>
+                  <div
+                    onClick={() => setExpandedSlot(isExpanded ? null : slot)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "5px 10px", borderRadius: 6,
+                      background: isExpanded ? (isDark ? "#1a1040" : "#f5f3ff") : bg,
+                      border: isExpanded ? `1px solid ${accent}44` : "1px solid transparent",
+                      fontSize: 11, cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {photo ? (
+                      <img src={photo} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover", flexShrink: 0 }} />
+                    ) : (
+                      <span style={{ width: 28, textAlign: "center", fontSize: 16 }}>{SLOT_ICONS[slot] ?? "•"}</span>
+                    )}
+                    <span style={{ color: muted, textTransform: "uppercase", fontSize: 9, width: 52 }}>{slot}</span>
+                    <span style={{ color: text, fontWeight: 600, flex: 1 }}>{name}</span>
+                    {garment && <span style={{ fontSize: 9, color: muted }}>{isExpanded ? "▲" : "▼"}</span>}
+                  </div>
+                  {isExpanded && garment && (
+                    <div style={{
+                      padding: "8px 10px 8px 46px", fontSize: 10, color: muted,
+                      display: "flex", flexDirection: "column", gap: 3,
+                    }}>
+                      {garment.brand && <div><span style={{ fontWeight: 600 }}>Brand:</span> {garment.brand}</div>}
+                      {garment.color && <div><span style={{ fontWeight: 600 }}>Color:</span> {garment.color}</div>}
+                      {garment.material && <div><span style={{ fontWeight: 600 }}>Material:</span> {garment.material}</div>}
+                      {garment.weight && <div><span style={{ fontWeight: 600 }}>Weight:</span> {garment.weight}</div>}
+                      {garment.formality != null && <div><span style={{ fontWeight: 600 }}>Formality:</span> {garment.formality}/10</div>}
+                      {photo && (
+                        <img src={photo} alt={garment.name} style={{ width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: 8, marginTop: 4 }} />
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -124,6 +124,8 @@ export function buildRotationTable(watches, history) {
     });
 }
 
+import { getOverride } from "../config/scoringOverrides.js";
+
 /**
  * Smooth logistic rotation pressure curve.
  *
@@ -133,23 +135,16 @@ export function buildRotationTable(watches, history) {
  *   daysIdle = 28 → ~0.88  (month unworn — strong pressure)
  *   daysIdle = ∞  → 1.00   (asymptote)
  *
- * Returns 0 for non-finite input (Infinity handled by caller if desired).
+ * Returns configured neverWornRotationPressure for Infinity (default 0.50).
+ * Auto-tuned by auto-heal when never-worn % > 50%.
  *
  * @param {number} daysIdle — output of daysIdle(), may be 0..∞
  * @returns {number} pressure in [0, 1)
  */
 export function rotationPressure(daysIdleValue) {
-  // v2 fix (March 2026): previously returned 0 for Infinity (never-worn garments).
-  // This caused never-worn garments to receive zero rotation pressure, making them
-  // permanently invisible to the rotation system. They would never cycle in or out —
-  // the same garments kept winning because they had good base scores but no
-  // rotation pressure countering them.
-  // Fix: never-worn garments get moderate 0.50 pressure — a gentle nudge, not a
-  // hard push. Many garments have no history because they were worn pre-app, don't
-  // fit well, or the owner simply doesn't want to wear them often. Aggressive
-  // pressure (0.7+) penalised proven favourites to force untested pieces.
-  // Lowered 0.7 → 0.50 (April 2026) to let base scoring dominate.
-  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0.50;
+  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) {
+    return getOverride("neverWornRotationPressure", 0.50);
+  }
   const midpoint  = 14;
   const steepness = 0.25;
   return 1 / (1 + Math.exp(-steepness * (daysIdleValue - midpoint)));

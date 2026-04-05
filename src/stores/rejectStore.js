@@ -21,8 +21,8 @@ export const useRejectStore = create((set, get) => ({
 
   hydrate: (raw = []) => set({ entries: fresh(raw) }),
 
-  addRejection: (watchId, garmentIds = [], context = "") => {
-    const entry = { watchId, garmentIds: garmentIds.slice(), context, rejectedAt: Date.now() };
+  addRejection: (watchId, garmentIds = [], context = "", reason = "", slot = "") => {
+    const entry = { watchId, garmentIds: garmentIds.slice(), context, reason, slot, rejectedAt: Date.now() };
     set(state => {
       const next = fresh([...state.entries, entry]).slice(-200); // cap at 200
       _getCache().then(cached =>
@@ -30,6 +30,14 @@ export const useRejectStore = create((set, get) => ({
       );
       return { entries: next };
     });
+  },
+
+  /** Get rejection reasons for analytics */
+  getReasonStats: () => {
+    const { entries } = get();
+    const reasons = {};
+    entries.forEach(e => { if (e.reason) reasons[e.reason] = (reasons[e.reason] ?? 0) + 1; });
+    return reasons;
   },
 
   clearAll: () => {

@@ -284,6 +284,7 @@ export default function WatchDashboard() {
   const [shuffleSeed, setShuffleSeed] = useState(0);
   // Per-slot manual overrides: { shirt: garmentObj, pants: garmentObj, ... }
   const [slotOverrides, setSlotOverrides] = useState({});
+  const [showRejectModal, setShowRejectModal] = useState(false);
 
   useEffect(() => {
     if (!activeWatch && watches.length > 0) {
@@ -577,7 +578,7 @@ export default function WatchDashboard() {
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <button
-                onClick={() => { setShuffleSeed(s => s + 1); setSlotOverrides({}); }}
+                onClick={() => setShowRejectModal(true)}
                 title="Shuffle to next best outfit"
                 style={{
                   fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
@@ -743,18 +744,66 @@ export default function WatchDashboard() {
           )}
 
           {/* Skip — compact inline */}
-          <button onClick={() => {
-            if (!selectedWatch) return;
-            const garmentIds = ["shirt","sweater","layer","pants","shoes","jacket"]
-              .map(s => mergedOutfit[s]?.id).filter(Boolean);
-            if (garmentIds.length === 0) return;
-            addRejection(selectedWatch.id, garmentIds, todayContext ?? null);
-          }}
+          <button onClick={() => setShowRejectModal(true)}
           style={{ fontSize:11, color:isDark?"#4b5563":"#9ca3af", background:"none", border:"none",
                    cursor:"pointer", width:"100%", padding:"4px 0", textAlign:"center", marginBottom: 4 }}>
             ✕ Skip this outfit
           </button>
         </>
+      )}
+
+      {/* Rejection reason modal */}
+      {showRejectModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }} onClick={() => setShowRejectModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: "100%", maxWidth: 420, background: isDark ? "#171a21" : "#fff",
+            borderRadius: "18px 18px 0 0", padding: "18px 16px 24px",
+            boxShadow: "0 -4px 24px rgba(0,0,0,0.3)",
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937", marginBottom: 14 }}>
+              Why are you skipping?
+            </div>
+            {[
+              { key: "color", label: "🎨 Colors don't work together" },
+              { key: "formality", label: "👔 Wrong formality level" },
+              { key: "fit", label: "📐 Something doesn't fit right" },
+              { key: "bored", label: "😴 Bored of this combo" },
+              { key: "weather", label: "🌡️ Wrong for the weather" },
+              { key: "mood", label: "💭 Not my mood today" },
+            ].map(({ key, label }) => (
+              <button key={key} onClick={() => {
+                const garmentIds = ["shirt","sweater","layer","pants","shoes","jacket"]
+                  .map(s => mergedOutfit[s]?.id).filter(Boolean);
+                if (selectedWatch && garmentIds.length > 0) {
+                  addRejection(selectedWatch.id, garmentIds, todayContext ?? null, key);
+                }
+                setShuffleSeed(s => s + 1);
+                setSlotOverrides({});
+                setShowRejectModal(false);
+              }} style={{
+                display: "block", width: "100%", textAlign: "left",
+                padding: "10px 12px", marginBottom: 4, borderRadius: 10,
+                border: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+                background: isDark ? "#0f131a" : "#f9fafb",
+                color: isDark ? "#e2e8f0" : "#1f2937",
+                fontSize: 13, cursor: "pointer",
+              }}>{label}</button>
+            ))}
+            <button onClick={() => {
+              setShuffleSeed(s => s + 1);
+              setSlotOverrides({});
+              setShowRejectModal(false);
+            }} style={{
+              display: "block", width: "100%", textAlign: "center",
+              padding: "8px", marginTop: 8, borderRadius: 8,
+              border: "none", background: "transparent",
+              color: isDark ? "#6b7280" : "#9ca3af", fontSize: 12, cursor: "pointer",
+            }}>Just shuffle (no reason)</button>
+          </div>
+        </div>
       )}
     </div>
   );

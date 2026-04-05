@@ -9,6 +9,7 @@ import React, { useState, useMemo } from "react";
  */
 export default function ScoreBackfill({ entries, watches, garments, onScore, isDark }) {
   const [page, setPage] = useState(0);
+  const [expandedEntry, setExpandedEntry] = useState(null);
 
   const unscored = useMemo(() => {
     return entries.filter(e => {
@@ -63,9 +64,38 @@ export default function ScoreBackfill({ entries, watches, garments, onScore, isD
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 10, color: muted, marginBottom: 6 }}>
+            <div
+              onClick={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
+              style={{ fontSize: 10, color: muted, marginBottom: 6, cursor: wornG.length > 0 ? "pointer" : "default" }}
+            >
               {wornG.map(g => g.name?.slice(0, 18)).join(" · ") || "No garment data"}
+              {wornG.length > 0 && <span style={{ marginLeft: 4, fontSize: 8 }}>{expandedEntry === entry.id ? "▲" : "▼"}</span>}
             </div>
+            {expandedEntry === entry.id && wornG.length > 0 && (
+              <div style={{ display: "flex", gap: 6, marginBottom: 8, overflowX: "auto", paddingBottom: 4 }}>
+                {wornG.map(g => {
+                  const photo = g.thumbnail || g.photoUrl;
+                  return (
+                    <div key={g.id} style={{
+                      flexShrink: 0, width: 64, textAlign: "center",
+                    }}>
+                      {photo ? (
+                        <img src={photo} alt={g.name} style={{ width: 60, height: 60, borderRadius: 6, objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: 60, height: 60, borderRadius: 6, background: isDark ? "#1a1f2b" : "#f3f4f6",
+                                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                          {g.type === "shirt" ? "👔" : g.type === "pants" ? "👖" : g.type === "shoes" ? "👞" : "•"}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 8, color: muted, marginTop: 2, lineHeight: 1.1, overflow: "hidden",
+                                    textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {g.name?.slice(0, 14)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 3 }}>
               {[5, 6, 7, 8, 9, 10].map(s => (
                 <button key={s} onClick={() => onScore(entry.id, s)}

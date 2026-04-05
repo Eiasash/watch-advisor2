@@ -40,18 +40,22 @@ export async function pullCloudState() {
 
 async function _doPull() {
   try {
-    const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
+    const [{ data: garments, error: gErr }, { data: history, error: hErr }, { data: ovRow }] = await Promise.all([
       // Phase 1: metadata only — no photo_url/thumbnail_url to keep payload <200KB
       supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_type,needs_review,duplicate_of,exclude_from_wardrobe,photo_angles,brand,subtype,notes,material,pattern,seasons,contexts,price,accent_color,weight,fit,created_at").order("created_at", { ascending: true }).limit(500),
       supabase.from("history").select("*").order("date", { ascending: false }).limit(365),
+      supabase.from("app_config").select("value").eq("key", "scoring_overrides").single().then(r => r).catch(() => ({ data: null })),
     ]);
 
     if (gErr) throw new Error(gErr.message);
     if (hErr) throw new Error(hErr.message);
 
     setSyncState({ status: "idle" });
+    // Scoring overrides from auto-heal auto-tune (non-fatal if missing)
+    const scoringOverrides = (ovRow?.value && typeof ovRow.value === "object") ? ovRow.value : {};
     return {
       watches: WATCH_COLLECTION,
+      scoringOverrides,
       garments: (garments ?? []).map(row => ({
         ...row,
         // DB column is 'type'; 'category' is an alias kept for compat

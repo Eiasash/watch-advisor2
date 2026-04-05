@@ -1193,7 +1193,7 @@ export default function WeekPlanner() {
       </div>
 
       <WeekPlanLock
-        weekPlan={outfits.map((o, i) => ({
+        weekPlan={weekOutfits.map((o, i) => ({
           date: rotation[i]?.date,
           watchId: rotation[i]?.watch?.id,
           outfit: o ? { shirt: o.shirt?.name, pants: o.pants?.name, shoes: o.shoes?.name, sweater: o.sweater?.name, jacket: o.jacket?.name } : null,

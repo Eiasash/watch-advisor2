@@ -49,30 +49,50 @@ export async function handler() {
       log.push({ check: "orphans", found: 0, action: "none" });
     }
 
+    // ── Load current scoring overrides (auto-tune reads + writes these) ───
+    let overrides = {};
+    try {
+      const { data: ovRow } = await supabase.from("app_config").select("value").eq("key", "scoring_overrides").single();
+      if (ovRow?.value && typeof ovRow.value === "object") overrides = ovRow.value;
+    } catch { /* first run — no overrides yet */ }
+    const DEFAULTS = { rotationFactor: 0.40, repetitionPenalty: -0.28, neverWornRotationPressure: 0.50 };
+    const LIMITS = { rotationFactor: 0.60, repetitionPenalty: -0.40, neverWornRotationPressure: 0.90 };
+    const current = (k) => overrides[k] ?? DEFAULTS[k];
+    const tuned = [];
+
     // ── 3. Watch rotation stagnation (>40% same watch in last 10) ─────────
+    //    AUTO-TUNE: bump rotationFactor by +0.05 (cap 0.60)
     const recent10 = hist.slice(0, 10);
     const watchFreq = {};
     recent10.forEach(e => { if (e.watch_id) watchFreq[e.watch_id] = (watchFreq[e.watch_id] ?? 0) + 1; });
     const stagnant = Object.entries(watchFreq).find(([, n]) => n / Math.max(1, recent10.length) > 0.4);
+    if (stagnant) {
+      const old = current("rotationFactor");
+      const next = Math.min(+(old + 0.05).toFixed(2), LIMITS.rotationFactor);
+      if (next !== old) { overrides.rotationFactor = next; tuned.push(`rotationFactor ${old}→${next}`); }
+    }
     log.push({
       check: "watch_stagnation",
       found: stagnant ? `${stagnant[0]} at ${Math.round(stagnant[1] / recent10.length * 100)}%` : "healthy",
-      action: stagnant ? "flagged — rotationFactor may need increase" : "none",
+      action: stagnant ? (tuned.length ? `auto-tuned: ${tuned[tuned.length-1]}` : "at limit") : "none",
     });
 
     // ── 4. Garment repetition (>5× same garment in 14 days) ──────────────
-    // Threshold 5 (not 3) — daily driver shoes and on-call anchor sweaters
-    // naturally repeat 4-5× in 14 days with a small wardrobe. Only flag
-    // genuine stagnation where the engine is clearly stuck.
+    //    AUTO-TUNE: bump repetitionPenalty by -0.03 (cap -0.40)
     const cutoff14d = new Date(Date.now() - 14 * 864e5).toISOString().split("T")[0];
     const recent14d = hist.filter(h => h.date >= cutoff14d);
     const gFreq = {};
     recent14d.forEach(e => (e.payload?.garmentIds ?? []).forEach(gid => { gFreq[gid] = (gFreq[gid] ?? 0) + 1; }));
     const stagnantG = Object.entries(gFreq).filter(([, n]) => n > 5);
+    if (stagnantG.length > 0) {
+      const old = current("repetitionPenalty");
+      const next = Math.max(+(old - 0.03).toFixed(2), LIMITS.repetitionPenalty);
+      if (next !== old) { overrides.repetitionPenalty = next; tuned.push(`repetitionPenalty ${old}→${next}`); }
+    }
     log.push({
       check: "garment_stagnation",
       found: stagnantG.length > 0 ? stagnantG.map(([id, n]) => `${id}:${n}`).join(", ") : "healthy",
-      action: stagnantG.length > 0 ? "flagged — repetitionPenalty may need increase" : "none",
+      action: stagnantG.length > 0 ? (tuned.length ? `auto-tuned: ${tuned[tuned.length-1]}` : "at limit") : "none",
     });
 
     // ── 5. Context distribution (>80% null = broken UI) ───────────────────
@@ -112,9 +132,6 @@ export async function handler() {
     });
 
     // ── 8. Never-worn percentage ──────────────────────────────────────────
-    // Only flag if history has enough entries to have reasonably covered the
-    // wardrobe. With 21 entries × ~4 garments each = ~84 slots, vs 73 garments,
-    // high never-worn % is expected data sparsity — not an engine problem.
     let neverWornPct = 0;
     let historyDepthSufficient = false;
     try {
@@ -125,15 +142,29 @@ export async function handler() {
       const worn = new Set();
       hist.forEach(e => (e.payload?.garmentIds ?? []).forEach(id => worn.add(id)));
       neverWornPct = active.length > 0 ? ((active.length - worn.size) / active.length) * 100 : 0;
-      // Only flag when user has logged enough outfits (2× garment count) to
-      // expect reasonable coverage — otherwise it's just a new app with sparse data
       historyDepthSufficient = hist.length >= active.length * 2;
     } catch { /* non-fatal */ }
+    // AUTO-TUNE: bump neverWornRotationPressure by +0.05 (cap 0.90)
+    if (neverWornPct > 50 && historyDepthSufficient) {
+      const old = current("neverWornRotationPressure");
+      const next = Math.min(+(old + 0.05).toFixed(2), LIMITS.neverWornRotationPressure);
+      if (next !== old) { overrides.neverWornRotationPressure = next; tuned.push(`neverWornRotationPressure ${old}→${next}`); }
+    }
     log.push({
       check: "never_worn",
       found: `${Math.round(neverWornPct)}% (${hist.length} entries / ${historyDepthSufficient ? "sufficient" : "sparse"} data)`,
-      action: (neverWornPct > 50 && historyDepthSufficient) ? "rotation pressure increase needed" : "none",
+      action: (neverWornPct > 50 && historyDepthSufficient)
+        ? (tuned.length ? `auto-tuned: ${tuned[tuned.length-1]}` : "at limit")
+        : "none",
     });
+
+    // ── Write scoring overrides if any changed ────────────────────────────
+    if (tuned.length > 0) {
+      overrides._lastTuned = now;
+      overrides._history = [...(overrides._history ?? []).slice(-19), { date: now, changes: tuned }];
+      await supabase.from("app_config").upsert({ key: "scoring_overrides", value: overrides, updated_at: now }, { onConflict: "key" });
+      fixes.push(`auto-tuned: ${tuned.join(", ")}`);
+    }
 
     // ── Write results to app_config ───────────────────────────────────────
     const healResult = {
@@ -142,7 +173,8 @@ export async function handler() {
       fixes: fixes.length,
       fixesList: fixes,
       findings: log,
-      healthy: log.every(l => l.action === "none" || l.action === "stamped" || l.action === "minor"),
+      tuned,
+      healthy: log.every(l => l.action === "none" || l.action === "stamped" || l.action === "minor" || l.action.startsWith("auto-tuned")),
     };
 
     await supabase.from("app_config").upsert({
