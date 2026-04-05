@@ -11,15 +11,15 @@
 |--------|-------|
 | Version | 1.9.0 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 115 |
-| Source LOC | ~19,500 |
+| Source files | 144 |
+| Source LOC | ~21,000 |
 | Test files | 123 |
 | Tests | 2224+ |
-| Netlify functions | 19 (+2 helpers) |
+| Netlify functions | 21 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 42 JSX |
+| Components | 47 JSX |
 | Zustand stores | 9 |
-| Build output | ~600 kB |
+| Build output | ~620 kB |
 | Live URL | https://watch-advisor2.netlify.app |
 | Last audited | 2026-04-05 |
 
