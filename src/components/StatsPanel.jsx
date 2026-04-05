@@ -647,8 +647,61 @@ export default function StatsPanel() {
           })()}
           {/* Strap Heatmap */}
           <StrapHeatmap history={filtered} watches={watches} isDark={isDark} />
+
+          <SeasonalAuditSection isDark={isDark} border={border} text={text} muted={muted} />
         </>
       )}
     </div>
+  );
+}
+
+/** Seasonal Wardrobe Audit — proper component to avoid hooks-in-IIFE violation */
+function SeasonalAuditSection({ isDark, border, text, muted }) {
+  const [auditData, setAuditData] = React.useState(null);
+  const [auditLoading, setAuditLoading] = React.useState(false);
+  return (
+    <Section title="🍂 Seasonal Audit" isDark={isDark}>
+      {!auditData ? (
+        <button onClick={async () => {
+          setAuditLoading(true);
+          try {
+            const res = await fetch("/.netlify/functions/seasonal-audit", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            setAuditData(data);
+          } catch (_) {} finally { setAuditLoading(false); }
+        }} disabled={auditLoading}
+        style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${border}`,
+          background: "transparent", color: "#3b82f6", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          {auditLoading ? "Analyzing…" : "Run Seasonal Audit"}
+        </button>
+      ) : (
+        <div style={{ fontSize: 12 }}>
+          <div style={{ color: muted, marginBottom: 8 }}>
+            Season: <b style={{ color: text }}>{auditData.season}</b> · {auditData.totalOutfits} outfits in {auditData.periodDays}d
+          </div>
+          <div style={{ color: "#f59e0b", marginBottom: 6 }}>
+            {auditData.neverWornCount} garments never worn ({auditData.neverWornPct}%)
+          </div>
+          {auditData.overWorn?.length > 0 && (
+            <div style={{ color: "#ef4444", marginBottom: 6 }}>
+              Over-worn: {auditData.overWorn.slice(0, 3).map(g => `${g.name} (${g.count}×)`).join(", ")}
+            </div>
+          )}
+          {auditData.gaps?.length > 0 && (
+            <div style={{ color: "#3b82f6", marginBottom: 6 }}>
+              Gaps: {auditData.gaps.slice(0, 5).map(g => `${g.missingColor} ${g.category}`).join(", ")}
+            </div>
+          )}
+          <button onClick={() => setAuditData(null)}
+            style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, border: `1px solid ${border}`,
+              background: "transparent", color: muted, fontSize: 10, cursor: "pointer" }}>
+            Re-run
+          </button>
+        </div>
+      )}
+    </Section>
   );
 }

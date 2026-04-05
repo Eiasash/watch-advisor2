@@ -945,8 +945,71 @@ export function PhotoVerifierPanel() {
       {/* ── Sync Angles to Cloud ──────────────────────────────────────────────── */}
       <SyncAnglesPanel isDark={isDark} />
 
+      {/* ── Collection Value ──────────────────────────────────────────────── */}
+      <CollectionValuePanel isDark={isDark} />
+
       {/* ── App Health & Debug ────────────────────────────────────────────────── */}
       <DebugSection isDark={isDark} />
+    </div>
+  );
+}
+
+/** Collection Value — fetches watch-value endpoint and shows CPW + trends */
+function CollectionValuePanel({ isDark }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const text = isDark ? "#e2e8f0" : "#1f2937";
+  const muted = isDark ? "#8b93a7" : "#6b7280";
+  const card = isDark ? "#141925" : "#ffffff";
+
+  const fetchValue = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/.netlify/functions/watch-value", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      setData(await res.json());
+    } catch (_) {} finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, marginBottom: 14, overflow: "hidden" }}>
+      <button onClick={() => { setOpen(!open); if (!data && !loading) fetchValue(); }}
+        style={{ width: "100%", padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          background: "transparent", border: "none", cursor: "pointer", color: text }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>💰 Collection Value</span>
+        <span style={{ fontSize: 12, color: muted }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0 16px 16px" }}>
+          {loading && <div style={{ fontSize: 12, color: muted }}>Loading…</div>}
+          {data && (
+            <div style={{ fontSize: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                <div style={{ background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 8, padding: 10 }}>
+                  <div style={{ fontSize: 10, color: muted }}>Total Value</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#22c55e" }}>₪{(data.totalValueILS ?? 0).toLocaleString()}</div>
+                </div>
+                <div style={{ background: isDark ? "#0f131a" : "#f3f4f6", borderRadius: 8, padding: 10 }}>
+                  <div style={{ fontSize: 10, color: muted }}>Avg CPW</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: text }}>{data.avgCPWLabel ?? "—"}</div>
+                </div>
+              </div>
+              {data.bestCPW && <div style={{ color: "#22c55e", marginBottom: 4 }}>Best CPW: {data.bestCPW.id} (₪{data.bestCPW.cpw}/wear, {data.bestCPW.wears} wears)</div>}
+              {data.worstCPW && <div style={{ color: "#f59e0b", marginBottom: 4 }}>Worst CPW: {data.worstCPW.id} (₪{data.worstCPW.cpw}/wear, {data.worstCPW.wears} wears)</div>}
+              {data.risingValue?.length > 0 && <div style={{ color: "#3b82f6", marginBottom: 4 }}>📈 Rising: {data.risingValue.join(", ")}</div>}
+              <div style={{ marginTop: 8 }}>
+                {(data.collection ?? []).map(w => (
+                  <div key={w.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: `1px solid ${border}` }}>
+                    <span style={{ color: text }}>{w.id}</span>
+                    <span style={{ color: muted }}>₪{w.marketILS?.toLocaleString()} · {w.wears}w · {w.cpwLabel}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

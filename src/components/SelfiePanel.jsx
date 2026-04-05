@@ -135,6 +135,17 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
         : await res.text().then(t => JSON.parse(t.replace(/```json|```/g, "").trim()));
       if (data.error) throw new Error(data.error);
       setResult(data);
+
+      // Write AI score back to today's history entry for feedback loop
+      if (data.impact && activeWatchId) {
+        try {
+          const { recordAIFeedback } = await import("../domain/outfitFeedback.js");
+          const todayISO = new Date().toISOString().slice(0, 10);
+          recordAIFeedback(todayISO, activeWatchId, data.impact, {
+            vision: data.vision, works: data.works, risk: data.risk, upgrade: data.upgrade,
+          });
+        } catch (_) {}
+      }
       const entry = { id: Date.now(), ts: new Date().toISOString(), preview: photos[0].dataUrl, photos: photos.map(p => p.dataUrl), result: data };
       setHistory(prev => {
         const next = [entry, ...prev].slice(0, 20);

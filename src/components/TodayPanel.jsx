@@ -268,6 +268,13 @@ export default function TodayPanel() {
       useStyleLearnStore.getState().recordWear(wornG);
     } catch(_) {}
 
+    // Increment strap wear count for tracking
+    if (activeStrapId) {
+      try {
+        useStrapStore.getState().incrementWearCount(activeStrapId);
+      } catch (_) {}
+    }
+
     setLogged(true);
   }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImgs,
       outfitScore, selectedWatch, upsertEntry, updateGarment, garments, todayEntry, TODAY_ISO]);
@@ -367,6 +374,54 @@ export default function TodayPanel() {
             </label>
             <div style={{ fontSize: 10, color: muted, marginTop: 4 }}>Snap a quick outfit pic for your history</div>
           </div>
+        )}
+
+        {/* Share outfit card */}
+        {todayEntries.length > 0 && (
+          <button
+            onClick={async () => {
+              try {
+                const { generateOutfitCard } = await import("../domain/outfitCard.js");
+                const te = todayEntries[0];
+                const w = watches.find(x => x.id === te.watchId);
+                const wornG = garments.filter(g => (te.garmentIds ?? []).includes(g.id));
+                const outfitMap = {};
+                for (const g of wornG) {
+                  const cat = g.type ?? g.category;
+                  if (!outfitMap[cat]) outfitMap[cat] = g.name;
+                }
+                const dataUrl = await generateOutfitCard({
+                  watch: w ? `${w.brand} ${w.model}` : te.watchId,
+                  strap: te.strapLabel ?? "default",
+                  outfit: { shirt: outfitMap.shirt, pants: outfitMap.pants, shoes: outfitMap.shoes, sweater: outfitMap.sweater, jacket: outfitMap.jacket },
+                  weather: weather ? { tempC: weather.tempC } : null,
+                  score: te.score,
+                  date: new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+                  context: te.context,
+                });
+                // Try native share, fallback to download
+                if (navigator.share) {
+                  const blob = await (await fetch(dataUrl)).blob();
+                  const file = new File([blob], "outfit-card.png", { type: "image/png" });
+                  await navigator.share({ files: [file], title: "Today's Outfit" });
+                } else {
+                  const a = document.createElement("a");
+                  a.href = dataUrl;
+                  a.download = `outfit-${TODAY_ISO}.png`;
+                  a.click();
+                }
+              } catch (_) {}
+            }}
+            style={{
+              width: "100%", padding: "10px 14px", borderRadius: 12,
+              border: `1px solid ${border}`, background: card,
+              color: text, fontSize: 13, fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              marginBottom: 14,
+            }}
+          >
+            <span>🎴</span> Share outfit card
+          </button>
         )}
 
         <ClaudePick />
