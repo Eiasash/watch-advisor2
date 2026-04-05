@@ -55,10 +55,16 @@ async function buildBrief(apiKey) {
   const dayName = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "Asia/Jerusalem" });
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Jerusalem" });
 
+  // Israel work week: Sunday=first work day, Friday=weekend start, Saturday=Shabbat
+  const dayNum = parseInt(now.toLocaleDateString("en-US", { weekday: "narrow", timeZone: "Asia/Jerusalem" }), 10);
+  const isoDay = now.getDay(); // 0=Sun
+  const isWorkDay = isoDay >= 0 && isoDay <= 4; // Sun-Thu
+  const isFriday = isoDay === 5;
+
   const supabase = sb();
   const [{ data: history }, { data: garments }] = await Promise.all([
-    supabase.from("history").select("date,watch_id,payload").order("date", { ascending: false }).limit(7),
-    supabase.from("garments").select("id,name,type,color,formality,brand")
+    supabase.from("history").select("date,watch_id,payload").order("date", { ascending: false }).limit(14),
+    supabase.from("garments").select("id,name,type,color,formality,brand,category,notes,seasons,contexts,material,weight")
       .or("exclude_from_wardrobe.is.null,exclude_from_wardrobe.eq.false")
       .not("type", "in", "(outfit-photo,outfit-shot,watch)")
       .limit(100),
@@ -67,41 +73,100 @@ async function buildBrief(apiKey) {
   const forecast = await fetchJerusalemWeather();
   const todayWeather = forecast[0];
   const weatherLine = todayWeather
-    ? `Morning ${todayWeather.tempMorning ?? todayWeather.tempMin}°C, midday ${todayWeather.tempMidday ?? todayWeather.tempMax}°C`
+    ? `Morning ${todayWeather.tempMorning ?? todayWeather.tempMin}°C, midday ${todayWeather.tempMidday ?? todayWeather.tempMax}°C, code ${todayWeather.code}`
     : "weather unknown";
+  const rain = todayWeather?.code >= 51 && todayWeather?.code <= 67;
 
-  const recentWatches = (history ?? []).map(e => e.watch_id).filter(Boolean).slice(0, 5);
-  const garmentSummary = (garments ?? [])
-    .filter(g => !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type))
-    .slice(0, 80)
-    .map(g => `${g.name ?? (g.color + " " + g.type)}${g.brand ? " (" + g.brand + ")" : ""}`)
-    .join(", ");
+  // Compute neglected watches (most idle genuine)
+  const recentWatchIds = (history ?? []).map(e => e.watch_id).filter(Boolean);
+  const watchWearMap = {};
+  for (const wid of recentWatchIds) {
+    watchWearMap[wid] = (watchWearMap[wid] ?? 0) + 1;
+  }
+  const allGenuine = ["snowflake","rikka","pasha","laureato","reverso","santos_large","santos_octagon","blackbay","monaco","gmt","speedmaster","hanhart","laco"];
+  const neglected = allGenuine
+    .filter(w => !recentWatchIds.slice(0, 7).includes(w))
+    .slice(0, 3);
 
-  const prompt = `You are a concise morning style advisor. Generate a sharp morning brief for a watch collector and physician in Jerusalem.
+  // Recent garments worn (last 5 entries with garmentIds)
+  const recentGarmentIds = new Set();
+  for (const entry of (history ?? []).slice(0, 5)) {
+    const ids = entry.payload?.garmentIds ?? [];
+    ids.forEach(id => recentGarmentIds.add(id));
+  }
+
+  // Build garment inventory by category with wear status
+  const garmentsByCategory = {};
+  for (const g of (garments ?? [])) {
+    const cat = g.type ?? g.category ?? "other";
+    if (["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(cat)) continue;
+    if (!garmentsByCategory[cat]) garmentsByCategory[cat] = [];
+    const worn = recentGarmentIds.has(g.id);
+    const tailorFlagged = /tailor|pulls|billows|wide in torso/i.test(g.notes ?? "");
+    garmentsByCategory[cat].push({
+      name: g.name ?? `${g.color} ${cat}`,
+      brand: g.brand,
+      color: g.color,
+      formality: g.formality,
+      worn,
+      tailorFlagged,
+    });
+  }
+
+  const garmentLines = Object.entries(garmentsByCategory).map(([cat, items]) => {
+    const list = items.map(g => {
+      let tag = "";
+      if (g.worn) tag = " [WORN RECENTLY]";
+      if (g.tailorFlagged) tag = " [AT TAILOR]";
+      return `${g.name}${g.brand ? " (" + g.brand + ")" : ""}${tag}`;
+    }).join(", ");
+    return `${cat.toUpperCase()}: ${list}`;
+  }).join("\n");
+
+  const contextHint = isWorkDay ? "Work day (clinic possible). Smart casual minimum."
+    : isFriday ? "Friday — weekend start. Casual OK."
+    : "Weekend. Full casual.";
+
+  const prompt = `You are a concise morning style advisor for a physician and watch collector in Jerusalem.
 
 TODAY: ${dayName}, ${dateStr}
-WEATHER: ${weatherLine}
-RECENT WATCHES WORN: ${recentWatches.join(", ") || "none"}
-WARDROBE: ${garmentSummary || "varied smart casual wardrobe"}
+CONTEXT: ${contextHint}
+WEATHER: ${weatherLine}${rain ? " — RAIN expected, prefer bracelet watches or NATO straps over leather" : ""}
+RECENT WATCHES (last 7 days): ${recentWatchIds.slice(0, 7).join(", ") || "none"}
+NEGLECTED GENUINE WATCHES (not worn in 7+ days): ${neglected.join(", ") || "none — good rotation"}
 
-COLLECTION (13 genuine): Grand Seiko Snowflake, Grand Seiko Rikka green, Cartier Pasha 41mm grey (prefer black alligator strap over bracelet), Cartier Santos Large white/gold, Cartier Santos Octagon YG vintage, GP Laureato 42mm blue, JLC Reverso Duoface, Tudor BB41, TAG Monaco, Omega Speedmaster, Rolex GMT-Master II, Hanhart Pioneer Flyback, Laco Flieger. Replicas (10): AP Royal Oak green, VC Overseas burgundy, IWC Perpetual blue, IWC Ingenieur teal, Rolex Day-Date turquoise, Rolex OP grape, Rolex GMT Meteorite, Chopard Alpine Eagle red, Cartier Santos 35mm white, Breguet Tradition black.
+WARDROBE (by category, items marked [WORN RECENTLY] should be avoided, [AT TAILOR] are unavailable):
+${garmentLines}
 
-RULES: Brown strap = brown shoes. Black strap = black shoes. Bracelet = any shoes. No loafers. Layer tip if morning < midday by 5°+.
+WATCH COLLECTION: Grand Seiko Snowflake (silver, grey/navy/titanium straps), Grand Seiko Rikka (green, teal alligator — bracelet broken), Cartier Pasha 41mm grey (black alligator preferred — bracelet poor fit), Cartier Santos Large white/gold (bracelet or brown calfskin), Santos Octagon YG vintage, GP Laureato 42mm blue (integrated bracelet), JLC Reverso navy (navy alligator), Tudor BB41 black/red (bracelet, brown distressed, black leather, NATO, Laco brown cross-strap), TAG Monaco (black or brown rally), Omega Speedmaster (10 straps incl bracelet, currently on GS Rikka brown leather), Rolex GMT-Master II (Oyster bracelet), Hanhart Pioneer (6 straps), Laco Flieger (currently no strap — on BB41).
 
-Return ONLY valid JSON:
+RULES:
+- Prioritize NEGLECTED watches over recently worn ones
+- Avoid garments marked [WORN RECENTLY] or [AT TAILOR]
+- Be specific: name exact garments, exact watch, exact strap
+- Brown leather strap → brown shoes (Ecco pebble grain). Black strap → black formal shoes. Bracelet → any shoes.
+- Layer if morning temp < midday by 5°+
+
+Return ONLY valid JSON (no markdown fences):
 {
   "title": "short punchy title (max 6 words)",
   "watch": "specific watch name",
-  "strap": "strap recommendation",
-  "outfit": "complete outfit in one sentence",
-  "why": "one sentence why this works",
-  "layerTip": "layer transition tip or null",
+  "strap": "specific strap name and color",
+  "outfit": {
+    "shirt": "exact garment name or null",
+    "sweater": "exact garment name or null (if temp < 22°C)",
+    "pants": "exact garment name",
+    "shoes": "exact shoe name",
+    "jacket": "exact jacket name or null (if temp < 16°C)"
+  },
+  "why": "one sentence why this combo works",
+  "layerTip": "morning-to-midday transition tip or null",
   "icon": "single emoji"
 }`;
 
   const data = await callClaude(apiKey, {
     model: "claude-sonnet-4-6",
-    max_tokens: 400,
+    max_tokens: 600,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -216,8 +281,13 @@ export async function handler() {
     } else {
       const brief = await buildBrief(apiKey);
       title = `${brief.icon ?? "⌚"} ${brief.title ?? "Morning Brief"}`;
-      body = `${brief.watch} · ${brief.outfit}`;
+      const outfitStr = typeof brief.outfit === "object"
+        ? [brief.outfit.sweater, brief.outfit.shirt, brief.outfit.pants, brief.outfit.shoes].filter(Boolean).join(" · ")
+        : brief.outfit;
+      body = `${brief.watch} (${brief.strap ?? "default"}) · ${outfitStr}`;
       if (brief.layerTip) body += ` · 💡 ${brief.layerTip}`;
+      // Cache today's brief for in-app display
+      try { await sb().from("app_config").upsert({ key: "daily_brief", value: brief }, { onConflict: "key" }); } catch {}
     }
 
     const payload = JSON.stringify({

@@ -108,6 +108,43 @@ export const useStrapStore = create((set, get) => ({
   /** Get all cross-strapped items */
   getCrossStrapped: () => Object.values(get().straps).filter(s => s.crossStrapped),
 
+  /** Increment wear count for a strap (called on outfit log) */
+  incrementWearCount: (strapId) =>
+    set(s => {
+      const strap = s.straps[strapId];
+      if (!strap) return s;
+      return {
+        straps: {
+          ...s.straps,
+          [strapId]: {
+            ...strap,
+            wearCount: (strap.wearCount ?? 0) + 1,
+            lastWorn: new Date().toISOString().slice(0, 10),
+          },
+        },
+      };
+    }),
+
+  /** Get strap stats — wear count, age estimation, replacement flag */
+  getStrapStats: (strapId) => {
+    const strap = get().straps[strapId];
+    if (!strap) return null;
+    const wears = strap.wearCount ?? 0;
+    const type = (strap.type ?? "").toLowerCase();
+    // Estimated lifespan by type
+    const lifespanMap = { leather: 200, canvas: 300, nato: 400, rubber: 350, bracelet: 9999 };
+    const lifespan = lifespanMap[type] ?? 250;
+    const healthPct = Math.max(0, Math.round(((lifespan - wears) / lifespan) * 100));
+    return {
+      wears,
+      lastWorn: strap.lastWorn ?? null,
+      type,
+      healthPct,
+      needsReplacement: wears >= lifespan,
+      lifespan,
+    };
+  },
+
   getActiveStrapObj: (watchId) => {
     const { straps, activeStrap } = get();
     const id = activeStrap[watchId];
@@ -135,7 +172,9 @@ function persist() {
   const strapsToSave = {};
   for (const [id, s] of Object.entries(state.straps)) {
     strapsToSave[id] = { id: s.id, watchId: s.watchId, label: s.label, color: s.color, type: s.type, useCase: s.useCase,
-      thumbnail: s.thumbnail ?? null, photoUrl: s.photoUrl ?? null, wristShot: s.wristShot ?? null, custom: s.custom ?? false };
+      thumbnail: s.thumbnail ?? null, photoUrl: s.photoUrl ?? null, wristShot: s.wristShot ?? null, custom: s.custom ?? false,
+      wearCount: s.wearCount ?? 0, lastWorn: s.lastWorn ?? null,
+      originalWatchId: s.originalWatchId ?? null, crossStrapped: s.crossStrapped ?? false };
   }
   setCachedState({ strapStore: { straps: strapsToSave, activeStrap: state.activeStrap } }).catch(() => {});
 }
