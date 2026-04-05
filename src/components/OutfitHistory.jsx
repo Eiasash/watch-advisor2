@@ -6,6 +6,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import OutfitReplay from "./history/OutfitReplay.jsx";
 import ScoreBackfill from "./history/ScoreBackfill.jsx";
 import HistoryOutfitPhotos from "./history/HistoryOutfitPhotos.jsx";
+import OutfitCompare from "./history/OutfitCompare.jsx";
 
 export default function OutfitHistory() {
   const entries      = useHistoryStore(s => s.entries);
@@ -77,6 +78,11 @@ export default function OutfitHistory() {
         }}
         isDark={isDark}
       />
+
+      {/* Outfit comparison */}
+      {entries.length >= 2 && (
+        <OutfitCompare entries={entries} watches={watches} garments={garments} isDark={isDark} />
+      )}
 
       {sorted.map(entry => {
         const watch = watches.find(w => w.id === entry.watchId);
