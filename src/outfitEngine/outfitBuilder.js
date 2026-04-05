@@ -394,16 +394,43 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     coreSlotCandidates[slotName] = pool;
   }
 
+  // ── Never-worn slot reservation ────────────────────────────────────────────
+  // Every 3rd outfit, guarantee at least one never-worn garment in the shortlist
+  // by finding the best-scoring never-worn item per slot and ensuring it's included.
+  const _wornIds = new Set(history.flatMap(h => h.garmentIds ?? h.payload?.garmentIds ?? []));
+  const _shouldForceNeverWorn = history.length > 0 && history.length % 3 === 0;
+  let _neverWornForced = null;
+
+  if (_shouldForceNeverWorn) {
+    // Pick the slot with the most never-worn options (usually shirts)
+    for (const slotName of ["shirt", "pants"]) {
+      if (outfit[slotName]) continue;
+      const pool = coreSlotCandidates[slotName] ?? [];
+      const neverWorn = pool.filter(g => !_wornIds.has(g.id));
+      if (neverWorn.length > 0) {
+        // Score them and pick the best
+        const scored = neverWorn.map(g => ({
+          garment: g,
+          score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState,
+            Object.values(outfit).filter(Boolean).map(x => (x.color ?? "").toLowerCase()), preferenceWeights),
+        }));
+        scored.sort((a, b) => b.score - a.score);
+        _neverWornForced = { slot: slotName, garment: scored[0].garment };
+        break;
+      }
+    }
+  }
+
   // Colours already locked by pinned slots — used as context for shortlist scoring
   const pinnedColors = Object.values(outfit).filter(Boolean).map(g => (g.color ?? "").toLowerCase());
 
   // Build top-N shortlists (N=5 shirts/pants, N=4 shoes)
-  const shirtPool = outfit.shirt
+  let shirtPool = outfit.shirt
     ? [{ garment: outfit.shirt, score: 1 }]
     : _shortlistCandidates(coreSlotCandidates.shirt ?? [], 5,
         g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors, preferenceWeights));
 
-  const pantsPool = outfit.pants
+  let pantsPool = outfit.pants
     ? [{ garment: outfit.pants, score: 1 }]
     : _shortlistCandidates(coreSlotCandidates.pants ?? [], 5,
         g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors, preferenceWeights));
@@ -412,6 +439,18 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     ? [{ garment: outfit.shoes, score: 1 }]
     : _shortlistCandidates(coreSlotCandidates.shoes ?? [], 6,
         g => _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, pinnedColors, preferenceWeights));
+
+  // Inject never-worn garment into the target shortlist if not already present
+  if (_neverWornForced) {
+    const targetPool = _neverWornForced.slot === "shirt" ? shirtPool : pantsPool;
+    const alreadyIn = targetPool.some(e => e.garment.id === _neverWornForced.garment.id);
+    if (!alreadyIn) {
+      const nwScore = _scoreCandidate(watchWithStrap, _neverWornForced.garment, weather, history,
+        outfitFormality, context, rejectState, pinnedColors, preferenceWeights);
+      // Insert at position 1 (after best, before rest) so it competes in beam search
+      targetPool.splice(1, 0, { garment: _neverWornForced.garment, score: nwScore });
+    }
+  }
 
   // Greedy defaults — best individual scores (fast path if no combo search)
   if (!outfit.shirt && shirtPool.length) outfit.shirt = shirtPool[0].garment;

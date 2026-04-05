@@ -65,6 +65,49 @@ export const useStrapStore = create((set, get) => ({
       return { straps: newStraps, activeStrap: newActive };
     }),
 
+  /** Move a strap from one watch to another (cross-strap) */
+  moveStrap: (strapId, fromWatchId, toWatchId) =>
+    set(s => {
+      const strap = s.straps[strapId];
+      if (!strap) return s;
+      const newStraps = {
+        ...s.straps,
+        [strapId]: { ...strap, watchId: toWatchId, originalWatchId: strap.originalWatchId ?? fromWatchId, crossStrapped: true },
+      };
+      const newActive = { ...s.activeStrap };
+      // Auto-activate on target watch
+      newActive[toWatchId] = strapId;
+      // If it was active on source, fall back to first remaining strap
+      if (newActive[fromWatchId] === strapId) {
+        const fallback = Object.values(newStraps).find(x => x.watchId === fromWatchId && x.id !== strapId);
+        newActive[fromWatchId] = fallback?.id ?? null;
+      }
+      return { straps: newStraps, activeStrap: newActive };
+    }),
+
+  /** Return strap to its original watch */
+  returnStrap: (strapId) =>
+    set(s => {
+      const strap = s.straps[strapId];
+      if (!strap?.originalWatchId) return s;
+      const origWatch = strap.originalWatchId;
+      const curWatch = strap.watchId;
+      const newStraps = {
+        ...s.straps,
+        [strapId]: { ...strap, watchId: origWatch, crossStrapped: false },
+      };
+      const newActive = { ...s.activeStrap };
+      newActive[origWatch] = strapId;
+      if (newActive[curWatch] === strapId) {
+        const fallback = Object.values(newStraps).find(x => x.watchId === curWatch && x.id !== strapId);
+        newActive[curWatch] = fallback?.id ?? null;
+      }
+      return { straps: newStraps, activeStrap: newActive };
+    }),
+
+  /** Get all cross-strapped items */
+  getCrossStrapped: () => Object.values(get().straps).filter(s => s.crossStrapped),
+
   getActiveStrapObj: (watchId) => {
     const { straps, activeStrap } = get();
     const id = activeStrap[watchId];

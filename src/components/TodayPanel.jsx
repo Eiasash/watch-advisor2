@@ -23,6 +23,8 @@ import NeverWornSpotlight from "./today/NeverWornSpotlight.jsx";
 import SeasonalTransition from "./today/SeasonalTransition.jsx";
 import LastWornWithWatch from "./today/LastWornWithWatch.jsx";
 import StrapSuggestion from "./today/StrapSuggestion.jsx";
+import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
+import TailorCountdown from "./today/TailorCountdown.jsx";
 
 import SelfiePanel from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
@@ -186,7 +188,7 @@ export default function TodayPanel() {
     filter,   setFilter,
   } = useTodayFormState({ todayEntry, watches, defaultWatchId });
 
-  const [outfitScore, setOutfitScore] = useState(7);
+  const [outfitScore, setOutfitScore] = useState(null);
   const cameraRef = useRef();
 
   useEffect(() => {
@@ -339,6 +341,34 @@ export default function TodayPanel() {
           })}
         </div>
 
+        {/* Photo prompt — quick camera button to attach outfit photo */}
+        {todayEntries.length > 0 && !todayEntries[0]?.outfitPhoto && !todayEntries[0]?.outfitPhotos?.length && (
+          <div style={{ background: card, borderRadius: 14, border: `1px dashed ${border}`, padding: 14, marginBottom: 14, textAlign: "center" }}>
+            <label style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span style={{ fontSize: 20 }}>📸</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: text }}>Add outfit photo</span>
+              <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const dataUrl = reader.result;
+                      const entry = todayEntries[0];
+                      if (entry) {
+                        upsertEntry({ ...entry, outfitPhoto: dataUrl, outfitPhotos: [dataUrl] });
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  } catch (_) {}
+                }}
+              />
+            </label>
+            <div style={{ fontSize: 10, color: muted, marginTop: 4 }}>Snap a quick outfit pic for your history</div>
+          </div>
+        )}
+
         <ClaudePick />
 
         <SelfiePanel context={todayEntry?.context ?? null} watchId={todayEntry?.watchId ?? null} />
@@ -439,6 +469,7 @@ export default function TodayPanel() {
         onSelect={(id) => setSelected(prev => new Set([...prev, id]))}
       />
       <SeasonalTransition garments={garments} isDark={isDark} />
+      <TailorCountdown garments={garments} isDark={isDark} pickupDate="2026-04-09" />
 
       {/* OnCall Planner — shown when shift context selected */}
       {context === "shift" && (
@@ -620,6 +651,7 @@ export default function TodayPanel() {
       {/* Rotation nudge — neglected genuine + streak */}
       {!logged && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          <NeglectedWatchNudge watches={watches} history={history} currentWatchId={watchId} onSelectWatch={setWatchId} isDark={isDark} />
           <NeglectedAlert neglected={neglected} watchId={watchId} onSelect={setWatchId} />
           <StreakBadge streak={streak} />
         </div>
@@ -628,10 +660,10 @@ export default function TodayPanel() {
       {/* Tomorrow Preview */}
       {!logged && <TomorrowPreview preview={tomorrowPreview} />}
 
-      {/* Outfit Score — quick 1-tap rating */}
-      <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 14, marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase",
-                      letterSpacing: "0.06em", marginBottom: 8 }}>Rate this outfit</div>
+      {/* Outfit Score — required 1-tap rating */}
+      <div style={{ background: card, borderRadius: 14, border: `1px solid ${outfitScore == null ? "#f59e0b" : border}`, padding: 14, marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: outfitScore == null ? "#f59e0b" : muted, textTransform: "uppercase",
+                      letterSpacing: "0.06em", marginBottom: 8 }}>{outfitScore == null ? "⚡ Rate this outfit to log" : "Rate this outfit"}</div>
         <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
           {[5, 6, 7, 8, 9, 10].map(s => (
             <button key={s} onClick={() => setOutfitScore(s)}
@@ -652,8 +684,8 @@ export default function TodayPanel() {
         </div>
       )}
 
-      {/* Log button */}
-      <LogButton onLog={handleLog} disabled={!watchId} />
+      {/* Log button — disabled without watch AND score */}
+      <LogButton onLog={handleLog} disabled={!watchId || outfitScore == null} />
     </div>
   );
 }

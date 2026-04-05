@@ -65,11 +65,15 @@ function outfitPaletteScore(strap, outfit) {
   return Math.min(0.25, affinity);
 }
 
-function scoreStrapForOutfit(strap, outfit, context, watch) {
+function scoreStrapForOutfit(strap, outfit, context, watch, weather) {
   if (!strap) return 0;
   const strapType = (strap.type ?? "").toLowerCase();
 
-  if (EXEMPT_TYPES.has(strapType)) return 0.70;
+  if (EXEMPT_TYPES.has(strapType)) {
+    // Weather bonus: bracelets get extra score in rain/wet conditions
+    const rainBonus = (weather?.precipMm ?? 0) > 1 ? 0.15 : 0;
+    return 0.70 + rainBonus;
+  }
 
   const shoes = outfit?.shoes;
   const fakeWatch = { strap: (strap.label ?? strap.color ?? "").toLowerCase() };
@@ -86,6 +90,22 @@ function scoreStrapForOutfit(strap, outfit, context, watch) {
     if (["nato", "rubber", "canvas"].includes(strapType)) contextBonus = 0.08;
   }
 
+  // Weather-driven strap adjustments
+  let weatherBonus = 0;
+  if (weather) {
+    const temp = weather.tempC ?? 20;
+    const rain = weather.precipMm ?? 0;
+    // Hot weather (>28°C): NATO/rubber preferred — lighter, breathable
+    if (temp > 28 && ["nato", "rubber", "canvas"].includes(strapType)) weatherBonus = 0.10;
+    // Rain: leather penalized (water damage risk)
+    if (rain > 1 && strapType === "leather") weatherBonus = -0.10;
+    // Rain: rubber/nato bonus
+    if (rain > 1 && ["nato", "rubber"].includes(strapType)) weatherBonus = 0.10;
+  }
+
+  // Poor-fit flag on strap (e.g. Pasha bracelet)
+  if (strap.poorFit) return Math.max(0, shoeScore * 0.5 + contextBonus);
+
   const paletteBonus = outfitPaletteScore(strap, outfit);
 
   let dialBonus = 0;
@@ -95,7 +115,7 @@ function scoreStrapForOutfit(strap, outfit, context, watch) {
     if (dialFamily && strapFamily && dialFamily === strapFamily) dialBonus = 0.08;
   }
 
-  return Math.min(1.0, shoeScore + contextBonus + paletteBonus + dialBonus);
+  return Math.min(1.0, shoeScore + contextBonus + paletteBonus + dialBonus + weatherBonus);
 }
 
 /**
@@ -104,7 +124,7 @@ function scoreStrapForOutfit(strap, outfit, context, watch) {
  * @param {string} context  - e.g. "clinic", "smart-casual"
  * @returns {{ recommended, reason, alternatives } | null}
  */
-export function recommendStrap(watch, outfit, context) {
+export function recommendStrap(watch, outfit, context, weather) {
   const straps = watch?.straps;
   if (!straps || straps.length <= 1) return null;
 
@@ -112,7 +132,7 @@ export function recommendStrap(watch, outfit, context) {
 
   const scored = straps.map(s => ({
     ...s,
-    score: scoreStrapForOutfit(s, outfit, context, watch),
+    score: scoreStrapForOutfit(s, outfit, context, watch, weather),
   })).sort((a, b) => b.score - a.score);
 
   const best = scored[0];
