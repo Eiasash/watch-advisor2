@@ -1,5 +1,38 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-06 (full session)
+Generated: 2026-04-05 (evening session)
+
+## v1.9.0 — April 5 2026
+
+### Data Analysis Driving Changes
+- **4/44 history entries had scores** — scoring system unused, preference learning starved
+- **28/68 non-accessory garments never worn** — 40% wardrobe idle despite NeverWornSpotlight
+- **Pasha (2 wears), Hanhart (0), Laco (1), Monaco (1)** — genuine watches neglected
+- **No strap location tracking** — cross-strapping (Laco→BB41, Rikka→Speedy) invisible to engine
+
+### Features Shipped
+1. **Required score rating** — outfitScore defaults null, log button disabled until user taps 5-10. Amber border nudge when unrated.
+2. **Never-worn slot reservation** — every 3rd outfit (history.length % 3 === 0), engine forces best-scoring never-worn garment into beam-search shortlist for shirts/pants.
+3. **NeglectedWatchNudge** — new component. Amber card surfaces most idle genuine watch (14+ day threshold). Tap to select in TodayPanel.
+4. **Cross-strap tracking** — strapStore gains moveStrap(strapId, from, to), returnStrap(strapId), getCrossStrapped(). Tracks originalWatchId + crossStrapped flag.
+5. **Photo prompt after log** — camera button appears in post-log summary if no outfit photo attached. One-tap capture + attach to entry.
+6. **Weather-driven strap scoring** — strapRecommender now accepts weather param. Rain (precipMm > 1): leather -0.10, bracelet +0.15, NATO/rubber +0.10. Heat >28°C: NATO/rubber +0.10. poorFit flag halves strap score.
+7. **Tailor queue countdown** — TailorCountdown component. Green card shows pieces at tailor + days until pickup (hardcoded Apr 9). Reads tailor-flagged garment notes.
+8. **recommendStrap weather param** — 4th arg (optional) flows weather data into strap scoring.
+
+### Files Changed
+- `src/components/TodayPanel.jsx` — features 1, 3, 5, 7, 8 wired in
+- `src/components/today/NeglectedWatchNudge.jsx` — NEW
+- `src/components/today/TailorCountdown.jsx` — NEW
+- `src/outfitEngine/outfitBuilder.js` — feature 2 (never-worn reservation)
+- `src/outfitEngine/strapRecommender.js` — features 6, 8 (weather param)
+- `src/stores/strapStore.js` — feature 4 (moveStrap, returnStrap, getCrossStrapped)
+
+### Remaining TODO
+1. Cross-strap swap UI component (StrapSwapCard) — backend ready, no frontend yet
+2. Dynamic tailor pickupDate — currently hardcoded, move to app_config
+3. Auto-unblock tailor garments on pickup day
+
+---
 
 ## v1.8.0 — April 6 2026
 

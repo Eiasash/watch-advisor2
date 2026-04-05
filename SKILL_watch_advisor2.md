@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.8.0 |
+| Version | 1.9.0 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 115 |
 | Source LOC | ~19,500 |
@@ -17,11 +17,11 @@
 | Tests | 2224+ |
 | Netlify functions | 19 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 40 JSX |
+| Components | 42 JSX |
 | Zustand stores | 9 |
 | Build output | ~600 kB |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-04-06 |
+| Last audited | 2026-04-05 |
 
 ---
 
@@ -332,9 +332,33 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 
 ---
 
-## §8 TODO (not yet implemented)
+## §8 v1.9.0 Features (April 2026)
 
-1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check flagged in DB but need physical tailor visit. Block from clinic/formal until cleared.
+| Feature | Files | Notes |
+|---------|-------|-------|
+| **Required score rating** | TodayPanel.jsx | Score defaults null, log disabled until rated. Amber border nudge. |
+| **Never-worn slot reservation** | outfitBuilder.js | Every 3rd outfit forces never-worn garment into beam-search shortlist (shirt/pants). |
+| **NeglectedWatchNudge** | today/NeglectedWatchNudge.jsx + TodayPanel | Amber card for genuine watches idle 14+ days. Tap to select. |
+| **Cross-strap tracking** | strapStore.js | `moveStrap(strapId, from, to)`, `returnStrap(strapId)`, `getCrossStrapped()`. Tracks `originalWatchId` + `crossStrapped` flag. |
+| **Photo prompt after log** | TodayPanel.jsx | Camera button shown post-log if no outfit photo. One tap capture + attach. |
+| **Weather-driven strap scoring** | strapRecommender.js | Rain: leather -0.10, bracelet +0.15, NATO/rubber +0.10. Heat >28°C: NATO/rubber +0.10. `poorFit` flag halves score. |
+| **Tailor queue countdown** | today/TailorCountdown.jsx + TodayPanel | Green card shows tailor pieces + days-until-pickup. Reads tailor-flagged garment notes. |
+| **recommendStrap weather param** | strapRecommender.js | `recommendStrap(watch, outfit, context, weather)` — 4th arg optional. |
+
+### Key gotchas added
+- **outfitScore default** is `null` (not 7). Log button requires score selection.
+- **Never-worn reservation** fires on `history.length % 3 === 0`. Uses `_wornIds` Set built from all history garmentIds.
+- **strapStore.moveStrap** sets `originalWatchId` and `crossStrapped: true`. `returnStrap` reverses.
+- **TailorCountdown pickupDate** is hardcoded to `2026-04-09`. Update when tailor schedule changes.
+- **strapRecommender weather** — `weather.precipMm` and `weather.tempC` drive bonuses. Undefined = no weather effect.
+
+---
+
+## §8b TODO (not yet implemented)
+
+1. **Tailor follow-up** — 5 pieces dropped off Apr 5, pickup Apr 9. Nautica White/Navy stripe + Tommy Hilfiger slate micro-check still blocked from clinic/formal.
+2. **Cross-strap UI** — strapStore has moveStrap/returnStrap but no UI component yet. Build StrapSwapCard for visual strap management.
+3. **Dynamic tailor pickupDate** — currently hardcoded. Move to app_config or wardrobeStore.
 
 ---
 
