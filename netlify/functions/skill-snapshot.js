@@ -152,8 +152,8 @@ export async function handler(event) {
       diversityFactor: -0.12,
       seasonMatch: 0.30,
       contextMatch: 0.10,
-      neverWornRecencyScore: 0.75,
-      neverWornRotationPressure: 0.70,
+      neverWornRecencyScore: 0.50,
+      neverWornRotationPressure: 0.50,
       note: "Primary source of truth: src/config/scoringWeights.js — verify against codebase"
     };
 

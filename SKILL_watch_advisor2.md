@@ -13,8 +13,8 @@
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 115 |
 | Source LOC | ~19,500 |
-| Test files | 122 |
-| Tests | 2228+ |
+| Test files | 123 |
+| Tests | 2224+ |
 | Netlify functions | 19 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
 | Components | 40 JSX |
