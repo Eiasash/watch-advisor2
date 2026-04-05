@@ -16,6 +16,7 @@ import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore, filterShoesBy
   colorMatchScore, formalityMatchScore, watchCompatibilityScore } from "./scoring.js";
 import { useRejectStore } from "../stores/rejectStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
+import { buildRejectionProfile } from "../domain/rejectionIntelligence.js";
 import { outfitConfidence } from "./confidence.js";
 import { explainOutfit } from "./explain.js";
 import { learnPreferenceWeights } from "../domain/preferenceLearning.js";
@@ -126,6 +127,9 @@ function _crossSlotCoherence(candidate, filledColors) {
  * expressed as fractions of the base score, keeping the ranking signal intact
  * without disqualifying garments that already passed the hard gates.
  */
+// Module-level rejection profile — set by buildOutfit(), read by _scoreCandidate()
+let _rejectionProfile = null;
+
 function _scoreCandidate(watch, garment, weather, history, outfitFormality, context, rejectState, filledColors = [], preferenceWeights = null) {
   const baseScore = scoreGarment(watch, garment, weather, outfitFormality, context);
   // Propagate hard gates and true-zero strap-shoe blocks unchanged
@@ -152,6 +156,12 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
 
   // Flat rejection penalty — not a factor because it's a global veto, not a scoring nudge
   if (rejectState.isRecentlyRejected(watch.id, [garment.id])) score -= 0.30;
+
+  // Rejection intelligence penalty — learned from rejection patterns
+  // Stacks with flat penalty for garments that are BOTH recently rejected AND pattern-rejected
+  if (_rejectionProfile) {
+    score += _rejectionProfile.penaltyFor(garment.id, context);
+  }
 
   // Replica context penalty — collection philosophy: zero replica in clinic/formal/shift.
   // Applied as a strong score reduction (not a hard gate) so the engine still has
@@ -365,6 +375,8 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
 
   // Hoist rejectStore once — used by _scoreCandidate and all subsequent blocks
   const rejectState = useRejectStore.getState();
+  // Build rejection intelligence profile from accumulated rejection data
+  _rejectionProfile = buildRejectionProfile(rejectState.entries);
 
   // ── Core slots: shortlist + beam-search combo selection ────────────────────
   // Shirt / pants / shoes are selected together via pair-harmony scoring rather

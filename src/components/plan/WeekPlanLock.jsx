@@ -1,9 +1,10 @@
 /**
  * WeekPlanLock — "Lock this week's plan" button + daily card display.
- * Persists 7-day plan to IDB and shows as reference each morning.
+ * Persists 7-day plan to IDB. Tracks adherence vs actual logged outfits.
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { getCachedState, setCachedState } from "../../services/localCache.js";
+import { useHistoryStore } from "../../stores/historyStore.js";
 
 /**
  * @param {{ weekPlan: Array, watches: Array, isDark: boolean }} props
@@ -12,12 +13,12 @@ import { getCachedState, setCachedState } from "../../services/localCache.js";
 export default function WeekPlanLock({ weekPlan, watches, isDark }) {
   const [saved, setSaved] = useState(null);
   const [saving, setSaving] = useState(false);
+  const history = useHistoryStore(s => s.entries);
 
   // Load saved plan on mount
   useEffect(() => {
     getCachedState().then(cached => {
       if (cached._weekPlan?.length) {
-        // Only show if plan includes today or future dates
         const today = new Date().toISOString().split("T")[0];
         const hasRelevant = cached._weekPlan.some(d => d.date >= today);
         if (hasRelevant) setSaved(cached._weekPlan);
@@ -40,6 +41,31 @@ export default function WeekPlanLock({ weekPlan, watches, isDark }) {
     await setCachedState(cached);
     setSaved(null);
   }, []);
+
+  // ── Adherence tracking ─────────────────────────────────────────────────
+  const adherence = useMemo(() => {
+    if (!saved?.length) return null;
+    const today = new Date().toISOString().split("T")[0];
+    let planned = 0, followed = 0, deviated = 0, pending = 0;
+
+    for (const day of saved) {
+      if (day.date > today) { pending++; continue; }
+      planned++;
+      // Find actual logged entry for this date
+      const actual = history.find(h => h.date === day.date);
+      if (!actual) continue;
+      // Check watch match
+      const watchMatch = actual.watchId === day.watchId;
+      // Check garment overlap (at least 60% of planned garments match)
+      const plannedNames = Object.values(day.outfit ?? {}).filter(Boolean).map(n => n.toLowerCase());
+      const actualIds = actual.garmentIds ?? [];
+      // Simple: if watch matches, count as followed
+      if (watchMatch) followed++;
+      else deviated++;
+    }
+    const adherencePct = planned > 0 ? Math.round((followed / planned) * 100) : 0;
+    return { planned, followed, deviated, pending, adherencePct };
+  }, [saved, history]);
 
   const card = isDark ? "#161b22" : "#f0f9ff";
   const border = isDark ? "#1e3a5f30" : "#bae6fd40";
@@ -76,7 +102,33 @@ export default function WeekPlanLock({ weekPlan, watches, isDark }) {
         ) : (
           <div style={{ fontSize: 10, color: muted }}>No plan for today — check tomorrow</div>
         )}
-        <div style={{ fontSize: 9, color: muted }}>
+
+        {/* Adherence bar */}
+        {adherence && adherence.planned > 0 && (
+          <div style={{ marginTop: 6, padding: "6px 8px", borderRadius: 6, background: isDark ? "#0f131a" : "#f0f9ff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: text }}>
+                Adherence: {adherence.adherencePct}%
+              </span>
+              <span style={{ fontSize: 9, color: muted }}>
+                {adherence.followed}/{adherence.planned} days followed
+              </span>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: isDark ? "#1a1f2b" : "#e5e7eb", overflow: "hidden" }}>
+              <div style={{
+                width: `${adherence.adherencePct}%`, height: "100%", borderRadius: 3,
+                background: adherence.adherencePct >= 70 ? "#22c55e" : adherence.adherencePct >= 40 ? "#f59e0b" : "#ef4444",
+              }} />
+            </div>
+            {adherence.deviated > 0 && (
+              <div style={{ fontSize: 9, color: "#f59e0b", marginTop: 3 }}>
+                {adherence.deviated} day{adherence.deviated > 1 ? "s" : ""} you went off-plan — that's fine, instinct matters too
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ fontSize: 9, color: muted, marginTop: 4 }}>
           {saved.filter(d => d.date >= today).length} days remaining in plan
         </div>
       </div>

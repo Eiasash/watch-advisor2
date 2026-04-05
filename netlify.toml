@@ -39,6 +39,9 @@
 [functions."claude-stylist"]
   timeout = 26
 
+[functions."style-dna"]
+  timeout = 26
+
 # ── Lighthouse audit on every deploy ──────────────────────────────────────────
 [[plugins]]
   package = "@netlify/plugin-lighthouse"

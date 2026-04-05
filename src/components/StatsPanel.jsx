@@ -9,6 +9,8 @@ import { useWatchStore }    from "../stores/watchStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
 import { utilizationScore } from "../domain/rotationStats.js";
 import StrapHeatmap from "./stats/StrapHeatmap.jsx";
+import StyleDNA from "./stats/StyleDNA.jsx";
+import StrapHealth from "./stats/StrapHealth.jsx";
 
 const COLOR_SWATCH = {
   black:"#1f2937", white:"#f3f4f6", navy:"#1e3a5f", blue:"#2563eb", grey:"#9ca3af",
@@ -647,6 +649,8 @@ export default function StatsPanel() {
           })()}
           {/* Strap Heatmap */}
           <StrapHeatmap history={filtered} watches={watches} isDark={isDark} />
+          <StrapHealth />
+          <StyleDNA />
 
           <SeasonalAuditSection isDark={isDark} border={border} text={text} muted={muted} />
         </>

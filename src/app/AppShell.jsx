@@ -15,6 +15,7 @@ import UpdateBanner    from "../components/UpdateBanner.jsx";
 const WardrobeGrid    = lazy(() => import("../components/WardrobeGrid.jsx"));
 const ImportPanel     = lazy(() => import("../components/ImportPanel.jsx"));
 const StatsPanel      = lazy(() => import("../components/StatsPanel.jsx"));
+const StyleDNA        = lazy(() => import("../components/StyleDNA.jsx"));
 const CommandPalette  = lazy(() => import("../components/CommandPalette.jsx"));
 
 // Heavy tabs — lazy-loaded so they don't bloat the initial bundle.
