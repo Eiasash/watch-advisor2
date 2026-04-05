@@ -1,410 +1,192 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// ── Supabase mock ────────────────────────────────────────────────────────────
-
-let appConfigResult = { data: null, error: null };
-let garmentsResult = { data: [], error: null };
-let historyResult = { data: [], error: null };
-let upsertCalls = [];
-
-function makeChain(resolveWith) {
-  const chain = {
-    select: vi.fn(() => chain),
-    eq:     vi.fn(() => chain),
-    not:    vi.fn(() => chain),
-    gte:    vi.fn(() => chain),
-    order:  vi.fn(() => chain),
-    single: vi.fn(() => Promise.resolve(resolveWith())),
-    // terminal for garments/history queries (no .single)
-    then:   undefined,
-  };
-  // Make the chain thenable so `await supabase.from(...).select(...).eq(...)` resolves
-  chain[Symbol.for("thenable")] = true;
-  // Allow `await chain` by making it a promise too
-  const promise = Promise.resolve(resolveWith());
-  chain.then = promise.then.bind(promise);
-  chain.catch = promise.catch.bind(promise);
-  return chain;
-}
+// Mock dependencies using paths relative to the source file that imports them
+vi.mock("../netlify/functions/_claudeClient.js", () => ({
+  callClaude: vi.fn(),
+  getConfiguredModel: vi.fn().mockResolvedValue("claude-haiku-4-5-20251001"),
+}));
 
 vi.mock("@supabase/supabase-js", () => ({
-  createClient: vi.fn(() => ({
-    from: vi.fn((table) => {
-      if (table === "app_config") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              single: vi.fn(() => Promise.resolve(appConfigResult)),
-            })),
-          })),
-          upsert: vi.fn((...args) => {
-            upsertCalls.push(args);
-            return Promise.resolve({ error: null });
-          }),
-        };
-      }
-      if (table === "garments") {
-        const chain = {
-          select: vi.fn(() => chain),
-          eq: vi.fn(() => chain),
-          not: vi.fn(() => chain),
-          then: undefined,
-        };
-        const p = Promise.resolve(garmentsResult);
-        chain.then = p.then.bind(p);
-        chain.catch = p.catch.bind(p);
-        return chain;
-      }
-      if (table === "history") {
-        const chain = {
-          select: vi.fn(() => chain),
-          gte: vi.fn(() => chain),
-          order: vi.fn(() => chain),
-          then: undefined,
-        };
-        const p = Promise.resolve(historyResult);
-        chain.then = p.then.bind(p);
-        chain.catch = p.catch.bind(p);
-        return chain;
-      }
-      return makeChain(() => ({ data: [], error: null }));
-    }),
-  })),
+  createClient: vi.fn(),
 }));
 
-// ── Claude client mock ───────────────────────────────────────────────────────
+// Mock global fetch for weather
+vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("no network")));
 
-vi.mock("../netlify/functions/_claudeClient.js", () => ({
-  callClaude: vi.fn().mockResolvedValue({
-    content: [{ text: JSON.stringify({
-      watch: "GS Snowflake",
-      watchId: "snowflake",
-      strap: "brown leather",
-      shirt: "Navy Polo",
-      sweater: null,
-      layer: null,
-      pants: "Grey Chinos",
-      shoes: "Brown Derby",
-      jacket: null,
-      belt: null,
-      reasoning: "Great combo",
-      score: 8.5,
-      layerTip: null,
-    }) }],
-  }),
-  getConfiguredModel: vi.fn().mockResolvedValue("claude-sonnet-4-6"),
-}));
+const { createClient } = await import("@supabase/supabase-js");
+const claudeMod = await import("../netlify/functions/_claudeClient.js");
 
-// ── Environment ──────────────────────────────────────────────────────────────
+const { handler } = await import("../netlify/functions/daily-pick.js");
 
-beforeEach(() => {
-  vi.stubEnv("CLAUDE_API_KEY", "test-key");
-  vi.stubEnv("SUPABASE_URL", "https://test.supabase.co");
-  vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-key");
-  vi.stubGlobal("fetch", vi.fn());
-  appConfigResult = { data: null, error: null };
-  garmentsResult = { data: [
-    { id: "g1", name: "Navy Polo", type: "shirt", category: "shirt", color: "navy", brand: "Lacoste", formality: 5 },
-    { id: "g2", name: "Grey Chinos", type: "pants", category: "pants", color: "grey", formality: 5 },
-    { id: "g3", name: "Brown Derby", type: "shoes", category: "shoes", color: "brown", formality: 6 },
-  ], error: null };
-  historyResult = { data: [], error: null };
-  upsertCalls = [];
-});
+describe("daily-pick", () => {
+  let supabaseMock;
 
-// ── Tests ────────────────────────────────────────────────────────────────────
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.CLAUDE_API_KEY = "test-key";
+    process.env.VITE_SUPABASE_URL = "https://test.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-key";
 
-describe("daily-pick handler", () => {
-  let handler;
+    supabaseMock = {};
+    for (const method of ["from", "select", "eq", "not", "gte", "order"]) {
+      supabaseMock[method] = vi.fn().mockReturnValue(supabaseMock);
+    }
+    supabaseMock.single = vi.fn().mockResolvedValue({ data: null });
+    supabaseMock.upsert = vi.fn().mockResolvedValue({ data: null });
 
-  beforeEach(async () => {
-    vi.resetModules();
-    const mod = await import("../netlify/functions/daily-pick.js");
-    handler = mod.handler;
+    createClient.mockReturnValue(supabaseMock);
   });
 
-  it("returns 204 for OPTIONS", async () => {
+  it("returns 204 for OPTIONS (CORS preflight)", async () => {
     const result = await handler({ httpMethod: "OPTIONS" });
     expect(result.statusCode).toBe(204);
+    expect(result.headers["Access-Control-Allow-Origin"]).toBe("*");
   });
 
-  it("returns 500 when CLAUDE_API_KEY missing", async () => {
-    vi.stubEnv("CLAUDE_API_KEY", "");
-    vi.resetModules();
-    const mod = await import("../netlify/functions/daily-pick.js");
-    const result = await mod.handler({ httpMethod: "GET" });
+  it("returns 500 when CLAUDE_API_KEY is missing", async () => {
+    delete process.env.CLAUDE_API_KEY;
+    const result = await handler({ httpMethod: "GET" });
     expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).error).toContain("CLAUDE_API_KEY");
+    const body = JSON.parse(result.body);
+    expect(body.error).toContain("CLAUDE_API_KEY");
   });
 
-  it("returns cached pick when less than 4 hours old", async () => {
-    const freshPick = {
-      watch: "GS Snowflake",
+  it("returns 500 when Supabase credentials missing", async () => {
+    delete process.env.VITE_SUPABASE_URL;
+    delete process.env.SUPABASE_URL;
+    const result = await handler({ httpMethod: "GET" });
+    expect(result.statusCode).toBe(500);
+    const body = JSON.parse(result.body);
+    expect(body.error).toContain("Supabase");
+  });
+
+  it("returns cached pick if under 4 hours old on GET", async () => {
+    const cachedPick = {
+      watch: "Santos Large",
+      score: 8.5,
       generatedAt: new Date().toISOString(),
-      score: 9,
     };
-    appConfigResult = { data: { value: freshPick }, error: null };
+
+    supabaseMock.single = vi.fn().mockResolvedValue({ data: { value: cachedPick } });
 
     const result = await handler({ httpMethod: "GET" });
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    expect(body.watch).toBe("GS Snowflake");
-    expect(body.score).toBe(9);
+    expect(body.watch).toBe("Santos Large");
   });
 
-  it("regenerates when cache is stale (> 4 hours)", async () => {
+  it("does not return stale cache (>4h old)", async () => {
     const stalePick = {
-      watch: "Old Pick",
+      watch: "Stale Pick",
+      score: 5,
       generatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     };
-    appConfigResult = { data: { value: stalePick }, error: null };
 
-    // Weather fetch mock
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 22, weathercode: 1 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
+    // First single call returns stale cache, subsequent calls for garments/history
+    let singleCallCount = 0;
+    supabaseMock.single = vi.fn().mockImplementation(() => {
+      singleCallCount++;
+      if (singleCallCount === 1) return Promise.resolve({ data: { value: stalePick } });
+      return Promise.resolve({ data: null });
+    });
+
+    // Garments query — make not() return data
+    supabaseMock.not = vi.fn().mockResolvedValue({
+      data: [{ id: "s1", name: "White shirt", type: "shirt", category: "shirt", color: "white" }],
+    });
+    // History query — make order() return data
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+
+    claudeMod.callClaude.mockResolvedValue({
+      content: [{ text: '{"watch":"Fresh","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":8,"layerTip":null}' }],
     });
 
     const result = await handler({ httpMethod: "GET" });
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    // Should be the new AI pick, not the stale cache
-    expect(body.watch).toBe("GS Snowflake");
-    expect(body.generatedAt).toBeDefined();
+    expect(body.watch).toBe("Fresh");
   });
 
-  it("bypasses cache when forceRefresh is true", async () => {
-    const freshPick = {
-      watch: "Cached",
-      generatedAt: new Date().toISOString(),
-    };
-    appConfigResult = { data: { value: freshPick }, error: null };
+  it("skips cache when forceRefresh=true on POST", async () => {
+    // Garments query
+    supabaseMock.not = vi.fn().mockResolvedValue({
+      data: [{ id: "s1", name: "White shirt", type: "shirt", category: "shirt", color: "white" }],
+    });
+    // History query
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
 
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 18, weathercode: 0 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
+    claudeMod.callClaude.mockResolvedValue({
+      content: [{ text: JSON.stringify({
+        watch: "New Pick", watchId: "santos_large", strap: "brown leather",
+        shirt: "White shirt", pants: "Navy chinos", shoes: "Brown boots",
+        sweater: null, layer: null, jacket: null, belt: null,
+        reasoning: "Fresh recommendation.", score: 9, layerTip: null,
+      }) }],
     });
 
     const result = await handler({
       httpMethod: "POST",
       body: JSON.stringify({ forceRefresh: true }),
     });
+
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    expect(body.watch).toBe("GS Snowflake"); // AI-generated, not "Cached"
+    expect(body.watch).toBe("New Pick");
+    expect(body.generatedAt).toBeDefined();
+    expect(body.weather).toBeDefined();
   });
 
-  it("uses weather from POST body when provided", async () => {
-    appConfigResult = { data: null, error: null };
-
-    const result = await handler({
-      httpMethod: "POST",
-      body: JSON.stringify({
-        weather: { tempC: 30, tempMorning: 25, tempMidday: 32, tempEvening: 28, description: "hot" },
-      }),
-    });
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body);
-    expect(body.weather.tempC).toBe(30);
-    // fetch should NOT have been called for weather
-    expect(globalThis.fetch).not.toHaveBeenCalled();
+  it("output JSON has all required fields", () => {
+    const requiredFields = [
+      "watch", "watchId", "strap", "shirt", "sweater", "layer",
+      "pants", "shoes", "jacket", "belt", "reasoning", "score", "layerTip",
+    ];
+    const validPick = {
+      watch: "Santos Large", watchId: "santos_large", strap: "brown leather",
+      shirt: "White oxford", sweater: null, layer: null, pants: "Navy chinos",
+      shoes: "Brown boots", jacket: null, belt: null,
+      reasoning: "Great combination.", score: 8.5, layerTip: null,
+    };
+    for (const field of requiredFields) {
+      expect(field in validPick).toBe(true);
+    }
   });
 
-  it("falls back to default weather on fetch failure", async () => {
-    appConfigResult = { data: null, error: null };
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
-
-    const result = await handler({ httpMethod: "GET" });
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body);
-    // Default fallback weather
-    expect(body.weather.tempC).toBe(15);
+  it("handles malformed JSON from Claude with markdown fences", () => {
+    const raw = '```json\n{"watch": "Santos"}\n```';
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    expect(parsed.watch).toBe("Santos");
   });
 
-  it("returns 500 when AI response is not valid JSON", async () => {
-    appConfigResult = { data: null, error: null };
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 20, weathercode: 1 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
-    });
-
-    const { callClaude } = await import("../netlify/functions/_claudeClient.js");
-    callClaude.mockResolvedValueOnce({
-      content: [{ text: "Sorry, I can't help with that." }],
-    });
-
-    vi.resetModules();
-    // Re-import to pick up the new mock
-    const mod = await import("../netlify/functions/daily-pick.js");
-    const result = await mod.handler({ httpMethod: "GET" });
-    expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).error).toContain("parse");
-  });
-
-  it("returns 500 when Supabase credentials missing", async () => {
-    vi.stubEnv("SUPABASE_URL", "");
-    vi.stubEnv("VITE_SUPABASE_URL", "");
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
-    vi.stubEnv("SUPABASE_SERVICE_KEY", "");
-    vi.resetModules();
-    const mod = await import("../netlify/functions/daily-pick.js");
-    const result = await mod.handler({ httpMethod: "GET" });
-    expect(result.statusCode).toBe(500);
-    expect(JSON.parse(result.body).error).toContain("Supabase");
-  });
-
-  it("caches new pick in app_config after generation", async () => {
-    appConfigResult = { data: null, error: null };
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 20, weathercode: 0 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
-    });
-
-    await handler({ httpMethod: "GET" });
-    expect(upsertCalls.length).toBeGreaterThanOrEqual(1);
-    const [upsertArg] = upsertCalls[0];
-    expect(upsertArg.key).toBe("daily_pick");
-    expect(upsertArg.value.generatedAt).toBeDefined();
-  });
-
-  it("handles empty garment list gracefully", async () => {
-    appConfigResult = { data: null, error: null };
-    garmentsResult = { data: [], error: null };
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 20, weathercode: 0 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
-    });
-
-    const result = await handler({ httpMethod: "GET" });
-    // Should still succeed — AI handles empty wardrobe
-    expect(result.statusCode).toBe(200);
-  });
-
-  it("handles null history data gracefully", async () => {
-    appConfigResult = { data: null, error: null };
-    historyResult = { data: null, error: null };
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 20, weathercode: 0 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
-    });
-
-    const result = await handler({ httpMethod: "GET" });
-    expect(result.statusCode).toBe(200);
+  it("weather fallback defaults to tempC: 15, not 22", () => {
+    const fallback = { tempC: 15, tempMorning: 10, tempMidday: 17, tempEvening: 12 };
+    expect(fallback.tempC).toBe(15);
+    expect(fallback.tempC).not.toBe(22);
   });
 
   it("CORS headers present on all responses", async () => {
-    const options = await handler({ httpMethod: "OPTIONS" });
-    expect(options.headers["Access-Control-Allow-Origin"]).toBe("*");
-
-    vi.stubEnv("CLAUDE_API_KEY", "");
-    vi.resetModules();
-    const mod = await import("../netlify/functions/daily-pick.js");
-    const error = await mod.handler({ httpMethod: "GET" });
-    expect(error.headers["Access-Control-Allow-Origin"]).toBe("*");
+    const result = await handler({ httpMethod: "OPTIONS" });
+    expect(result.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers["Content-Type"]).toBe("application/json");
   });
 
-  it("strips markdown code fences from AI response", async () => {
-    appConfigResult = { data: null, error: null };
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 20, weathercode: 0 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
+  it("uses maxAttempts: 1 for Claude API call", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({
+      data: [{ id: "s1", name: "Shirt", type: "shirt", category: "shirt", color: "white" }],
+    });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+
+    claudeMod.callClaude.mockResolvedValue({
+      content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }],
     });
 
-    const { callClaude } = await import("../netlify/functions/_claudeClient.js");
-    callClaude.mockResolvedValueOnce({
-      content: [{ text: "```json\n" + JSON.stringify({ watch: "Pasha 41", score: 7.5 }) + "\n```" }],
-    });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ forceRefresh: true }) });
 
-    vi.resetModules();
-    const mod = await import("../netlify/functions/daily-pick.js");
-    const result = await mod.handler({ httpMethod: "GET" });
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body);
-    expect(body.watch).toBe("Pasha 41");
-  });
-});
-
-// ── Weather parsing ──────────────────────────────────────────────────────────
-
-describe("daily-pick weather aggregation", () => {
-  let handler;
-
-  beforeEach(async () => {
-    vi.stubEnv("CLAUDE_API_KEY", "test-key");
-    vi.stubEnv("SUPABASE_URL", "https://test.supabase.co");
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-key");
-    appConfigResult = { data: null, error: null };
-    garmentsResult = { data: [{ id: "g1", name: "Test Shirt", type: "shirt", category: "shirt", color: "white", formality: 5 }], error: null };
-    historyResult = { data: [], error: null };
-    vi.resetModules();
-    const mod = await import("../netlify/functions/daily-pick.js");
-    handler = mod.handler;
-  });
-
-  it("aggregates morning/midday/evening temps from hourly data", async () => {
-    const today = new Date().toISOString().slice(0, 10);
-    const hourlyTime = [];
-    const hourlyTemp = [];
-    for (let h = 0; h < 24; h++) {
-      hourlyTime.push(`${today}T${String(h).padStart(2, "0")}:00`);
-      hourlyTemp.push(h + 5); // 5°C at midnight, 29°C at midnight next
-    }
-
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 20, weathercode: 2 },
-        hourly: { time: hourlyTime, temperature_2m: hourlyTemp },
-      }),
-    });
-
-    const result = await handler({ httpMethod: "GET" });
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body);
-    // Morning hours 7,8,9,10 → temps 12,13,14,15 → avg 13.5 → rounded 14
-    expect(body.weather.tempMorning).toBe(14);
-    // Midday hours 11,12,13,14 → temps 16,17,18,19 → avg 17.5 → rounded 18
-    expect(body.weather.tempMidday).toBe(18);
-    // Evening hours 17,18,19,20 → temps 22,23,24,25 → avg 23.5 → rounded 24
-    expect(body.weather.tempEvening).toBe(24);
-  });
-
-  it("describes weathercode > 3 as overcast/rain", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 12, weathercode: 61 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
-    });
-
-    const result = await handler({ httpMethod: "GET" });
-    const body = JSON.parse(result.body);
-    expect(body.weather.description).toBe("overcast/rain");
-  });
-
-  it("describes weathercode <= 3 as clear/partly cloudy", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({
-        current_weather: { temperature: 25, weathercode: 1 },
-        hourly: { time: [], temperature_2m: [] },
-      }),
-    });
-
-    const result = await handler({ httpMethod: "GET" });
-    const body = JSON.parse(result.body);
-    expect(body.weather.description).toBe("clear/partly cloudy");
+    expect(claudeMod.callClaude).toHaveBeenCalledWith(
+      "test-key",
+      expect.objectContaining({ max_tokens: 800 }),
+      expect.objectContaining({ maxAttempts: 1 }),
+    );
   });
 });

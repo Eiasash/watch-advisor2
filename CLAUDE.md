@@ -133,7 +133,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2228+ tests across 122 files** — run `npm test` to see current count
+- **2224+ tests across 123 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -145,7 +145,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (122 files)
+### Test file inventory (123 files)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -254,6 +254,9 @@ tests/
   watchStore.test.js           setWatches, setActiveWatch
   watchStoreEdge.test.js       watch store edge cases
   watchStyles.test.js          watch styles
+  claudePick.test.js           ClaudePick component: slot filtering, score colors, fetch logic, weather display
+  dailyPick.test.js            daily-pick function: CORS, cache, force refresh, JSON output, maxAttempts
+  strapRecommender.test.js     strap recommender: shoe matching, context boost, palette affinity, Pasha bracelet
   weatherRules.test.js         weather rules
   weatherService.test.js       weather service
   weekOutfitRotation.test.js   week outfit rotation
@@ -318,9 +321,9 @@ tests/
 |--------|-------|
 | Source files | 71 |
 | Source LOC | ~8,600 |
-| Test files | 122 |
-| Test LOC | ~18,000 |
-| Tests | 2228+ |
+| Test files | 123 |
+| Test LOC | ~18,200 |
+| Tests | 2224+ |
 | Test pass rate | 100% |
 | Netlify functions | 15 (+2 helpers) |
 | Components | 26 JSX |
