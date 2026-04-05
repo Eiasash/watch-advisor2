@@ -501,7 +501,7 @@ export default function TodayPanel() {
       {watchId && !logged && (
         <>
           <LastWornWithWatch watchId={watchId} history={entries} garments={garments} isDark={isDark} />
-          <StrapSuggestion watchId={watchId} watches={active} straps={straps} weather={weather} context={context} isDark={isDark} />
+          <StrapSuggestion watchId={watchId} watches={watches} straps={straps} weather={weather} context={context} isDark={isDark} />
         </>
       )}
 
