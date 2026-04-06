@@ -15,6 +15,22 @@ vi.mock("../netlify/functions/_blobCache.js", () => ({
   cacheSet: (...args) => mockCacheSet(...args),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: (event) => {
+    // cors() is called at module load time with undefined event,
+    // then called again inside handler() with the actual event.
+    // Return headers based on whatever event context we have.
+    const origin = event?.headers?.origin ?? "https://watch-advisor2.netlify.app";
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Content-Type": "application/json",
+      "Vary": "Origin",
+    };
+  },
+}));
+
 const { handler } = await import("../netlify/functions/bulk-tag.js");
 
 const garments = [
@@ -44,32 +60,32 @@ describe("bulk-tag handler", () => {
   // ── CORS / method checks ─────────────────────────────────────────────────
 
   it("returns 204 for OPTIONS preflight", async () => {
-    const res = await handler({ httpMethod: "OPTIONS" });
+    const res = await handler({ httpMethod: "OPTIONS", headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(204);
-    expect(res.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 
   it("returns 405 for non-POST methods", async () => {
-    const res = await handler({ httpMethod: "GET" });
+    const res = await handler({ httpMethod: "GET", headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(405);
     expect(JSON.parse(res.body).error).toBe("Method not allowed");
-    expect(res.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 
   it("returns 400 when garments array is empty", async () => {
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [] }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(400);
     expect(JSON.parse(res.body).error).toBe("No garments");
   });
 
   it("returns 400 when body has no garments key", async () => {
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({}) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({}), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(400);
   });
 
   it("returns 500 when CLAUDE_API_KEY missing", async () => {
     vi.stubEnv("CLAUDE_API_KEY", "");
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(500);
     expect(JSON.parse(res.body).error).toContain("CLAUDE_API_KEY");
   });
@@ -80,7 +96,7 @@ describe("bulk-tag handler", () => {
     const cached = { results: claudeResponse };
     mockCacheGet.mockResolvedValue(cached);
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(200);
     expect(res.headers["X-Cache"]).toBe("HIT");
     expect(JSON.parse(res.body)).toEqual(cached);
@@ -94,7 +110,7 @@ describe("bulk-tag handler", () => {
       content: [{ text: JSON.stringify(claudeResponse) }],
     });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(200);
     expect(res.headers["X-Cache"]).toBe("MISS");
     const body = JSON.parse(res.body);
@@ -108,7 +124,7 @@ describe("bulk-tag handler", () => {
       content: [{ text: JSON.stringify(claudeResponse) }],
     });
 
-    await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(mockCacheSet).toHaveBeenCalledTimes(1);
   });
 
@@ -117,7 +133,7 @@ describe("bulk-tag handler", () => {
       content: [{ text: JSON.stringify([claudeResponse[0]]) }], // only 1 of 2
     });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).results).toHaveLength(1);
     expect(mockCacheSet).not.toHaveBeenCalled();
@@ -130,7 +146,7 @@ describe("bulk-tag handler", () => {
       content: [{ text: "```json\n" + JSON.stringify(claudeResponse) + "\n```" }],
     });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).results).toHaveLength(2);
   });
@@ -145,7 +161,7 @@ describe("bulk-tag handler", () => {
     }];
     mockCallClaude.mockResolvedValue({ content: [{ text: JSON.stringify(bad) }] });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     const result = JSON.parse(res.body).results[0];
     expect(result.seasons).toEqual(["spring"]);
     expect(result.contexts).toEqual(["clinic"]);
@@ -155,7 +171,7 @@ describe("bulk-tag handler", () => {
     const noId = [{ seasons: ["spring"], contexts: ["casual"], material: "cotton", pattern: "solid" }];
     mockCallClaude.mockResolvedValue({ content: [{ text: JSON.stringify(noId) }] });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(JSON.parse(res.body).results).toHaveLength(0);
   });
 
@@ -163,7 +179,7 @@ describe("bulk-tag handler", () => {
     const badSeasons = [{ id: "g1", seasons: ["rainy"], contexts: ["clinic"], material: "cotton", pattern: "solid" }];
     mockCallClaude.mockResolvedValue({ content: [{ text: JSON.stringify(badSeasons) }] });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(JSON.parse(res.body).results).toHaveLength(0);
   });
 
@@ -171,7 +187,7 @@ describe("bulk-tag handler", () => {
     const badCtx = [{ id: "g1", seasons: ["spring"], contexts: ["poolside"], material: "cotton", pattern: "solid" }];
     mockCallClaude.mockResolvedValue({ content: [{ text: JSON.stringify(badCtx) }] });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(JSON.parse(res.body).results).toHaveLength(0);
   });
 
@@ -181,7 +197,7 @@ describe("bulk-tag handler", () => {
     const many = Array.from({ length: 15 }, (_, i) => ({ id: `g${i}`, name: `Item ${i}`, type: "shirt" }));
     mockCallClaude.mockResolvedValue({ content: [{ text: "[]" }] });
 
-    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: many }) });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: many }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     // Verify the prompt only contains 10 items
     const prompt = mockCallClaude.mock.calls[0][1].messages[0].content;
     expect(prompt).toContain('10.');
@@ -193,16 +209,16 @@ describe("bulk-tag handler", () => {
   it("returns 500 on Claude API error", async () => {
     mockCallClaude.mockRejectedValue(new Error("API rate limited"));
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(500);
     expect(JSON.parse(res.body).error).toBe("API rate limited");
-    expect(res.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 
   it("handles malformed JSON from Claude gracefully", async () => {
     mockCallClaude.mockResolvedValue({ content: [{ text: "not json at all" }] });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).results).toEqual([]);
   });
@@ -210,13 +226,13 @@ describe("bulk-tag handler", () => {
   it("handles null content from Claude gracefully", async () => {
     mockCallClaude.mockResolvedValue({ content: [] });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).results).toEqual([]);
   });
 
   it("handles null body gracefully", async () => {
-    const res = await handler({ httpMethod: "POST", body: null });
+    const res = await handler({ httpMethod: "POST", body: null, headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(res.statusCode).toBe(400);
   });
 
@@ -224,13 +240,13 @@ describe("bulk-tag handler", () => {
 
   it("uses claude-haiku model", async () => {
     mockCallClaude.mockResolvedValue({ content: [{ text: "[]" }] });
-    await handler({ httpMethod: "POST", body: JSON.stringify({ garments }) });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ garments }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     expect(mockCallClaude.mock.calls[0][1].model).toBe("claude-haiku-4-5-20251001");
   });
 
   it("includes garment details in prompt", async () => {
     mockCallClaude.mockResolvedValue({ content: [{ text: "[]" }] });
-    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }) });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     const prompt = mockCallClaude.mock.calls[0][1].messages[0].content;
     expect(prompt).toContain("White Oxford Shirt");
     expect(prompt).toContain('type="shirt"');
@@ -240,7 +256,7 @@ describe("bulk-tag handler", () => {
   it("handles missing type/color/material with 'unknown' defaults", async () => {
     const sparse = [{ id: "x", name: "Mystery Item" }];
     mockCallClaude.mockResolvedValue({ content: [{ text: "[]" }] });
-    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: sparse }) });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: sparse }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     const prompt = mockCallClaude.mock.calls[0][1].messages[0].content;
     expect(prompt).toContain('type="unknown"');
     expect(prompt).toContain('color="unknown"');
@@ -252,11 +268,11 @@ describe("bulk-tag handler", () => {
   it("generates same cache key regardless of garment order", async () => {
     mockCallClaude.mockResolvedValue({ content: [{ text: "[]" }] });
 
-    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0], garments[1]] }) });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0], garments[1]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     const key1 = mockCacheGet.mock.calls[0][0];
 
     mockCacheGet.mockClear();
-    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[1], garments[0]] }) });
+    await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[1], garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     const key2 = mockCacheGet.mock.calls[0][0];
 
     expect(key1).toBe(key2);
@@ -268,7 +284,7 @@ describe("bulk-tag handler", () => {
     const partial = [{ id: "g1", seasons: ["spring"], contexts: ["casual"] }];
     mockCallClaude.mockResolvedValue({ content: [{ text: JSON.stringify(partial) }] });
 
-    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }) });
+    const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     const result = JSON.parse(res.body).results[0];
     expect(result.material).toBeNull();
     expect(result.pattern).toBeNull();
