@@ -10,6 +10,9 @@ function makeChain(resolveWith) {
   const chain = {
     select: vi.fn(() => chain),
     order: vi.fn(() => chain),
+    eq: vi.fn(() => chain),
+    not: vi.fn(() => chain),
+    gte: vi.fn(() => chain),
     limit: vi.fn(() => Promise.resolve(resolveWith())),
     upsert: vi.fn((...args) => {
       upsertCalls.push(args);
