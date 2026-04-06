@@ -1,4 +1,4 @@
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 /**
  * Netlify serverless function — Claude AI Stylist.
  * Validates/improves the engine's outfit pick around the selected watch.
@@ -139,7 +139,7 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
         messages: [{ role: "user", content: prompt }],
       });
 
-    const text = data?.content?.[0]?.text ?? "";
+    const text = extractText(data, "");
 
     // Use non-greedy match to find the first complete JSON object, not the greediest span
     const jsonMatch = text.match(/\{[\s\S]*?\}(?=[^}]*$)/) || text.match(/\{[\s\S]*\}/);

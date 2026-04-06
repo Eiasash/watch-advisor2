@@ -3,7 +3,7 @@
  * Returns { occasion_tips, outfits[{name,top,bottom,shoes,watch,layers,why,confidence}], avoid, power_move }
  */
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 const CORS = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json" };
 
 export async function handler(event) {
@@ -49,7 +49,7 @@ Create 2 complete outfit recommendations. Return ONLY valid JSON, no markdown:
 
     const res = await callClaude(apiKey, { model:"claude-sonnet-4-6", max_tokens:1000,
         messages:[{role:"user",content:prompt}] });
-    const raw = res.content?.[0]?.text ?? "";
+    const raw = extractText(res, "");
     let parsed;
     try {
       // Strip markdown fences if present, then parse

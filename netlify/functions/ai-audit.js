@@ -1,4 +1,4 @@
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 /**
  * Netlify function — AI Wardrobe Audit
  * POST body: { prompt: string }
@@ -28,7 +28,7 @@ export async function handler(event) {
       });
 
 
-    const raw  = res.content?.[0]?.text ?? "{}";
+    const raw  = extractText(res);
     // Strip markdown fences if present
     const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
 

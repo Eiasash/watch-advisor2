@@ -1,4 +1,4 @@
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 /**
  * AI relabel — Claude Vision checks a garment photo + optional extra angles.
  * Returns { confirmed, corrections: { type?, color?, color_alternatives?, material?, name?, formality? }, confidence, reason }
@@ -89,7 +89,7 @@ Respond ONLY with valid JSON, no markdown:
       messages: [{ role: "user", content: contentBlocks }],
     });
 
-    const text = data?.content?.[0]?.text ?? "{}";
+    const text = extractText(data);
     const cleaned = text.replace(/```json|```/g, "").trim();
     let result;
     try {

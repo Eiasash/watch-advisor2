@@ -5,7 +5,7 @@
  *
  * POST body: { message, conversationHistory: [...], context: { weather, todayContext } }
  */
-import { callClaude, getConfiguredModel } from "./_claudeClient.js";
+import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js";
 import { createClient } from "@supabase/supabase-js";
 
 const CORS = {
@@ -155,7 +155,7 @@ Be specific, opinionated, and brief. Use actual garment names. Don't hedge.`;
       messages,
     }, { maxAttempts: 1 });
 
-    const responseText = result.content?.[0]?.text ?? "I couldn't generate a response.";
+    const responseText = extractText(result, "I couldn't generate a response.");
 
     return {
       statusCode: 200,

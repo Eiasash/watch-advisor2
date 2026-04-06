@@ -5,7 +5,7 @@
  *           complications[], style_category, suggested_contexts[], confidence, emoji, notes }
  */
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 const CORS = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json" };
 
 export async function handler(event) {
@@ -77,7 +77,7 @@ Return ONLY valid JSON, no markdown:
 
     const res = await callClaude(apiKey, { model:"claude-sonnet-4-6", max_tokens:900,
         messages:[{role:"user",content:[imageBlock,{type:"text",text:prompt}]}] }, { maxAttempts: 1 });
-    const raw = res.content?.[0]?.text?.replace(/```json|```/g,"").trim() ?? "{}";
+    const raw = extractText(res).replace(/```json|```/g,"").trim();
     let parsed;
     try {
       parsed = JSON.parse(raw);

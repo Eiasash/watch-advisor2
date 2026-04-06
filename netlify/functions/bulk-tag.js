@@ -6,7 +6,7 @@
  * POST body: { garments: [{ id, name, type, color, material }] }
  * Returns:   { results: [{ id, seasons, contexts, material, pattern }] }
  */
-import { callClaude }    from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 import { cacheGet, cacheSet } from "./_blobCache.js";
 
 const CORS = {
@@ -98,7 +98,7 @@ FIT: slim=fitted/tapered, regular=standard, relaxed=loose, oversized=boxy, null=
       messages: [{ role: "user", content: prompt }],
     });
 
-    const raw = res?.content?.[0]?.text ?? "[]";
+    const raw = extractText(res, "[]");
     const clean = raw.replace(/```json|```/g, "").trim();
     let results;
     try { results = JSON.parse(clean); } catch { results = []; }

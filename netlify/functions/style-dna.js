@@ -12,7 +12,7 @@
  * GET — returns cached DNA (refreshes weekly)
  * POST { forceRefresh: true } — regenerate
  */
-import { callClaude, getConfiguredModel } from "./_claudeClient.js";
+import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js";
 import { createClient } from "@supabase/supabase-js";
 
 const CORS = {
@@ -166,13 +166,10 @@ Respond ONLY with this JSON, no markdown:
     }, { maxAttempts: 1 });
 
     let analysis = {};
-    let _rawText = "";
     try {
-      // Find the text block — result.content may have multiple blocks (thinking, text, etc.)
-      const textBlock = result.content?.find(b => b.type === "text");
-      _rawText = textBlock?.text ?? result.content?.[0]?.text ?? "{}";
+      const rawText = extractText(result);
       // Strip markdown fences, then find the first JSON object
-      const cleaned = _rawText.replace(/```json|```/g, "").trim();
+      const cleaned = rawText.replace(/```json|```/g, "").trim();
       // Try direct parse first
       try { analysis = JSON.parse(cleaned); } catch {
         // Fallback: extract first { ... } block (handles Claude adding preamble/postamble)
@@ -181,10 +178,10 @@ Respond ONLY with this JSON, no markdown:
         if (start !== -1 && end > start) {
           analysis = JSON.parse(cleaned.slice(start, end + 1));
         } else {
-          analysis = { error: "No JSON object found in response", _debug: cleaned.slice(0, 300) };
+          analysis = { error: "No JSON object found in response" };
         }
       }
-    } catch (parseErr) { analysis = { error: `Parse failed: ${parseErr.message?.slice(0, 80)}`, _debug: _rawText.slice(0, 300) }; }
+    } catch (parseErr) { analysis = { error: `Parse failed: ${parseErr.message?.slice(0, 80)}` }; }
 
     const dna = {
       generatedAt: new Date().toISOString(),

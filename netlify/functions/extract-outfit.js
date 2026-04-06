@@ -3,7 +3,7 @@
  * Takes a selfie/outfit photo + user's wardrobe, returns garment matches.
  * Called from SelfiePanel "👕 Use as Today's Outfit" button.
  */
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -114,7 +114,7 @@ Focus on: outermost top layer, mid-layer (sweater/knit), base shirt, pants, shoe
       }],
     });
 
-    const raw = resp?.content?.[0]?.text ?? "[]";
+    const raw = extractText(resp, "[]");
     let detected;
     try {
       const clean = raw.replace(/```json|```/g, "").trim();

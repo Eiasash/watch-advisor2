@@ -9,7 +9,7 @@
  *            better_watch, watch_confidence, watch_details, items_detected[] }
  */
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -122,7 +122,7 @@ Return ONLY valid JSON, no markdown:
       }, { maxAttempts: 1 });
     const data = res;
 
-    const raw   = data.content?.[0]?.text ?? "{}";
+    const raw   = extractText(data);
     const clean = raw.replace(/```json|```/g, "").trim();
 
     // Robust JSON parse — Claude may truncate mid-string at max_tokens boundary.

@@ -1,4 +1,4 @@
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 import { cacheGet, cacheSet } from "./_blobCache.js";
 
 /**
@@ -137,7 +137,7 @@ SEASON/CONTEXT — infer from weight, material, and formality:
       ],
     }, { maxAttempts: 1 });
 
-    const raw = response?.content?.[0]?.text ?? "{}";
+    const raw = extractText(response);
     const clean = raw.replace(/```json|```/g, "").trim();
     let parsed;
     try { parsed = JSON.parse(clean); } catch { parsed = {}; }

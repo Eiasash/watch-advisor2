@@ -116,3 +116,18 @@ function _logTokenUsage(input, output) {
     );
   } catch { /* swallow */ }
 }
+
+/**
+ * Extract text from a Claude API response.
+ * Handles multi-block responses (thinking + text) by finding the text block.
+ * Falls back to content[0].text if no explicit text block found.
+ * @param {object} result — full Anthropic messages API response
+ * @param {string} [fallback="{}"] — returned if no text found
+ * @returns {string}
+ */
+export function extractText(result, fallback = "{}") {
+  const blocks = result?.content;
+  if (!Array.isArray(blocks) || !blocks.length) return fallback;
+  const textBlock = blocks.find(b => b.type === "text");
+  return textBlock?.text ?? blocks[0]?.text ?? fallback;
+}

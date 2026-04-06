@@ -10,7 +10,7 @@
  */
 
 import { cacheGet, cacheSet } from "./_blobCache.js";
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -162,7 +162,7 @@ Rules:
       messages: [{ role: "user", content: contentBlocks }],
     }, { maxAttempts: 1 });
 
-    const raw  = res.content?.[0]?.text ?? "{}";
+    const raw  = extractText(res);
     const clean = raw.replace(/```json|```/g, "").trim();
     let parsed;
     try {

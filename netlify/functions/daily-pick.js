@@ -1,4 +1,4 @@
-import { callClaude, getConfiguredModel } from "./_claudeClient.js";
+import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js";
 import { createClient } from "@supabase/supabase-js";
 
 /**
@@ -181,7 +181,7 @@ Respond ONLY with this JSON structure, no markdown:
     }, { maxAttempts: 1 });
 
     // Parse response
-    const text = result.content?.[0]?.text ?? "{}";
+    const text = extractText(result);
     let pick;
     try {
       pick = JSON.parse(text.replace(/```json|```/g, "").trim());

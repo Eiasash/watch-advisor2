@@ -7,7 +7,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 
 webpush.setVapidDetails(
   "mailto:eias@watchadvisor.app",
@@ -170,7 +170,7 @@ Return ONLY valid JSON (no markdown fences):
     messages: [{ role: "user", content: prompt }],
   });
 
-  const raw = data?.content?.[0]?.text ?? "{}";
+  const raw = extractText(data);
   return JSON.parse(raw.replace(/```json|```/g, "").trim());
 }
 
@@ -223,7 +223,7 @@ Return ONLY valid JSON:
     messages: [{ role: "user", content: prompt }],
   });
 
-  const raw = data?.content?.[0]?.text ?? "{}";
+  const raw = extractText(data);
   return JSON.parse(raw.replace(/```json|```/g, "").trim());
 }
 

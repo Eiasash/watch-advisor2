@@ -1,4 +1,4 @@
-import { callClaude } from "./_claudeClient.js";
+import { callClaude, extractText } from "./_claudeClient.js";
 /**
  * Netlify serverless function — AI duplicate detection.
  * Compares two garment thumbnails using Claude Vision to determine
@@ -84,7 +84,7 @@ Both false = different garments.`,
       ],
     });
 
-    const text = data?.content?.[0]?.text ?? "";
+    const text = extractText(data, "");
     const jsonMatch = text.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {
