@@ -833,7 +833,7 @@ export default function TodayPanel() {
       {/* Rotation nudge — neglected genuine + streak */}
       {!logged && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-          <NeglectedWatchNudge watches={watches} history={history} currentWatchId={watchId} onSelectWatch={setWatchId} isDark={isDark} />
+          <NeglectedWatchNudge watches={watches} history={entries} currentWatchId={watchId} onSelectWatch={setWatchId} isDark={isDark} />
           <NeglectedAlert neglected={neglected} watchId={watchId} onSelect={setWatchId} />
           <StreakBadge streak={streak} />
         </div>
