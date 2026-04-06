@@ -837,8 +837,8 @@ export default function WeekPlanner() {
   const history    = useHistoryStore(s => s.entries) ?? [];
   const addEntry   = useHistoryStore(s => s.addEntry);
   const upsertEntry = useHistoryStore(s => s.upsertEntry);
-  const weekCtx    = useWardrobeStore(s => s.weekCtx);
-  const onCallDates= useWardrobeStore(s => s.onCallDates);
+  const weekCtx    = useWardrobeStore(s => s.weekCtx) ?? [];
+  const onCallDates= useWardrobeStore(s => s.onCallDates) ?? [];
   const setWeekCtx = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates = useWardrobeStore(s => s.setOnCallDates);
   const garments     = useWardrobeStore(s => s.garments) ?? [];
