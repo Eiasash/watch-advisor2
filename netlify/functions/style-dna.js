@@ -37,13 +37,16 @@ export async function handler(event) {
     // Check cache (7 day refresh)
     const body = event.httpMethod === "POST" ? JSON.parse(event.body ?? "{}") : {};
     if (!body.forceRefresh) {
-      const { data: cached } = await supabase.from("app_config").select("value").eq("key", "style_dna").single();
-      if (cached?.value?.generatedAt) {
-        const age = Date.now() - new Date(cached.value.generatedAt).getTime();
-        if (age < 7 * 24 * 60 * 60 * 1000) {
-          return { statusCode: 200, headers: CORS, body: JSON.stringify(cached.value) };
+      try {
+        const { data: cachedRows } = await supabase.from("app_config").select("value").eq("key", "style_dna").limit(1);
+        const cached = cachedRows?.[0];
+        if (cached?.value?.generatedAt) {
+          const age = Date.now() - new Date(cached.value.generatedAt).getTime();
+          if (age < 7 * 24 * 60 * 60 * 1000) {
+            return { statusCode: 200, headers: CORS, body: JSON.stringify(cached.value) };
+          }
         }
-      }
+      } catch { /* cache miss — regenerate */ }
     }
 
     // Fetch data

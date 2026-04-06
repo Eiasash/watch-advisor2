@@ -116,8 +116,8 @@ export async function handler() {
     // ── 7. Auto-tune history ───────────────────────────────────────────────
     let tuneHistory = [];
     try {
-      const { data: ovRow } = await supabase.from("app_config").select("value").eq("key", "scoring_overrides").single();
-      tuneHistory = ovRow?.value?._history ?? [];
+      const { data: ovRows } = await supabase.from("app_config").select("value").eq("key", "scoring_overrides").limit(1);
+      tuneHistory = ovRows?.[0]?.value?._history ?? [];
     } catch {}
 
     // ── Build summary ──────────────────────────────────────────────────────

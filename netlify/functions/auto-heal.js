@@ -52,7 +52,8 @@ export async function handler() {
     // ── Load current scoring overrides (auto-tune reads + writes these) ───
     let overrides = {};
     try {
-      const { data: ovRow } = await supabase.from("app_config").select("value").eq("key", "scoring_overrides").single();
+      const { data: ovRows } = await supabase.from("app_config").select("value").eq("key", "scoring_overrides").limit(1);
+      const ovRow = ovRows?.[0];
       if (ovRow?.value && typeof ovRow.value === "object") overrides = ovRow.value;
     } catch { /* first run — no overrides yet */ }
     const DEFAULTS = { rotationFactor: 0.40, repetitionPenalty: -0.28, neverWornRotationPressure: 0.50 };

@@ -33,7 +33,7 @@ export async function handler(event) {
     const supabase = createClient(url, key);
 
     // Fetch wardrobe data
-    const [{ data: garments }, { data: history }, { data: dnaRow }, { data: reportRow }] = await Promise.all([
+    const [{ data: garments }, { data: history }] = await Promise.all([
       supabase.from("garments")
         .select("id,name,type,category,color,brand,formality,material,weight,seasons,contexts")
         .eq("exclude_from_wardrobe", false)
@@ -42,9 +42,18 @@ export async function handler(event) {
         .select("watch_id,date,payload")
         .order("date", { ascending: false })
         .limit(60),
-      supabase.from("app_config").select("value").eq("key", "style_dna").single().catch(() => ({ data: null })),
-      supabase.from("app_config").select("value").eq("key", "monthly_report").single().catch(() => ({ data: null })),
     ]);
+
+    // Non-fatal optional data
+    let dnaRow = null, reportRow = null;
+    try {
+      const r1 = await supabase.from("app_config").select("value").eq("key", "style_dna").limit(1);
+      dnaRow = r1.data?.[0] ?? null;
+    } catch {}
+    try {
+      const r2 = await supabase.from("app_config").select("value").eq("key", "monthly_report").limit(1);
+      reportRow = r2.data?.[0] ?? null;
+    } catch {}
 
     // Build context string
     const garmentList = (garments ?? []).map(g =>

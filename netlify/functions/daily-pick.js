@@ -44,18 +44,21 @@ export async function handler(event) {
     const forceRefresh = body.forceRefresh === true;
 
     if (!forceRefresh) {
-      const { data: cached } = await supabase
-        .from("app_config")
-        .select("value")
-        .eq("key", "daily_pick")
-        .single();
-      if (cached?.value) {
-        const pick = cached.value;
-        const age = Date.now() - new Date(pick.generatedAt).getTime();
-        if (age < 4 * 60 * 60 * 1000) {
-          return { statusCode: 200, headers: CORS, body: JSON.stringify(pick) };
+      try {
+        const { data: cachedRows } = await supabase
+          .from("app_config")
+          .select("value")
+          .eq("key", "daily_pick")
+          .limit(1);
+        const cached = cachedRows?.[0];
+        if (cached?.value) {
+          const pick = cached.value;
+          const age = Date.now() - new Date(pick.generatedAt).getTime();
+          if (age < 4 * 60 * 60 * 1000) {
+            return { statusCode: 200, headers: CORS, body: JSON.stringify(pick) };
+          }
         }
-      }
+      } catch { /* cache miss — regenerate */ }
     }
 
     // Fetch garments
