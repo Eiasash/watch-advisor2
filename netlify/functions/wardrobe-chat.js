@@ -125,24 +125,25 @@ Be specific, opinionated, and brief. Use actual garment names. Don't hedge.`;
       }
     }
 
-    // Build final user message — may include image
-    const imageData = body.image;
-    if (imageData && typeof imageData === "string" && imageData.startsWith("data:image/")) {
-      // Extract base64 and media type from data URL
-      const match = imageData.match(/^data:(image\/[a-z]+);base64,(.+)$/i);
+    // Build final user message — may include multiple images
+    const images = Array.isArray(body.images) ? body.images : (body.image ? [body.image] : []);
+    const imageBlocks = [];
+    for (const imgData of images.slice(0, 4)) {
+      if (typeof imgData !== "string" || !imgData.startsWith("data:image/")) continue;
+      const match = imgData.match(/^data:(image\/[a-z]+);base64,(.+)$/i);
       if (match) {
-        const mediaType = match[1];
-        const base64 = match[2];
-        messages.push({
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-            { type: "text", text: userMessage || "What's in this photo? Identify any garments, watches, or outfit details." },
-          ],
-        });
-      } else {
-        messages.push({ role: "user", content: userMessage });
+        imageBlocks.push({ type: "image", source: { type: "base64", media_type: match[1], data: match[2] } });
       }
+    }
+
+    if (imageBlocks.length > 0) {
+      messages.push({
+        role: "user",
+        content: [
+          ...imageBlocks,
+          { type: "text", text: userMessage || `What do you see in ${imageBlocks.length > 1 ? "these photos" : "this photo"}? Identify garments, watches, or outfit details.` },
+        ],
+      });
     } else {
       messages.push({ role: "user", content: userMessage });
     }
