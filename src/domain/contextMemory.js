@@ -32,19 +32,15 @@ export function recentGarments(history) {
   return set;
 }
 
-import { getOverride } from "../config/scoringOverrides.js";
-
 /**
  * Flat repetition penalty for a single garment.
- * Returns penalty if the garment appears anywhere in the recent window, else 0.
- * Auto-tuned by auto-heal when garment stagnation detected (default -0.28, cap -0.40).
+ * Returns -0.28 if the garment appears anywhere in the recent window, else 0.
  *
  * @param {string} garmentId
  * @param {Array}  history
- * @returns {number} 0 or negative penalty
+ * @returns {number} 0 or -0.28
  */
 export function repetitionPenalty(garmentId, history) {
   const recent = recentGarments(history);
-  const penalty = getOverride("repetitionPenalty", -0.28);
-  return recent.has(garmentId) ? penalty : 0;
+  return recent.has(garmentId) ? -0.28 : 0;
 }

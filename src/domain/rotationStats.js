@@ -124,27 +124,15 @@ export function buildRotationTable(watches, history) {
     });
 }
 
-import { getOverride } from "../config/scoringOverrides.js";
-
 /**
  * Smooth logistic rotation pressure curve.
- *
- * Returns a value in (0, 1) that rises gradually as a watch sits idle.
- *   daysIdle = 0  → ~0.02  (just worn — virtually no pressure)
- *   daysIdle = 14 → 0.50   (midpoint — moderate pressure)
- *   daysIdle = 28 → ~0.88  (month unworn — strong pressure)
- *   daysIdle = ∞  → 1.00   (asymptote)
- *
- * Returns configured neverWornRotationPressure for Infinity (default 0.50).
- * Auto-tuned by auto-heal when never-worn % > 50%.
+ * Returns 0.50 for never-worn (Infinity).
  *
  * @param {number} daysIdle — output of daysIdle(), may be 0..∞
  * @returns {number} pressure in [0, 1)
  */
 export function rotationPressure(daysIdleValue) {
-  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) {
-    return getOverride("neverWornRotationPressure", 0.50);
-  }
+  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0.50;
   const midpoint  = 14;
   const steepness = 0.25;
   return 1 / (1 + Math.exp(-steepness * (daysIdleValue - midpoint)));

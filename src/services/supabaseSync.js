@@ -49,18 +49,9 @@ async function _doPull() {
     if (gErr) throw new Error(gErr.message);
     if (hErr) throw new Error(hErr.message);
 
-    // Scoring overrides — separate query, non-fatal
-    let scoringOverrides = {};
-    try {
-      const { data: ovRows } = await supabase.from("app_config").select("value").eq("key", "scoring_overrides").limit(1);
-      const ov = ovRows?.[0];
-      if (ov?.value && typeof ov.value === "object") scoringOverrides = ov.value;
-    } catch { /* first run — no overrides yet */ }
-
     setSyncState({ status: "idle" });
     return {
       watches: WATCH_COLLECTION,
-      scoringOverrides,
       garments: (garments ?? []).map(row => ({
         ...row,
         // DB column is 'type'; 'category' is an alias kept for compat

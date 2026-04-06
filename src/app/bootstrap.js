@@ -13,7 +13,6 @@ import { useStrapStore }         from "../stores/strapStore.js";
 import { useRejectStore, hydrateRejectStore } from "../stores/rejectStore.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 import { pushDebugEntry } from "../stores/debugStore.js";
-import { setScoringOverrides } from "../config/scoringOverrides.js";
 
 export function useBootstrap() {
   const [ready,  setReady]  = useState(false);
@@ -183,11 +182,6 @@ export function useBootstrap() {
           setGarments(cloudGarments);
           setHistory(h);
           await setCachedState({ watches: w, garments: cloudGarments, history: h });
-
-          // Apply auto-heal scoring overrides (rotationFactor, repetitionPenalty, etc.)
-          if (cloud.scoringOverrides && Object.keys(cloud.scoringOverrides).length > 0) {
-            setScoringOverrides(cloud.scoringOverrides);
-          }
 
           // Phase 2: lazy-load thumbnails now that UI is interactive with metadata
           pullThumbnails().catch(() => {});
