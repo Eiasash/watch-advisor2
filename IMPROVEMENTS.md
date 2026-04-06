@@ -1,5 +1,20 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-05 (evening session)
+Generated: 2026-04-06 (audit session)
+
+## v1.9.1 — April 6 2026
+
+### Audit Fixes
+1. **Scoring overrides wired to domain functions** — `rotationFactor.js`, `contextMemory.js`, `rotationStats.js` now import `getOverride()` so auto-heal auto-tune values (stored in `app_config.scoring_overrides`) flow through to runtime scoring. Previously, `scoringOverrides.js` was defined but never consumed.
+2. **Auto-heal test alignment** — tests expected "flagged" but auto-heal now auto-tunes weights. Updated assertions to match "auto-tuned" action strings.
+3. **daily-pick mock fix** — test Supabase mock was missing `limit` method (code uses `.limit(1)` not `.single()`). Added to chain.
+
+### Metrics
+- 2246 tests, 125 files, 0 failures
+- 73 garments, 44 history entries, 0 orphans, 0 dupes
+- Snapshot health: all green
+- Build: ~570 kB
+
+---
 
 ## v1.9.0 — April 5 2026
 
