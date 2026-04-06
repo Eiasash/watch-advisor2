@@ -239,6 +239,8 @@ export default function TodayPanel() {
 
   const handleLog = useCallback(async () => {
     if (!watchId) return;
+    if (selected.size === 0) return;
+    if (!context) return;
     // Per-watch entry: same watch on same day = update, different watch = new entry
     const entryId = `wear-${TODAY_ISO}-${watchId}`;
     const entry = {
@@ -249,7 +251,7 @@ export default function TodayPanel() {
       strapLabel: activeStrapObj?.label ?? null,
       garmentIds: [...selected],
       context,
-      score: outfitScore,
+      score: typeof outfitScore === "number" ? outfitScore : 7.0,
       watch: selectedWatch ? `${selectedWatch.brand} ${selectedWatch.model}` : null,
       notes: notes.trim() || null,
       outfitPhoto: extraImgs[0] ?? null,
@@ -864,8 +866,20 @@ export default function TodayPanel() {
         </div>
       )}
 
-      {/* Log button — disabled without watch AND score */}
-      <LogButton onLog={handleLog} disabled={!watchId || outfitScore == null} />
+      {/* Validation errors */}
+      {watchId && selected.size === 0 && (
+        <div style={{ fontSize: 11, color: "#ef4444", textAlign: "center", marginBottom: 8, fontWeight: 600 }}>
+          Select at least one garment to log
+        </div>
+      )}
+      {watchId && selected.size > 0 && !context && (
+        <div style={{ fontSize: 11, color: "#ef4444", textAlign: "center", marginBottom: 8, fontWeight: 600 }}>
+          Select a context before logging
+        </div>
+      )}
+
+      {/* Log button — disabled without watch, garments, and context */}
+      <LogButton onLog={handleLog} disabled={!watchId || selected.size === 0 || !context} />
     </div>
   );
 }
