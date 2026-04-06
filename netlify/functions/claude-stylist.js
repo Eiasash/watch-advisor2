@@ -1,4 +1,5 @@
 import { callClaude, extractText } from "./_claudeClient.js";
+import { cors } from "./_cors.js";
 /**
  * Netlify serverless function — Claude AI Stylist.
  * Validates/improves the engine's outfit pick around the selected watch.

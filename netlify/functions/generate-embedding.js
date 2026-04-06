@@ -13,13 +13,9 @@
  */
 
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
+import { cors } from "./_cors.js";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json",
-};
+const CORS = cors(event);
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };

@@ -11,12 +11,9 @@
 
 import { cacheGet, cacheSet } from "./_blobCache.js";
 import { callClaude, extractText } from "./_claudeClient.js";
+import { cors } from "./_cors.js";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const CORS = cors(event);
 const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
 
 // Kept in sync with classify-image.js — any change here must be mirrored there

@@ -1,5 +1,6 @@
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cacheGet, cacheSet } from "./_blobCache.js";
+import { cors } from "./_cors.js";
 
 /**
  * Netlify serverless function — Claude Vision garment classifier.
@@ -20,11 +21,7 @@ const VALID_COLORS = [
 ];
 
 export async function handler(event) {
-  const CORS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
+  const CORS = cors(event);
 
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
 

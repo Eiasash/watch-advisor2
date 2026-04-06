@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import bundledMigrations from "./_migrations.json" with { type: "json" };
+import { cors } from "./_cors.js";
 
 /**
  * Netlify Function: run-migrations

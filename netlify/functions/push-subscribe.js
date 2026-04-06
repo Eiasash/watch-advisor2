@@ -4,13 +4,9 @@
  * DELETE { endpoint }               → remove
  */
 import { createClient } from "@supabase/supabase-js";
+import { cors } from "./_cors.js";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
-"Content-Type": "application/json",
-};
+const CORS = cors(event);
 
 function sb() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
