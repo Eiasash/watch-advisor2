@@ -155,6 +155,7 @@ export default function TodayPanel() {
   const straps       = useStrapStore(s => s.straps);
   const activeStrap  = useStrapStore(s => s.activeStrap);
   const upsertEntry  = useHistoryStore(s => s.upsertEntry);
+  const removeEntry  = useHistoryStore(s => s.removeEntry);
   const entries      = useHistoryStore(s => s.entries);
 
   // Today's logged entries (multiple watches per day supported)
@@ -406,6 +407,38 @@ export default function TodayPanel() {
                       outline: "none", boxSizing: "border-box",
                     }}
                   />
+                </div>
+
+                {/* Edit / Delete buttons */}
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  <button onClick={() => {
+                    setSelected(new Set(te.garmentIds ?? []));
+                    setWatchId(te.watchId ?? watches[0]?.id ?? null);
+                    setContext(te.context ?? null);
+                    setNotes(te.notes ?? "");
+                    setExtraImgs(te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []));
+                    setLogged(false);
+                  }} style={{
+                    flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                    border: `1px solid ${isDark ? "#3b82f633" : "#3b82f633"}`,
+                    background: isDark ? "#1e3a5f18" : "#eff6ff",
+                    color: "#3b82f6", cursor: "pointer",
+                  }}>
+                    ✏️ Edit outfit
+                  </button>
+                  <button onClick={() => {
+                    if (confirm("Delete this entry?")) {
+                      removeEntry(te.id);
+                      if (todayEntries.length <= 1) setLogged(false);
+                    }
+                  }} style={{
+                    padding: "8px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                    border: `1px solid ${isDark ? "#ef444433" : "#ef444433"}`,
+                    background: isDark ? "#7f1d1d18" : "#fef2f2",
+                    color: "#ef4444", cursor: "pointer",
+                  }}>
+                    🗑️
+                  </button>
                 </div>
               </div>
             );
