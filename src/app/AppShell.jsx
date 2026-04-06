@@ -21,6 +21,7 @@ const CommandPalette  = lazy(() => import("../components/CommandPalette.jsx"));
 // Heavy tabs — lazy-loaded so they don't bloat the initial bundle.
 const WeekPlanner       = lazy(() => import("../components/WeekPlanner.jsx"));
 const WatchRotationPanel = lazy(() => import("../components/WatchRotationPanel.jsx"));
+const TradeSimulator     = lazy(() => import("../components/plan/TradeSimulator.jsx"));
 const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m => ({
   default: () => <><m.default /><m.PhotoVerifierPanel /></>,
 })));
@@ -219,6 +220,7 @@ function AppContent() {
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
               <WeekPlanner />
               <WatchRotationPanel />
+              <TradeSimulator />
             </Suspense>
           </TabPane>
 

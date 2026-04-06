@@ -23,6 +23,7 @@ import NeverWornSpotlight from "./today/NeverWornSpotlight.jsx";
 import SeasonalTransition from "./today/SeasonalTransition.jsx";
 import LastWornWithWatch from "./today/LastWornWithWatch.jsx";
 import StrapSuggestion from "./today/StrapSuggestion.jsx";
+import QuickStrapSwap from "./today/QuickStrapSwap.jsx";
 import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
 import TailorCountdown from "./today/TailorCountdown.jsx";
 
@@ -659,6 +660,7 @@ export default function TodayPanel() {
         <>
           <LastWornWithWatch watchId={watchId} history={entries} garments={garments} isDark={isDark} />
           <StrapSuggestion watchId={watchId} watches={watches} straps={straps} weather={weather} context={context} isDark={isDark} />
+          {watchId && <QuickStrapSwap watchId={watchId} isDark={isDark} />}
         </>
       )}
 
