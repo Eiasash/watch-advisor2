@@ -15,10 +15,10 @@ export async function handler() {
   }
   const supabase = createClient(url, key);
   const now = new Date().toISOString();
-  await supabase
+  const { error } = await supabase
     .from('app_config')
-    .update({ value: JSON.stringify(now), updated_at: now })
-    .eq('key', 'supabase_keepalive_last');
+    .upsert({ key: 'supabase_keepalive_last', value: JSON.stringify(now), updated_at: now }, { onConflict: 'key' });
+  if (error) console.error('[keepalive] Upsert error:', error.message);
   console.log('[keepalive] Supabase pinged', now);
   return { statusCode: 200, body: JSON.stringify({ ok: true, pingedAt: now }) };
 }

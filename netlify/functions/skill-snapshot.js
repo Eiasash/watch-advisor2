@@ -52,20 +52,25 @@ export async function handler(event) {
     let latestMigration = null;
     try {
       const { data: migData } = await supabase
-        .from('schema_migrations')
-        .select('version')
-        .order('version', { ascending: false })
+        .from('_migrations')
+        .select('name')
+        .order('name', { ascending: false })
         .limit(1);
-      latestMigration = migData?.[0]?.version ?? null;
+      latestMigration = migData?.[0]?.name ?? null;
     } catch {
-      // schema_migrations may not exist — non-fatal
+      // _migrations may not exist — non-fatal
     }
 
-    // App settings sanity check
-    const { data: appSettings } = await supabase
-      .from('app_settings')
-      .select('key, value')
-      .limit(10);
+    // App settings sanity check (columns: id, week_ctx, on_call_dates, active_straps, custom_straps, updated_at)
+    let appSettings = null;
+    try {
+      const { data: settingsRow } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('id', 'default')
+        .single();
+      appSettings = settingsRow;
+    } catch { /* non-fatal — legacy table */ }
 
     // Active Claude model from app_config
     let activeModel = null;
@@ -167,7 +172,7 @@ export async function handler(event) {
       orphanedHistoryCount: orphanedHistory?.length ?? 0,
       orphanedHistoryIds: orphanedHistory?.map(h => h.id) ?? [],
       latestMigration,
-      appSettingsCount: appSettings?.length ?? 0,
+      appSettings: appSettings ?? null,
       scoringWeights,
       activeModel: activeModel ?? "unknown",
       tokenUsage,

@@ -212,7 +212,7 @@ export default function GarmentEditor({ garment, onClose }) {
   const [saving,     setSaving]     = useState(false);
 
   const angles = [garment.thumbnail || garment.photoUrl]
-    .concat(garment.photoAngles ?? []).filter(Boolean);
+    .concat(Array.isArray(garment.photoAngles) ? garment.photoAngles : []).filter(Boolean);
 
   // ── Wear stats ──────────────────────────────────────────────────────────────
   const wearCount = history.filter(e => (e.garmentIds ?? []).includes(garment.id)).length;
@@ -494,6 +494,16 @@ export default function GarmentEditor({ garment, onClose }) {
                     </label>
                   </div>
                 )}
+                {/* Replace primary photo */}
+                <label title="Replace primary photo" style={{
+                  width:40, height:40, borderRadius:8, border:`2px dashed ${border}`,
+                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                  fontSize:11, cursor:"pointer", color:sub, gap:1, flexShrink:0,
+                }}>
+                  🔄
+                  <span style={{ fontSize:7, fontWeight:600, letterSpacing:"0.04em" }}>SWAP</span>
+                  <input type="file" accept="image/*" onChange={handlePrimaryPhotoUpload} style={{ display:"none" }} />
+                </label>
               </div>
             </div>
           )}
