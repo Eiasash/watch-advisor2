@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import seasonContextFactor, { currentSeason } from "../src/outfitEngine/scoringFactors/seasonContextFactor.js";
 
-function makeCandidate(seasons = [], contexts = []) {
-  return { garment: { id: "g1", seasons, contexts } };
+function makeCandidate(seasons = [], contexts = [], baseScore = 0.5) {
+  return { garment: { id: "g1", seasons, contexts }, baseScore };
 }
 // _season injection bypasses Date.getMonth() — no fragile Date mocking
 function makeCtx(outfitContext = null, season = "spring") {
@@ -51,7 +51,7 @@ describe("seasonContextFactor — season scoring", () => {
   it("returns +0.3 when season matches", () => {
     expect(seasonContextFactor(makeCandidate(["spring"]), makeCtx(null,"spring"))).toBe(0.3);
   });
-  it("returns -0.15 when season is adjacent (summer in spring)", () => {
+  it("returns -0.10 when season is adjacent (summer in spring)", () => {
     expect(seasonContextFactor(makeCandidate(["summer"]), makeCtx(null,"spring"))).toBe(-0.15);
   });
   it("returns +0.3 when one of multiple tags matches", () => {

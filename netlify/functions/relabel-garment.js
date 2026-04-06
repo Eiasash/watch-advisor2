@@ -1,16 +1,12 @@
 import { callClaude, extractText } from "./_claudeClient.js";
+import { cors } from "./_cors.js";
 /**
  * AI relabel — Claude Vision checks a garment photo + optional extra angles.
  * Returns { confirmed, corrections: { type?, color?, color_alternatives?, material?, name?, formality? }, confidence, reason }
  */
 
 export async function handler(event) {
-  const CORS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json",
-  };
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
 
   try {

@@ -1,5 +1,6 @@
 import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js";
 import { createClient } from "@supabase/supabase-js";
+import { cors } from "./_cors.js";
 
 /**
  * daily-pick.js — "Claude's Pick" outfit recommendation.
@@ -16,12 +17,7 @@ import { createClient } from "@supabase/supabase-js";
  * POST body: { weather, forceRefresh } — regenerate with specific weather
  */
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Content-Type": "application/json",
-};
+const CORS = cors(event);
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {

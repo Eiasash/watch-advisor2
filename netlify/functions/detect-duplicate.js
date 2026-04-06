@@ -1,4 +1,5 @@
 import { callClaude, extractText } from "./_claudeClient.js";
+import { cors } from "./_cors.js";
 /**
  * Netlify serverless function — AI duplicate detection.
  * Compares two garment thumbnails using Claude Vision to determine

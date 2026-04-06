@@ -8,12 +8,9 @@
  */
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cacheGet, cacheSet } from "./_blobCache.js";
+import { cors } from "./_cors.js";
 
-const CORS = {
-  "Access-Control-Allow-Origin":  "*", // "*" intentional: supports Netlify preview deploys (deploy-preview-*.netlify.app) and local dev
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const CORS = cors(event);
 
 const SEASONS  = ["spring","summer","autumn","winter","all-season"];
 const CONTEXTS = ["clinic","formal","smart-casual","casual","date-night","riviera","sport","lounge"];

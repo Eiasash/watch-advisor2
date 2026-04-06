@@ -7,13 +7,9 @@
  * POST body: { refresh: true } — forces re-fetch of market prices
  */
 import { createClient } from "@supabase/supabase-js";
+import { cors } from "./_cors.js";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Content-Type": "application/json",
-};
+const CORS = cors(event);
 
 // Known market values (ILS) — manually maintained, updated periodically
 // These serve as baseline; can be overridden by live data when available

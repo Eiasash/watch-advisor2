@@ -7,12 +7,9 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { cors } from "./_cors.js";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-};
+const CORS = cors(event);
 
 export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {

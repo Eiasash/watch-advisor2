@@ -1,4 +1,5 @@
 import { callClaude, extractText } from "./_claudeClient.js";
+import { cors } from "./_cors.js";
 /**
  * Netlify function — AI Wardrobe Audit
  * POST body: { prompt: string }
@@ -6,11 +7,7 @@ import { callClaude, extractText } from "./_claudeClient.js";
  */
 
 export async function handler(event) {
-  const CORS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
+  const CORS = cors(event);
   const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
 
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };

@@ -25,10 +25,16 @@ export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
   const [watchId,    setWatchId]    = useState(() => defaultWatchId);
   const [context,    setContext]    = useState(() => {
     if (todayEntry?.context) return todayEntry.context;
-    // Auto-detect on-call if today is in onCallDates
-    const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
+    const state = useWardrobeStore.getState();
     const todayIso = new Date().toISOString().slice(0, 10);
-    return onCallDates.includes(todayIso) ? "shift" : null;
+    // Auto-detect on-call if today is in onCallDates
+    const onCallDates = state.onCallDates ?? [];
+    if (onCallDates.includes(todayIso)) return "shift";
+    // Fall back to weekCtx if user pre-planned this day's context
+    const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+    const weekCtx = state.weekCtx ?? {};
+    if (weekCtx[dayName]) return weekCtx[dayName];
+    return null;
   });
   const [notes,      setNotes]      = useState(() => todayEntry?.notes ?? "");
   const [extraImgs,  setExtraImgs]  = useState(() =>
