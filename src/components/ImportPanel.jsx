@@ -177,7 +177,7 @@ export default function ImportPanel() {
       if (finalItem.thumbnail) {
         enqueueTask("upload-photo", { garmentId: finalItem.id, source: finalItem.thumbnail, kind: "thumbnail" }, `thumb-${finalItem.id}`);
       }
-      const angleBase64 = (finalItem.photoAngles ?? []).filter(u => u?.startsWith("data:"));
+      const angleBase64 = (Array.isArray(finalItem.photoAngles) ? finalItem.photoAngles : []).filter(u => u?.startsWith("data:"));
       for (let ai = 0; ai < angleBase64.length; ai++) {
         enqueueTask("upload-angle", { garmentId: finalItem.id, index: ai, source: angleBase64[ai] }, `angle-${finalItem.id}-${ai}`);
       }

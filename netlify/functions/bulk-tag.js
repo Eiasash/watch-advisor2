@@ -108,8 +108,8 @@ FIT: slim=fitted/tapered, regular=standard, relaxed=loose, oversized=boxy, null=
     const FITS = ["slim","regular","relaxed","oversized"];
     const validated = (Array.isArray(results) ? results : []).map(r => ({
       id:        r.id,
-      seasons:   (r.seasons  ?? []).filter(s => SEASONS.includes(s)),
-      contexts:  (r.contexts ?? []).filter(c => CONTEXTS.includes(c)),
+      seasons:   (Array.isArray(r.seasons) ? r.seasons : []).filter(s => SEASONS.includes(s)),
+      contexts:  (Array.isArray(r.contexts) ? r.contexts : []).filter(c => CONTEXTS.includes(c)),
       material:  r.material ?? null,
       pattern:   r.pattern  ?? null,
       formality: typeof r.formality === "number" && r.formality >= 1 && r.formality <= 10 ? r.formality : null,

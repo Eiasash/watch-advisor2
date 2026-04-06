@@ -23,6 +23,9 @@ const IS_PLACEHOLDER = !SUPABASE_URL
   || SUPABASE_URL.includes("example.supabase.co")
   || SUPABASE_URL.includes("your-project");
 
+/** Coerce jsonb value to array — protects against non-array truthy values (e.g. string stored in jsonb) */
+function toArray(v) { return Array.isArray(v) ? v : []; }
+
 let _pullInflight = null;
 
 export async function pullCloudState() {

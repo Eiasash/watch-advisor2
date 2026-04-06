@@ -164,6 +164,39 @@ describe("pullCloudState", () => {
     expect(result.garments).toEqual([]);
     expect(result.history).toEqual([]);
   });
+
+  it("coerces non-array jsonb fields (seasons, contexts, photoAngles) to arrays", async () => {
+    garmentQueryResult = {
+      data: [
+        { id: "g1", name: "Test", type: "shirt", category: "shirt", color: "navy",
+          photo_url: null, thumbnail_url: null, photo_type: "garment",
+          needs_review: false, photo_angles: "not-an-array",
+          seasons: "all-season", contexts: "casual",
+          created_at: "2026-01-01" },
+        { id: "g2", name: "Test2", type: "pants", category: "pants", color: "black",
+          photo_url: null, thumbnail_url: null, photo_type: "garment",
+          needs_review: false, photo_angles: null,
+          seasons: null, contexts: { key: "val" },
+          created_at: "2026-01-01" },
+      ],
+      error: null,
+    };
+    historyQueryResult = { data: [], error: null };
+
+    const result = await pullCloudState();
+    // String values must be coerced to empty arrays, not pass through
+    expect(Array.isArray(result.garments[0].seasons)).toBe(true);
+    expect(Array.isArray(result.garments[0].contexts)).toBe(true);
+    expect(Array.isArray(result.garments[0].photoAngles)).toBe(true);
+    // null/object values also coerced
+    expect(Array.isArray(result.garments[1].seasons)).toBe(true);
+    expect(Array.isArray(result.garments[1].contexts)).toBe(true);
+    expect(Array.isArray(result.garments[1].photoAngles)).toBe(true);
+    // Calling .filter() must not throw
+    expect(() => result.garments[0].seasons.filter(Boolean)).not.toThrow();
+    expect(() => result.garments[0].contexts.filter(Boolean)).not.toThrow();
+    expect(() => result.garments[0].photoAngles.filter(Boolean)).not.toThrow();
+  });
 });
 
 describe("pushGarment", () => {
@@ -237,6 +270,23 @@ describe("pushGarment", () => {
 
     const row = upsertCalls[0][0];
     expect(row.photo_angles).toEqual(["https://storage.supabase.co/angle.jpg"]);
+  });
+
+  it("coerces non-array seasons/contexts/photoAngles to arrays on push", async () => {
+    await pushGarment({
+      id: "g1", name: "Test", type: "shirt", color: "navy",
+      seasons: "all-season",    // string instead of array
+      contexts: { k: "v" },     // object instead of array
+      photoAngles: 42,          // number instead of array
+    });
+
+    const row = upsertCalls[0][0];
+    expect(Array.isArray(row.seasons)).toBe(true);
+    expect(Array.isArray(row.contexts)).toBe(true);
+    expect(Array.isArray(row.photo_angles)).toBe(true);
+    expect(row.seasons).toEqual([]);
+    expect(row.contexts).toEqual([]);
+    expect(row.photo_angles).toEqual([]);
   });
 });
 

@@ -218,7 +218,7 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
                              background:isDark?"#1c2438":"#eff6ff", color:"#818cf8" }}
                     title="Fit">{item.fit}</span>
             )}
-            {(item.seasons ?? []).filter(s => s !== "all-season" && s !== "all").length > 0 && (
+            {(Array.isArray(item.seasons) ? item.seasons : []).filter(s => s !== "all-season" && s !== "all").length > 0 && (
               <span style={{ fontSize:9, padding:"1px 5px", borderRadius:4,
                              background:isDark?"#172516":"#f0fdf4", color:"#4ade80" }}
                     title={`Seasons: ${item.seasons.join(", ")}`}>

@@ -212,7 +212,7 @@ export default function GarmentEditor({ garment, onClose }) {
   const [saving,     setSaving]     = useState(false);
 
   const angles = [garment.thumbnail || garment.photoUrl]
-    .concat(garment.photoAngles ?? []).filter(Boolean);
+    .concat(Array.isArray(garment.photoAngles) ? garment.photoAngles : []).filter(Boolean);
 
   // ── Wear stats ──────────────────────────────────────────────────────────────
   const wearCount = history.filter(e => (e.garmentIds ?? []).includes(garment.id)).length;
