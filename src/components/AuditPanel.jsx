@@ -152,9 +152,9 @@ function Section({ title, items, color = "#3b82f6", isDark }) {
 }
 
 export default function AuditPanel() {
-  const garments = useWardrobeStore(s => s.garments);
-  const watches  = useWatchStore(s => s.watches);
-  const history  = useHistoryStore(s => s.entries);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
+  const watches  = useWatchStore(s => s.watches) ?? [];
+  const history  = useHistoryStore(s => s.entries) ?? [];
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
 
@@ -410,10 +410,10 @@ async function verifyPhoto(garment, allGarments) {
 }
 
 export function PhotoVerifierPanel() {
-  const garments      = useWardrobeStore(s => s.garments);
+  const garments      = useWardrobeStore(s => s.garments) ?? [];
   const updateGarment = useWardrobeStore(s => s.updateGarment);
-  const watches       = useWatchStore(s => s.watches);
-  const history       = useHistoryStore(s => s.entries);
+  const watches       = useWatchStore(s => s.watches) ?? [];
+  const history       = useHistoryStore(s => s.entries) ?? [];
   const { mode }      = useThemeStore();
   const isDark        = mode === "dark";
 
@@ -1054,7 +1054,7 @@ function DebugSection({ isDark }) {
  * hydrated yet (pullThumbnails is async Phase 2).
  */
 function SyncAnglesPanel({ isDark }) {
-  const garments = useWardrobeStore(s => s.garments);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
   const updateGarment = useWardrobeStore(s => s.updateGarment);
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -1235,10 +1235,10 @@ function SyncAnglesPanel({ isDark }) {
 
 /** Patch tool for history entries missing garmentIds */
 function OrphanedHistoryPatch({ isDark }) {
-  const history = useHistoryStore(s => s.entries);
-  const garments = useWardrobeStore(s => s.garments);
+  const history = useHistoryStore(s => s.entries) ?? [];
+  const garments = useWardrobeStore(s => s.garments) ?? [];
   const addGarment = useWardrobeStore(s => s.addGarment);
-  const watches = useWatchStore(s => s.watches);
+  const watches = useWatchStore(s => s.watches) ?? [];
   const upsertEntry = useHistoryStore(s => s.upsertEntry);
 
   const orphaned = history.filter(e => !e.garmentIds?.length && !e.quickLog && !e.legacy);

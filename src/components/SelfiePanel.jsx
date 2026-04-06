@@ -41,11 +41,11 @@ const SCORE_COLOR = s => s >= 8 ? "#10b981" : s >= 6 ? "#f59e0b" : "#ef4444";
 export default function SelfiePanel({ context = "smart-casual", watchId: propWatchId = null }) {
   const { mode }  = useThemeStore();
   const isDark    = mode === "dark";
-  const watches   = useWatchStore(s => s.watches);
-  const garments  = useWardrobeStore(s => s.garments);
+  const watches   = useWatchStore(s => s.watches) ?? [];
+  const garments  = useWardrobeStore(s => s.garments) ?? [];
   const updateGarment = useWardrobeStore(s => s.updateGarment);
   const upsertEntry   = useHistoryStore(s => s.upsertEntry);
-  const entries       = useHistoryStore(s => s.entries);
+  const entries       = useHistoryStore(s => s.entries) ?? [];
   // Active watch + strap — if no propWatchId, use first watch as fallback
   const activeWatchId = propWatchId ?? watches[0]?.id ?? null;
   const activeStrapObj = useStrapStore(s => s.getActiveStrap?.(activeWatchId)) ?? null;

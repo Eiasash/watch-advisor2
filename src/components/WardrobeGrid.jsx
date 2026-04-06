@@ -279,7 +279,7 @@ const batchBtn = bg => ({
 
 // ── Main WardrobeGrid ─────────────────────────────────────────────────────────
 export default function WardrobeGrid() {
-  const garments           = useWardrobeStore(s => s.garments);
+  const garments           = useWardrobeStore(s => s.garments) ?? [];
   const selectedGarmentId  = useWardrobeStore(s => s.selectedGarmentId);
   const setSelectedGarmentId = useWardrobeStore(s => s.setSelectedGarmentId);
   const selectMode         = useWardrobeStore(s => s.selectMode);
@@ -290,8 +290,8 @@ export default function WardrobeGrid() {
   const batchDelete        = useWardrobeStore(s => s.batchDelete);
   const batchSetType       = useWardrobeStore(s => s.batchSetType);
   const batchMergeAngles   = useWardrobeStore(s => s.batchMergeAngles);
-  const watches            = useWatchStore(s => s.watches);
-  const history            = useHistoryStore(s => s.entries);
+  const watches            = useWatchStore(s => s.watches) ?? [];
+  const history            = useHistoryStore(s => s.entries) ?? [];
   const { mode }           = useThemeStore();
   const isDark             = mode === "dark";
 

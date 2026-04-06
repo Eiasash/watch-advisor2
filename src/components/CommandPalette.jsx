@@ -24,9 +24,9 @@ export default function CommandPalette({ onClose, onAction }) {
   const [dbGarments, setDbGarments] = useState([]);
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
-  const watches = useWatchStore(s => s.watches);
+  const watches = useWatchStore(s => s.watches) ?? [];
   const setActiveWatch = useWatchStore(s => s.setActiveWatch);
-  const garments = useWardrobeStore(s => s.garments);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
   const { mode, toggle } = useThemeStore();
   const isDark = mode === "dark";
 

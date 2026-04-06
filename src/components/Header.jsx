@@ -4,8 +4,8 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 
 export default function Header({ onOpenSettings, onOpenSearch }) {
-  const watches = useWatchStore(s => s.watches);
-  const garments = useWardrobeStore(s => s.garments);
+  const watches = useWatchStore(s => s.watches) ?? [];
+  const garments = useWardrobeStore(s => s.garments) ?? [];
   const { mode, toggle } = useThemeStore();
   const isDark = mode === "dark";
 

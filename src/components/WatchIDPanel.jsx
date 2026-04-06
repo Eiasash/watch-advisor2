@@ -35,7 +35,7 @@ const DIAL_SWATCH = {
 export default function WatchIDPanel({ onIdentified }) {
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
-  const watches  = useWatchStore(s => s.watches);
+  const watches  = useWatchStore(s => s.watches) ?? [];
   const [image,   setImage]   = useState(null);
   const [result,  setResult]  = useState(null);
   const [loading, setLoading] = useState(false);

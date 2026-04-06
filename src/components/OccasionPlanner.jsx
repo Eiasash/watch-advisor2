@@ -18,8 +18,8 @@ const PRESETS = [
 export default function OccasionPlanner() {
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
-  const watches  = useWatchStore(s => s.watches);
-  const garments = useWardrobeStore(s => s.garments);
+  const watches  = useWatchStore(s => s.watches) ?? [];
+  const garments = useWardrobeStore(s => s.garments) ?? [];
 
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);

@@ -71,9 +71,9 @@ export default function ImportPanel() {
 
   const addGarment  = useWardrobeStore(s => s.addGarment);
   const updateGarment = useWardrobeStore(s => s.updateGarment);
-  const garments    = useWardrobeStore(s => s.garments);
-  const watches     = useWatchStore(s => s.watches);
-  const history     = useHistoryStore(s => s.entries);
+  const garments    = useWardrobeStore(s => s.garments) ?? [];
+  const watches     = useWatchStore(s => s.watches) ?? [];
+  const history     = useHistoryStore(s => s.entries) ?? [];
   const { mode }    = useThemeStore();
   const isDark      = mode === "dark";
   const toast       = useToast();

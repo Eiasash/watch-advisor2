@@ -149,14 +149,14 @@ export default function TodayPanel() {
   const TODAY_ISO    = useTodayKey();
   const { mode }     = useThemeStore();
   const isDark       = mode === "dark";
-  const garments     = useWardrobeStore(s => s.garments);
+  const garments     = useWardrobeStore(s => s.garments) ?? [];
   const updateGarment = useWardrobeStore(s => s.updateGarment);
-  const watches      = useWatchStore(s => s.watches);
+  const watches      = useWatchStore(s => s.watches) ?? [];
   const straps       = useStrapStore(s => s.straps);
   const activeStrap  = useStrapStore(s => s.activeStrap);
   const upsertEntry  = useHistoryStore(s => s.upsertEntry);
   const removeEntry  = useHistoryStore(s => s.removeEntry);
-  const entries      = useHistoryStore(s => s.entries);
+  const entries      = useHistoryStore(s => s.entries) ?? [];
 
   // Today's logged entries (multiple watches per day supported)
   const todayEntries = useMemo(() => entries.filter(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);

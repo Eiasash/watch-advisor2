@@ -101,9 +101,9 @@ function WearCalendar({ entries, isDark }) {
 export default function StatsPanel() {
   const { mode }  = useThemeStore();
   const isDark    = mode === "dark";
-  const entries   = useHistoryStore(s => s.entries);
-  const garments  = useWardrobeStore(s => s.garments);
-  const watches   = useWatchStore(s => s.watches);
+  const entries   = useHistoryStore(s => s.entries) ?? [];
+  const garments  = useWardrobeStore(s => s.garments) ?? [];
+  const watches   = useWatchStore(s => s.watches) ?? [];
   const [range, setRange] = useState(30); // days
 
   const bg   = isDark ? "#101114" : "#f9fafb";

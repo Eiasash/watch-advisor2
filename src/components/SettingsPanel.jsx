@@ -78,9 +78,9 @@ export default function SettingsPanel({ onClose, scrollTo }) {
       setTimeout(() => bulkTagRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     }
   }, [scrollTo]);
-  const garments = useWardrobeStore(s => s.garments);
-  const watches = useWatchStore(s => s.watches);
-  const history = useHistoryStore(s => s.entries);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
+  const watches = useWatchStore(s => s.watches) ?? [];
+  const history = useHistoryStore(s => s.entries) ?? [];
   const { mode, toggle } = useThemeStore();
   const isDark = mode === "dark";
 

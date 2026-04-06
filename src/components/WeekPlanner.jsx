@@ -833,15 +833,15 @@ function OnCallCalendar({ onCallDates, onToggle, isDark }) {
 
 // ── Main WeekPlanner ──────────────────────────────────────────────────────────
 export default function WeekPlanner() {
-  const watches    = useWatchStore(s => s.watches);
-  const history    = useHistoryStore(s => s.entries);
+  const watches    = useWatchStore(s => s.watches) ?? [];
+  const history    = useHistoryStore(s => s.entries) ?? [];
   const addEntry   = useHistoryStore(s => s.addEntry);
   const upsertEntry = useHistoryStore(s => s.upsertEntry);
   const weekCtx    = useWardrobeStore(s => s.weekCtx);
   const onCallDates= useWardrobeStore(s => s.onCallDates);
   const setWeekCtx = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates = useWardrobeStore(s => s.setOnCallDates);
-  const garments     = useWardrobeStore(s => s.garments);
+  const garments     = useWardrobeStore(s => s.garments) ?? [];
   const straps       = useStrapStore(s => s.straps);
   const activeStrap  = useStrapStore(s => s.activeStrap);
   const { mode }     = useThemeStore();

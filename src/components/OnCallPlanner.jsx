@@ -149,9 +149,9 @@ export default function OnCallPlanner({ isDark: propDark }) {
   const { mode }   = useThemeStore();
   const isDark     = propDark ?? mode === "dark";
 
-  const garments   = useWardrobeStore(s => s.garments);
-  const watches    = useWatchStore(s => s.watches);
-  const history    = useHistoryStore(s => s.entries);
+  const garments   = useWardrobeStore(s => s.garments) ?? [];
+  const watches    = useWatchStore(s => s.watches) ?? [];
+  const history    = useHistoryStore(s => s.entries) ?? [];
   const strapStore = useStrapStore(s => s.straps);
   const activeStrap = useStrapStore(s => s.activeStrap);
 

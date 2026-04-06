@@ -35,10 +35,10 @@ const CATEGORY_LABELS = {
 export default function BulkPhotoMatcher() {
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
-  const garments = useWardrobeStore(s => s.garments);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
   const updateGarment = useWardrobeStore(s => s.updateGarment);
-  const watches = useWatchStore(s => s.watches);
-  const history = useHistoryStore(s => s.entries);
+  const watches = useWatchStore(s => s.watches) ?? [];
+  const history = useHistoryStore(s => s.entries) ?? [];
   const [uploading, setUploading] = useState(null); // garment id being uploaded
   const [done, setDone] = useState(new Set());
   const inputRef = useRef();

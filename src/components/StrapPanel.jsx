@@ -239,7 +239,7 @@ export default function StrapPanel({ watch, isDark: isDarkProp }) {
   const currentActiveId = activeStrap[watch.id];
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const garments = useWardrobeStore(s => s.garments);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
   const [aiStrapLoading, setAiStrapLoading] = useState(false);
   const [aiStrapHint, setAiStrapHint] = useState(null);
 

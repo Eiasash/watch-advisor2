@@ -156,9 +156,9 @@ export default function GarmentEditor({ garment, onClose }) {
   const removeGarment = useWardrobeStore(s => s.removeGarment);
   const addAngle      = useWardrobeStore(s => s.addAngle);
   const addGarment    = useWardrobeStore(s => s.addGarment);
-  const garments      = useWardrobeStore(s => s.garments);
-  const watches       = useWatchStore(s => s.watches);
-  const history       = useHistoryStore(s => s.entries);
+  const garments      = useWardrobeStore(s => s.garments) ?? [];
+  const watches       = useWatchStore(s => s.watches) ?? [];
+  const history       = useHistoryStore(s => s.entries) ?? [];
   const { mode }      = useThemeStore();
   const isDark        = mode === "dark";
   const { addToast }  = useToast() ?? {};

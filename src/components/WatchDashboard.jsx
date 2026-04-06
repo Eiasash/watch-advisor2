@@ -265,12 +265,12 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
 }
 
 export default function WatchDashboard() {
-  const watches        = useWatchStore(s => s.watches);
+  const watches        = useWatchStore(s => s.watches) ?? [];
   const activeWatch    = useWatchStore(s => s.activeWatch);
   const setActiveWatch = useWatchStore(s => s.setActiveWatch);
-  const garments             = useWardrobeStore(s => s.garments);
+  const garments             = useWardrobeStore(s => s.garments) ?? [];
   const setSelectedGarmentId = useWardrobeStore(s => s.setSelectedGarmentId);
-  const history        = useHistoryStore(s => s.entries);
+  const history        = useHistoryStore(s => s.entries) ?? [];
   const addRejection   = useRejectStore(s => s.addRejection);
   const { mode } = useThemeStore();
   const isDark = mode === "dark";

@@ -10,9 +10,9 @@ import { useThemeStore }    from "../stores/themeStore.js";
  * Also includes outfit photos attached to history entries (outfitPhotos array).
  */
 export default function OutfitGallery() {
-  const garments = useWardrobeStore(s => s.garments);
-  const entries  = useHistoryStore(s => s.entries);
-  const watches  = useWatchStore(s => s.watches);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
+  const entries  = useHistoryStore(s => s.entries) ?? [];
+  const watches  = useWatchStore(s => s.watches) ?? [];
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
 

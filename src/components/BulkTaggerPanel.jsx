@@ -13,10 +13,10 @@ const BATCH = 6; // garments per Claude call — keeps response under 1500 token
  * Lives in SettingsPanel as a collapsible section.
  */
 export default function BulkTaggerPanel({ isDark }) {
-  const garments     = useWardrobeStore(s => s.garments);
+  const garments     = useWardrobeStore(s => s.garments) ?? [];
   const updateGarment = useWardrobeStore(s => s.updateGarment);
-  const watches      = useWatchStore(s => s.watches);
-  const history      = useHistoryStore(s => s.entries);
+  const watches      = useWatchStore(s => s.watches) ?? [];
+  const history      = useHistoryStore(s => s.entries) ?? [];
 
   const [running,  setRunning]  = useState(false);
   const [progress, setProgress] = useState(0);   // 0–100

@@ -37,8 +37,8 @@ function dialDot(dialColor) {
 export default function WatchRotationPanel() {
   const { mode }  = useThemeStore();
   const isDark    = mode === "dark";
-  const watches   = useWatchStore(s => s.watches);
-  const entries   = useHistoryStore(s => s.entries);
+  const watches   = useWatchStore(s => s.watches) ?? [];
+  const entries   = useHistoryStore(s => s.entries) ?? [];
 
   // Compute rotation stats once per history/watches change — O(1) lookup per row.
   const rotationMap = useMemo(() => buildRotationMap(watches, entries), [watches, entries]);
