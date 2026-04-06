@@ -152,14 +152,25 @@ export default function OutfitHistory() {
             return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           } catch { return dateStr; }
         })();
+        // Incomplete: fewer than 2 garments and not a known quick-log / legacy entry
+        const garmentCount = (entry.garmentIds ?? []).length;
+        const isIncomplete = garmentCount < 2 && !entry.quickLog && !entry.legacy
+          && !entry.payload?.quickLog && !entry.payload?.legacy;
 
         return (
           <div key={entry.id} style={{
             marginBottom: 10, padding: 12, borderRadius: 12,
-            background: card, border: `1px solid ${border}`,
+            background: card,
+            border: `1px solid ${isIncomplete ? "#f59e0b" : border}`,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{dayName}</div>
+              {isIncomplete && (
+                <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4,
+                               background: "#fef3c7", color: "#92400e", fontWeight: 700 }}>
+                  incomplete
+                </span>
+              )}
               {entry.context && (
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6,
                                background: isDark ? "#1e3a5f" : "#dbeafe", color: "#3b82f6" }}>

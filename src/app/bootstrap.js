@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { loadAll as loadHistoryEntries } from "../services/persistence/historyPersistence.js";
 import { safeGet } from "../services/dbSafeLoad.js";
-import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings, pullThumbnails } from "../services/supabaseSync.js";
+import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings, pullThumbnails, pullScoringOverrides } from "../services/supabaseSync.js";
+import { setScoringOverrides } from "../config/scoringOverrides.js";
 import { registerHandler, resumePendingTasks, flushTasksByType } from "../services/backgroundQueue.js";
 import { checkAndBackup } from "../services/backupService.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
@@ -194,6 +195,11 @@ export function useBootstrap() {
 
           // Phase 2: lazy-load thumbnails now that UI is interactive with metadata
           pullThumbnails().catch(() => {});
+
+          // Load auto-tuned scoring overrides from app_config into scoring engine
+          pullScoringOverrides().then(overrides => {
+            if (overrides) setScoringOverrides(overrides);
+          }).catch(() => {});
 
           // Pull settings (weekCtx, onCallDates, active straps)
           const settings = await pullSettings();

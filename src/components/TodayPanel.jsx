@@ -239,7 +239,7 @@ export default function TodayPanel() {
 
   const handleLog = useCallback(async () => {
     if (!watchId) return;
-    if (selected.size === 0) return;
+    if (selected.size < 2) return;
     if (!context) return;
     // Per-watch entry: same watch on same day = update, different watch = new entry
     const entryId = `wear-${TODAY_ISO}-${watchId}`;
@@ -869,7 +869,12 @@ export default function TodayPanel() {
       {/* Validation errors */}
       {watchId && selected.size === 0 && (
         <div style={{ fontSize: 11, color: "#ef4444", textAlign: "center", marginBottom: 8, fontWeight: 600 }}>
-          Select at least one garment to log
+          Add at least 2 garments (not counting watch) to log an outfit
+        </div>
+      )}
+      {watchId && selected.size === 1 && (
+        <div style={{ fontSize: 11, color: "#ef4444", textAlign: "center", marginBottom: 8, fontWeight: 600 }}>
+          Add at least 2 garments (not counting watch) to log an outfit
         </div>
       )}
       {watchId && selected.size > 0 && !context && (
@@ -879,7 +884,7 @@ export default function TodayPanel() {
       )}
 
       {/* Log button — disabled without watch, garments, and context */}
-      <LogButton onLog={handleLog} disabled={!watchId || selected.size === 0 || !context} />
+      <LogButton onLog={handleLog} disabled={!watchId || selected.size < 2 || !context} />
     </div>
   );
 }

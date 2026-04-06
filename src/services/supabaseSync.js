@@ -420,6 +420,23 @@ export async function pullSettings() {
   }
 }
 
+export async function pullScoringOverrides() {
+  if (IS_PLACEHOLDER) return null;
+  try {
+    const { data, error } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "scoring_overrides")
+      .maybeSingle();
+    if (error) { console.warn("[supabaseSync] pullScoringOverrides error:", error.message); return null; }
+    const val = data?.value;
+    return (val && typeof val === "object") ? val : null;
+  } catch (e) {
+    console.warn("[supabaseSync] pullScoringOverrides failed:", e.message);
+    return null;
+  }
+}
+
 export async function pushSettings(settings) {
   if (IS_PLACEHOLDER) return;
   try {

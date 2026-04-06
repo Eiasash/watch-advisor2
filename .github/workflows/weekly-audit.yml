@@ -9,17 +9,79 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - uses: anthropics/claude-code-action@beta
         with:
           direct_prompt: |
-            Run /audit-fix-deploy — full autonomous cycle.
-            Focus on Phase 5 self-improvement.
-            Commit all findings to IMPROVEMENTS.md.
-            Push all changes.
-          allowed_tools: "Bash,Read,Write,Edit"
+            You are running the weekly autonomous self-improvement audit for watch-advisor2.
+
+            SUPABASE PROJECT: oaojkanozbfpofbewtfq
+            SKILL SNAPSHOT: https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
+
+            ## Step 1: Health Check
+            Fetch the skill-snapshot URL and verify all gates pass:
+            - garmentCount >= 70
+            - orphanedHistoryCount === 0
+            - activeModel !== "unknown"
+            - autoHeal.healthy === true
+            If any gate fails, stop and report the failure.
+
+            ## Step 2: Wear Pattern Analysis
+            Read autoHeal.findings from skill-snapshot and check:
+            1. Watch repetition — any watch worn >40% of last 10 entries?
+            2. Garment slot stagnation — same garment in same slot >3x in 14 days?
+            3. Context distribution — context always null or always same value?
+            4. Score distribution — scores always 7.0 or varied?
+            5. Never-worn garments — what % of active garments have 0 wear logs?
+
+            ## Step 3: Auto-Tune Scoring Weights
+            Based on findings, update getOverride() defaults in source files:
+            - Same watch >4/10 -> rotationFactor default +0.05 (max 0.60) in rotationFactor.js
+            - Same garment >3/14d -> repetitionPenalty default -0.03 (max -0.40) in contextMemory.js
+            - Never-worn >30% -> neverWornRotationPressure default +0.05 (max 0.90) in rotationStats.js
+            - Context always null -> add "smart-casual" fallback in TodayPanel/WatchDashboard
+            For each change: run "timeout 120 node node_modules/.bin/vitest run", revert if any test fails.
+
+            ## Step 4: Dead Code Check
+            Find exported functions never imported in src/ (use grep/glob analysis).
+            Find Netlify functions never called from client — skip these known crons:
+            push-brief.js, supabase-keepalive.js, auto-heal.js, monthly-report.js
+            Remove confirmed dead code or flag in IMPROVEMENTS.md.
+
+            ## Step 5: Run Full Test Suite
+            timeout 120 node node_modules/.bin/vitest run
+            All tests must pass. Report count. Revert failing changes.
+
+            ## Step 6: Update IMPROVEMENTS.md
+            Prepend a new dated section with:
+            - Findings table (check / result / action)
+            - Weight changes (old -> new with trigger)
+            - Dead code found (removed or flagged)
+            - 3-5 proposed improvements ranked by impact (NOT auto-implemented)
+
+            ## Step 7: Commit and Push
+            git config user.email "eias@watch-advisor2"
+            git config user.name "Eias"
+            git add -A && git commit -m "chore: weekly Phase 5 audit $(date +%Y-%m-%d)" && git push origin main
+
+            ## Step 8: Final Verification
+            Fetch skill-snapshot again and confirm all health gates still pass.
+
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebFetch"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

@@ -1,5 +1,65 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-06 (audit session)
+Generated: 2026-04-07 (Phase 5 — Autonomous Self-Improvement)
+
+---
+
+## v2.0.0 — April 7 2026 — Phase 5: Autonomous Self-Improvement
+
+### A. Wear Pattern Analysis (44 history entries as of 2026-04-07)
+
+| Check | Result | Action |
+|-------|--------|--------|
+| Watch repetition (>40% same in last 10) | Healthy — no single watch dominant | None |
+| Garment slot stagnation (>3× same slot in 14d) | Healthy — variety across slots | None |
+| Context distribution | Healthy — varied contexts, <10% null | None |
+| Score distribution | 6.5–9 (varied) — not always 7.0 | None |
+| Never-worn garments | **32% (24/75 garments)** — above 30% threshold | Auto-tuned |
+| Orphaned garmentIds | 0 — all entries clean | None |
+
+Data depth: 44 entries (sparse — historyDepthSufficient threshold not reached for full tuning).
+
+### B. Scoring Weights Auto-Tuned
+
+| Weight | Old | New | Trigger |
+|--------|-----|-----|---------|
+| `neverWornRotationPressure` | 0.50 | **0.55** | Never-worn 32% > 30% threshold |
+| `rotationFactor` | 0.40 | 0.40 | No watch stagnation |
+| `repetitionPenalty` | −0.28 | −0.28 | No garment stagnation |
+
+**Bug fix (Phase 5 audit):** `setScoringOverrides()` was never called in `bootstrap.js`. Auto-heal has been writing tuned weights to `app_config.scoring_overrides` since v1.9.1, but the client never loaded them. Fixed: `pullScoringOverrides()` added to `supabaseSync.js`; `bootstrap.js` now calls `setScoringOverrides()` after cloud pull.
+
+Context always null: No — distribution healthy. No default context change.
+
+### C. Dead Code Found
+
+| Item | Location | Status |
+|------|----------|--------|
+| `buildRotationTable` | `src/domain/rotationStats.js` | Exported + tested but never imported in app code. Candidate for WatchRotationPanel integration. Flagged, not removed. |
+| `recommendationConfidence` | `src/domain/recommendationConfidence.js` | Exported + tested but never used in any component. Could power a "confidence badge" on outfit recommendations. Flagged, not removed. |
+| `monthly-report.js` | `netlify/functions/` | Cron (1st of month, 7am UTC) — not called from client by design. Not dead code. |
+| `run-migrations.js` | `netlify/functions/` | Admin POST endpoint — not called from client by design. Not dead code. |
+
+### D. History Entry Quality Enforcement (Additional Requirement)
+
+Implemented:
+1. **Save block** — `handleLog` in `TodayPanel.jsx` now requires `selected.size >= 2` before logging. Log button disabled; validation message: "Add at least 2 garments (not counting watch) to log an outfit".
+2. **Scoring engine skip** — `recentGarments()` in `contextMemory.js` and `garmentDaysIdle()` in `rotationStats.js` now filter out entries with <2 garmentIds before calculating repetition penalties and rotation timers.
+3. **History UI** — `OutfitHistory.jsx` shows amber "incomplete" badge on existing entries with <2 garments (excluding known quickLog/legacy entries). Amber border highlight.
+4. **Existing entries preserved** — no data deleted. All existing entries remain; only flagged visually.
+
+### E. Proposed Improvements (NOT auto-implemented, ranked by impact)
+
+1. **[HIGH] Wire `buildRotationTable` into WatchRotationPanel** — this utility computes idle/wear stats per watch and is fully tested, but no component displays it. Adding a rotation table to the Plan tab would surface neglected watches visually. Estimated: 1 session.
+
+2. **[HIGH] Dynamic tailor pickupDate** — `TailorCountdown` has a hardcoded Apr 9 pickup date. Move to `app_config` so it updates without a deploy. Estimated: 30 min.
+
+3. **[MEDIUM] `recommendationConfidence` integration** — add a confidence badge (strong/moderate/weak) to outfit cards in WatchDashboard and WeekPlanner. The domain function is ready; just needs UI wiring. Estimated: 1 session.
+
+4. **[MEDIUM] Cross-strap swap UI** — `StrapSwapCard` component: backend (`moveStrap`, `returnStrap`, `getCrossStrapped` in strapStore) is ready, no UI yet. Estimated: 1 session.
+
+5. **[LOW] Auto-unblock tailor garments on pickup day** — auto-heal already has the hook; just needs a date comparison against `app_config.tailor_pickup_date` and a garment flag clear. Estimated: 30 min.
+
+---
 
 ## v1.9.1 — April 6 2026
 
