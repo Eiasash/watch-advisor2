@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useThemeStore } from "../stores/themeStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import { useHistoryStore } from "../stores/historyStore.js";
+import { useWatchStore } from "../stores/watchStore.js";
+import { useStrapStore } from "../stores/strapStore.js";
 
 const SLOT_ICONS = { watch: "⌚", shirt: "👔", sweater: "🧶", layer: "🧥", pants: "👖", shoes: "👞", jacket: "🧥", belt: "🪢" };
 const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
@@ -13,7 +16,11 @@ export default function ClaudePick() {
   const [error, setError] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState(null);
+  const [wornToday, setWornToday] = useState(false);
   const garments = useWardrobeStore(s => s.garments);
+  const watches = useWatchStore(s => s.watches);
+  const upsertEntry = useHistoryStore(s => s.upsertEntry);
+  const history = useHistoryStore(s => s.entries);
 
   const bg = isDark ? "#0f131a" : "#f8fafc";
   const card = isDark ? "#171a21" : "#fff";
@@ -206,6 +213,50 @@ export default function ClaudePick() {
               fontSize: 10, color: "#f97316", fontWeight: 600,
             }}>
               💡 {pick.layerTip}
+            </div>
+          )}
+
+          {/* Wear This — one-tap log entire Claude Pick outfit */}
+          {(() => {
+            const todayIso = new Date().toISOString().slice(0, 10);
+            const alreadyLogged = history.some(e => e.date === todayIso && (e.garmentIds?.length ?? 0) > 0);
+            if (alreadyLogged || wornToday) return null;
+            const garmentIds = Object.values(matchedGarments).map(g => g.id).filter(Boolean);
+            const watchObj = pick.watchId ? watches.find(w => w.id === pick.watchId) : null;
+            if (!garmentIds.length) return null;
+            return (
+              <button
+                onClick={() => {
+                  const todayIso = new Date().toISOString().slice(0, 10);
+                  const activeStrap = pick.strap ?? null;
+                  upsertEntry({
+                    id: `claude-pick-${todayIso}`,
+                    date: todayIso,
+                    watchId: pick.watchId ?? null,
+                    garmentIds,
+                    context: null,
+                    score: pick.score ?? null,
+                    strapLabel: activeStrap,
+                    notes: "Logged from Claude's Pick",
+                    loggedAt: new Date().toISOString(),
+                  });
+                  setWornToday(true);
+                }}
+                style={{
+                  width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 10,
+                  border: "none", cursor: "pointer",
+                  background: "linear-gradient(135deg, #8b5cf6, #3b82f6)",
+                  color: "#fff", fontSize: 12, fontWeight: 700,
+                  boxShadow: "0 2px 8px #8b5cf633",
+                }}
+              >
+                👔 Wear This Outfit
+              </button>
+            );
+          })()}
+          {wornToday && (
+            <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#22c55e", fontWeight: 700 }}>
+              ✅ Logged! Check Today tab.
             </div>
           )}
 

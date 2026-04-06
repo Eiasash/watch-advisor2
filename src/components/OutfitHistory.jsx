@@ -18,22 +18,43 @@ export default function OutfitHistory() {
   const isDark   = mode === "dark";
 
   const [filter, setFilter] = useState("all"); // "all" | "week" | "month"
+  const [watchFilter, setWatchFilter] = useState("all");
+  const [ctxFilter, setCtxFilter] = useState("all");
 
   const sorted = useMemo(() => {
     const now = Date.now();
     const cutoff = filter === "week" ? 7 : filter === "month" ? 30 : Infinity;
     return [...entries]
       .filter(e => {
-        if (cutoff === Infinity) return true;
-        const d = new Date(e.date || e.loggedAt);
-        return (now - d.getTime()) / 86400000 <= cutoff;
+        if (cutoff !== Infinity) {
+          const d = new Date(e.date || e.loggedAt);
+          if ((now - d.getTime()) / 86400000 > cutoff) return false;
+        }
+        if (watchFilter !== "all" && (e.watchId ?? e.watch_id) !== watchFilter) return false;
+        const ctx = e.context ?? e.payload?.context ?? "unset";
+        if (ctxFilter !== "all" && ctx !== ctxFilter) return false;
+        return true;
       })
       .sort((a, b) => {
         const da = new Date(b.date || b.loggedAt);
         const db = new Date(a.date || a.loggedAt);
         return da - db;
       });
-  }, [entries, filter]);
+  }, [entries, filter, watchFilter, ctxFilter]);
+
+  // Unique watches and contexts in history for filter options
+  const filterOptions = useMemo(() => {
+    const wIds = new Set(); const ctxs = new Set();
+    entries.forEach(e => {
+      if (e.watchId) wIds.add(e.watchId);
+      const c = e.context ?? e.payload?.context;
+      if (c) ctxs.add(c);
+    });
+    return {
+      watches: [...wIds].map(id => ({ id, label: watches.find(w => w.id === id)?.model ?? id })),
+      contexts: [...ctxs].sort(),
+    };
+  }, [entries, watches]);
 
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
@@ -60,6 +81,44 @@ export default function OutfitHistory() {
           {filterBtn("all", "All")}
         </div>
       </div>
+
+      {/* Watch + context filters */}
+      {(filterOptions.watches.length > 1 || filterOptions.contexts.length > 1) && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          {filterOptions.watches.length > 1 && (
+            <select value={watchFilter} onChange={e => setWatchFilter(e.target.value)} style={{
+              padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+              border: `1px solid ${watchFilter !== "all" ? "#3b82f6" : border}`,
+              background: isDark ? "#0f131a" : "#f9fafb", color: watchFilter !== "all" ? "#3b82f6" : sub,
+              outline: "none",
+            }}>
+              <option value="all">All watches</option>
+              {filterOptions.watches.map(w => (
+                <option key={w.id} value={w.id}>⌚ {w.label}</option>
+              ))}
+            </select>
+          )}
+          {filterOptions.contexts.length > 1 && (
+            <select value={ctxFilter} onChange={e => setCtxFilter(e.target.value)} style={{
+              padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+              border: `1px solid ${ctxFilter !== "all" ? "#8b5cf6" : border}`,
+              background: isDark ? "#0f131a" : "#f9fafb", color: ctxFilter !== "all" ? "#8b5cf6" : sub,
+              outline: "none",
+            }}>
+              <option value="all">All contexts</option>
+              {filterOptions.contexts.map(c => (
+                <option key={c} value={c}>{c.replace(/-/g, " ")}</option>
+              ))}
+            </select>
+          )}
+          {(watchFilter !== "all" || ctxFilter !== "all") && (
+            <button onClick={() => { setWatchFilter("all"); setCtxFilter("all"); }} style={{
+              padding: "4px 8px", borderRadius: 6, fontSize: 10, border: "none",
+              background: "transparent", color: "#ef4444", cursor: "pointer", fontWeight: 600,
+            }}>Clear</button>
+          )}
+        </div>
+      )}
 
       {sorted.length === 0 && (
         <div style={{ fontSize: 13, color: sub, textAlign: "center", padding: "30px 0" }}>
