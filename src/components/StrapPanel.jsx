@@ -169,8 +169,8 @@ function IconBtn({ label, title, onClick, isDark, color }) {
 export default function StrapPanel({ watch, isDark: isDarkProp }) {
   const { mode }     = useThemeStore();
   const isDark       = isDarkProp ?? mode === "dark";
-  const straps       = useStrapStore(s => s.straps);
-  const activeStrap  = useStrapStore(s => s.activeStrap);
+  const straps       = useStrapStore(s => s.straps) ?? {};
+  const activeStrap  = useStrapStore(s => s.activeStrap) ?? {};
   const setActive    = useStrapStore(s => s.setActiveStrap);
   const addPhoto     = useStrapStore(s => s.addStrapPhoto);
   const addWrist     = useStrapStore(s => s.addWristShot);

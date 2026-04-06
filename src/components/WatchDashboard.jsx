@@ -275,8 +275,8 @@ export default function WatchDashboard() {
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
 
-  const strapStraps     = useStrapStore(s => s.straps);
-  const strapActiveMap  = useStrapStore(s => s.activeStrap);
+  const strapStraps     = useStrapStore(s => s.straps) ?? {};
+  const strapActiveMap  = useStrapStore(s => s.activeStrap) ?? {};
 
   const [weather, setWeather] = useState(null);
   const [outfitLogged, setOutfitLogged] = useState(false);

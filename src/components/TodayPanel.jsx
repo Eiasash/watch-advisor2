@@ -152,8 +152,8 @@ export default function TodayPanel() {
   const garments     = useWardrobeStore(s => s.garments) ?? [];
   const updateGarment = useWardrobeStore(s => s.updateGarment);
   const watches      = useWatchStore(s => s.watches) ?? [];
-  const straps       = useStrapStore(s => s.straps);
-  const activeStrap  = useStrapStore(s => s.activeStrap);
+  const straps       = useStrapStore(s => s.straps) ?? {};
+  const activeStrap  = useStrapStore(s => s.activeStrap) ?? {};
   const upsertEntry  = useHistoryStore(s => s.upsertEntry);
   const removeEntry  = useHistoryStore(s => s.removeEntry);
   const entries      = useHistoryStore(s => s.entries) ?? [];

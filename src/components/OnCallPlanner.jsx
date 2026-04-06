@@ -152,8 +152,8 @@ export default function OnCallPlanner({ isDark: propDark }) {
   const garments   = useWardrobeStore(s => s.garments) ?? [];
   const watches    = useWatchStore(s => s.watches) ?? [];
   const history    = useHistoryStore(s => s.entries) ?? [];
-  const strapStore = useStrapStore(s => s.straps);
-  const activeStrap = useStrapStore(s => s.activeStrap);
+  const strapStore = useStrapStore(s => s.straps) ?? {};
+  const activeStrap = useStrapStore(s => s.activeStrap) ?? {};
 
   const [forecast,  setForecast]  = useState(null);
   const [loading,   setLoading]   = useState(true);

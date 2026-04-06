@@ -842,8 +842,8 @@ export default function WeekPlanner() {
   const setWeekCtx = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates = useWardrobeStore(s => s.setOnCallDates);
   const garments     = useWardrobeStore(s => s.garments) ?? [];
-  const straps       = useStrapStore(s => s.straps);
-  const activeStrap  = useStrapStore(s => s.activeStrap);
+  const straps       = useStrapStore(s => s.straps) ?? {};
+  const activeStrap  = useStrapStore(s => s.activeStrap) ?? {};
   const { mode }     = useThemeStore();
   const isDark     = mode === "dark";
   const [showCalendar, setShowCalendar] = useState(false);
