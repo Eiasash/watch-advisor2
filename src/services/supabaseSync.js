@@ -40,19 +40,24 @@ export async function pullCloudState() {
 
 async function _doPull() {
   try {
-    const [{ data: garments, error: gErr }, { data: history, error: hErr }, ovResult] = await Promise.all([
+    const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
       // Phase 1: metadata only — no photo_url/thumbnail_url to keep payload <200KB
       supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_type,needs_review,duplicate_of,exclude_from_wardrobe,photo_angles,brand,subtype,notes,material,pattern,seasons,contexts,price,accent_color,weight,fit,created_at").order("created_at", { ascending: true }).limit(500),
       supabase.from("history").select("*").order("date", { ascending: false }).limit(365),
-      supabase.from("app_config").select("value").eq("key", "scoring_overrides").limit(1).then(r => r?.data?.[0] ?? null).catch(() => null),
     ]);
 
     if (gErr) throw new Error(gErr.message);
     if (hErr) throw new Error(hErr.message);
 
+    // Scoring overrides — separate query, non-fatal
+    let scoringOverrides = {};
+    try {
+      const { data: ovRows } = await supabase.from("app_config").select("value").eq("key", "scoring_overrides").limit(1);
+      const ov = ovRows?.[0];
+      if (ov?.value && typeof ov.value === "object") scoringOverrides = ov.value;
+    } catch { /* first run — no overrides yet */ }
+
     setSyncState({ status: "idle" });
-    // Scoring overrides from auto-heal auto-tune (non-fatal if missing)
-    const scoringOverrides = (ovResult?.value && typeof ovResult.value === "object") ? ovResult.value : {};
     return {
       watches: WATCH_COLLECTION,
       scoringOverrides,
