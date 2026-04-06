@@ -16,9 +16,9 @@ import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js"
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
 
-const CORS = cors(event);
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
 
   const apiKey = process.env.CLAUDE_API_KEY;

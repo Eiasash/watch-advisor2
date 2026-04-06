@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 const WATCH = { id: "w1", brand: "Omega", model: "Speedmaster", dial: "black", style: "sport", formality: 6, strap: "bracelet" };
 const GARMENTS = [{ id: "g1", type: "shirt", color: "white", name: "Shirt", formality: 5 }];
 

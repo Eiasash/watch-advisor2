@@ -2,6 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../netlify/functions/_claudeClient.js", () => ({
   callClaude: vi.fn(),
+  extractText: (r, fallback = "") => r?.content?.[0]?.text ?? fallback,
+}));
+
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
 }));
 
 describe("extract-outfit handler", () => {
@@ -188,7 +199,7 @@ describe("extract-outfit handler", () => {
   it("includes CORS headers on all error paths", async () => {
     // 405 path
     const r405 = await handler({ httpMethod: "GET" });
-    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
 
     // 500 missing API key
     vi.stubEnv("CLAUDE_API_KEY", "");
@@ -196,7 +207,7 @@ describe("extract-outfit handler", () => {
       httpMethod: "POST",
       body: JSON.stringify({ image: "abc", garments: [] }),
     });
-    expect(r500.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r500.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
 
     // 400 missing image
     vi.stubEnv("CLAUDE_API_KEY", "test-key");
@@ -204,13 +215,13 @@ describe("extract-outfit handler", () => {
       httpMethod: "POST",
       body: JSON.stringify({ garments: [] }),
     });
-    expect(r400.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r400.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
 
     // 400 invalid JSON
     const r400b = await handler({
       httpMethod: "POST",
       body: "not json{{{",
     });
-    expect(r400b.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r400b.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 });

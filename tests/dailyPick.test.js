@@ -4,10 +4,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../netlify/functions/_claudeClient.js", () => ({
   callClaude: vi.fn(),
   getConfiguredModel: vi.fn().mockResolvedValue("claude-haiku-4-5-20251001"),
+  extractText: (r, fallback = "") => r?.content?.[0]?.text ?? fallback,
 }));
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(),
+}));
+
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
 }));
 
 // Mock global fetch for weather
@@ -40,7 +51,7 @@ describe("daily-pick", () => {
   it("returns 204 for OPTIONS (CORS preflight)", async () => {
     const result = await handler({ httpMethod: "OPTIONS" });
     expect(result.statusCode).toBe(204);
-    expect(result.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 
   it("returns 500 when CLAUDE_API_KEY is missing", async () => {
@@ -162,7 +173,7 @@ describe("daily-pick", () => {
 
   it("CORS headers present on all responses", async () => {
     const result = await handler({ httpMethod: "OPTIONS" });
-    expect(result.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
     expect(result.headers["Content-Type"]).toBe("application/json");
   });
 

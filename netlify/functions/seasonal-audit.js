@@ -11,7 +11,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
 
-const CORS = cors(event);
 
 function getCurrentSeason() {
   const month = new Date().getMonth(); // 0-11
@@ -29,6 +28,7 @@ function sb() {
 }
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "POST only" }) };
 

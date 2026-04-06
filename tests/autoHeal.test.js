@@ -39,6 +39,16 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({ from: mockFrom })),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 describe("auto-heal handler", () => {
   let handler;
 

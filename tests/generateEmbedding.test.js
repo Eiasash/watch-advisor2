@@ -7,6 +7,16 @@ vi.mock("../netlify/functions/_blobCache.js", () => ({
   hashText: vi.fn(s => "hash_" + s.slice(0, 8)),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 import { cacheGet, cacheSet } from "../netlify/functions/_blobCache.js";
 
 describe("generate-embedding handler", () => {
@@ -156,6 +166,6 @@ describe("generate-embedding handler", () => {
 
   it("includes CORS headers in all responses", async () => {
     const result = await handler({ httpMethod: "OPTIONS" });
-    expect(result.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 });

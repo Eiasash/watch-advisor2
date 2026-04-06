@@ -10,19 +10,13 @@ import { cors } from "./_cors.js";
  */
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*" /* supports preview deploys + local dev */,
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-      },
-    };
+    return { statusCode: 204, headers: CORS };
   }
 
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: { ...CORS, "Content-Type": "application/json" }, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
@@ -30,7 +24,7 @@ export async function handler(event) {
 
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) {
-      return { statusCode: 500, headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
+      return { statusCode: 500, headers: { ...CORS, "Content-Type": "application/json" }, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
     }
 
     // Build a readable garment list with type+color context
@@ -151,7 +145,7 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
         if (typeof parsed === "object" && parsed !== null) {
           return {
             statusCode: 200,
-            headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+            headers: { ...CORS, "Content-Type": "application/json" },
             body: JSON.stringify(parsed),
           };
         }
@@ -167,7 +161,7 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
             try {
               return {
                 statusCode: 200,
-                headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+                headers: { ...CORS, "Content-Type": "application/json" },
                 body: JSON.stringify({ ...JSON.parse(repaired), _repaired: true }),
               };
             } catch (__) { /* fall through to text response */ }
@@ -178,14 +172,14 @@ Return ONLY valid JSON, no markdown, no commentary outside the JSON:
 
     return {
       statusCode: 200,
-      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+      headers: { ...CORS, "Content-Type": "application/json" },
       body: JSON.stringify({ shirt: null, pants: null, shoes: null, jacket: null, explanation: text }),
     };
   } catch (err) {
     const isClaudeError = err.message?.startsWith('Claude API error') || err.message?.startsWith('BILLING:');
     return {
       statusCode: isClaudeError ? 502 : 500,
-      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+      headers: { ...CORS, "Content-Type": "application/json" },
       body: JSON.stringify({ error: err.message }),
     };
   }

@@ -8,6 +8,7 @@ const mockCacheSet = vi.fn();
 
 vi.mock("../netlify/functions/_claudeClient.js", () => ({
   callClaude: (...args) => mockCallClaude(...args),
+  extractText: (r, fallback = "") => r?.content?.[0]?.text ?? fallback,
 }));
 
 vi.mock("../netlify/functions/_blobCache.js", () => ({

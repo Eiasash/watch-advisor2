@@ -13,9 +13,6 @@ import { cacheGet, cacheSet } from "./_blobCache.js";
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
 
-const CORS = cors(event);
-const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
-
 // Kept in sync with classify-image.js — any change here must be mirrored there
 const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat","scarf","bag","accessory","watch","outfit-photo"];
 const VALID_COLORS = [
@@ -32,6 +29,8 @@ const VALID_MATERIALS = [
 ];
 
 export async function handler(event) {
+  const CORS = cors(event);
+  const JSON_HEADERS = { ...CORS, "Content-Type": "application/json" };
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: "Method not allowed" }) };

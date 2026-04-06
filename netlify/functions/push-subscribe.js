@@ -6,7 +6,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
 
-const CORS = cors(event);
 
 function sb() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -16,6 +15,7 @@ function sb() {
 }
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
 
   try {

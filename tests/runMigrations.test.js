@@ -29,6 +29,16 @@ vi.mock("../netlify/functions/_migrations.json", () => ({
   default: MOCK_MIGRATIONS,
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 // ── Import handler after mocks ───────────────────────────────────────────
 const { default: handler } = await import("../netlify/functions/run-migrations.js");
 

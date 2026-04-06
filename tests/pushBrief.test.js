@@ -31,6 +31,17 @@ vi.mock("web-push", () => ({
 
 vi.mock("../netlify/functions/_claudeClient.js", () => ({
   callClaude: vi.fn(),
+  extractText: vi.fn((r) => r?.content?.[0]?.text ?? ""),
+}));
+
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
 }));
 
 // Mock global fetch for fetchJerusalemWeather

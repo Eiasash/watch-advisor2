@@ -7,6 +7,16 @@ vi.mock("../netlify/functions/_blobCache.js", () => ({
   hashText: vi.fn(s => "abcd1234"),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 // ─── claude-stylist ─────────────────────────────────────────────────────────
 
 describe("claude-stylist handler", () => {

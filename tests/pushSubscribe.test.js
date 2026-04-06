@@ -12,6 +12,16 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({ from: mockFrom })),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 describe("push-subscribe handler", () => {
   let handler;
 
@@ -29,7 +39,7 @@ describe("push-subscribe handler", () => {
   it("returns 204 for OPTIONS", async () => {
     const r = await handler({ httpMethod: "OPTIONS" });
     expect(r.statusCode).toBe(204);
-    expect(r.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 
   it("POST success returns 200 with ok:true", async () => {

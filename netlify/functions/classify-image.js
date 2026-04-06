@@ -155,7 +155,7 @@ SEASON/CONTEXT — infer from weight, material, and formality:
   } catch (err) {
     return {
       statusCode: 500,
-      headers: { "Access-Control-Allow-Origin": "*" },
+      headers: CORS,
       body: JSON.stringify({ error: err.message }),
     };
   }

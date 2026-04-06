@@ -9,7 +9,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
 
-const CORS = cors(event);
 
 // Known market values (ILS) — manually maintained, updated periodically
 // These serve as baseline; can be overridden by live data when available
@@ -37,6 +36,7 @@ function sb() {
 }
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
 
   try {

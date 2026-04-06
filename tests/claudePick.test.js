@@ -5,6 +5,16 @@ vi.mock("../src/stores/themeStore.js", () => ({
   useThemeStore: () => ({ mode: "light" }),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 // Mock react
 const { useState, useEffect } = await import("react");
 

@@ -10,19 +10,13 @@ import { cors } from "./_cors.js";
  */
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-      },
-    };
+    return { statusCode: 204, headers: CORS };
   }
 
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: { ...CORS, "Content-Type": "application/json" }, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
@@ -31,7 +25,7 @@ export async function handler(event) {
     if (!imageA || !imageB) {
       return {
         statusCode: 400,
-        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+        headers: { ...CORS, "Content-Type": "application/json" },
         body: JSON.stringify({ error: "Missing image data" }),
       };
     }
@@ -40,7 +34,7 @@ export async function handler(event) {
     if (!apiKey) {
       return {
         statusCode: 500,
-        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+        headers: { ...CORS, "Content-Type": "application/json" },
         body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }),
       };
     }
@@ -91,20 +85,20 @@ Both false = different garments.`,
     if (jsonMatch) {
       return {
         statusCode: 200,
-        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+        headers: { ...CORS, "Content-Type": "application/json" },
         body: JSON.stringify(JSON.parse(jsonMatch[0])),
       };
     }
 
     return {
       statusCode: 200,
-      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+      headers: { ...CORS, "Content-Type": "application/json" },
       body: JSON.stringify({ isDuplicate: false, confidence: "low", reason: "Could not parse response" }),
     };
   } catch (err) {
     return {
       statusCode: 500,
-      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+      headers: { ...CORS, "Content-Type": "application/json" },
       body: JSON.stringify({ error: err.message }),
     };
   }

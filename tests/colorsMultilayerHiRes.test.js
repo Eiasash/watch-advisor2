@@ -73,6 +73,16 @@ vi.mock("../src/services/localCache.js", () => ({
   getImage: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 import { buildOutfit, explainOutfitChoice } from "../src/outfitEngine/outfitBuilder.js";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 

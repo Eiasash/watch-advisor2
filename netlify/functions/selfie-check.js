@@ -12,9 +12,9 @@ import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
 
-const CORS = cors(event);
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
 

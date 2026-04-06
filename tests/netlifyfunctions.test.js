@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 // ─── ai-audit handler ──────────────────────────────────────────────────────
 
 describe("ai-audit handler", () => {
@@ -30,14 +40,14 @@ describe("ai-audit handler", () => {
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(result.statusCode).toBe(500);
-    expect(result.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
     expect(JSON.parse(result.body).error).toContain("CLAUDE_API_KEY");
   });
 
   it("includes CORS headers on all response paths", async () => {
     // 405 path
     const r405 = await handler({ httpMethod: "GET" });
-    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
 
     // 502 path (Claude API error)
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -48,7 +58,7 @@ describe("ai-audit handler", () => {
       httpMethod: "POST",
       body: JSON.stringify({ prompt: "audit" }),
     });
-    expect(r502.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r502.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
 
     // 500 path (network error)
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("network down"));
@@ -56,7 +66,7 @@ describe("ai-audit handler", () => {
       httpMethod: "POST",
       body: JSON.stringify({ prompt: "audit" }),
     });
-    expect(r500.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r500.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 
   it("returns parsed JSON on success", async () => {

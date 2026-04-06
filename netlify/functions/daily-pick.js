@@ -17,9 +17,9 @@ import { cors } from "./_cors.js";
  * POST body: { weather, forceRefresh } — regenerate with specific weather
  */
 
-const CORS = cors(event);
 
 export async function handler(event) {
+  const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS };
   }

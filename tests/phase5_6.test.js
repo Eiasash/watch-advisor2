@@ -13,6 +13,16 @@ vi.mock("../src/services/persistence/historyPersistence.js", () => ({
   loadAll: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
 import { useHistoryStore } from "../src/stores/historyStore.js";
 
 describe("historyStore — payload_version stamping", () => {
