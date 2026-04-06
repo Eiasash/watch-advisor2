@@ -274,6 +274,12 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
     return -Infinity;
   }
 
+  // Shoes soft penalty: shoes bypass the hard gate (strap-shoe drives selection),
+  // but a dress watch (formality 8) + sneakers (formality 2) shouldn't score full
+  // marks on the formality dimension. Dampen fm for shoes when match < 0.25.
+  // This deprioritises mismatched shoes without eliminating them.
+  const fmEffective = (slot === "shoes" && fm < 0.25) ? fm * 0.35 : fm;
+
   // Hard gate: weather rejection (layer in extreme heat, score === 0 from bracket)
   const wl = weatherLayerScore(garment, weather);
   if (wl === 0) {
@@ -297,7 +303,7 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   // Context is a soft nudge — weather + rotation + color drive selection.
   let base =
     (cm * SCORE_WEIGHTS.colorMatch) +
-    (fm * SCORE_WEIGHTS.formalityMatch) +
+    (fmEffective * SCORE_WEIGHTS.formalityMatch) +
     (wc * SCORE_WEIGHTS.watchCompatibility) +
     (wl * SCORE_WEIGHTS.weatherLayer) +
     (cf * SCORE_WEIGHTS.contextFormality);

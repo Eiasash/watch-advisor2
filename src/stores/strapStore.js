@@ -179,3 +179,40 @@ function persist() {
   setCachedState({ strapStore: { straps: strapsToSave, activeStrap: state.activeStrap } }).catch(() => {});
 }
 useStrapStore.subscribe(() => persist());
+
+// ── Stable selectors — prevent re-render storms in WatchDashboard ───────────
+// These return the same reference when the underlying data hasn't changed.
+
+/**
+ * Stable selector: returns the active strap object for a watch.
+ * Usage: useStrapStore(selectActiveStrap(watchId))
+ */
+export function selectActiveStrap(watchId) {
+  let prev = null;
+  return (state) => {
+    const id = state.activeStrap[watchId];
+    const strap = id ? state.straps[id] : null;
+    // Referential equality: return same object if strap hasn't changed
+    if (prev && strap && prev.id === strap.id && prev.wearCount === strap.wearCount
+        && prev.label === strap.label && prev.color === strap.color
+        && prev.thumbnail === strap.thumbnail && prev.lastWorn === strap.lastWorn) {
+      return prev;
+    }
+    prev = strap;
+    return strap;
+  };
+}
+
+/**
+ * Stable selector: returns straps array for a watch.
+ * Usage: useStrapStore(selectStrapsForWatch(watchId))
+ */
+export function selectStrapsForWatch(watchId) {
+  let prev = [];
+  return (state) => {
+    const list = Object.values(state.straps).filter(s => s.watchId === watchId);
+    if (list.length === prev.length && list.every((s, i) => s.id === prev[i]?.id)) return prev;
+    prev = list;
+    return list;
+  };
+}
