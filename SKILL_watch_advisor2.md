@@ -9,19 +9,19 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.9.0 |
+| Version | 1.9.1 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 144 |
-| Source LOC | ~21,000 |
-| Test files | 123 |
-| Tests | 2224+ |
-| Netlify functions | 21 (+2 helpers) |
+| Source files | 135 |
+| Source LOC | ~22,200 |
+| Test files | 125 |
+| Tests | 2246+ |
+| Netlify functions | 24 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 47 JSX |
+| Components | 33 JSX |
 | Zustand stores | 9 |
-| Build output | ~620 kB |
+| Build output | ~570 kB |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-04-05 |
+| Last audited | 2026-04-06 |
 
 ---
 
@@ -115,7 +115,7 @@ tests/                    — 113 Vitest test files (2087+ tests)
 
 ---
 
-## §3 Scoring System (last audited: 2026-04-02)
+## §3 Scoring System (last audited: 2026-04-06)
 
 ### Base formula
 ```
@@ -208,8 +208,8 @@ Runs 7 diagnostic checks, auto-fixes what it can, logs results to `app_config.au
 | Check | Auto-fix | Threshold |
 |-------|----------|-----------|
 | Orphaned history entries | Stamps quickLog/legacy | Any unstamped empty garmentIds |
-| Watch rotation stagnation | Flags for rotationFactor increase | Same watch >40% of last 10 |
-| Garment slot stagnation | Flags for repetitionPenalty increase | Same garment >5× in 14d |
+| Watch rotation stagnation | Auto-tunes rotationFactor +0.05 (cap 0.60) | Same watch >40% of last 10 |
+| Garment slot stagnation | Auto-tunes repetitionPenalty -0.03 (cap -0.40) | Same garment >5× in 14d |
 | Context distribution | Flags broken UI | >80% null contexts |
 | Untagged garments | Flags for BulkTagger | >10 missing season/context/material |
 | Score distribution | Flags stuck scoring | All scores identical |
@@ -235,8 +235,8 @@ Visible in DebugConsole + `app_config.monthly_token_usage`.
 ### Supabase Tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | 71 active, fully tagged (seasons/contexts/material/weight), 23 with photos, 5 with angle photos |
-| `history` | Wear log | 38+ entries. `payload_version: "v1"` on all entries |
+| `garments` | Wardrobe items | 73 active, fully tagged (seasons/contexts/material/weight) |
+| `history` | Wear log | 44+ entries. `payload_version: "v1"` on all entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
@@ -300,8 +300,8 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 | **Scoring weights** | Only in `src/config/scoringWeights.js`. Never inline. |
 | **Coherence v2** | warm/cool contrast = +0.20. Do NOT revert to -0.15. |
 | **Never-worn** | recencyScore 0.50 (gentle nudge). rotationPressure(Infinity) = 0.50. |
-| **rotationFactor** | 0.40. Do not lower. |
-| **repetitionPenalty** | -0.28 in `contextMemory.js`. |
+| **rotationFactor** | 0.40 default, auto-tunable via `scoringOverrides`. Do not lower. |
+| **repetitionPenalty** | -0.28 default in `contextMemory.js`, auto-tunable via `scoringOverrides`. |
 | **SCORE_CEILING** | `confidence.js` ceiling = 30 (additive engine). Was 0.60 (broken). Never lower without recalibrating. |
 | **Context soft nudge** | `contextFormality` weight = 0.5 (was 1.5). No -Infinity hard gate. Context is optional — null = "Any Vibe" (0.75 neutral). Shift mode still hard-gates via dayProfile.js shiftWatch flag. |
 | **contextMatch** | seasonContextFactor bonus = 0.10 (was 0.25). Context is a nudge, weather+rotation+color drive selection. |
@@ -381,7 +381,7 @@ Expected healthy state:
 
 ### Run tests
 ```bash
-timeout 120 node node_modules/.bin/vitest run   # 2087+ tests, zero failures
+timeout 120 node node_modules/.bin/vitest run   # 2246+ tests, zero failures
 ```
 
 ### Trigger auto-heal
