@@ -24,13 +24,15 @@ export function inferContext(history) {
     if (!ctx || ctx === "null" || ctx === "unset") continue;
     const date = entry.date?.slice(0, 10);
     if (!date) continue;
-    const dayNum = new Date(date).getDay();
+    // Use noon UTC to avoid DST / timezone ambiguity when parsing ISO date strings
+    const dayNum = new Date(date + 'T12:00:00Z').getUTCDay();
     if (!byDay[dayNum]) byDay[dayNum] = {};
     byDay[dayNum][ctx] = (byDay[dayNum][ctx] ?? 0) + 1;
   }
 
   // Find today's most likely context
-  const todayNum = new Date().getDay();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayNum = new Date(todayIso + 'T12:00:00Z').getUTCDay();
   const todayDist = byDay[todayNum] ?? {};
   const entries = Object.entries(todayDist);
   if (!entries.length) return { byDay, todaySuggestion: null, confidence: 0 };

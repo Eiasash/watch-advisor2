@@ -19,12 +19,11 @@ describe("contextInference", () => {
   it("detects day-of-week patterns", () => {
     // Create history where Sundays (day 0) are always "clinic"
     const history = [];
-    // 5 Sundays with clinic context
+    // 5 Sundays with clinic context — use UTC methods to avoid DST boundary issues
     for (let i = 0; i < 5; i++) {
-      const d = new Date("2026-03-01");
-      d.setDate(d.getDate() + (i * 7)); // Every Sunday
-      // Make sure it's a Sunday
-      while (d.getDay() !== 0) d.setDate(d.getDate() + 1);
+      const d = new Date(Date.UTC(2026, 2, 1)); // March 1, 2026 UTC
+      d.setUTCDate(d.getUTCDate() + (i * 7));
+      while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1);
       history.push({ date: d.toISOString().slice(0, 10), context: "clinic" });
     }
     // Add some other days to reach minimum
