@@ -186,7 +186,8 @@ Respond ONLY with this JSON, no markdown:
     };
 
     // Cache
-    await supabase.from("app_config").upsert({ key: "style_dna", value: dna }, { onConflict: "key" }).catch(() => {});
+    // Cache
+    try { await supabase.from("app_config").upsert({ key: "style_dna", value: dna }, { onConflict: "key" }); } catch { /* non-fatal */ }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify(dna) };
   } catch (err) {

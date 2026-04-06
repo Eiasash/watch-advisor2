@@ -19,8 +19,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
-import { useHistoryStore } from "../stores/historyStore.js";
-import { inferContext } from "../domain/contextInference.js";
 
 export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
   const [selected,   setSelected]   = useState(() => new Set(todayEntry?.garmentIds ?? []));
@@ -30,16 +28,7 @@ export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
     // Auto-detect on-call if today is in onCallDates
     const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
     const todayIso = new Date().toISOString().slice(0, 10);
-    if (onCallDates.includes(todayIso)) return "shift";
-    // Infer from day-of-week patterns (non-fatal)
-    try {
-      const history = useHistoryStore.getState().entries ?? [];
-      if (history.length >= 5) {
-        const inferred = inferContext(history);
-        if (inferred.todaySuggestion) return inferred.todaySuggestion;
-      }
-    } catch { /* inference is optional */ }
-    return null;
+    return onCallDates.includes(todayIso) ? "shift" : null;
   });
   const [notes,      setNotes]      = useState(() => todayEntry?.notes ?? "");
   const [extraImgs,  setExtraImgs]  = useState(() =>
