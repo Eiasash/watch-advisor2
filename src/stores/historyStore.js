@@ -1,5 +1,16 @@
 import { create } from "zustand";
 import { pushHistoryEntry, deleteHistoryEntry } from "../services/supabaseSync.js";
+import { toArray } from "../utils/toArray.js";
+
+/** Sanitise a history entry so garmentIds is always an array */
+function sanitiseEntry(e) {
+  if (!e) return e;
+  const gids = e.garmentIds;
+  if (gids !== undefined && !Array.isArray(gids)) {
+    return { ...e, garmentIds: [] };
+  }
+  return e;
+}
 
 // historyPersistence is NOT imported statically here.
 // A static import recreates the historyStore ↔ historyPersistence cycle in
@@ -21,7 +32,7 @@ function getPersistence() {
 
 export const useHistoryStore = create((set, get) => ({
   entries: [],
-  setEntries: entries => set({ entries }),
+  setEntries: entries => set({ entries: toArray(entries).map(sanitiseEntry) }),
 
   addEntry: entry => {
     // Stamp payload version for schema evolution

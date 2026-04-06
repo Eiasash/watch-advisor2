@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
+import { toArray } from "../utils/toArray.js";
 
 let syncState = { status: "idle", queued: 0 };
 const listeners = new Set();
@@ -52,7 +53,7 @@ async function _doPull() {
     setSyncState({ status: "idle" });
     return {
       watches: WATCH_COLLECTION,
-      garments: (garments ?? []).map(row => ({
+      garments: toArray(garments).map(row => ({
         ...row,
         // DB column is 'type'; 'category' is an alias kept for compat
         type:        row.type ?? row.category,
@@ -64,24 +65,24 @@ async function _doPull() {
         needsReview: row.needs_review ?? false,
         duplicateOf: row.duplicate_of ?? undefined,
         excludeFromWardrobe: row.exclude_from_wardrobe ?? false,
-        photoAngles: row.photo_angles ?? [],
+        photoAngles: toArray(row.photo_angles),
         subtype:     row.subtype ?? null,
         material:    row.material ?? null,
         pattern:     row.pattern ?? null,
-        seasons:     row.seasons ?? [],
-        contexts:    row.contexts ?? [],
+        seasons:     toArray(row.seasons),
+        contexts:    toArray(row.contexts),
         price:       row.price ?? null,
         accentColor: row.accent_color ?? null,
         weight:      row.weight ?? null,
         fit:         row.fit ?? null,
       })),
-      history: (history ?? []).map(row => ({
+      history: toArray(history).map(row => ({
         id:         row.id,
         watchId:    row.watch_id,
         date:       row.date,
         timeSlot:   row.time_slot ?? row.payload?.timeSlot ?? null,
         outfit:     row.payload?.outfit      ?? {},
-        garmentIds: row.payload?.garmentIds  ?? [],
+        garmentIds: toArray(row.payload?.garmentIds),
         strapId:    row.payload?.strapId     ?? null,
         strapLabel: row.payload?.strapLabel  ?? null,
         context:    row.payload?.context     ?? null,
@@ -172,14 +173,14 @@ export async function pushGarment(garment) {
       duplicate_of: garment.duplicateOf ?? null,
       exclude_from_wardrobe: garment.excludeFromWardrobe ?? false,
       // Never write base64 data URLs to photo_angles — only Storage URLs
-      photo_angles: (garment.photoAngles ?? []).filter(u => u && typeof u === "string" && !u.startsWith("data:")),
+      photo_angles: toArray(garment.photoAngles).filter(u => u && typeof u === "string" && !u.startsWith("data:")),
       brand:        garment.brand ?? null,
       subtype:      garment.subtype ?? null,
       notes:        garment.notes ?? null,
       material:     garment.material ?? null,
       pattern:      garment.pattern ?? null,
-      seasons:      garment.seasons ?? [],
-      contexts:     garment.contexts ?? [],
+      seasons:      toArray(garment.seasons),
+      contexts:     toArray(garment.contexts),
       price:        garment.price ?? null,
       accent_color: garment.accentColor ?? null,
       weight:       garment.weight ?? null,

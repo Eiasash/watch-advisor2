@@ -13,6 +13,7 @@ import { useStrapStore }         from "../stores/strapStore.js";
 import { useRejectStore, hydrateRejectStore } from "../stores/rejectStore.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 import { pushDebugEntry } from "../stores/debugStore.js";
+import { toArray } from "../utils/toArray.js";
 
 export function useBootstrap() {
   const [ready,  setReady]  = useState(false);
@@ -43,9 +44,14 @@ export function useBootstrap() {
       setWatches(cached.watches?.length ? cached.watches : WATCH_COLLECTION);
 
       // Restore garments — thumbnail is stored inline; full-res objectURLs are gone after refresh
-      const restoredGarments = (cached.garments ?? []).map(g => ({
+      // toArray guards against stale IDB cache where garments might be a non-array truthy value
+      const restoredGarments = toArray(cached.garments).map(g => ({
         ...g,
         photoUrl: g.photoUrl?.startsWith("blob:") ? undefined : g.photoUrl,
+        // Sanitise array fields — stale IDB entries may store these as strings
+        photoAngles: toArray(g.photoAngles),
+        seasons:     toArray(g.seasons),
+        contexts:    toArray(g.contexts),
       }));
       setGarments(restoredGarments);
 
@@ -102,7 +108,7 @@ export function useBootstrap() {
         // Persist the CDN URL back to the garment so it displays from Storage, not base64 thumbnail
         if (publicUrl && p.kind === "thumbnail") {
           const { updateGarment, garments } = useWardrobeStore.getState();
-          const { history } = useHistoryStore.getState();
+          const { entries: history } = useHistoryStore.getState();
           const { watches } = useWatchStore.getState();
           updateGarment(p.garmentId, { photoUrl: publicUrl });
           const updatedGarments = useWardrobeStore.getState().garments;
@@ -117,7 +123,7 @@ export function useBootstrap() {
           const { updateGarment, garments } = useWardrobeStore.getState();
           const garment = garments.find(g => g.id === p.garmentId);
           if (garment) {
-            const angles = [...(garment.photoAngles ?? [])];
+            const angles = [...toArray(garment.photoAngles)];
             // Replace the base64 entry at this index, or append
             if (p.index < angles.length) {
               angles[p.index] = publicUrl;
@@ -129,7 +135,7 @@ export function useBootstrap() {
             const updated = useWardrobeStore.getState().garments.find(g => g.id === p.garmentId);
             if (updated) pushGarmentSync(updated).catch(() => {});
             // Persist to IDB
-            const { history } = useHistoryStore.getState();
+            const { entries: history } = useHistoryStore.getState();
             const { watches } = useWatchStore.getState();
             setCachedState({ garments: useWardrobeStore.getState().garments, watches, history }).catch(() => {});
           }
@@ -157,11 +163,14 @@ export function useBootstrap() {
           if (cloud._localOnly) return; // IS_PLACEHOLDER — never wipe local data
 
           const w = cloud.watches?.length ? cloud.watches : WATCH_COLLECTION;
-          const cloudGarments = (cloud.garments ?? []).map(g => ({
+          const cloudGarments = toArray(cloud.garments).map(g => ({
             ...g,
             photoUrl: g.photoUrl?.startsWith("blob:") ? undefined : g.photoUrl,
+            photoAngles: toArray(g.photoAngles),
+            seasons:     toArray(g.seasons),
+            contexts:    toArray(g.contexts),
           }));
-          const h = cloud.history ?? [];
+          const h = toArray(cloud.history);
 
           // Cloud is authoritative. Always accept cloud state.
           // The ONLY exception: cloud returns 0 garments AND local has garments.
@@ -169,7 +178,7 @@ export function useBootstrap() {
           // This prevents transient cloud-empty states (auth glitch, sync gap)
           // from destroying a non-empty local wardrobe.
           if (cloudGarments.length === 0) {
-            const currentGarments = useWardrobeStore.getState().garments ?? [];
+            const currentGarments = toArray(useWardrobeStore.getState().garments);
             if (currentGarments.length > 0) {
               for (const g of currentGarments) {
                 pushGarmentSync(g).catch(() => {});

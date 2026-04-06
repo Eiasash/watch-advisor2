@@ -1,4 +1,15 @@
 import { create } from "zustand";
+import { toArray } from "../utils/toArray.js";
+
+/** Sanitise a garment so array fields are always arrays */
+function sanitiseGarment(g) {
+  if (!g) return g;
+  let patched = g;
+  if (g.photoAngles !== undefined && !Array.isArray(g.photoAngles)) patched = { ...patched, photoAngles: [] };
+  if (g.seasons !== undefined && !Array.isArray(g.seasons))         patched = { ...patched, seasons: [] };
+  if (g.contexts !== undefined && !Array.isArray(g.contexts))       patched = { ...patched, contexts: [] };
+  return patched;
+}
 
 export const useWardrobeStore = create((set, get) => ({
   garments: [],
@@ -14,7 +25,7 @@ export const useWardrobeStore = create((set, get) => ({
   onCallDates: [], // ["YYYY-MM-DD", ...]
 
   // Garment CRUD
-  setGarments:   garments => set({ garments }),
+  setGarments:   garments => set({ garments: toArray(garments).map(sanitiseGarment) }),
   addGarment:    garment  => set(state => ({ garments: [...state.garments, garment] })),
   updateGarment: (id, updates) => set(state => ({
     garments: state.garments.map(g => g.id === id ? { ...g, ...updates } : g),
@@ -26,7 +37,7 @@ export const useWardrobeStore = create((set, get) => ({
   addAngle: (id, thumbDataUrl) => set(state => ({
     garments: state.garments.map(g => {
       if (g.id !== id) return g;
-      const existing = g.photoAngles ?? [];
+      const existing = toArray(g.photoAngles);
       if (existing.length >= 4) return g; // max 4 extra angles
       return { ...g, photoAngles: [...existing, thumbDataUrl] };
     }),
@@ -67,10 +78,10 @@ export const useWardrobeStore = create((set, get) => ({
     const [primaryId, ...rest] = ids;
     const primary = state.garments.find(g => g.id === primaryId);
     if (!primary) return state;
-    const existAngles = primary.photoAngles ?? [];
+    const existAngles = toArray(primary.photoAngles);
     const newAngles = rest.flatMap(rid => {
       const g = state.garments.find(x => x.id === rid);
-      const angles = [g?.thumbnail].concat(g?.photoAngles ?? []).filter(Boolean);
+      const angles = [g?.thumbnail].concat(toArray(g?.photoAngles)).filter(Boolean);
       return angles;
     });
     const merged = [...existAngles, ...newAngles].slice(0, 4);
