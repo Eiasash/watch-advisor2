@@ -19,6 +19,7 @@
  * @returns {{ worn: Object, available: Object, overIndex: Array, underIndex: Array }}
  */
 export function colorDNA(history, garments) {
+  if (!Array.isArray(history)) return { worn: {}, available: {}, overIndex: [], underIndex: [] };
   const wornColorFreq = {};
   const availableColorFreq = {};
 
@@ -67,6 +68,7 @@ export function colorDNA(history, garments) {
  * @returns {{ distribution: Object, average: number, mode: number }}
  */
 export function formalityDNA(history, garments) {
+  if (!Array.isArray(history)) return { distribution: { "1-3": 0, "4-5": 0, "6-7": 0, "8-10": 0 }, average: 0, mode: "4-5" };
   const formalityBuckets = { "1-3": 0, "4-5": 0, "6-7": 0, "8-10": 0 };
   const formalityValues = [];
 
@@ -104,6 +106,7 @@ export function formalityDNA(history, garments) {
  * @returns {Array<{ watchId, model, topColors: Array, avgFormality: number, wearCount: number }>}
  */
 export function watchAffinityDNA(history, garments, watches) {
+  if (!Array.isArray(history)) return [];
   const affinity = {};
 
   history.forEach(entry => {
@@ -152,6 +155,7 @@ export function watchAffinityDNA(history, garments, watches) {
  * @returns {{ distribution: Object, topContext: string, total: number }}
  */
 export function contextDNA(history) {
+  if (!Array.isArray(history)) return { distribution: {}, topContext: "unset", total: 0 };
   const dist = {};
   history.forEach(entry => {
     const ctx = entry.context ?? entry.payload?.context ?? "unset";
@@ -172,6 +176,7 @@ export function contextDNA(history) {
  * @returns {{ staples: Array, ignored: Array, comfortPct: number }}
  */
 export function comfortZoneDNA(history, garments) {
+  if (!Array.isArray(history)) return { staples: [], ignored: [], comfortPct: 0 };
   const freq = {};
   history.forEach(entry => {
     (entry.garmentIds ?? entry.payload?.garmentIds ?? []).forEach(id => {
@@ -197,13 +202,14 @@ export function comfortZoneDNA(history, garments) {
  * Full Style DNA report — all analyses combined.
  */
 export function buildStyleDNA(history, garments, watches) {
+  const safeHistory = Array.isArray(history) ? history : [];
   return {
-    color: colorDNA(history, garments),
-    formality: formalityDNA(history, garments),
-    watchAffinity: watchAffinityDNA(history, garments, watches),
-    context: contextDNA(history),
-    comfortZone: comfortZoneDNA(history, garments),
-    entryCount: history.length,
+    color: colorDNA(safeHistory, garments),
+    formality: formalityDNA(safeHistory, garments),
+    watchAffinity: watchAffinityDNA(safeHistory, garments, watches),
+    context: contextDNA(safeHistory),
+    comfortZone: comfortZoneDNA(safeHistory, garments),
+    entryCount: safeHistory.length,
     garmentCount: garments.length,
   };
 }

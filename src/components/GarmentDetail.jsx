@@ -23,7 +23,7 @@ export default function GarmentDetail({ garment, history, watches, garments, isD
     const garmentPairings = {};
     const contextDist = {};
 
-    history.forEach(entry => {
+    (Array.isArray(history) ? history : []).forEach(entry => {
       const ids = entry.garmentIds ?? entry.payload?.garmentIds ?? [];
       if (!ids.includes(garment.id)) return;
 

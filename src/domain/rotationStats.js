@@ -14,7 +14,7 @@ import { getOverride } from "../config/scoringOverrides.js";
  * Returns Infinity when the watch has never been worn.
  */
 export function daysIdle(watchId, history) {
-  const wearDates = (history ?? [])
+  const wearDates = (Array.isArray(history) ? history : [])
     .filter(h => h.watchId === watchId && h.date)
     .map(h => new Date(h.date.slice(0, 10)).getTime())
     .filter(ms => !isNaN(ms));
@@ -30,7 +30,7 @@ export function daysIdle(watchId, history) {
  * Total number of logged wear days for a watch.
  */
 export function wearCount(watchId, history) {
-  return (history ?? []).filter(h => h.watchId === watchId).length;
+  return (Array.isArray(history) ? history : []).filter(h => h.watchId === watchId).length;
 }
 
 /**
@@ -61,7 +61,7 @@ export function neglectedGenuine(watches, history) {
  */
 export function wearStreak(history) {
   const uniqueDates = [...new Set(
-    (history ?? []).map(h => h.date?.slice(0, 10)).filter(Boolean)
+    (Array.isArray(history) ? history : []).map(h => h.date?.slice(0, 10)).filter(Boolean)
   )].sort().reverse();
 
   if (!uniqueDates.length) return 0;
@@ -180,7 +180,7 @@ export function utilizationScore(watches, history) {
   if (!Array.isArray(watches) || !watches.length) return 0;
   const watchIds = new Set(watches.map(w => w.id));
   const worn = new Set(
-    (history ?? []).map(h => h.watchId).filter(id => id && watchIds.has(id))
+    (Array.isArray(history) ? history : []).map(h => h.watchId).filter(id => id && watchIds.has(id))
   );
   return Math.round((worn.size / watches.length) * 100);
 }

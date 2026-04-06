@@ -48,6 +48,7 @@ function estimateLifespan(label = "", type = "") {
  * @returns {Array<{ strapId, strapLabel, watchId, watchModel, wearCount, firstWorn, lastWorn, lifespan, remaining, healthPct }>}
  */
 export function buildStrapLifecycle(history, watches) {
+  if (!Array.isArray(history)) return [];
   const strapWears = {}; // strapId → { count, dates[], watchId, label }
 
   history.forEach(entry => {

@@ -17,7 +17,7 @@
  * @returns {Array} filtered entries
  */
 export function recentHistory(history, days = 7) {
-  if (!history?.length) return [];
+  if (!Array.isArray(history) || !history.length) return [];
 
   // Production path: entries have date fields → calendar-day window
   if (history.some(h => h.date)) {
