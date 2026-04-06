@@ -9,9 +9,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { cors } from "./_cors.js";
 
-const CORS = cors(event);
-
 export async function handler(event) {
+  const CORS = cors(event);
+
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS };
   }

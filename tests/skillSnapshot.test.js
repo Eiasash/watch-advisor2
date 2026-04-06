@@ -47,7 +47,7 @@ const mockFrom = vi.fn((table) => {
       }),
     };
   }
-  if (table === "schema_migrations") {
+  if (table === "_migrations") {
     return {
       select: vi.fn(() => ({
         order: vi.fn(() => ({
@@ -59,7 +59,9 @@ const mockFrom = vi.fn((table) => {
   if (table === "app_settings") {
     return {
       select: vi.fn(() => ({
-        limit: vi.fn(() => ({ data: mockAppSettings, error: null })),
+        eq: vi.fn(() => ({
+          single: vi.fn(() => ({ data: mockAppSettings, error: null })),
+        })),
       })),
     };
   }
@@ -80,6 +82,17 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({ from: mockFrom, rpc: mockRpc })),
 }));
 
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "https://watch-advisor2.netlify.app",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Content-Type": "application/json",
+    "Vary": "Origin",
+  }),
+}));
+
+
 describe("skill-snapshot handler", () => {
   let handler;
 
@@ -89,8 +102,8 @@ describe("skill-snapshot handler", () => {
     mockGarmentCount = 42;
     mockHistoryCount = 100;
     mockOrphans = [];
-    mockMigrations = [{ version: "20260401" }];
-    mockAppSettings = [{ key: "theme", value: "dark" }];
+    mockMigrations = [{ name: "20260401000000_some_migration.sql" }];
+    mockAppSettings = { id: "default", week_ctx: {}, on_call_dates: [], active_straps: {}, custom_straps: [] };
     mockAppConfigRows = {
       claude_model: { value: "claude-haiku-4-5-20251001" },
       monthly_token_usage: { value: { input: 1000, output: 500 } },
@@ -150,10 +163,10 @@ describe("skill-snapshot handler", () => {
 
   it("includes CORS headers on all responses", async () => {
     const r200 = await handler({ httpMethod: "GET" });
-    expect(r200.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r200.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
 
     const r405 = await handler({ httpMethod: "POST" });
-    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(r405.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
   });
 
   it("reports orphaned history count", async () => {
@@ -175,5 +188,26 @@ describe("skill-snapshot handler", () => {
     const result = await handler({ httpMethod: "GET" });
     const body = JSON.parse(result.body);
     expect(body.orphanedHistoryCount).toBe(0);
+  });
+  it('reads migration name from _migrations table (not schema_migrations)', async () => {
+    mockMigrations = [{ name: '20260406000000_phase3.sql' }];
+    const result = await handler({ httpMethod: 'GET' });
+    const body = JSON.parse(result.body);
+    expect(body.latestMigration).toBe('20260406000000_phase3.sql');
+  });
+
+  it('reads app_settings as single row object (not array)', async () => {
+    mockAppSettings = { id: 'default', week_ctx: { monday: 'clinic' }, on_call_dates: ['2026-04-07'] };
+    const result = await handler({ httpMethod: 'GET' });
+    const body = JSON.parse(result.body);
+    expect(body.appSettings).toBeDefined();
+    expect(body.appSettings.id).toBe('default');
+  });
+
+  it('garment count is returned correctly', async () => {
+    mockGarmentCount = 78;
+    const result = await handler({ httpMethod: 'GET' });
+    const body = JSON.parse(result.body);
+    expect(body.garmentCount).toBe(78);
   });
 });
