@@ -332,12 +332,57 @@ export default function TodayPanel() {
                   </div>
                 )}
                 {(te.outfitPhotos?.length || te.outfitPhoto) && (
-                  <div style={{ marginTop: 8, display: "grid",
-                                gridTemplateColumns: (te.outfitPhotos?.length ?? 1) > 1 ? "repeat(2, 1fr)" : "1fr", gap: 6 }}>
-                    {(te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : [])).map((src, i) => (
-                      <img key={i} src={src} alt={`outfit ${i + 1}`}
-                        style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 300, display: "block" }} />
-                    ))}
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ display: "grid",
+                                  gridTemplateColumns: (te.outfitPhotos?.length ?? 1) > 1 ? "repeat(2, 1fr)" : "1fr", gap: 6 }}>
+                      {(te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : [])).map((src, i) => (
+                        <img key={i} src={src} alt={`outfit ${i + 1}`}
+                          style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 300, display: "block" }} />
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                      <label style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: `1px dashed ${border}`,
+                                      display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                                      cursor: "pointer", color: muted, fontSize: 10, fontWeight: 600 }}>
+                        📁 Add from gallery
+                        <input type="file" accept="image/*" multiple style={{ display: "none" }}
+                          onChange={async (ev) => {
+                            const files = Array.from(ev.target.files ?? []);
+                            if (!files.length) return;
+                            const existing = te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []);
+                            const newPhotos = [];
+                            for (const file of files) {
+                              const dataUrl = await new Promise((res) => {
+                                const reader = new FileReader();
+                                reader.onload = () => res(reader.result);
+                                reader.readAsDataURL(file);
+                              });
+                              newPhotos.push(dataUrl);
+                            }
+                            const all = [...existing, ...newPhotos];
+                            upsertEntry({ ...te, outfitPhoto: all[0], outfitPhotos: all });
+                          }}
+                        />
+                      </label>
+                      <label style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: `1px dashed ${border}`,
+                                      display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                                      cursor: "pointer", color: muted, fontSize: 10, fontWeight: 600 }}>
+                        📷 Camera
+                        <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                          onChange={async (ev) => {
+                            const file = ev.target.files?.[0];
+                            if (!file) return;
+                            const existing = te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []);
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const all = [...existing, reader.result];
+                              upsertEntry({ ...te, outfitPhoto: all[0], outfitPhotos: all });
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                 )}
                 {te.notes && (
@@ -348,31 +393,57 @@ export default function TodayPanel() {
           })}
         </div>
 
-        {/* Photo prompt — quick camera button to attach outfit photo */}
+        {/* Photo prompt — quick camera + gallery buttons to attach outfit photo */}
         {todayEntries.length > 0 && !todayEntries[0]?.outfitPhoto && !todayEntries[0]?.outfitPhotos?.length && (
-          <div style={{ background: card, borderRadius: 14, border: `1px dashed ${border}`, padding: 14, marginBottom: 14, textAlign: "center" }}>
-            <label style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <div style={{ background: card, borderRadius: 14, border: `1px dashed ${border}`, padding: 14, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
               <span style={{ fontSize: 20 }}>📸</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: text }}>Add outfit photo</span>
-              <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  try {
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${border}`,
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                              cursor: "pointer", color: muted, fontSize: 12, fontWeight: 600 }}>
+                📁 Gallery
+                <input type="file" accept="image/*" multiple style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (!files.length) return;
+                    const entry = todayEntries[0];
+                    if (!entry) return;
+                    const photos = [];
+                    for (const file of files) {
+                      const dataUrl = await new Promise((res) => {
+                        const reader = new FileReader();
+                        reader.onload = () => res(reader.result);
+                        reader.readAsDataURL(file);
+                      });
+                      photos.push(dataUrl);
+                    }
+                    upsertEntry({ ...entry, outfitPhoto: photos[0], outfitPhotos: photos });
+                  }}
+                />
+              </label>
+              <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${border}`,
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                              cursor: "pointer", color: muted, fontSize: 12, fontWeight: 600 }}>
+                📷 Camera
+                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const entry = todayEntries[0];
+                    if (!entry) return;
                     const reader = new FileReader();
                     reader.onload = () => {
-                      const dataUrl = reader.result;
-                      const entry = todayEntries[0];
-                      if (entry) {
-                        upsertEntry({ ...entry, outfitPhoto: dataUrl, outfitPhotos: [dataUrl] });
-                      }
+                      upsertEntry({ ...entry, outfitPhoto: reader.result, outfitPhotos: [reader.result] });
                     };
                     reader.readAsDataURL(file);
-                  } catch (_) {}
-                }}
-              />
-            </label>
-            <div style={{ fontSize: 10, color: muted, marginTop: 4 }}>Snap a quick outfit pic for your history</div>
+                  }}
+                />
+              </label>
+            </div>
+            <div style={{ fontSize: 10, color: muted, marginTop: 6, textAlign: "center" }}>Snap a quick outfit pic for your history</div>
           </div>
         )}
 
