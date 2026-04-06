@@ -7,6 +7,7 @@ import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { useToast } from "./ToastProvider.jsx";
+import GarmentDetail from "./GarmentDetail.jsx";
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
 
@@ -178,6 +179,7 @@ export default function GarmentEditor({ garment, onClose }) {
   const [fit,        setFit]        = useState(garment.fit        ?? "");
   const [angleIdx,   setAngleIdx]   = useState(0);
   const [aiColorAlts, setAiColorAlts] = useState([]); // color alternatives from AI scan
+  const [showStats,   setShowStats]   = useState(false);
 
   // Auto-name: compute from params, track if user has manually overridden it
   function buildAutoName(t, c, p, b) {
@@ -442,9 +444,14 @@ export default function GarmentEditor({ garment, onClose }) {
               </div>
             )}
           </div>
-          <button onClick={onClose}
-            style={{ background:"none", border:"none", color:sub, fontSize:22, cursor:"pointer",
-                     lineHeight:1, padding:"4px 8px" }}>✕</button>
+          <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={() => setShowStats(true)}
+              style={{ background:"none", border:`1px solid ${isDark?"#2b3140":"#d1d5db"}`, color:sub, fontSize:11, cursor:"pointer",
+                       padding:"4px 10px", borderRadius:6, fontWeight:600 }}>📊</button>
+            <button onClick={onClose}
+              style={{ background:"none", border:"none", color:sub, fontSize:22, cursor:"pointer",
+                       lineHeight:1, padding:"4px 8px" }}>✕</button>
+          </div>
         </div>
 
         <div style={{ padding:"16px 20px 24px" }}>
@@ -789,6 +796,16 @@ export default function GarmentEditor({ garment, onClose }) {
 
         </div>
       </div>
+      {showStats && (
+        <GarmentDetail
+          garment={garment}
+          history={history}
+          watches={watches}
+          garments={garments}
+          isDark={isDark}
+          onClose={() => setShowStats(false)}
+        />
+      )}
     </div>
   );
 }

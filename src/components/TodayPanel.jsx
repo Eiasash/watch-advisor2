@@ -24,6 +24,7 @@ import SeasonalTransition from "./today/SeasonalTransition.jsx";
 import LastWornWithWatch from "./today/LastWornWithWatch.jsx";
 import StrapSuggestion from "./today/StrapSuggestion.jsx";
 import QuickStrapSwap from "./today/QuickStrapSwap.jsx";
+import WeeklyDigest from "./today/WeeklyDigest.jsx";
 import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
 import TailorCountdown from "./today/TailorCountdown.jsx";
 
@@ -496,6 +497,7 @@ export default function TodayPanel() {
           </button>
         )}
 
+        <WeeklyDigest />
         <ClaudePick />
 
         <SelfiePanel context={todayEntry?.context ?? null} watchId={todayEntry?.watchId ?? null} />
