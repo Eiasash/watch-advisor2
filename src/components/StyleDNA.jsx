@@ -61,10 +61,10 @@ function ProgressBar({ value, max, color, isDark, label, sublabel }) {
 export default function StyleDNA() {
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
-  const history = useHistoryStore(s => s.entries);
-  const garments = useWardrobeStore(s => s.garments);
-  const watches = useWatchStore(s => s.watches);
-  const rejectEntries = useRejectStore(s => s.entries);
+  const history = useHistoryStore(s => s.entries) ?? [];
+  const garments = useWardrobeStore(s => s.garments) ?? [];
+  const watches = useWatchStore(s => s.watches) ?? [];
+  const rejectEntries = useRejectStore(s => s.entries) ?? [];
 
   const text = isDark ? "#e2e8f0" : "#1f2937";
   const muted = isDark ? "#6b7280" : "#9ca3af";

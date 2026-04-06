@@ -10,9 +10,9 @@ import { useWardrobeStore } from "../../stores/wardrobeStore.js";
 import { useThemeStore } from "../../stores/themeStore.js";
 
 export default function WeeklyDigest() {
-  const history = useHistoryStore(s => s.entries);
-  const watches = useWatchStore(s => s.watches);
-  const garments = useWardrobeStore(s => s.garments);
+  const history = useHistoryStore(s => s.entries) ?? [];
+  const watches = useWatchStore(s => s.watches) ?? [];
+  const garments = useWardrobeStore(s => s.garments) ?? [];
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
   const [dismissed, setDismissed] = useState(false);

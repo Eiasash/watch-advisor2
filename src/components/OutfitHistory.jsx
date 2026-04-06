@@ -9,11 +9,11 @@ import HistoryOutfitPhotos from "./history/HistoryOutfitPhotos.jsx";
 import OutfitCompare from "./history/OutfitCompare.jsx";
 
 export default function OutfitHistory() {
-  const entries      = useHistoryStore(s => s.entries);
+  const entries      = useHistoryStore(s => s.entries) ?? [];
   const removeEntry  = useHistoryStore(s => s.removeEntry);
   const upsertEntry  = useHistoryStore(s => s.upsertEntry);
-  const watches      = useWatchStore(s => s.watches);
-  const garments     = useWardrobeStore(s => s.garments);
+  const watches      = useWatchStore(s => s.watches) ?? [];
+  const garments     = useWardrobeStore(s => s.garments) ?? [];
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
 

@@ -10,7 +10,7 @@ import { useThemeStore } from "../../stores/themeStore.js";
 
 export default function StrapHealth() {
   const straps = useStrapStore(s => s.straps);
-  const watches = useWatchStore(s => s.watches);
+  const watches = useWatchStore(s => s.watches) ?? [];
   const getStrapStats = useStrapStore(s => s.getStrapStats);
   const activeStrap = useStrapStore(s => s.activeStrap);
   const { mode } = useThemeStore();

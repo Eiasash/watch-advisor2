@@ -13,7 +13,7 @@ import { useHistoryStore } from "../../stores/historyStore.js";
 export default function WeekPlanLock({ weekPlan, watches, isDark }) {
   const [saved, setSaved] = useState(null);
   const [saving, setSaving] = useState(false);
-  const history = useHistoryStore(s => s.entries);
+  const history = useHistoryStore(s => s.entries) ?? [];
 
   // Load saved plan on mount
   useEffect(() => {

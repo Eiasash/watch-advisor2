@@ -10,8 +10,8 @@ import { useThemeStore } from "../../stores/themeStore.js";
 import { simulateTrade } from "../../domain/tradeSimulator.js";
 
 export default function TradeSimulator() {
-  const watches = useWatchStore(s => s.watches);
-  const history = useHistoryStore(s => s.entries);
+  const watches = useWatchStore(s => s.watches) ?? [];
+  const history = useHistoryStore(s => s.entries) ?? [];
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
 
