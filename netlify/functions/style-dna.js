@@ -168,8 +168,20 @@ Respond ONLY with this JSON, no markdown:
     let analysis = {};
     try {
       const text = result.content?.[0]?.text ?? "{}";
-      analysis = JSON.parse(text.replace(/```json|```/g, "").trim());
-    } catch { analysis = { error: "Failed to parse analysis" }; }
+      // Strip markdown fences, then find the first JSON object
+      const cleaned = text.replace(/```json|```/g, "").trim();
+      // Try direct parse first
+      try { analysis = JSON.parse(cleaned); } catch {
+        // Fallback: extract first { ... } block (handles Claude adding preamble/postamble)
+        const start = cleaned.indexOf("{");
+        const end = cleaned.lastIndexOf("}");
+        if (start !== -1 && end > start) {
+          analysis = JSON.parse(cleaned.slice(start, end + 1));
+        } else {
+          analysis = { error: "No JSON object found in response" };
+        }
+      }
+    } catch (parseErr) { analysis = { error: `Parse failed: ${parseErr.message?.slice(0, 80)}` }; }
 
     const dna = {
       generatedAt: new Date().toISOString(),
@@ -185,8 +197,7 @@ Respond ONLY with this JSON, no markdown:
       analysis,
     };
 
-    // Cache
-    // Cache
+    // Cache result
     try { await supabase.from("app_config").upsert({ key: "style_dna", value: dna }, { onConflict: "key" }); } catch { /* non-fatal */ }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify(dna) };

@@ -66,10 +66,27 @@ export async function handler(event) {
       return `${h.date}: ${h.watch_id} — ${h.payload?.context ?? "?"} — ${names.join(", ") || "quick log"}`;
     }).join("\n");
 
-    const styleDna = dnaRow?.value?.analysis ? JSON.stringify(dnaRow.value.analysis) : "Not yet generated";
+    const styleDna = dnaRow?.value?.analysis && !dnaRow.value.analysis.error ? JSON.stringify(dnaRow.value.analysis) : "Not yet generated";
     const monthlyReport = reportRow?.value?.summary ? JSON.stringify(reportRow.value.summary) : "Not yet generated";
-    const weatherCtx = body.context?.weather ? `Current: ${body.context.weather.tempC}°C` : "Unknown";
-    const todayCtx = body.context?.todayContext ?? "not set";
+
+    // Server-side weather + context — don't rely on client props
+    let weatherCtx = body.context?.weather ? `Current: ${body.context.weather.tempC}°C` : null;
+    if (!weatherCtx) {
+      try {
+        const wRes = await fetch("https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current=temperature_2m,weathercode&timezone=Asia/Jerusalem");
+        const wData = await wRes.json();
+        const temp = wData?.current?.temperature_2m;
+        if (temp != null) weatherCtx = `Jerusalem ${temp}°C`;
+      } catch { /* non-critical */ }
+    }
+    if (!weatherCtx) weatherCtx = "Unknown";
+
+    // Infer context from Israel work week if not provided
+    let todayCtx = body.context?.todayContext ?? null;
+    if (!todayCtx) {
+      const dow = new Date().getDay(); // 0=Sun..6=Sat
+      todayCtx = (dow >= 0 && dow <= 4) ? "smart-casual (work day)" : "casual (weekend)";
+    }
 
     const systemPrompt = `You are Eias's personal wardrobe and watch advisor. You have complete access to his wardrobe data and wear history. Answer questions with specific garment names, watch recommendations, and actionable advice.
 
