@@ -31,10 +31,15 @@ export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
     const onCallDates = useWardrobeStore.getState().onCallDates ?? [];
     const todayIso = new Date().toISOString().slice(0, 10);
     if (onCallDates.includes(todayIso)) return "shift";
-    // Infer from day-of-week patterns
-    const history = useHistoryStore.getState().entries ?? [];
-    const inferred = inferContext(history);
-    return inferred.todaySuggestion ?? null;
+    // Infer from day-of-week patterns (non-fatal)
+    try {
+      const history = useHistoryStore.getState().entries ?? [];
+      if (history.length >= 5) {
+        const inferred = inferContext(history);
+        if (inferred.todaySuggestion) return inferred.todaySuggestion;
+      }
+    } catch { /* inference is optional */ }
+    return null;
   });
   const [notes,      setNotes]      = useState(() => todayEntry?.notes ?? "");
   const [extraImgs,  setExtraImgs]  = useState(() =>
