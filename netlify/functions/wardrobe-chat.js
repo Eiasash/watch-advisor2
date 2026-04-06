@@ -107,7 +107,28 @@ Be specific, opinionated, and brief. Use actual garment names. Don't hedge.`;
         messages.push({ role: msg.role, content: msg.content });
       }
     }
-    messages.push({ role: "user", content: userMessage });
+
+    // Build final user message — may include image
+    const imageData = body.image;
+    if (imageData && typeof imageData === "string" && imageData.startsWith("data:image/")) {
+      // Extract base64 and media type from data URL
+      const match = imageData.match(/^data:(image\/[a-z]+);base64,(.+)$/i);
+      if (match) {
+        const mediaType = match[1];
+        const base64 = match[2];
+        messages.push({
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+            { type: "text", text: userMessage || "What's in this photo? Identify any garments, watches, or outfit details." },
+          ],
+        });
+      } else {
+        messages.push({ role: "user", content: userMessage });
+      }
+    } else {
+      messages.push({ role: "user", content: userMessage });
+    }
 
     const model = await getConfiguredModel();
     const result = await callClaude(apiKey, {

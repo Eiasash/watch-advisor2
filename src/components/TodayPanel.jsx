@@ -387,9 +387,26 @@ export default function TodayPanel() {
                     </div>
                   </div>
                 )}
-                {te.notes && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: muted, fontStyle: "italic" }}>{te.notes}</div>
-                )}
+                {/* Editable notes */}
+                <div style={{ marginTop: 8 }}>
+                  <textarea
+                    defaultValue={te.notes ?? ""}
+                    placeholder="Add notes or remarks..."
+                    onBlur={(ev) => {
+                      const val = ev.target.value.trim();
+                      if (val !== (te.notes ?? "")) {
+                        upsertEntry({ ...te, notes: val || null });
+                      }
+                    }}
+                    rows={2}
+                    style={{
+                      width: "100%", padding: "8px 10px", borderRadius: 8,
+                      border: `1px solid ${border}`, background: isDark ? "#0f131a" : "#f9fafb",
+                      color: text, fontSize: 12, resize: "none", fontFamily: "inherit",
+                      outline: "none", boxSizing: "border-box",
+                    }}
+                  />
+                </div>
               </div>
             );
           })}

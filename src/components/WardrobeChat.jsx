@@ -20,6 +20,7 @@ export default function WardrobeChat({ weather, todayContext }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingImage, setPendingImage] = useState(null); // base64
   const scrollRef = useRef(null);
 
   const bg = isDark ? "#0a0c10" : "#f8fafc";
@@ -36,10 +37,12 @@ export default function WardrobeChat({ weather, todayContext }) {
   }, [messages]);
 
   const sendMessage = async (text) => {
-    if (!text.trim()) return;
-    const userMsg = { role: "user", content: text.trim() };
+    if (!text.trim() && !pendingImage) return;
+    const userMsg = { role: "user", content: text.trim(), image: pendingImage ?? null };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
+    const imageToSend = pendingImage;
+    setPendingImage(null);
     setLoading(true);
 
     try {
@@ -47,8 +50,9 @@ export default function WardrobeChat({ weather, todayContext }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text.trim(),
-          conversationHistory: messages,
+          message: text.trim() || "What do you see in this photo?",
+          image: imageToSend,
+          conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
           context: { weather, todayContext },
         }),
       });
@@ -115,6 +119,11 @@ export default function WardrobeChat({ weather, todayContext }) {
               background: msg.role === "user" ? userBubble : aiBubble,
               border: `1px solid ${msg.role === "user" ? `${accent}33` : "#8b5cf633"}`,
             }}>
+              {msg.image && (
+                <img src={msg.image} alt="Uploaded" style={{
+                  width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, marginBottom: 6, display: "block",
+                }} />
+              )}
               <div style={{
                 fontSize: 12, color: text, lineHeight: 1.5,
                 whiteSpace: "pre-wrap", wordBreak: "break-word",
@@ -142,11 +151,35 @@ export default function WardrobeChat({ weather, todayContext }) {
         <div ref={scrollRef} />
       </div>
 
+      {/* Pending image preview */}
+      {pendingImage && (
+        <div style={{ padding: "6px 14px 0", background: card, display: "flex", alignItems: "center", gap: 8 }}>
+          <img src={pendingImage} alt="preview" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }} />
+          <span style={{ fontSize: 11, color: muted, flex: 1 }}>Photo attached</span>
+          <button onClick={() => setPendingImage(null)} style={{
+            background: "none", border: "none", color: "#ef4444", fontSize: 14, cursor: "pointer",
+          }}>✕</button>
+        </div>
+      )}
+
       {/* Input */}
       <div style={{
         padding: "10px 14px", borderTop: `1px solid ${border}`,
-        background: card, display: "flex", gap: 8,
+        background: card, display: "flex", gap: 8, alignItems: "center",
       }}>
+        <label style={{ cursor: "pointer", fontSize: 20, flexShrink: 0, padding: "4px" }}>
+          📷
+          <input type="file" accept="image/*" style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => setPendingImage(reader.result);
+              reader.readAsDataURL(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -161,13 +194,13 @@ export default function WardrobeChat({ weather, todayContext }) {
         />
         <button
           onClick={() => sendMessage(input)}
-          disabled={loading || !input.trim()}
+          disabled={loading || (!input.trim() && !pendingImage)}
           style={{
             padding: "10px 16px", borderRadius: 12,
             border: "none", background: accent,
             color: "#fff", fontSize: 13, fontWeight: 700,
-            cursor: loading || !input.trim() ? "default" : "pointer",
-            opacity: loading || !input.trim() ? 0.5 : 1,
+            cursor: loading || (!input.trim() && !pendingImage) ? "default" : "pointer",
+            opacity: loading || (!input.trim() && !pendingImage) ? 0.5 : 1,
           }}
         >
           ↑
