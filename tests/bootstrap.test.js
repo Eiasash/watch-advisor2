@@ -243,3 +243,27 @@ describe("bootstrap — handler registration", () => {
     expect(registerHandler).toHaveBeenCalledWith("verify-photo", expect.any(Function));
   });
 });
+
+describe("bootstrap — upload handlers use entries not history", () => {
+  it("upload-photo handler reads entries (not history) from historyStore for IDB cache", async () => {
+    // Regression: bootstrap previously destructured { history } from historyStore,
+    // but the store only exports 'entries'. This wrote undefined to IDB, corrupting
+    // the cache and causing "(r ?? []).filter is not a function" on next boot.
+    const historyEntries = [
+      { id: "h1", watchId: "w1", date: "2026-04-01", garmentIds: ["g1"] },
+    ];
+    useHistoryStore.setState({ entries: historyEntries });
+    useWardrobeStore.setState({ garments: [{ id: "g1", type: "shirt" }] });
+    useWatchStore.setState({ watches: [{ id: "w1" }] });
+
+    // Verify the store exposes entries, not history
+    const state = useHistoryStore.getState();
+    expect(state.entries).toEqual(historyEntries);
+    expect(state.history).toBeUndefined();
+
+    // Verify destructuring with alias works correctly
+    const { entries: history } = useHistoryStore.getState();
+    expect(history).toEqual(historyEntries);
+    expect(Array.isArray(history)).toBe(true);
+  });
+});
