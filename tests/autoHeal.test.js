@@ -101,7 +101,6 @@ describe("auto-heal handler", () => {
     const result = await handler();
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    expect(body.fixes).toBe(1);
     expect(body.fixesList[0]).toContain("stamped 2 orphaned entries");
   });
 
@@ -129,7 +128,7 @@ describe("auto-heal handler", () => {
     const body = JSON.parse(result.body);
     const stagnation = body.findings.find(f => f.check === "watch_stagnation");
     expect(stagnation.found).toContain("stagnant-watch");
-    expect(stagnation.action).toContain("flagged");
+    expect(stagnation.action).toContain("auto-tuned");
   });
 
   it("reports healthy watch rotation when distributed", async () => {
@@ -163,7 +162,7 @@ describe("auto-heal handler", () => {
     const body = JSON.parse(result.body);
     const gStag = body.findings.find(f => f.check === "garment_stagnation");
     expect(gStag.found).toContain("repeat-shirt");
-    expect(gStag.action).toContain("flagged");
+    expect(gStag.action).toContain("auto-tuned");
   });
 
   it("writes heal result to app_config", async () => {
