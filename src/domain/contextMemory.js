@@ -2,12 +2,15 @@
  * contextMemory — track recently worn garments to avoid repetition.
  *
  * Pure domain function. No React, Zustand, IDB, or Supabase.
+ * Uses getOverride() for auto-tuned scoring weights.
  *
  * Note: outfitBuilder already applies diversityBonus() which penalises
  * garments proportionally to frequency over the last 5 entries.
  * repetitionPenalty() provides a flat binary signal — "worn at all recently"
  * — which complements frequency-based diversity without duplicating it.
  */
+
+import { getOverride } from "../config/scoringOverrides.js";
 
 /** Number of most-recent history entries to consider as "recent" */
 export const MEMORY_WINDOW = 5;
@@ -42,5 +45,5 @@ export function recentGarments(history) {
  */
 export function repetitionPenalty(garmentId, history) {
   const recent = recentGarments(history);
-  return recent.has(garmentId) ? -0.28 : 0;
+  return recent.has(garmentId) ? getOverride("repetitionPenalty", -0.28) : 0;
 }

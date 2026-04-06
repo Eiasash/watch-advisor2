@@ -28,7 +28,7 @@ describe("daily-pick", () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-key";
 
     supabaseMock = {};
-    for (const method of ["from", "select", "eq", "not", "gte", "order"]) {
+    for (const method of ["from", "select", "eq", "not", "gte", "order", "limit"]) {
       supabaseMock[method] = vi.fn().mockReturnValue(supabaseMock);
     }
     supabaseMock.single = vi.fn().mockResolvedValue({ data: null });
@@ -67,7 +67,7 @@ describe("daily-pick", () => {
       generatedAt: new Date().toISOString(),
     };
 
-    supabaseMock.single = vi.fn().mockResolvedValue({ data: { value: cachedPick } });
+    supabaseMock.limit = vi.fn().mockResolvedValue({ data: [{ value: cachedPick }] });
 
     const result = await handler({ httpMethod: "GET" });
     expect(result.statusCode).toBe(200);
@@ -82,13 +82,8 @@ describe("daily-pick", () => {
       generatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     };
 
-    // First single call returns stale cache, subsequent calls for garments/history
-    let singleCallCount = 0;
-    supabaseMock.single = vi.fn().mockImplementation(() => {
-      singleCallCount++;
-      if (singleCallCount === 1) return Promise.resolve({ data: { value: stalePick } });
-      return Promise.resolve({ data: null });
-    });
+    // limit() returns stale cache for the first call (app_config lookup)
+    supabaseMock.limit = vi.fn().mockResolvedValue({ data: [{ value: stalePick }] });
 
     // Garments query — make not() return data
     supabaseMock.not = vi.fn().mockResolvedValue({

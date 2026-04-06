@@ -1,3 +1,5 @@
+import { getOverride } from "../config/scoringOverrides.js";
+
 /**
  * rotationStats — pure watch rotation analytics.
  *
@@ -132,7 +134,7 @@ export function buildRotationTable(watches, history) {
  * @returns {number} pressure in [0, 1)
  */
 export function rotationPressure(daysIdleValue) {
-  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return 0.50;
+  if (!Number.isFinite(daysIdleValue) || daysIdleValue < 0) return getOverride("neverWornRotationPressure", 0.50);
   const midpoint  = 14;
   const steepness = 0.25;
   return 1 / (1 + Math.exp(-steepness * (daysIdleValue - midpoint)));
