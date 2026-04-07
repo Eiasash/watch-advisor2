@@ -62,9 +62,10 @@ export async function handler(event) {
       `${g.name} (${g.type ?? g.category}, ${g.color}, ${g.brand ?? "no brand"}, formality:${g.formality ?? 5}, material:${g.material ?? "?"}, weight:${g.weight ?? "?"})`
     ).join("\n");
 
+    const garmentMap = new Map((garments ?? []).map(g => [g.id, g]));
     const recentWears = (history ?? []).slice(0, 20).map(h => {
       const gids = h.payload?.garmentIds ?? [];
-      const names = gids.map(id => garments?.find(g => g.id === id)?.name).filter(Boolean);
+      const names = gids.map(id => garmentMap.get(id)?.name).filter(Boolean);
       return `${h.date}: ${h.watch_id} — ${h.payload?.context ?? "?"} — ${names.join(", ") || "quick log"}`;
     }).join("\n");
 
