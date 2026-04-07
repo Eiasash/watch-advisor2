@@ -54,7 +54,7 @@ describe("run-migrations", () => {
     vi.clearAllMocks();
     process.env.SUPABASE_URL = "https://test.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
-    delete process.env.MIGRATION_SECRET;
+    process.env.MIGRATION_SECRET = "test-secret";
   });
 
   it("rejects non-POST", async () => {
@@ -85,7 +85,7 @@ describe("run-migrations", () => {
       error: null,
     });
 
-    const res = await handler(makeReq("POST"));
+    const res = await handler(makeReq("POST", { authorization: "Bearer test-secret" }));
     const body = await res.json();
     expect(body.status).toBe("up-to-date");
     expect(body.applied).toBe(2);
@@ -100,7 +100,7 @@ describe("run-migrations", () => {
     mockRpc.mockResolvedValue({ error: null }); // migration SQL
     mockInsert.mockResolvedValue({ error: null });
 
-    const res = await handler(makeReq("POST"));
+    const res = await handler(makeReq("POST", { authorization: "Bearer test-secret" }));
     const body = await res.json();
     expect(body.status).toBe("complete");
     expect(body.applied).toBe(1);
@@ -117,7 +117,7 @@ describe("run-migrations", () => {
     mockRpc
       .mockResolvedValueOnce({ error: { message: "syntax error" } }); // first migration fails
 
-    const res = await handler(makeReq("POST"));
+    const res = await handler(makeReq("POST", { authorization: "Bearer test-secret" }));
     const body = await res.json();
     expect(body.status).toBe("partial");
     expect(body.results[0].status).toBe("error");
@@ -134,7 +134,7 @@ describe("run-migrations", () => {
     mockRpc.mockResolvedValue({ error: null });
     mockInsert.mockResolvedValue({ error: null });
 
-    const res = await handler(makeReq("POST"));
+    const res = await handler(makeReq("POST", { authorization: "Bearer test-secret" }));
     const body = await res.json();
     expect(body.results.length).toBe(2);
     expect(body.results.every(r => r.status === "applied")).toBe(true);
