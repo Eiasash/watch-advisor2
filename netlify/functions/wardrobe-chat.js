@@ -22,6 +22,12 @@ export async function handler(event) {
     const body = JSON.parse(event.body ?? "{}");
     const userMessage = body.message;
     if (!userMessage) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "message required" }) };
+    if (userMessage.length > 2000) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "message too long (max 2000 chars)" }) };
+
+    if (Array.isArray(body.conversationHistory)) {
+      const oversized = body.conversationHistory.some(m => typeof m.content === "string" && m.content.length > 500);
+      if (oversized) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "conversationHistory message too long (max 500 chars each)" }) };
+    }
 
     const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
