@@ -32,13 +32,11 @@ export default async (req) => {
     return new Response(JSON.stringify({ error: "POST only" }), { status: 405 });
   }
 
-  // Auth check
+  // Auth check — fail closed: if MIGRATION_SECRET is unset, deny all requests
   const secret = process.env.MIGRATION_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth !== `Bearer ${secret}`) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
-    }
+  const auth = req.headers.get("authorization") ?? "";
+  if (!secret || auth !== `Bearer ${secret}`) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
   }
 
   const supabase = getSupabase();
