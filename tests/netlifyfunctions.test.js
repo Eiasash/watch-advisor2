@@ -18,6 +18,7 @@ describe("ai-audit handler", () => {
   beforeEach(async () => {
     vi.stubGlobal("fetch", vi.fn());
     vi.stubEnv("CLAUDE_API_KEY", "test-key");
+    vi.stubEnv("OPEN_API_KEY", "test-secret");
     // Re-import to pick up env stubs
     const mod = await import("../netlify/functions/ai-audit.js");
     handler = mod.handler;
@@ -37,6 +38,7 @@ describe("ai-audit handler", () => {
     vi.stubEnv("CLAUDE_API_KEY", "");
     const result = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(result.statusCode).toBe(500);
@@ -56,6 +58,7 @@ describe("ai-audit handler", () => {
     });
     const r502 = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(r502.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
@@ -64,6 +67,7 @@ describe("ai-audit handler", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("network down"));
     const r500 = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(r500.headers["Access-Control-Allow-Origin"]).toBe("https://watch-advisor2.netlify.app");
@@ -78,6 +82,7 @@ describe("ai-audit handler", () => {
     });
     const result = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit my wardrobe" }),
     });
     expect(result.statusCode).toBe(200);
@@ -94,6 +99,7 @@ describe("ai-audit handler", () => {
     });
     const result = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(result.statusCode).toBe(200);
@@ -109,6 +115,7 @@ describe("ai-audit handler", () => {
     });
     const result = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(result.statusCode).toBe(200);
@@ -123,6 +130,7 @@ describe("ai-audit handler", () => {
     });
     const result = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(result.statusCode).toBe(502);
@@ -132,6 +140,7 @@ describe("ai-audit handler", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("network down"));
     const result = await handler({
       httpMethod: "POST",
+      headers: { "x-api-secret": "test-secret" },
       body: JSON.stringify({ prompt: "audit" }),
     });
     expect(result.statusCode).toBe(500);
