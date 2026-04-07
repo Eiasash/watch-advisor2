@@ -59,8 +59,5 @@
     best-practices = 0.5
     seo = 0.7
 
-# Push notifications — set these in Netlify dashboard > Environment Variables:
-# VAPID_PUBLIC_KEY  = BBWi0RnrKdXH-CBLPn_KLUrX7prcp_mP8GrbV_MeOW4IG1ZX4SxZN9Kh4tXYDZy-GwibkLwD5Y3Ou5YUd8ObMGc
-# VAPID_PRIVATE_KEY = TRHC8EcX_nFNYVAnUOMUojiaBSuPd-9CVqjr96y8hNU
-# SUPABASE_URL      = https://oaojkanozbfpofbewtfq.supabase.co
-# SUPABASE_SERVICE_KEY = <get from Supabase dashboard > Settings > API > service_role key>
+# Push notifications — set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, SUPABASE_URL,
+# and SUPABASE_SERVICE_KEY in the Netlify dashboard > Environment Variables.
