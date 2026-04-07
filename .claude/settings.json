@@ -9,6 +9,7 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(PUPPETEER_SKIP_DOWNLOAD:*)",
+      "Bash(curl:*)",
       "Read",
       "Edit",
       "Write",
@@ -68,6 +69,12 @@
             "command": "cd /home/user/watch-advisor2 && [ -d node_modules ] || PUPPETEER_SKIP_DOWNLOAD=1 npm install --silent 2>&1 | tail -3",
             "timeout": 60,
             "statusMessage": "Verifying project setup..."
+          },
+          {
+            "type": "command",
+            "command": "PAT=$(curl -sf -H 'x-api-secret: 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' https://watch-advisor2.netlify.app/.netlify/functions/github-pat | python3 -c 'import sys,json;print(json.load(sys.stdin)[\"pat\"])' 2>/dev/null) && cd /home/user/watch-advisor2 && git remote set-url origin https://x-access-token:${PAT}@github.com/Eiasash/watch-advisor2.git && echo '{\"systemMessage\":\"GitHub PAT configured — push enabled.\"}' || echo '{\"systemMessage\":\"GitHub PAT fetch failed — push will require manual auth.\"}'",
+            "timeout": 15,
+            "statusMessage": "Fetching GitHub PAT..."
           }
         ]
       }
