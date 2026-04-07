@@ -13,6 +13,11 @@ export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: "Method not allowed" }) };
 
+  const secret = event.headers["x-api-secret"];
+  if (!secret || secret !== process.env.OPEN_API_KEY) {
+    return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: "Unauthorized" }) };
+  }
+
   try {
     const { prompt } = JSON.parse(event.body || "{}");
     const apiKey = process.env.CLAUDE_API_KEY;
