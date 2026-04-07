@@ -56,9 +56,9 @@ async function _doPull() {
       watches: WATCH_COLLECTION,
       garments: toArray(garments).map(row => ({
         ...row,
-        // DB column is 'type'; 'category' is an alias kept for compat
+        // DB has both 'type' and 'category' columns; JS objects use only 'type'
         type:        row.type ?? row.category,
-        category:    row.type ?? row.category,
+        category:    undefined, // not set on JS objects — suppresses the ...row spread
         // Phase 1: no photo_url/thumbnail_url in initial query — set null, filled by pullThumbnails
         photoUrl:    null,
         thumbnail:   null,
@@ -159,8 +159,8 @@ export async function pushGarment(garment) {
       id:           garment.id,
       name:         garment.name,
       // DB column is 'type' — was incorrectly written as 'category'
-      type:         garment.type ?? garment.category,
-      category:     garment.type ?? garment.category, // alias column
+      type:         garment.type,
+      category:     garment.type, // alias column
       color:        garment.color,
       formality:    garment.formality ?? 5,
       hash:         garment.hash ?? "",

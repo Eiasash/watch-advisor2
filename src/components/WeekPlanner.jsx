@@ -922,7 +922,7 @@ export default function WeekPlanner() {
 
   // Wearable garments (exclude accessories)
   const wearable = useMemo(() =>
-    garments.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe),
+    garments.filter(g => !ACCESSORY_TYPES.has(g.type) && !g.excludeFromWardrobe),
     [garments]
   );
 
@@ -933,7 +933,7 @@ export default function WeekPlanner() {
     const result = {};
     for (const slot of OUTFIT_SLOTS) {
       result[slot] = wearable.filter(g => {
-        const rawType = g.type ?? g.category ?? "";
+        const rawType = g.type ?? "";
         return normalizeType(rawType) === slot;
       });
     }
@@ -969,7 +969,7 @@ export default function WeekPlanner() {
               loggedOutfit[slot] = overrideId ? garments.find(g => g.id === overrideId) ?? null : null;
             } else {
               const candidates = garments.filter(g => loggedIds.includes(g.id));
-              const match = candidates.find(g => normalizeType(g.type ?? g.category ?? "") === slot);
+              const match = candidates.find(g => normalizeType(g.type ?? "") === slot);
               if (match) loggedOutfit[slot] = match;
             }
             if (loggedOutfit[slot]?.id) usedPerSlot[slot].push(loggedOutfit[slot].id);

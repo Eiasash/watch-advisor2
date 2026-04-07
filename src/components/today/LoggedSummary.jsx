@@ -258,7 +258,7 @@ export default function LoggedSummary({
               const wornG = garments.filter(g => (te.garmentIds ?? []).includes(g.id));
               const outfitMap = {};
               for (const g of wornG) {
-                const cat = g.type ?? g.category;
+                const cat = g.type;
                 if (!outfitMap[cat]) outfitMap[cat] = g.name;
               }
               const dataUrl = await generateOutfitCard({

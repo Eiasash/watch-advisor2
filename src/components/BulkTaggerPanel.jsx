@@ -46,7 +46,7 @@ export default function BulkTaggerPanel({ isDark }) {
       const batch = untagged.slice(i, i + BATCH).map(g => ({
         id:       g.id,
         name:     g.name,
-        type:     g.type ?? g.category ?? "unknown",
+        type:     g.type ?? "unknown",
         color:    g.color ?? "unknown",
         material: g.material ?? null,
       }));

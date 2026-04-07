@@ -155,7 +155,7 @@ export function recommendStrap(watch, outfit, context, weather) {
     const outfitSlots = [outfit?.jacket, outfit?.sweater, outfit?.pants].filter(g => g?.color);
     const matchingSlot = outfitSlots.find(g => getColorFamily(g.color) === strapFamily);
     if (matchingSlot) {
-      parts.push(`echoes the ${matchingSlot.color} ${(matchingSlot.type ?? matchingSlot.category ?? "").replace("pants", "trousers")}`);
+      parts.push(`echoes the ${matchingSlot.color} ${(matchingSlot.type ?? "").replace("pants", "trousers")}`);
     }
     if (watch?.dial && getColorFamily(watch.dial) === strapFamily) {
       parts.push(`harmonizes with the ${watch.dial} dial`);

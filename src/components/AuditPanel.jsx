@@ -382,7 +382,7 @@ export default function AuditPanel() {
 async function verifyPhoto(garment, allGarments) {
   const body = {
     garmentId: garment.id,
-    currentType: garment.type ?? garment.category,
+    currentType: garment.type,
     currentColor: garment.color,
     currentName: garment.name,
     hash: garment.hash ?? null,
@@ -391,7 +391,7 @@ async function verifyPhoto(garment, allGarments) {
     // even when hash metadata is missing.
     neighbors: allGarments
       .filter(g => g.id !== garment.id)
-      .map(g => ({ id: g.id, name: g.name, type: g.type ?? g.category, color: g.color, hash: g.hash ?? null }))
+      .map(g => ({ id: g.id, name: g.name, type: g.type, color: g.color, hash: g.hash ?? null }))
       .slice(0, 20),
   };
   const photo = garment.thumbnail || garment.photoUrl;
@@ -505,7 +505,7 @@ export function PhotoVerifierPanel() {
     const g = garments.find(x => x.id === garmentId);
     const ov = overrides[garmentId] ?? {};
     return {
-      type:  ov.type  ?? r.correctedType  ?? (g?.type  ?? g?.category),
+      type:  ov.type  ?? r.correctedType  ?? g?.type,
       color: ov.color ?? r.correctedColor ?? g?.color,
       name:  ov.name  ?? r.correctedName  ?? g?.name,
     };
@@ -516,7 +516,7 @@ export function PhotoVerifierPanel() {
     if (!g) return;
     const fix = resolvedFix(garmentId, r);
     const patch = {};
-    if (fix.type  && fix.type  !== (g.type  ?? g.category)) patch.type  = fix.type;
+    if (fix.type  && fix.type  !== g.type) patch.type  = fix.type;
     if (fix.color && fix.color !== g.color)                  patch.color = fix.color;
     if (fix.name  && fix.name  !== g.name)                   patch.name  = fix.name;
     // Apply enrichment fields from AI verification (fill in missing attributes)
@@ -703,9 +703,9 @@ export function PhotoVerifierPanel() {
                 {/* AI suggestions (read-only view) */}
                 {!isEdit && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, fontSize: 11, marginBottom: 8 }}>
-                    {fix.type  !== (g.type ?? g.category) && (
+                    {fix.type  !== (g.type) && (
                       <span style={{ padding: "2px 8px", borderRadius: 5, background: "#f9731622", color: "#f97316" }}>
-                        type: <b>{g.type ?? g.category}</b> → <b>{fix.type}</b>
+                        type: <b>{g.type}</b> → <b>{fix.type}</b>
                         {ov.type && <span style={{ marginLeft: 3, color: "#fbbf24" }}>✎ edited</span>}
                       </span>
                     )}
@@ -730,7 +730,7 @@ export function PhotoVerifierPanel() {
                     <div style={{ display: "flex", gap: 6 }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 10, color: sub, marginBottom: 2 }}>TYPE</div>
-                        <select value={ov.type ?? r.correctedType ?? (g.type ?? g.category)}
+                        <select value={ov.type ?? r.correctedType ?? (g.type)}
                           onChange={e => updateOverride(r.garmentId, "type", e.target.value)}
                           style={{ width: "100%", padding: "5px 7px", borderRadius: 7, border: `1px solid ${border}`,
                                    background: inputBg, color: text, fontSize: 12 }}>

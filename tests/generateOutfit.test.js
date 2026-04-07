@@ -99,12 +99,11 @@ describe("generateOutfit", () => {
     if (result.shirt) expect(result.shirt.type).toBe("shirt");
   });
 
-  // ─── Regression: garments with category instead of type ──────────────────
-  it("handles garments with category field instead of type", () => {
+  it("handles garments with type field", () => {
     const cloudGarments = [
-      { id: "c1", category: "shirt", color: "blue" },
-      { id: "c2", category: "pants", color: "grey" },
-      { id: "c3", category: "shoes", color: "black" },
+      { id: "c1", type: "shirt", color: "blue" },
+      { id: "c2", type: "pants", color: "grey" },
+      { id: "c3", type: "shoes", color: "black" },
     ];
     const result = generateOutfit(watch, cloudGarments, null);
     expect(result.shirt.id).toBe("c1");
@@ -112,13 +111,13 @@ describe("generateOutfit", () => {
     expect(result.shoes.id).toBe("c3");
   });
 
-  it("handles mixed type and category fields", () => {
-    const mixed = [
+  it("selects correct slot when garments have type field", () => {
+    const garments = [
       { id: "m1", type: "shirt", color: "white" },
-      { id: "m2", category: "pants", color: "navy" },
+      { id: "m2", type: "pants", color: "navy" },
       { id: "m3", type: "shoes", color: "brown" },
     ];
-    const result = generateOutfit(watch, mixed, null);
+    const result = generateOutfit(watch, garments, null);
     expect(result.shirt.id).toBe("m1");
     expect(result.pants.id).toBe("m2");
     expect(result.shoes.id).toBe("m3");

@@ -40,9 +40,9 @@ describe("claudeStylist garment filtering", () => {
     expect(types).not.toContain("outfit-shot");
   });
 
-  it("maps garment.category to type when type is missing", async () => {
+  it("passes garment.type to AI suggestion payload", async () => {
     const garments = [
-      { id: "g1", category: "shirt", color: "navy", name: "Navy Shirt", formality: 5 },
+      { id: "g1", type: "shirt", color: "navy", name: "Navy Shirt", formality: 5 },
     ];
     await getAISuggestion(garments, WATCH, null, {});
     expect(lastFetchBody.garments[0].type).toBe("shirt");

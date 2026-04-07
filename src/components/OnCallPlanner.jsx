@@ -167,7 +167,7 @@ export default function OnCallPlanner({ isDark: propDark }) {
   }, []);
 
   const wearable = useMemo(() =>
-    garments.filter(g => !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe),
+    garments.filter(g => !ACCESSORY_TYPES.has(g.type) && !g.excludeFromWardrobe),
     [garments]
   );
 

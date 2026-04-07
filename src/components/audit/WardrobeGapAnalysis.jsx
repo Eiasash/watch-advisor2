@@ -22,19 +22,19 @@ export default function WardrobeGapAnalysis({ garments, isDark }) {
 
     const wearable = garments.filter(g =>
       !g.excludeFromWardrobe &&
-      !["outfit-photo", "watch", "outfit-shot", "accessory", "bag"].includes(g.category ?? g.type)
+      !["outfit-photo", "watch", "outfit-shot", "accessory", "bag"].includes(g.type)
     );
 
     const result = [];
     for (const ctx of CORE_CONTEXTS) {
       const shirts = wearable.filter(g =>
-        (g.category === "shirt") && (g.contexts ?? []).includes(ctx.key)
+        (g.type === "shirt") && (g.contexts ?? []).includes(ctx.key)
       );
       const pants = wearable.filter(g =>
-        (g.category === "pants") && (g.contexts ?? []).includes(ctx.key)
+        (g.type === "pants") && (g.contexts ?? []).includes(ctx.key)
       );
       const sweaters = wearable.filter(g =>
-        (g.category === "sweater") && (g.contexts ?? []).includes(ctx.key)
+        (g.type === "sweater") && (g.contexts ?? []).includes(ctx.key)
       );
 
       const issues = [];

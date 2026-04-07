@@ -239,7 +239,7 @@ function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, o
   const isFormalCtx = context === "formal" || context === "clinic"
     || context === "hospital-smart-casual" || context === "shift";
   const sweaters = wearable.filter(candidate => {
-    if ((candidate.type ?? candidate.category) !== "sweater") return false;
+    if ((candidate.type) !== "sweater") return false;
     if (isFormalCtx) {
       const nm = (candidate.name ?? "").toLowerCase();
       if (nm.includes("hoodie") || nm.includes("jogger") || nm.includes("sweatshirt")) return false;
@@ -297,7 +297,7 @@ function _fillJacket(outfit, wearable, watchWithStrap, weather, history, outfitF
   const isFormalCtx = context === "formal" || context === "clinic"
     || context === "hospital-smart-casual" || context === "shift";
   const jackets = wearable.filter(candidate => {
-    if ((candidate.type ?? candidate.category) !== "jacket") return false;
+    if ((candidate.type) !== "jacket") return false;
     if (isFormalCtx) {
       const nm = (candidate.name ?? "").toLowerCase();
       if (_isCasualJacket(nm)) return false;
@@ -354,7 +354,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   const TAILOR_RE = /tailor|pulls at chest|billows|wide in torso/i;
   const formalContext = FORMAL_CONTEXTS.has(context);
   const wearable = wardrobe.filter(g => {
-    if (ACCESSORY_TYPES.has(g.type ?? g.category) || g.excludeFromWardrobe) return false;
+    if (ACCESSORY_TYPES.has(g.type) || g.excludeFromWardrobe) return false;
     // Exclude tailor-flagged garments from clinic/formal contexts
     if (formalContext && TAILOR_RE.test(g.notes ?? "")) return false;
     return true;
@@ -396,7 +396,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const type = slots[slotName];
     if (!type) continue;
     let pool = wearable.filter(g => {
-      const gType = g.type ?? g.category;
+      const gType = g.type;
       if (slotName === "shirt") return gType === "shirt" && !excludedPerSlot[slotName]?.has(g.id);
       if (excludedPerSlot[slotName]?.has(g.id)) return false;
       return gType === type;
@@ -542,7 +542,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     }
     const type = category;
     const candidates = wearable.filter(g => {
-      const gType = g.type ?? g.category;
+      const gType = g.type;
       if (excludedPerSlot[slotName]?.has(g.id)) return false;
       return gType === type;
     });
@@ -575,7 +575,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   // ── Belt slot — auto-match to shoes ──────────────────────────────────────────
   outfit.belt = null;
   if (outfit.shoes && !pinnedSlots.belt) {
-    const belts = wardrobe.filter(g => (g.type ?? g.category) === "belt");
+    const belts = wardrobe.filter(g => (g.type) === "belt");
     outfit.belt = pickBelt(outfit.shoes, belts);
   } else if (pinnedSlots.belt) {
     outfit.belt = pinnedSlots.belt;
@@ -603,7 +603,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       if (strapLocked) {
         const shoeColors = [(outfit.shoes.color ?? "").toLowerCase()];
         const altPants = wearable
-          .filter(g => (g.type ?? g.category) === "pants" && g.id !== outfit.pants.id)
+          .filter(g => (g.type) === "pants" && g.id !== outfit.pants.id)
           .map(g => ({
             garment: g,
             score: _scoreCandidate(watchWithStrap, g, weather, history, outfitFormality, context, rejectState, shoeColors, preferenceWeights),
@@ -613,7 +613,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
           .sort((a, b) => (b.score + b.harmony) - (a.score + a.harmony));
         if (altPants.length) {
           outfit.pants = altPants[0].garment;
-          const belts = wardrobe.filter(g => (g.type ?? g.category) === "belt");
+          const belts = wardrobe.filter(g => (g.type) === "belt");
           outfit.belt = pickBelt(outfit.shoes, belts);
         }
       }
@@ -706,7 +706,7 @@ function diversityBonus(garment, history) {
  */
 export function explainOutfitChoice(watch, outfit, weather) {
   // Filter for actual garment objects only — exclude metadata fields like _score, _explanation etc.
-  const filled = Object.values(outfit).filter(v => v && typeof v === "object" && (v.name || v.type || v.category));
+  const filled = Object.values(outfit).filter(v => v && typeof v === "object" && (v.name || v.type));
   if (!filled.length) {
     return `No garments in wardrobe yet. Add some and the engine will build around the ${watch.model}.`;
   }

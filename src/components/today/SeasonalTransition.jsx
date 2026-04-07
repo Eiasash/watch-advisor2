@@ -47,7 +47,7 @@ export default function SeasonalTransition({ garments, isDark }) {
 
     const wearable = garments.filter(g =>
       !g.excludeFromWardrobe &&
-      ["shirt", "pants", "sweater", "jacket"].includes(g.category ?? g.type)
+      ["shirt", "pants", "sweater", "jacket"].includes(g.type)
     );
 
     // Outgoing: garments ONLY tagged for the previous season (not multi-season)

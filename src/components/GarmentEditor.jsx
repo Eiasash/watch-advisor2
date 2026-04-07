@@ -164,7 +164,7 @@ export default function GarmentEditor({ garment, onClose }) {
   const { addToast }  = useToast() ?? {};
 
   // ── Form state ──────────────────────────────────────────────────────────────
-  const [typeRaw,    setTypeRaw]    = useState(garment.type       ?? garment.category ?? "shirt");
+  const [typeRaw,    setTypeRaw]    = useState(garment.type ?? "shirt");
   const [color,      setColor]      = useState(garment.color      ?? "grey");
   const [color2,     setColor2]     = useState(garment.accentColor ?? "");
   const [material,   setMaterial]   = useState(garment.material   ?? "");
@@ -191,7 +191,7 @@ export default function GarmentEditor({ garment, onClose }) {
     return parts.join(" ");
   }
   const initAuto = buildAutoName(
-    garment.type ?? garment.category ?? "shirt",
+    garment.type ?? "shirt",
     garment.color ?? "grey",
     garment.pattern ?? "solid",
     garment.brand ?? ""
@@ -307,7 +307,6 @@ export default function GarmentEditor({ garment, onClose }) {
       id: newId,
       name: "New item from same photo",
       type: "shirt",
-      category: "shirt",
       color: garment.color ?? "grey",
       formality: garment.formality ?? 5,
       thumbnail: garment.thumbnail ?? null,

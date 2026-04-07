@@ -70,7 +70,7 @@ export default function OutfitCompare({ entries, watches, garments, isDark }) {
           {/* Garments */}
           {wornG.map(g => {
             const photo = g.thumbnail || g.photoUrl;
-            const type = g.type ?? g.category;
+            const type = g.type;
             const icon = SLOT_ICONS[type] ?? "•";
             return (
               <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>

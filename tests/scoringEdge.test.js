@@ -208,17 +208,17 @@ describe("weatherLayerScore — temperature boundaries", () => {
 
 // ─── scoreGarment — category type fallback ──────────────────────────────────
 
-describe("scoreGarment — category fallback", () => {
-  it("uses category when type is missing", () => {
+describe("scoreGarment — type field", () => {
+  it("scores shirt with type field", () => {
     const watch = { dial: "black", formality: 7, style: "dress", strap: "bracelet" };
-    const garment = { category: "shirt", color: "black", formality: 7 };
+    const garment = { type: "shirt", color: "black", formality: 7 };
     const score = scoreGarment(watch, garment, { tempC: 20 });
     expect(score).toBeGreaterThan(0);
   });
 
-  it("shoes with category field still apply strap-shoe rule", () => {
+  it("shoes with type field apply strap-shoe rule", () => {
     const watch = { dial: "black", formality: 7, style: "dress", strap: "black leather" };
-    const brownShoes = { category: "shoes", color: "brown", formality: 7 };
+    const brownShoes = { type: "shoes", color: "brown", formality: 7 };
     expect(scoreGarment(watch, brownShoes)).toBe(0);
   });
 });

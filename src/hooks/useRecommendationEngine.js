@@ -31,7 +31,7 @@ export function useRecommendationEngine({ watches, garments, entries, weather })
 
   useEffect(() => {
     const wearable = garments.filter(g =>
-      !ACCESSORY_TYPES.has(g.type ?? g.category) && !g.excludeFromWardrobe
+      !ACCESSORY_TYPES.has(g.type) && !g.excludeFromWardrobe
     );
     if (!watches.length || !wearable.length) {
       setTomorrowPreview(null);

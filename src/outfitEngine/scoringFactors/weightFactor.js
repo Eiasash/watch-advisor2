@@ -23,7 +23,7 @@ export default function weightFactor(candidate, context) {
   const tempC = context?.weather?.tempC ?? null;
   if (tempC === null) return 0;
 
-  const type = garment.type ?? garment.category ?? "";
+  const type = garment.type ?? "";
   if (LAYER_TYPES.has(type)) return 0; // already scored by weatherLayerScore
 
   const w = garment.weight.toLowerCase();

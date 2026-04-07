@@ -39,7 +39,7 @@ function applyFix(garmentId, fix, garments, updateGarment, pushGarment, setCache
   const g = garments.find(x => x.id === garmentId);
   if (!g) return;
   const patch = {};
-  if (fix.correctedType  && fix.correctedType  !== (g.type ?? g.category)) patch.type = fix.correctedType;
+  if (fix.correctedType  && fix.correctedType  !== (g.type)) patch.type = fix.correctedType;
   if (fix.correctedColor && fix.correctedColor !== g.color)                 patch.color = fix.correctedColor;
   if (fix.correctedName  && fix.correctedName  !== g.name)                  patch.name = fix.correctedName;
   if (!Object.keys(patch).length) {

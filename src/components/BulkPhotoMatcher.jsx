@@ -97,14 +97,14 @@ export default function BulkPhotoMatcher() {
   const grouped = {};
   for (const g of garments) {
     if (g.excludeFromWardrobe) continue;
-    const cat = g.type ?? g.category ?? "other";
+    const cat = g.type ?? "other";
     if (cat === "outfit-photo") continue;
     if (!grouped[cat]) grouped[cat] = [];
     grouped[cat].push(g);
   }
 
   const totalWithPhoto = garments.filter(g => !g.excludeFromWardrobe && g.thumbnail || !g.excludeFromWardrobe && g.photoUrl).length;
-  const totalWearable = garments.filter(g => !g.excludeFromWardrobe && (g.type ?? g.category) !== "outfit-photo").length;
+  const totalWearable = garments.filter(g => !g.excludeFromWardrobe && (g.type) !== "outfit-photo").length;
 
   return (
     <div>

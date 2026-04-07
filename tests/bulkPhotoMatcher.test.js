@@ -36,7 +36,7 @@ describe("BulkPhotoMatcher — grouping logic", () => {
   function groupGarments(list) {
     const grouped = {};
     for (const g of list) {
-      const cat = g.type ?? g.category ?? "other";
+      const cat = g.type ?? "other";
       if (cat === "outfit-photo") continue;
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(g);
@@ -61,9 +61,9 @@ describe("BulkPhotoMatcher — grouping logic", () => {
     expect(grouped.sunglasses).toHaveLength(1);
   });
 
-  it("handles garments with category field instead of type", () => {
+  it("handles garments with type field", () => {
     const items = [
-      { id: "x", name: "Scarf", category: "scarf" },
+      { id: "x", name: "Scarf", type: "scarf" },
     ];
     const grouped = groupGarments(items);
     expect(grouped.scarf).toHaveLength(1);
@@ -86,7 +86,7 @@ describe("BulkPhotoMatcher — photo stats", () => {
     ];
 
     const totalWithPhoto = garments.filter(g => g.thumbnail || g.photoUrl).length;
-    const totalWearable = garments.filter(g => (g.type ?? g.category) !== "outfit-photo").length;
+    const totalWearable = garments.filter(g => (g.type) !== "outfit-photo").length;
 
     expect(totalWithPhoto).toBe(3); // shirt + pants + outfit-photo
     expect(totalWearable).toBe(3); // shirt + pants + shoes
@@ -94,7 +94,7 @@ describe("BulkPhotoMatcher — photo stats", () => {
 
   it("handles empty garment list", () => {
     const totalWithPhoto = [].filter(g => g.thumbnail || g.photoUrl).length;
-    const totalWearable = [].filter(g => (g.type ?? g.category) !== "outfit-photo").length;
+    const totalWearable = [].filter(g => (g.type) !== "outfit-photo").length;
     expect(totalWithPhoto).toBe(0);
     expect(totalWearable).toBe(0);
   });

@@ -340,17 +340,17 @@ export default function WatchDashboard() {
   // normalizeType maps polo→shirt, jeans→pants, sneakers→shoes, blazer→jacket etc.
   const ACCESSORY_EXCL = new Set(["sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
   const wearable = useMemo(() =>
-    garments.filter(g => !ACCESSORY_EXCL.has(g.type ?? g.category) && !g.excludeFromWardrobe),
+    garments.filter(g => !ACCESSORY_EXCL.has(g.type) && !g.excludeFromWardrobe),
     [garments]
   );
   const slotCandidates = useMemo(() => {
     const res = {};
-    res.shirt = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "shirt");
-    res.pants = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "pants");
-    res.shoes = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "shoes");
-    res.jacket = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "jacket");
+    res.shirt = wearable.filter(g => normalizeType(g.type ?? "") === "shirt");
+    res.pants = wearable.filter(g => normalizeType(g.type ?? "") === "pants");
+    res.shoes = wearable.filter(g => normalizeType(g.type ?? "") === "shoes");
+    res.jacket = wearable.filter(g => normalizeType(g.type ?? "") === "jacket");
     // sweater and layer slots both draw from sweater-type garments
-    const sweaters = wearable.filter(g => normalizeType(g.type ?? g.category ?? "") === "sweater");
+    const sweaters = wearable.filter(g => normalizeType(g.type ?? "") === "sweater");
     res.sweater = sweaters;
     res.layer = sweaters;
     return res;

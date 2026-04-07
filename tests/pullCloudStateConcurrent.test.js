@@ -120,7 +120,7 @@ describe("pullCloudState — data shape", () => {
     const result = await pullCloudState();
     const g = result.garments[0];
     expect(g.type).toBe("shirt");
-    expect(g.category).toBe("shirt");
+    expect(g.category).toBeUndefined(); // category not set on JS objects — use type
     expect(g.photoType).toBe("gallery");
     expect(g.needsReview).toBe(false);
     // Phase 1: photo URLs are null (filled by pullThumbnails)

@@ -73,7 +73,7 @@ describe("pullCloudState", () => {
 
     const result = await pullCloudState();
     expect(result.garments[0].type).toBe("shirt");
-    expect(result.garments[0].category).toBe("shirt");
+    expect(result.garments[0].category).toBeUndefined(); // category not set on JS objects — use type
   });
 
   it("filters blob: URLs from photoUrl", async () => {

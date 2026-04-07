@@ -22,7 +22,7 @@ export default function NeverWornSpotlight({ garments, history, isDark, onSelect
     const candidates = garments.filter(g =>
       !wornIds.has(g.id) &&
       !g.excludeFromWardrobe &&
-      ["shirt", "pants", "sweater", "jacket"].includes(g.category ?? g.type)
+      ["shirt", "pants", "sweater", "jacket"].includes(g.type)
     );
 
     if (!candidates.length) return null;
@@ -70,7 +70,7 @@ export default function NeverWornSpotlight({ garments, history, isDark, onSelect
           {spotlight.name}
         </div>
         <div style={{ fontSize: 11, color: muted }}>
-          {spotlight.color} {spotlight.category} · never logged
+          {spotlight.color} {spotlight.type} · never logged
         </div>
       </div>
     </div>

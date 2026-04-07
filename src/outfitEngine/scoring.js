@@ -98,7 +98,7 @@ export function watchCompatibilityScore(watch, garment) {
  */
 export function weatherLayerScore(garment, weather) {
   if (!weather || weather.tempC == null) return NEUTRAL_SCORE;
-  const type = garment.type ?? garment.category;
+  const type = garment.type;
   if (!LAYER_TYPES.has(type)) return NEUTRAL_SCORE;
 
   const temp = weather.tempC;
@@ -114,7 +114,7 @@ export function weatherLayerScore(garment, weather) {
  * Returns 0–1. Returns 0.0 on hard strap–shoe mismatch.
  */
 export function strapShoeScore(watch, garment, context) {
-  if ((garment.type ?? garment.category) !== "shoes") return 1.0;
+  if ((garment.type) !== "shoes") return 1.0;
 
   const strap = (watch.strap ?? "").toLowerCase();
 
@@ -233,7 +233,7 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   // (e.g. test fixtures). Without this, different garments with no id collide.
   // seasons+contexts included so BulkTaggerPanel retags immediately invalidate
   // cached scores without requiring a full page reload.
-  const garmentKey = garment.id ?? `${garment.type ?? garment.category}:${garment.color ?? ""}:${garment.formality ?? ""}`;
+  const garmentKey = garment.id ?? `${garment.type}:${garment.color ?? ""}:${garment.formality ?? ""}`;
   const tagSig = `${(garment.seasons ?? []).join(",")}|${(garment.contexts ?? []).join(",")}`;
   const replicaFlag = watch.replica ? "r" : "g";
   const cacheKey = `${watch.id ?? watch.brand ?? ""}:${replicaFlag}:${garmentKey}:${tagSig}:${context ?? ""}:${watch.strap ?? ""}:${weather?.tempC ?? ""}:${outfitFormality ?? ""}`;
@@ -255,7 +255,7 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
   // Hard gate: formality mismatch is total (diff ≥ 5) — incompatible piece.
   // Shoes are exempt: they are accessories scored primarily on strap-shoe compatibility,
   // not on formality alignment with the watch.
-  const slot = garment.type ?? garment.category;
+  const slot = garment.type;
   if (slot !== "shoes" && fm === 0) {
     _scoreCache.set(cacheKey, -Infinity);
     return -Infinity;
