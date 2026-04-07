@@ -76,7 +76,7 @@ src/                          105 files, ~17,700 LOC
     watchSeed.js  ← NEVER REPLACE. 23 watches (13 genuine, 10 replica). Sacred.
   aiStylist/      claudeStylist.js — builds prompt + calls Netlify function
   workers/        photoWorker.js — image processing worker (USE_WORKER=false currently)
-netlify/functions/           19 serverless functions + 2 helpers, ~2,500 LOC
+netlify/functions/           25 serverless functions + 2 helpers, ~2,700 LOC
   _claudeClient.js     Claude API client helper (shared, retry, model config, token logging)
   _blobCache.js        Netlify Blobs caching layer (shared)
   bulk-tag.js          bulk garment tagger — seasons/contexts/material/pattern (Haiku)
@@ -96,6 +96,7 @@ netlify/functions/           19 serverless functions + 2 helpers, ~2,500 LOC
   push-brief.js        daily + Monday weekly AI brief push notification (6:30am UTC)
   supabase-keepalive.js  Supabase ping every 5 days
   skill-snapshot.js    live health endpoint (GET, no auth)
+  github-pat.js        GitHub PAT for Claude session access (GET, x-api-secret auth)
 supabase/
   schema.sql      garments, watches, history tables
 ```
@@ -328,7 +329,7 @@ tests/
 | Test LOC | ~19,000 |
 | Tests | 2311+ |
 | Test pass rate | 100% |
-| Netlify functions | 23 (+3 helpers) |
+| Netlify functions | 25 (+2 helpers) |
 | Components | 52 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB (167 kB gzip) |
@@ -353,6 +354,7 @@ tests/
 - `npm test` → vitest (2311+ tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
-- No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`
+- GitHub PAT auto-fetch: `GET /.netlify/functions/github-pat` with header `x-api-secret: <OPEN_API_KEY>`
 - Dependencies: react 18, react-dom 18, zustand 4, @supabase/supabase-js 2, idb 8, react-window 1
 - DevDeps: vite 7, vitest 4, @vitejs/plugin-react 5, jsdom 28, @netlify/blobs 10
