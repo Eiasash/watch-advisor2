@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { weatherLayerSuggestion } from "../src/features/weather/weatherRules.js";
+import { weatherLayerSuggestion } from "../src/config/weatherRules.js";
 
 // Mock stores that buildOutfit imports
 vi.mock("../src/stores/rejectStore.js", () => ({

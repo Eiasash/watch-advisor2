@@ -26,3 +26,22 @@ export const STYLE_LEARN = {
   min: 0.85,
   max: 1.15,
 };
+
+// Temperature thresholds used by outfitBuilder.js layering logic.
+// Not scoring weights per se, but kept here so all engine magic numbers
+// are in one place.
+export const OUTFIT_TEMP_THRESHOLDS = {
+  warmTransition: 18, // ≥18°C and <22°C → sweater needs high score to be included
+  layerDouble:     8, // <8°C → add second sweater/layer piece
+};
+
+// Replica watch scoring penalty in formal/clinic/shift contexts.
+// Applied as: score -= baseScore * REPLICA_PENALTY
+// Strong reduction (not a hard gate) so the engine still has candidates
+// when only replicas exist in the wardrobe.
+export const REPLICA_PENALTY = 0.60;
+
+// Brightness nudge: removed.
+// ±0.05 was meaningless on a 0-10 scale. ±0.5 overwhelmed the -0.28
+// repetition penalty, preventing diversity rotation. Color contrast is
+// already encoded via colorMatchScore — no additional nudge needed.

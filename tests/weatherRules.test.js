@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { weatherLayerSuggestion, weatherDisplayText } from "../src/features/weather/weatherRules.js";
+import { weatherLayerSuggestion, weatherDisplayText } from "../src/config/weatherRules.js";
 import { getLayerRecommendation, formatWeatherText } from "../src/weather/weatherService.js";
 
 // ─── weatherLayerSuggestion (features/weather/weatherRules.js) ───────────────

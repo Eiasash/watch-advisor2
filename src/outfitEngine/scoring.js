@@ -203,21 +203,8 @@ function _styleLearnMult(garment) {
 }
 
 // ── Score refinement helpers ──────────────────────────────────────────────────
-
-/**
- * Brightness balance: nudge scores slightly based on garment lightness.
- * Dark garments are slightly penalised (tend toward heavy outfits);
- * light garments are slightly boosted (tend toward airy, daytime-appropriate outfits).
- * Applied as a flat additive after the multiplicative base — intentionally small.
- */
-function brightnessScore(color) {
-  const c = (color ?? "").toLowerCase();
-  const dark  = ["black", "navy", "charcoal", "dark brown", "indigo"];
-  const light = ["white", "cream", "beige", "stone", "khaki", "tan", "sand"];
-  if (dark.includes(c))  return -0.05;
-  if (light.includes(c)) return  0.05;
-  return 0;
-}
+// (brightness nudge removed — ±0.05 was meaningless; ±0.5 overwhelmed the
+//  -0.28 repetition penalty, breaking diversity rotation. See scoringWeights.js)
 
 // ── Composite scorer ─────────────────────────────────────────────────────────
 
@@ -227,7 +214,7 @@ function brightnessScore(color) {
  * Formula (when all gates pass):
  *   base = (colorMatch×2.5) + (formalityMatch×3) + (watchCompatibility×3)
  *        + (weatherLayer×1) + (contextFormality×0.5)
- *   score = max(1e-6, base × styleLearnMult + brightnessNudge)
+ *   score = max(1e-6, base × styleLearnMult)
  *
  * Return values:
  *   -Infinity  total formality mismatch: fm === 0, non-shoe garments only
@@ -310,10 +297,9 @@ export function scoreGarment(watch, garment, weather = {}, outfitFormality = nul
 
   // Style-learning soft multiplier (clamped to STYLE_LEARN range in store)
   const prefMult = _styleLearnMult(garment);
-  // Brightness balance: flat nudge after all additive logic.
-  // Floor at 1e-6 (not 0) so a small brightness penalty can't zero out a valid
-  // garment — it only lowers ranking. Exact 0.0 is reserved for strap-shoe mismatch.
-  const finalScore = Math.max(1e-6, (base * prefMult) + brightnessScore(garment.color));
+  // Floor at 1e-6 (not 0) so post-score factors can't zero out a valid garment.
+  // Exact 0.0 is reserved for strap-shoe mismatch.
+  const finalScore = Math.max(1e-6, base * prefMult);
 
   _scoreCache.set(cacheKey, finalScore);
   return finalScore;

@@ -14,6 +14,7 @@ import { STYLE_TO_SLOTS } from "./watchStyles.js";
 import { recommendStrap as _recommendStrap } from "./strapRecommender.js";
 import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore, filterShoesByStrap, clearScoreCache,
   colorMatchScore, formalityMatchScore, watchCompatibilityScore } from "./scoring.js";
+import { REPLICA_PENALTY, OUTFIT_TEMP_THRESHOLDS } from "../config/scoringWeights.js";
 import { useRejectStore } from "../stores/rejectStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
 import { buildRejectionProfile } from "../domain/rejectionIntelligence.js";
@@ -166,7 +167,7 @@ function _scoreCandidate(watch, garment, weather, history, outfitFormality, cont
   // Replica context penalty — collection philosophy: zero replica in clinic/formal/shift.
   // Applied as a strong score reduction (not a hard gate) so the engine still has
   // candidates in edge cases where only replicas exist in the wardrobe.
-  if (watch.replica && FORMAL_CONTEXTS.has(context)) score -= baseScore * 0.60;
+  if (watch.replica && FORMAL_CONTEXTS.has(context)) score -= baseScore * REPLICA_PENALTY;
 
   // Preference weight — formality lean derived from wear history
   if (preferenceWeights && preferenceWeights.formality !== 1) {
@@ -232,7 +233,7 @@ function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, o
 
   // 18-22°C = warm transition zone. Sweater is optional — only add if high-scoring.
   // Below 18°C = sweater strongly recommended (normal flow).
-  const warmTransition = temp >= 18;
+  const warmTransition = temp >= OUTFIT_TEMP_THRESHOLDS.warmTransition;
   const minSweaterScore = warmTransition ? 4.0 : 0; // higher bar in warm weather
 
   const isFormalCtx = context === "formal" || context === "clinic"
@@ -264,7 +265,7 @@ function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, o
   ) ?? scored[0];
   outfit.sweater = pinnedSlots.sweater ?? (bestSweater?.score > minSweaterScore ? bestSweater.garment : null);
 
-  if (temp < 8 && sweaters.length >= 2 && outfit.sweater) {
+  if (temp < OUTFIT_TEMP_THRESHOLDS.layerDouble && sweaters.length >= 2 && outfit.sweater) {
     if (pinnedSlots.layer) {
       outfit.layer = pinnedSlots.layer;
     } else {
