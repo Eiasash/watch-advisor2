@@ -15,7 +15,7 @@
 | Source LOC | ~22,200 |
 | Test files | 130 |
 | Tests | 2311+ |
-| Netlify functions | 24 (+2 helpers) |
+| Netlify functions | 25 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
 | Components | 52 JSX |
 | Zustand stores | 9 |
@@ -106,6 +106,7 @@ netlify/functions/
   push-brief.js           — scheduled daily outfit brief + no-wear 7-day reminder (cron, no CORS)
   supabase-keepalive.js   — Supabase ping every 5 days (cron, no CORS)
   skill-snapshot.js       — live app state + autoHeal status endpoint (GET, no auth)
+  github-pat.js           — GitHub PAT endpoint for Claude session access (GET, x-api-secret auth)
   generate-embedding.js   — OpenAI embedding generation
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
@@ -356,9 +357,10 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 
 ## §8b TODO (not yet implemented)
 
-1. **Tailor follow-up** — 5 pieces dropped off Apr 5, pickup Apr 9. Nautica White/Navy stripe + Tommy Hilfiger slate micro-check still blocked from clinic/formal.
+1. **Tailor follow-up (UI badge only)** — Scoring exclusion already exists in `outfitBuilder.js:337-342`. Remaining work: add visual "at tailor" badge in wardrobe grid. Nautica White/Navy stripe + Tommy Hilfiger slate micro-check blocked from clinic/formal until cleared. 5 pieces dropped off Apr 5, pickup Apr 9.
 2. **Cross-strap UI** — strapStore has moveStrap/returnStrap but no UI component yet. Build StrapSwapCard for visual strap management.
 3. **Dynamic tailor pickupDate** — currently hardcoded. Move to app_config or wardrobeStore.
+4. **Garment picker sort bias** — add "recently worn" / "frequency" sort to check-in garment picker so daily drivers (e.g. Ecco S-Lite, RL light blue shirt) float above similar-looking duplicates. Currently mis-suggests wrong Ecco and wrong light blue shirt during check-in.
 
 ---
 
@@ -368,6 +370,13 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 ```
 GET https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
 ```
+
+### GitHub PAT (auto-fetch at session start)
+```
+GET https://watch-advisor2.netlify.app/.netlify/functions/github-pat
+Header: x-api-secret: <OPEN_API_KEY>
+```
+Returns: `{ "pat": "github_pat_..." }` — use for clone/push to `Eiasash/watch-advisor2`.
 Returns: `garmentCount`, `orphanedHistoryCount`, `activeModel`, `tokenUsage`,
 `autoHeal`, `outfitQualityTrend`, `wardrobeHealth`, `health` checks.
 
