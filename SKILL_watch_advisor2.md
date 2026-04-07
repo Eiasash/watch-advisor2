@@ -108,6 +108,13 @@ netlify/functions/
   skill-snapshot.js       — live app state + autoHeal status endpoint (GET, no auth)
   github-pat.js           — GitHub PAT endpoint for Claude session access (GET, x-api-secret auth)
   generate-embedding.js   — OpenAI embedding generation
+  daily-pick.js           — Claude-generated daily outfit pick (browser, CORS, maxAttempts: 1; 4h cache)
+  monthly-report.js       — Monthly self-improvement analysis cron (1st of month 7am UTC, no CORS)
+  style-dna.js            — Style DNA extraction from wear history (browser, CORS, maxAttempts: 1)
+  wardrobe-chat.js        — Conversational AI wardrobe advisor (browser, CORS, maxAttempts: 1)
+  watch-value.js          — Watch cost-per-wear calculation (browser, CORS)
+  seasonal-audit.js       — Seasonal wardrobe audit + garment recommendations (browser, CORS)
+  run-migrations.js       — Bundled migration runner (admin, no CORS)
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
 supabase/migrations/      — SQL migration audit trail (commit .sql after every apply_migration)
