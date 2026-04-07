@@ -419,6 +419,17 @@ export default function WardrobeGrid() {
     setCachedState({ watches, garments: updated, history }).catch(() => {});
   }
 
+  // Memoized itemData — stable reference means React.memo(Cell) skips re-renders
+  // when filter/selection/theme haven't changed.
+  const cellData = useMemo(() => ({
+    items: filtered, columns: COLUMN_COUNT, isDark,
+    selectMode, selectedIds, selectedGarmentId,
+    onSelect: toggleSelect, onLongPress: handleLongPress,
+    onEdit: handleEdit,
+    selectedRef, history,
+  }), [filtered, COLUMN_COUNT, isDark, selectMode, selectedIds, selectedGarmentId,
+      toggleSelect, handleLongPress, handleEdit, history]);
+
   const tabStyle = active => ({
     padding:"5px 10px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
     border:`1px solid ${active ? "#3b82f6" : (isDark ? "#2b3140" : "#d1d5db")}`,
@@ -509,13 +520,7 @@ export default function WardrobeGrid() {
             rowHeight={CELL_HEIGHT}
             width={gridWidth}
             height={Math.min(GRID_HEIGHT, rowCount * CELL_HEIGHT)}
-            itemData={{
-              items: filtered, columns: COLUMN_COUNT, isDark,
-              selectMode, selectedIds, selectedGarmentId,
-              onSelect: toggleSelect, onLongPress: handleLongPress,
-              onEdit: handleEdit,
-              selectedRef, history,
-            }}
+            itemData={cellData}
           >
             {Cell}
           </FixedSizeGrid>
