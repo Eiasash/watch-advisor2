@@ -45,7 +45,7 @@ async function _doPull() {
     const [{ data: garments, error: gErr }, { data: history, error: hErr }] = await Promise.all([
       // Phase 1: metadata only — no photo_url/thumbnail_url to keep payload <200KB
       supabase.from("garments").select("id,name,type,category,color,formality,hash,photo_type,needs_review,duplicate_of,exclude_from_wardrobe,photo_angles,brand,subtype,notes,material,pattern,seasons,contexts,price,accent_color,weight,fit,created_at").order("created_at", { ascending: true }).limit(500),
-      supabase.from("history").select("*").order("date", { ascending: false }).limit(365),
+      supabase.from("history").select("*").order("date", { ascending: false }).limit(9999),
     ]);
 
     if (gErr) throw new Error(gErr.message);
