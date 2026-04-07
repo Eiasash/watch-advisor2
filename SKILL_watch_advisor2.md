@@ -11,13 +11,13 @@
 |--------|-------|
 | Version | 1.9.1 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 135 |
-| Source LOC | ~22,200 |
+| Source files | 136 |
+| Source LOC | ~22,500 |
 | Test files | 130 |
 | Tests | 2311+ |
-| Netlify functions | 25 (+2 helpers) |
+| Netlify functions | 25 (+3 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 52 JSX |
+| Components | 58 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB |
 | Live URL | https://watch-advisor2.netlify.app |
@@ -32,7 +32,7 @@ src/
   app/
     AppShell.jsx          — router, nav, theme, boot status, storage quota toast
     bootstrap.js          — IDB load → cloud pull, task handlers (incl. upload-angle with URL writeback), backup + storage quota + debugStore push
-  components/             — 26 JSX UI components (see Key Components)
+  components/             — 58 JSX UI components (see Key Components)
   config/
     scoringWeights.js     — SCORE_WEIGHTS + STYLE_LEARN — ONLY place to change weights
     strapRules.js         — strap-shoe rule constants
