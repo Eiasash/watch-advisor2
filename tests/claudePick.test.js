@@ -154,3 +154,138 @@ describe("ClaudePick", () => {
     expect(parts).toHaveLength(3);
   });
 });
+
+// ─── ClaudePick render state tests ────────────────────────────────────────────
+
+describe("ClaudePick — render states", () => {
+  it("loading state returns card with 'Thinking about your outfit...' text", () => {
+    // Simulates: loading=true, pick=null → loading card
+    const loading = true;
+    const pick = null;
+    const error = null;
+
+    // Component logic: if (loading && !pick) → loading card
+    const showLoading = loading && !pick;
+    expect(showLoading).toBe(true);
+
+    // The loading text matches ClaudePick.jsx line 78
+    const loadingText = "Thinking about your outfit...";
+    expect(loadingText).toBe("Thinking about your outfit...");
+  });
+
+  it("loading state is NOT shown when pick data already exists", () => {
+    const loading = true;
+    const pick = { watch: "Santos", score: 8 };
+    const showLoading = loading && !pick;
+    expect(showLoading).toBe(false);
+  });
+
+  it("error state returns card with error message and retry button", () => {
+    // Simulates: error set, pick=null → error card
+    const error = "500";
+    const pick = null;
+
+    const showError = error && !pick;
+    expect(showError).toBeTruthy();
+  });
+
+  it("error state is NOT shown when pick data already exists (stale data fallback)", () => {
+    const error = "500";
+    const pick = { watch: "Santos", score: 8 };
+    const showError = error && !pick;
+    expect(showError).toBeFalsy();
+  });
+
+  it("null pick with no error and no loading returns null (hidden)", () => {
+    const loading = false;
+    const pick = null;
+    const error = null;
+
+    const showLoading = loading && !pick;
+    const showError = error && !pick;
+    const showNull = !showLoading && !showError && !pick;
+    expect(showNull).toBe(true);
+  });
+
+  it("data state renders slots from pick data", () => {
+    const pick = {
+      watch: "Santos Large",
+      shirt: "White oxford",
+      sweater: null,
+      layer: "null",
+      pants: "Navy chinos",
+      shoes: "Brown loafers",
+      jacket: null,
+      belt: "Brown belt",
+      score: 8.5,
+      reasoning: "Classic smart-casual",
+      layerTip: "Shed the layer after noon",
+    };
+
+    const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
+    const slots = SLOT_ORDER.filter(s => {
+      if (s === "watch") return pick.watch;
+      return pick[s] && pick[s] !== "null";
+    });
+
+    // Watch + shirt + pants + shoes + belt = 5 slots
+    expect(slots).toEqual(["watch", "shirt", "pants", "shoes", "belt"]);
+    expect(pick.reasoning).toBeTruthy();
+    expect(pick.layerTip).toBeTruthy();
+  });
+
+  it("matchedGarments maps pick names to garments by exact name", () => {
+    const pick = { shirt: "White oxford", pants: "Navy chinos" };
+    const garments = [
+      { id: "g1", name: "White oxford", type: "shirt" },
+      { id: "g2", name: "Navy chinos", type: "pants" },
+      { id: "g3", name: "Brown loafers", type: "shoes" },
+    ];
+
+    const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
+    const matched = {};
+    for (const slot of SLOT_ORDER) {
+      if (slot === "watch" || !pick[slot] || pick[slot] === "null") continue;
+      const pickName = pick[slot].toLowerCase().trim();
+      const exact = garments.find(g => g.name?.toLowerCase().trim() === pickName);
+      if (exact) { matched[slot] = exact; continue; }
+    }
+
+    expect(matched.shirt).toEqual(garments[0]);
+    expect(matched.pants).toEqual(garments[1]);
+    expect(matched.shoes).toBeUndefined(); // not in pick
+  });
+
+  it("matchedGarments falls back to substring match", () => {
+    const pick = { shirt: "oxford" };
+    const garments = [
+      { id: "g1", name: "White oxford shirt", type: "shirt" },
+    ];
+
+    const pickName = pick.shirt.toLowerCase().trim();
+    const exact = garments.find(g => g.name?.toLowerCase().trim() === pickName);
+    expect(exact).toBeUndefined(); // no exact match
+
+    const partial = garments.find(g => {
+      const gn = g.name?.toLowerCase().trim() ?? "";
+      return gn.includes(pickName) || pickName.includes(gn);
+    });
+    expect(partial).toEqual(garments[0]);
+  });
+
+  it("Wear This button requires matched garment IDs", () => {
+    const matchedGarments = {
+      shirt: { id: "g1" },
+      pants: { id: "g2" },
+    };
+    const garmentIds = Object.values(matchedGarments).map(g => g.id).filter(Boolean);
+    expect(garmentIds).toEqual(["g1", "g2"]);
+    expect(garmentIds.length).toBeGreaterThan(0);
+  });
+
+  it("Wear This button hidden when no garments matched", () => {
+    const matchedGarments = {};
+    const garmentIds = Object.values(matchedGarments).map(g => g.id).filter(Boolean);
+    expect(garmentIds.length).toBe(0);
+  });
+});

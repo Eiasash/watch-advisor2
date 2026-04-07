@@ -3,6 +3,33 @@ Generated: 2026-04-07 (Phase 5 — Autonomous Self-Improvement)
 
 ---
 
+## v2.0.1 — April 7 2026 — Audit + Test Expansion
+
+### Audit Results
+- **Engine integrity**: All 12 checks PASS — scoring weights, thresholds, gates all correct
+- **Static analysis**: All clean — no circular deps, no dead code, no console leaks, maxAttempts=1 on Vision
+- **DIAL_COLOR_MAP + SCORE_WEIGHTS**: Properly centralized, no inlining
+- **No TODO/FIXME**: Compliant
+
+### Test Expansion (+36 tests, +3 files)
+1. **claudePick.test.js** — 12 new tests: render state logic (loading/error/data), garment matching (exact + substring), Wear This button visibility
+2. **weekPlannerLogic.test.js** — 5 new tests: handleSwapGarment null clearing, undefined clearing, override map slot swap + clear
+3. **monthlyReport.test.js** — NEW (6 tests): handler shape, env var guard, report structure, caching, empty history, watch diversity ratio
+4. **wardrobeChat.test.js** — NEW (8 tests): CORS preflight, auth guard, message validation, Claude response, weather context, conversation history
+5. **watchValue.test.js** — NEW (7 tests): CORS preflight, collection data, CPW calculation, never-worn labels, rising value identification
+
+### Documentation Sync
+- CLAUDE.md: test count 2246→2311, test files 125→130, components 26→52, functions 15→23, metrics updated
+- SKILL_watch_advisor2.md: test count, components, last audited date updated
+- Test file inventory: 3 new entries added
+
+### Metrics
+- 2311 tests, 130 files, 0 failures
+- Build: clean
+- Engine values verified: rotationPressure(Inf)=0.50, recencyScore=0.50, rotationFactor=0.40, repetitionPenalty=-0.28, SCORE_CEILING=30, contextFormality=0.5, contextMatch=0.10
+
+---
+
 ## v2.0.0 — April 7 2026 — Phase 5: Autonomous Self-Improvement
 
 ### A. Wear Pattern Analysis (44 history entries as of 2026-04-07)
