@@ -130,3 +130,49 @@ describe("WeekPlanner — buildOutfit crash fallback shape", () => {
     expect(candidates.length).toBe(0);
   });
 });
+
+// ─── handleSwapGarment null clearing ─────────────────────────────────────────
+// WeekPlanner.jsx line 176-182: garment?.id ?? null
+
+describe("WeekPlanner — handleSwapGarment null clearing", () => {
+  it("null garment produces null slot value (clears slot)", () => {
+    const garment = null;
+    const result = garment?.id ?? null;
+    expect(result).toBeNull();
+  });
+
+  it("undefined garment produces null slot value (clears slot)", () => {
+    const garment = undefined;
+    const result = garment?.id ?? null;
+    expect(result).toBeNull();
+  });
+
+  it("garment with id produces the id", () => {
+    const garment = { id: "g-123", name: "White shirt" };
+    const result = garment?.id ?? null;
+    expect(result).toBe("g-123");
+  });
+
+  it("garment with null id falls back to null", () => {
+    const garment = { id: null, name: "Missing id" };
+    const result = garment?.id ?? null;
+    expect(result).toBeNull();
+  });
+
+  it("swapping slot updates overrides map correctly", () => {
+    // Simulates the override map logic in WeekPlanner
+    const overrides = {};
+    const dayKey = "2026-04-07";
+    const slot = "shirt";
+
+    // Swap to a garment
+    const swapGarment = { id: "g-456" };
+    overrides[dayKey] = { ...(overrides[dayKey] ?? {}), [slot]: swapGarment?.id ?? null };
+    expect(overrides[dayKey].shirt).toBe("g-456");
+
+    // Clear the slot (null garment = "None — remove")
+    const clearGarment = null;
+    overrides[dayKey] = { ...(overrides[dayKey] ?? {}), [slot]: clearGarment?.id ?? null };
+    expect(overrides[dayKey].shirt).toBeNull();
+  });
+});

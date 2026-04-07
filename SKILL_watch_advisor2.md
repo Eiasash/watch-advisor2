@@ -13,15 +13,15 @@
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 135 |
 | Source LOC | ~22,200 |
-| Test files | 125 |
-| Tests | 2246+ |
+| Test files | 130 |
+| Tests | 2311+ |
 | Netlify functions | 24 (+2 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 33 JSX |
+| Components | 52 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-04-06 |
+| Last audited | 2026-04-07 |
 
 ---
 
@@ -110,7 +110,7 @@ netlify/functions/
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
 supabase/migrations/      — SQL migration audit trail (commit .sql after every apply_migration)
-tests/                    — 113 Vitest test files (2087+ tests)
+tests/                    — 130 Vitest test files (2311+ tests)
 ```
 
 ---
@@ -381,7 +381,7 @@ Expected healthy state:
 
 ### Run tests
 ```bash
-timeout 120 node node_modules/.bin/vitest run   # 2246+ tests, zero failures
+timeout 120 node node_modules/.bin/vitest run   # 2311+ tests, zero failures
 ```
 
 ### Trigger auto-heal
