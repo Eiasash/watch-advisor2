@@ -1,8 +1,7 @@
 /**
  * TodayPanel — "What I'm wearing today"
- * Pick garments (multi-select from wardrobe + camera/gallery)
- * Pick a watch + strap
- * Log to history
+ * Thin orchestrator: state + data wiring only.
+ * UI is split across src/components/today/ sub-components.
  */
 import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
@@ -15,6 +14,11 @@ import { fetchWeather }     from "../weather/weatherService.js";
 import { neglectedGenuine, wearStreak } from "../domain/rotationStats.js";
 import { useRecommendationEngine } from "../hooks/useRecommendationEngine.js";
 import { useTodayFormState }       from "../hooks/useTodayFormState.js";
+
+import WatchPicker, { daysSinceWorn } from "./today/WatchPicker.jsx";
+import GarmentPicker    from "./today/GarmentPicker.jsx";
+import RotationNudges   from "./today/RotationNudges.jsx";
+import LoggedSummary    from "./today/LoggedSummary.jsx";
 import StreakBadge      from "./today/StreakBadge.jsx";
 import NeglectedAlert   from "./today/NeglectedAlert.jsx";
 import TomorrowPreview  from "./today/TomorrowPreview.jsx";
@@ -22,21 +26,19 @@ import LogButton        from "./today/LogButton.jsx";
 import NeverWornSpotlight from "./today/NeverWornSpotlight.jsx";
 import SeasonalTransition from "./today/SeasonalTransition.jsx";
 import LastWornWithWatch from "./today/LastWornWithWatch.jsx";
-import StrapSuggestion from "./today/StrapSuggestion.jsx";
-import QuickStrapSwap from "./today/QuickStrapSwap.jsx";
-import WeeklyDigest from "./today/WeeklyDigest.jsx";
+import StrapSuggestion  from "./today/StrapSuggestion.jsx";
+import QuickStrapSwap   from "./today/QuickStrapSwap.jsx";
 import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
-import TailorCountdown from "./today/TailorCountdown.jsx";
+import TailorCountdown  from "./today/TailorCountdown.jsx";
 
-import SelfiePanel from "./SelfiePanel.jsx";
+import SelfiePanel  from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
-import ClaudePick from "./ClaudePick.jsx";
+import ClaudePick   from "./ClaudePick.jsx";
 
 // Live date key — recomputes every render, rolls over at midnight
 function useTodayKey() {
   const [key, setKey] = useState(() => new Date().toISOString().split("T")[0]);
   useEffect(() => {
-    // Recalculate time until next midnight and reset then
     function scheduleRollover() {
       const now = new Date();
       const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) - now;
@@ -53,29 +55,13 @@ function useTodayKey() {
 }
 
 const CONTEXT_OPTIONS = [
-  { key: null,                     label: "Any Vibe" },
-  { key: "smart-casual",           label: "Smart Casual" },
-  { key: "clinic",                 label: "Clinic" },
-  { key: "casual",                 label: "Casual" },
-  { key: "date-night",             label: "Date Night" },
-  { key: "shift",                  label: "On-Call" },
+  { key: null,            label: "Any Vibe" },
+  { key: "smart-casual", label: "Smart Casual" },
+  { key: "clinic",       label: "Clinic" },
+  { key: "casual",       label: "Casual" },
+  { key: "date-night",   label: "Date Night" },
+  { key: "shift",        label: "On-Call" },
 ];
-// Normalised to lowercase to match garment.type values (DB stores lowercase)
-const GARMENT_PRIORITY = ["shoes", "pants", "shirt", "sweater", "jacket", "coat"];
-
-/** Compute days since a watch was last worn, or null if never */
-function daysSinceWorn(watchId, history) {
-  const today = new Date().toISOString().slice(0, 10);
-  for (let i = 0; i < history.length; i++) {
-    if (history[i].watchId === watchId) {
-      const d = history[i].date;
-      if (!d) continue;
-      const diff = Math.round((new Date(today) - new Date(d)) / 86400000);
-      return diff;
-    }
-  }
-  return null;
-}
 
 /** Get top AI-recommended watches for today's context with scores */
 function getWatchRecommendations(watches, history, context) {
@@ -89,8 +75,6 @@ function getWatchRecommendations(watches, history, context) {
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, 3);
 }
-
-/** Explain why a watch is recommended */
 
 function resizeImage(file, maxPx = 480) {
   return new Promise(resolve => {
@@ -111,40 +95,6 @@ function resizeImage(file, maxPx = 480) {
   });
 }
 
-// ── Garment thumbnail ─────────────────────────────────────────────────────────
-function GarmentThumb({ g, selected, onClick, isDark }) {
-  const border = isDark ? "#2b3140" : "#d1d5db";
-  return (
-    <div onClick={onClick}
-      style={{ position: "relative", cursor: "pointer", borderRadius: 10, overflow: "hidden",
-               border: `2px solid ${selected ? "#3b82f6" : border}`,
-               background: isDark ? "#0f131a" : "#f3f4f6",
-               transition: "border-color 0.12s" }}>
-      {(g.thumbnail || g.photoUrl) ? (
-        <img src={g.thumbnail || g.photoUrl} alt={g.name}
-          style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
-      ) : (
-        <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", flexDirection: "column",
-                      alignItems: "center", justifyContent: "center", gap: 4 }}>
-          <div style={{ fontSize: 24 }}>👕</div>
-          <div style={{ fontSize: 11, color: isDark ? "#6b7280" : "#9ca3af", textAlign: "center", padding: "0 4px" }}>
-            {g.name?.slice(0,18)}
-          </div>
-        </div>
-      )}
-      {selected && (
-        <div style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%",
-                      background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, color: "#fff", fontWeight: 700 }}>✓</div>
-      )}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent,#00000088)",
-                    padding: "12px 4px 4px", fontSize: 11, color: "#fff", textAlign: "center", fontWeight: 600 }}>
-        {g.type?.toUpperCase()}
-      </div>
-    </div>
-  );
-}
-
 export default function TodayPanel() {
   const TODAY_ISO    = useTodayKey();
   const { mode }     = useThemeStore();
@@ -158,29 +108,23 @@ export default function TodayPanel() {
   const removeEntry  = useHistoryStore(s => s.removeEntry);
   const entries      = useHistoryStore(s => s.entries) ?? [];
 
-  // Today's logged entries (multiple watches per day supported)
   const todayEntries = useMemo(() => entries.filter(e => e.date === TODAY_ISO), [entries, TODAY_ISO]);
-  const todayEntry = todayEntries[todayEntries.length - 1] ?? null; // latest, for form init
+  const todayEntry = todayEntries[todayEntries.length - 1] ?? null;
 
-  // Rotation intelligence — derived from history only
   const neglected = useMemo(() => neglectedGenuine(watches, entries), [watches, entries]);
   const streak    = useMemo(() => wearStreak(entries), [entries]);
 
-  // Weather must be declared BEFORE useRecommendationEngine which receives it as a prop.
-  // Declaring it after caused a TDZ crash in Rollup's minified output (const S used before init).
-  const [weather,   setWeather]   = useState(null);
+  // Weather must be declared BEFORE useRecommendationEngine (avoids TDZ crash in minified output).
+  const [weather, setWeather] = useState(null);
 
-  // Tomorrow preview — logic encapsulated in hook
   const { tomorrowPreview } = useRecommendationEngine({ watches, garments, entries, weather });
 
-  // Default watch: prefer today's already-logged watch, else top recommendation
   const defaultWatchId = useMemo(() => {
     if (todayEntry?.watchId) return todayEntry.watchId;
     const recs = getWatchRecommendations(watches, entries, null);
     return recs[0]?.watch?.id ?? watches.find(w => !w.retired)?.id ?? null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Form state — encapsulated in hook
   const {
     selected, setSelected, toggleGarment,
     watchId,  setWatchId,
@@ -196,7 +140,6 @@ export default function TodayPanel() {
 
   useEffect(() => {
     // Delay 3s to avoid geolocation-on-page-load Lighthouse flag.
-    // UI renders with tempC=22 default until real weather arrives.
     const t = setTimeout(() => {
       fetchWeather().then(setWeather).catch(() => {});
     }, 3000);
@@ -209,23 +152,9 @@ export default function TodayPanel() {
   const text   = isDark ? "#e2e8f0" : "#1f2937";
   const muted  = isDark ? "#8b93a7" : "#9ca3af";
 
-  const activeGarments = useMemo(() =>
-    garments.filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo" && g.type !== "outfit-shot"),
-    [garments]
-  );
-
-  const garmentTypes = useMemo(() => {
-    const types = new Set(activeGarments.map(g => (g.type ?? "").toLowerCase()).filter(Boolean));
-    return ["all", ...GARMENT_PRIORITY.filter(t => types.has(t)), ...[...types].filter(t => !GARMENT_PRIORITY.includes(t))];
-  }, [activeGarments]);
-
-  const visible = filter === "all"
-    ? activeGarments
-    : activeGarments.filter(g => (g.type ?? "").toLowerCase() === filter);
-
-  const selectedWatch = watches.find(w => w.id === watchId);
-  const watchStraps   = Object.values(straps).filter(s => s.watchId === watchId);
-  const activeStrapId = activeStrap[watchId];
+  const selectedWatch  = watches.find(w => w.id === watchId);
+  const watchStraps    = Object.values(straps).filter(s => s.watchId === watchId);
+  const activeStrapId  = activeStrap[watchId];
   const activeStrapObj = activeStrapId ? straps[activeStrapId] : null;
 
   const handleCamera = useCallback(async (e) => {
@@ -236,12 +165,10 @@ export default function TodayPanel() {
     e.target.value = "";
   }, []);
 
-
   const handleLog = useCallback(async () => {
     if (!watchId) return;
     if (selected.size < 2) return;
     if (!context) return;
-    // Per-watch entry: same watch on same day = update, different watch = new entry
     const entryId = `wear-${TODAY_ISO}-${watchId}`;
     const entry = {
       id: entryId,
@@ -260,20 +187,16 @@ export default function TodayPanel() {
     };
     upsertEntry(entry);
 
-    // Update lastWorn on each worn garment
     const wornIds = [...selected];
     wornIds.forEach(id => updateGarment(id, { lastWorn: TODAY_ISO }));
 
-    // Style learning — writes to the store that scoreGarment actually reads from.
-    // Previously wrote to prefStore which was siloed from scoring (scoreGarment
-    // reads useStyleLearnStore). The wear→learn→score loop was broken.
+    // Style learning — writes to the store that scoreGarment reads from.
     try {
       const { useStyleLearnStore } = await import("../stores/styleLearnStore.js");
       const wornG = garments.filter(g => selected.has(g.id));
       useStyleLearnStore.getState().recordWear(wornG);
     } catch(_) {}
 
-    // Increment strap wear count for tracking
     if (activeStrapId) {
       try {
         useStrapStore.getState().incrementWearCount(activeStrapId);
@@ -284,344 +207,37 @@ export default function TodayPanel() {
   }, [watchId, activeStrapId, activeStrapObj, selected, context, notes, extraImgs,
       outfitScore, selectedWatch, upsertEntry, updateGarment, garments, todayEntry, TODAY_ISO]);
 
-  // ── Summary card when already logged ────────────────────────────────────────
+  // ── Already logged ───────────────────────────────────────────────────────────
   if (logged && todayEntries.length > 0) {
     return (
-      <div style={{ padding: "0 0 80px" }}>
-        <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 20, marginBottom: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: text, marginBottom: 4 }}>
-            Today ✅ {todayEntries.length > 1 && <span style={{ fontSize: 13, fontWeight: 600, color: muted }}>· {todayEntries.length} watches</span>}
-          </div>
-          <div style={{ fontSize: 13, color: muted, marginBottom: 16 }}>{TODAY_ISO}</div>
-
-          {todayEntries.map((te, teIdx) => {
-            const watch = watches.find(w => w.id === te.watchId);
-            const wornGarments = garments.filter(g => (te.garmentIds ?? []).includes(g.id));
-            const slotLabel = te.timeSlot
-              ? { morning: "\u{1F305} Morning", afternoon: "\u2600\uFE0F Afternoon", evening: "\u{1F306} Evening", night: "\u{1F319} Night" }[te.timeSlot]
-              : null;
-            return (
-              <div key={te.id} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${border}` }}>
-                {(slotLabel || todayEntries.length > 1) && (
-                  <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6,
-                                color: te.timeSlot ? "#3b82f6" : "#22c55e" }}>
-                    {slotLabel ?? (teIdx === 0 ? "Primary" : `Outfit ${teIdx + 1}`)}
-                  </div>
-                )}
-                {watch && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10,
-                                padding: "10px 14px", borderRadius: 10, background: isDark ? "#0f131a" : "#f3f4f6",
-                                border: `1px solid ${border}` }}>
-                    <div style={{ fontSize: 28 }}>{watch.emoji ?? "⌚"}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{watch.brand} {watch.model}</div>
-                      <div style={{ fontSize: 11, color: muted }}>
-                        {te.strapLabel ?? watch.dial + " dial"} · {te.context ?? "any vibe"}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {wornGarments.length > 0 && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(80px,1fr))", gap: 8 }}>
-                    {wornGarments.map(g => (
-                      <div key={g.id} style={{ borderRadius: 8, overflow: "hidden", border: `1px solid ${border}` }}>
-                        {(g.thumbnail || g.photoUrl) ? (
-                          <img src={g.thumbnail || g.photoUrl} alt={g.name ?? g.color ?? ""} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", display: "block" }} />
-                        ) : (
-                          <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", alignItems: "center",
-                                        justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 20 }}>👕</div>
-                        )}
-                        <div style={{ padding: "2px 4px", fontSize: 11, color: muted, textAlign: "center" }}>{g.name?.slice(0,14)}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {(te.outfitPhotos?.length || te.outfitPhoto) && (
-                  <div style={{ marginTop: 8 }}>
-                    <div style={{ display: "grid",
-                                  gridTemplateColumns: (te.outfitPhotos?.length ?? 1) > 1 ? "repeat(2, 1fr)" : "1fr", gap: 6 }}>
-                      {(te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : [])).map((src, i) => (
-                        <img key={i} src={src} alt={`outfit ${i + 1}`}
-                          style={{ width: "100%", borderRadius: 10, objectFit: "cover", maxHeight: 300, display: "block" }} />
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                      <label style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: `1px dashed ${border}`,
-                                      display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                                      cursor: "pointer", color: muted, fontSize: 10, fontWeight: 600 }}>
-                        📁 Add from gallery
-                        <input type="file" accept="image/*" multiple style={{ display: "none" }}
-                          onChange={async (ev) => {
-                            const files = Array.from(ev.target.files ?? []);
-                            if (!files.length) return;
-                            const existing = te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []);
-                            const newPhotos = [];
-                            for (const file of files) {
-                              const dataUrl = await new Promise((res) => {
-                                const reader = new FileReader();
-                                reader.onload = () => res(reader.result);
-                                reader.readAsDataURL(file);
-                              });
-                              newPhotos.push(dataUrl);
-                            }
-                            const all = [...existing, ...newPhotos];
-                            upsertEntry({ ...te, outfitPhoto: all[0], outfitPhotos: all });
-                          }}
-                        />
-                      </label>
-                      <label style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: `1px dashed ${border}`,
-                                      display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                                      cursor: "pointer", color: muted, fontSize: 10, fontWeight: 600 }}>
-                        📷 Camera
-                        <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
-                          onChange={async (ev) => {
-                            const file = ev.target.files?.[0];
-                            if (!file) return;
-                            const existing = te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []);
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const all = [...existing, reader.result];
-                              upsertEntry({ ...te, outfitPhoto: all[0], outfitPhotos: all });
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                )}
-                {/* Editable notes */}
-                <div style={{ marginTop: 8 }}>
-                  <textarea
-                    defaultValue={te.notes ?? ""}
-                    placeholder="Add notes or remarks..."
-                    onBlur={(ev) => {
-                      const val = ev.target.value.trim();
-                      if (val !== (te.notes ?? "")) {
-                        upsertEntry({ ...te, notes: val || null });
-                      }
-                    }}
-                    rows={2}
-                    style={{
-                      width: "100%", padding: "8px 10px", borderRadius: 8,
-                      border: `1px solid ${border}`, background: isDark ? "#0f131a" : "#f9fafb",
-                      color: text, fontSize: 12, resize: "none", fontFamily: "inherit",
-                      outline: "none", boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                {/* Edit / Delete buttons */}
-                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <button onClick={() => {
-                    setSelected(new Set(te.garmentIds ?? []));
-                    setWatchId(te.watchId ?? watches[0]?.id ?? null);
-                    setContext(te.context ?? null);
-                    setNotes(te.notes ?? "");
-                    setExtraImgs(te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []));
-                    setLogged(false);
-                  }} style={{
-                    flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                    border: `1px solid ${isDark ? "#3b82f633" : "#3b82f633"}`,
-                    background: isDark ? "#1e3a5f18" : "#eff6ff",
-                    color: "#3b82f6", cursor: "pointer",
-                  }}>
-                    ✏️ Edit outfit
-                  </button>
-                  <button onClick={() => {
-                    if (confirm("Delete this entry?")) {
-                      removeEntry(te.id);
-                      if (todayEntries.length <= 1) setLogged(false);
-                    }
-                  }} style={{
-                    padding: "8px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                    border: `1px solid ${isDark ? "#ef444433" : "#ef444433"}`,
-                    background: isDark ? "#7f1d1d18" : "#fef2f2",
-                    color: "#ef4444", cursor: "pointer",
-                  }}>
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Photo prompt — quick camera + gallery buttons to attach outfit photo */}
-        {todayEntries.length > 0 && !todayEntries[0]?.outfitPhoto && !todayEntries[0]?.outfitPhotos?.length && (
-          <div style={{ background: card, borderRadius: 14, border: `1px dashed ${border}`, padding: 14, marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
-              <span style={{ fontSize: 20 }}>📸</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: text }}>Add outfit photo</span>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${border}`,
-                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                              cursor: "pointer", color: muted, fontSize: 12, fontWeight: 600 }}>
-                📁 Gallery
-                <input type="file" accept="image/*" multiple style={{ display: "none" }}
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    if (!files.length) return;
-                    const entry = todayEntries[0];
-                    if (!entry) return;
-                    const photos = [];
-                    for (const file of files) {
-                      const dataUrl = await new Promise((res) => {
-                        const reader = new FileReader();
-                        reader.onload = () => res(reader.result);
-                        reader.readAsDataURL(file);
-                      });
-                      photos.push(dataUrl);
-                    }
-                    upsertEntry({ ...entry, outfitPhoto: photos[0], outfitPhotos: photos });
-                  }}
-                />
-              </label>
-              <label style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${border}`,
-                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                              cursor: "pointer", color: muted, fontSize: 12, fontWeight: 600 }}>
-                📷 Camera
-                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const entry = todayEntries[0];
-                    if (!entry) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      upsertEntry({ ...entry, outfitPhoto: reader.result, outfitPhotos: [reader.result] });
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                />
-              </label>
-            </div>
-            <div style={{ fontSize: 10, color: muted, marginTop: 6, textAlign: "center" }}>Snap a quick outfit pic for your history</div>
-          </div>
-        )}
-
-        {/* Share outfit card */}
-        {todayEntries.length > 0 && (
-          <button
-            onClick={async () => {
-              try {
-                const { generateOutfitCard } = await import("../domain/outfitCard.js");
-                const te = todayEntries[0];
-                const w = watches.find(x => x.id === te.watchId);
-                const wornG = garments.filter(g => (te.garmentIds ?? []).includes(g.id));
-                const outfitMap = {};
-                for (const g of wornG) {
-                  const cat = g.type ?? g.category;
-                  if (!outfitMap[cat]) outfitMap[cat] = g.name;
-                }
-                const dataUrl = await generateOutfitCard({
-                  watch: w ? `${w.brand} ${w.model}` : te.watchId,
-                  strap: te.strapLabel ?? "default",
-                  outfit: { shirt: outfitMap.shirt, pants: outfitMap.pants, shoes: outfitMap.shoes, sweater: outfitMap.sweater, jacket: outfitMap.jacket },
-                  weather: weather ? { tempC: weather.tempC } : null,
-                  score: te.score,
-                  date: new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
-                  context: te.context,
-                });
-                // Try native share, fallback to download
-                if (navigator.share) {
-                  const blob = await (await fetch(dataUrl)).blob();
-                  const file = new File([blob], "outfit-card.png", { type: "image/png" });
-                  await navigator.share({ files: [file], title: "Today's Outfit" });
-                } else {
-                  const a = document.createElement("a");
-                  a.href = dataUrl;
-                  a.download = `outfit-${TODAY_ISO}.png`;
-                  a.click();
-                }
-              } catch (_) {}
-            }}
-            style={{
-              width: "100%", padding: "10px 14px", borderRadius: 12,
-              border: `1px solid ${border}`, background: card,
-              color: text, fontSize: 13, fontWeight: 600, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              marginBottom: 14,
-            }}
-          >
-            <span>🎴</span> Share outfit card
-          </button>
-        )}
-
-        <WeeklyDigest />
-        <ClaudePick />
-
-        <SelfiePanel context={todayEntry?.context ?? null} watchId={todayEntry?.watchId ?? null} />
-
-        {/* Quick watch check-in — adds a NEW entry, doesn't overwrite */}
-        <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", textTransform: "uppercase",
-                        letterSpacing: "0.06em", marginBottom: 10 }}>
-            ⌚ Log another watch
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 6 }}>
-            {watches.filter(w => !todayEntries.some(te => te.watchId === w.id)).slice(0, 8).map(w => {
-              const strapObj = activeStrap[w.id] && straps[activeStrap[w.id]];
-              return (
-                <button key={w.id}
-                  onClick={() => {
-                    upsertEntry({
-                      id: `wear-${TODAY_ISO}-${w.id}`,
-                      date: TODAY_ISO,
-                      watchId: w.id,
-                      garmentIds: [],
-                      quickLog: true,
-                      context: context ?? null,
-                      strapId: activeStrap[w.id] ?? null,
-                      strapLabel: strapObj?.label ?? null,
-                      loggedAt: new Date().toISOString(),
-                    });
-                  }}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
-                           borderRadius: 8, border: `1px solid ${border}`, background: isDark ? "#0f131a" : "#f9fafb",
-                           color: text, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{w.emoji ?? "⌚"}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {w.model}
-                    </div>
-                    <div style={{ fontSize: 10, color: muted }}>
-                      {w.replica ? "replica" : "genuine"}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          {watches.length > todayEntries.length + 8 && (
-            <button
-              onClick={() => { setLogged(false); }}
-              style={{ marginTop: 8, fontSize: 11, color: "#3b82f6", background: "none", border: "none", cursor: "pointer" }}>
-              Show all {watches.length} watches →
-            </button>
-          )}
-        </div>
-
-        <button onClick={() => {
-          // Reload form state from the latest logged entry before switching to edit mode
-          if (todayEntry) {
-            setSelected(new Set(todayEntry.garmentIds ?? []));
-            setWatchId(todayEntry.watchId ?? watches[0]?.id ?? null);
-            setContext(todayEntry.context ?? null);
-            setNotes(todayEntry.notes ?? "");
-            setExtraImgs(todayEntry.outfitPhotos ?? (todayEntry.outfitPhoto ? [todayEntry.outfitPhoto] : []));
-          }
-          setLogged(false);
-        }} style={{ width: "100%", padding: "12px 0", borderRadius: 10,
-          border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 13, cursor: "pointer" }}>
-          Edit today's log
-        </button>
-      </div>
+      <LoggedSummary
+        todayEntries={todayEntries}
+        todayEntry={todayEntry}
+        watches={watches}
+        garments={garments}
+        weather={weather}
+        straps={straps}
+        activeStrap={activeStrap}
+        upsertEntry={upsertEntry}
+        removeEntry={removeEntry}
+        context={context}
+        setSelected={setSelected}
+        setWatchId={setWatchId}
+        setContext={setContext}
+        setNotes={setNotes}
+        setExtraImgs={setExtraImgs}
+        setLogged={setLogged}
+        isDark={isDark}
+        card={card}
+        border={border}
+        text={text}
+        muted={muted}
+        TODAY_ISO={TODAY_ISO}
+      />
     );
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────────
+  // ── Pre-log form ─────────────────────────────────────────────────────────────
   return (
     <div style={{ padding: "0 0 100px" }}>
       <div style={{ fontSize: 20, fontWeight: 800, color: text, marginBottom: 4 }}>Today</div>
@@ -661,53 +277,20 @@ export default function TodayPanel() {
         </div>
       )}
 
-      {/* Watch picker */}
-      <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase",
-                      letterSpacing: "0.06em", marginBottom: 10 }}>Watch</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {watches.map(w => {
-            const dsw = daysSinceWorn(w.id, entries);
-            return (
-            <div key={w.id} onClick={() => setWatchId(w.id)}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10,
-                       border: `2px solid ${watchId === w.id ? "#3b82f6" : border}`, cursor: "pointer",
-                       background: watchId === w.id ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent" }}>
-              <div style={{ fontSize: 22 }}>{w.emoji ?? "\u231A"}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: text }}>{w.brand} {w.model}</div>
-                <div style={{ fontSize: 11, color: muted }}>{w.dualDial ? `${w.dualDial.sideA}/${w.dualDial.sideB}` : w.dial} dial{w.replica ? " \u00B7 replica" : " \u00B7 genuine"}</div>
-              </div>
-              {dsw !== null && (
-                <div style={{ fontSize: 10, fontWeight: 600, color: dsw >= 7 ? "#22c55e" : dsw <= 2 ? "#ef4444" : muted }}>
-                  {dsw === 0 ? "today" : `${dsw}d`}
-                </div>
-              )}
-              {watchId === w.id && <div style={{ color: "#3b82f6", fontWeight: 700, fontSize: 16 }}>{"\u2713"}</div>}
-            </div>
-            );
-          })}
-        </div>
-
-        {/* Strap picker for selected watch */}
-        {watchStraps.length > 0 && (
-          <div style={{ marginTop: 12, borderTop: `1px solid ${border}`, paddingTop: 12 }}>
-            <div style={{ fontSize: 11, color: muted, fontWeight: 600, marginBottom: 8 }}>STRAP</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {watchStraps.map(s => (
-                <button key={s.id}
-                  onClick={() => useStrapStore.getState().setActiveStrap(watchId, s.id)}
-                  style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${activeStrapId === s.id ? "#3b82f6" : border}`,
-                           background: activeStrapId === s.id ? "#3b82f622" : "transparent",
-                           color: activeStrapId === s.id ? "#3b82f6" : muted,
-                           fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Watch + strap picker */}
+      <WatchPicker
+        watches={watches}
+        watchId={watchId}
+        onSelectWatch={setWatchId}
+        entries={entries}
+        straps={straps}
+        activeStrap={activeStrap}
+        isDark={isDark}
+        card={card}
+        border={border}
+        text={text}
+        muted={muted}
+      />
 
       {/* Last worn with this watch + strap suggestion */}
       {watchId && !logged && (
@@ -752,39 +335,18 @@ export default function TodayPanel() {
       )}
 
       {/* Garment picker */}
-      <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Garments {selected.size > 0 && <span style={{ color: "#3b82f6" }}>({selected.size})</span>}
-          </div>
-          {selected.size > 0 && (
-            <button onClick={() => setSelected(new Set())}
-              style={{ fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>
-              Clear all
-            </button>
-          )}
-        </div>
-
-        {/* Type filter */}
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 4 }}>
-          {garmentTypes.map(t => (
-            <button key={t} onClick={() => setFilter(t)}
-              style={{ padding: "4px 10px", borderRadius: 14, border: "none", fontSize: 11, fontWeight: 600,
-                       whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0,
-                       background: filter === t ? "#3b82f6" : (isDark ? "#1a1f2b" : "#f3f4f6"),
-                       color: filter === t ? "#fff" : muted }}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(88px,1fr))", gap: 8 }}>
-          {visible.map(g => (
-            <GarmentThumb key={g.id} g={g} selected={selected.has(g.id)}
-              onClick={() => toggleGarment(g.id)} isDark={isDark} />
-          ))}
-        </div>
-      </div>
+      <GarmentPicker
+        garments={garments}
+        selected={selected}
+        toggleGarment={toggleGarment}
+        onClearAll={() => setSelected(new Set())}
+        filter={filter}
+        setFilter={setFilter}
+        isDark={isDark}
+        card={card}
+        border={border}
+        muted={muted}
+      />
 
       {/* Outfit photo */}
       <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
@@ -830,13 +392,17 @@ export default function TodayPanel() {
                    color: text, fontSize: 13, resize: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
       </div>
 
-      {/* Rotation nudge — neglected genuine + streak */}
+      {/* Rotation nudges — neglected genuine + streak */}
       {!logged && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-          <NeglectedWatchNudge watches={watches} history={entries} currentWatchId={watchId} onSelectWatch={setWatchId} isDark={isDark} />
-          <NeglectedAlert neglected={neglected} watchId={watchId} onSelect={setWatchId} />
-          <StreakBadge streak={streak} />
-        </div>
+        <RotationNudges
+          watches={watches}
+          history={entries}
+          neglected={neglected}
+          streak={streak}
+          currentWatchId={watchId}
+          onSelectWatch={setWatchId}
+          isDark={isDark}
+        />
       )}
 
       {/* Tomorrow Preview */}
@@ -859,7 +425,7 @@ export default function TodayPanel() {
         </div>
       </div>
 
-      {/* Strap warning — remind to select a strap */}
+      {/* Strap warning */}
       {watchId && !activeStrapId && (
         <div style={{ fontSize: 11, color: "#f59e0b", textAlign: "center", marginBottom: 8 }}>
           ⚠️ No strap selected — tap the watch above to pick a strap for better tracking
@@ -883,7 +449,6 @@ export default function TodayPanel() {
         </div>
       )}
 
-      {/* Log button — disabled without watch, garments, and context */}
       <LogButton onLog={handleLog} disabled={!watchId || selected.size < 2 || !context} />
     </div>
   );
