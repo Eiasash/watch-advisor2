@@ -128,6 +128,43 @@ describe("colorMatchScore — expanded compatible colors", () => {
   });
 });
 
+// ─── Test 2b: colorMatchScore fuzzy near-miss scoring (0.85) ─────────────────
+
+describe("colorMatchScore — fuzzy near-miss scoring", () => {
+  // "dark olive" is not in DIAL_COLOR_MAP["green"] but "olive" is → same family → 0.85
+  it("green dial + dark olive garment → 0.85", () => {
+    expect(colorMatchScore({ dial: "green" }, { color: "dark olive" })).toBe(0.85);
+  });
+
+  // "forest green" is not listed but "green" is in white dial → same family → 0.85
+  it("white dial + forest green garment → 0.85", () => {
+    expect(colorMatchScore({ dial: "white" }, { color: "forest green" })).toBe(0.85);
+  });
+
+  // "sage" is green-family; black dial has "green" → 0.85
+  it("black dial + sage garment → 0.85", () => {
+    expect(colorMatchScore({ dial: "black" }, { color: "sage" })).toBe(0.85);
+  });
+
+  // "dark navy" is navy-family; grey dial has "navy" → 0.85
+  it("grey dial + dark navy garment → 0.85", () => {
+    expect(colorMatchScore({ dial: "grey" }, { color: "dark navy" })).toBe(0.85);
+  });
+
+  // "off-white" is white-family; black dial has "white" → 0.85
+  it("black dial + off-white garment → 0.85", () => {
+    expect(colorMatchScore({ dial: "black" }, { color: "off-white" })).toBe(0.85);
+  });
+
+  // True mismatches: still 0.3 even with fuzzy check
+  it("red dial + dark olive garment → 0.3 (green not compatible with red)", () => {
+    expect(colorMatchScore({ dial: "red" }, { color: "dark olive" })).toBe(0.3);
+  });
+  it("turquoise dial + dark red garment → 0.3", () => {
+    expect(colorMatchScore({ dial: "turquoise" }, { color: "dark red" })).toBe(0.3);
+  });
+});
+
 // ─── Test 3: AI color normalization ─────────────────────────────────────────
 
 // We can't directly import normalizeAIColor (it's a local function in pipeline.js),

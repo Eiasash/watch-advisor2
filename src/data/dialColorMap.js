@@ -5,6 +5,40 @@
  * Keys = watch dial values from watchSeed.js
  * Values = garment colors that pair well with that dial
  */
+
+/**
+ * Garment color family groupings for fuzzy colorMatchScore.
+ * Substring matching: "dark olive" → includes "olive" → green family.
+ * Used to give near-miss scores (0.85) to unlisted shades of a compatible color.
+ */
+export const GARMENT_COLOR_FAMILIES = {
+  black:    ["black", "charcoal", "graphite"],
+  white:    ["white", "cream", "ivory", "ecru", "off-white"],
+  grey:     ["grey", "gray", "slate", "ash"],
+  navy:     ["navy", "indigo", "dark navy"],
+  blue:     ["blue", "cobalt", "denim"],
+  green:    ["green", "olive", "sage", "khaki", "military"],
+  earth:    ["brown", "tan", "camel", "cognac", "sand", "stone", "beige"],
+  burgundy: ["burgundy", "wine", "maroon", "brick", "rust"],
+  teal:     ["teal", "turquoise"],
+  warm:     ["red", "coral", "orange"],
+  purple:   ["purple", "lavender", "violet"],
+  yellow:   ["yellow", "mustard"],
+};
+
+/**
+ * Returns the color family for a garment color string, or null.
+ * Uses substring matching so "dark olive" → green, "light blue" → blue.
+ */
+export function getGarmentColorFamily(color) {
+  if (!color) return null;
+  const c = color.toLowerCase();
+  for (const [family, members] of Object.entries(GARMENT_COLOR_FAMILIES)) {
+    if (members.some(m => c.includes(m))) return family;
+  }
+  return null;
+}
+
 export const DIAL_COLOR_MAP = {
   "silver-white": ["black", "navy", "white", "beige", "slate", "charcoal", "blue", "light blue", "cream", "indigo", "dark navy", "lavender", "brick", "denim", "camel"],
   "green":        ["olive", "beige", "brown", "gray", "grey", "khaki", "cream", "tan", "green", "charcoal", "sand", "dark brown", "camel", "denim"],

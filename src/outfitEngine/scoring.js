@@ -25,7 +25,7 @@
  */
 
 import { STYLE_FORMALITY_TARGET } from "./watchStyles.js";
-import { DIAL_COLOR_MAP } from "../data/dialColorMap.js";
+import { DIAL_COLOR_MAP, getGarmentColorFamily } from "../data/dialColorMap.js";
 import { SCORE_WEIGHTS, STYLE_LEARN } from "../config/scoringWeights.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 import {
@@ -65,12 +65,25 @@ export function clearScoreCache() {
 
 /**
  * Score how well a garment's color matches the watch dial.
- * Returns 0–1.
+ * Returns 1.0 for exact match in DIAL_COLOR_MAP, 0.85 for a near-miss
+ * (same color family as a compatible color), 0.3 for no relation.
+ * Eliminates the cliff-edge where "dark olive" scores the same as "pink"
+ * against a green dial.
  */
 export function colorMatchScore(watch, garment) {
   const compatible = DIAL_COLOR_MAP[watch.dial] ?? [];
-  const gc = (garment.color ?? "").toLowerCase();
-  return compatible.includes(gc) ? 1.0 : 0.3;
+  const gc = (garment.color ?? "").toLowerCase().trim();
+
+  if (compatible.includes(gc)) return 1.0;
+
+  // Near-miss: garment color is in the same family as any compatible color
+  const gcFamily = getGarmentColorFamily(gc);
+  if (gcFamily) {
+    const hasCompatibleInFamily = compatible.some(c => getGarmentColorFamily(c) === gcFamily);
+    if (hasCompatibleInFamily) return 0.85;
+  }
+
+  return 0.3;
 }
 
 /**
