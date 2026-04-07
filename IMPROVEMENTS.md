@@ -3,6 +3,28 @@ Generated: 2026-04-07 (Phase 5 — Autonomous Self-Improvement)
 
 ---
 
+## v2.0.2 — April 7 2026 — Doc Sync Audit
+
+### Audit Results
+- **2311 tests, 130 files, 0 failures** — full suite clean
+- **Build**: clean (~570 kB, 167 kB gzip)
+- **Health snapshot**: all green — garmentCount=70, orphans=0, activeModel=claude-sonnet-4-6
+- **Engine integrity**: 13/13 checks PASS (rotationFactor=0.40, repetitionPenalty=-0.28, SCORE_CEILING=30, contextFormality=0.5, contextMatch=0.10, sweater warm transition correct, default temp=15)
+- **Static analysis**: 1 pre-existing circular dep (historyPersistence↔historyStore), no new issues
+- **Console.log**: all guarded behind `import.meta.env.DEV` in src/; server functions use intentional operational logging
+- **maxAttempts**: all Vision functions = 1 ✅
+
+### Doc Metric Corrections
+- CLAUDE.md: source files 135→136, LOC ~22,200→~22,500, components 52→58, functions 25+2→25+3, test LOC ~19,000→~22,800
+- SKILL_watch_advisor2.md: same metric sync + §2 component count 26→58
+- Architecture header: 105 files→136 files, ~17,700→~22,500 LOC
+
+### npm Advisory (non-blocking)
+- 7 vulnerabilities (4 high, 3 low) — all in `puppeteer-core` via `@netlify/plugin-lighthouse` (dev-only)
+- Fix requires breaking change to lighthouse plugin; no production impact
+
+---
+
 ## v2.0.1 — April 7 2026 — Audit + Test Expansion
 
 ### Audit Results

@@ -12,7 +12,7 @@ Stack: React 18 (createElement, no JSX except .jsx files) + Vite 7 + Zustand 4 +
 ## Architecture — strict, do not violate
 
 ```
-src/                          105 files, ~17,700 LOC
+src/                          136 files, ~22,500 LOC
   app/            bootstrap.js (boot sequence), AppShell.jsx (layout + tabs)
   components/     UI only — no business logic (23 JSX files)
     WatchDashboard.jsx     today's watch + outfit builder + AI stylist
@@ -76,7 +76,7 @@ src/                          105 files, ~17,700 LOC
     watchSeed.js  ← NEVER REPLACE. 23 watches (13 genuine, 10 replica). Sacred.
   aiStylist/      claudeStylist.js — builds prompt + calls Netlify function
   workers/        photoWorker.js — image processing worker (USE_WORKER=false currently)
-netlify/functions/           25 serverless functions + 2 helpers, ~2,700 LOC
+netlify/functions/           25 serverless functions + 3 helpers, ~3,700 LOC
   _claudeClient.js     Claude API client helper (shared, retry, model config, token logging)
   _blobCache.js        Netlify Blobs caching layer (shared)
   bulk-tag.js          bulk garment tagger — seasons/contexts/material/pattern (Haiku)
@@ -323,14 +323,14 @@ tests/
 
 | Metric | Value |
 |--------|-------|
-| Source files | 135 |
-| Source LOC | ~22,200 |
+| Source files | 136 |
+| Source LOC | ~22,500 |
 | Test files | 130 |
-| Test LOC | ~19,000 |
+| Test LOC | ~22,800 |
 | Tests | 2311+ |
 | Test pass rate | 100% |
-| Netlify functions | 25 (+2 helpers) |
-| Components | 52 JSX |
+| Netlify functions | 25 (+3 helpers) |
+| Components | 58 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB (167 kB gzip) |
 
