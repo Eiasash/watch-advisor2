@@ -134,7 +134,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2311+ tests across 130 files** — run `npm test` to see current count
+- **2359 tests across 131 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -146,7 +146,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (130 files)
+### Test file inventory (131 files)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -325,9 +325,9 @@ tests/
 |--------|-------|
 | Source files | 136 |
 | Source LOC | ~22,500 |
-| Test files | 130 |
+| Test files | 131 |
 | Test LOC | ~22,800 |
-| Tests | 2311+ |
+| Tests | 2359 |
 | Test pass rate | 100% |
 | Netlify functions | 25 (+3 helpers) |
 | Components | 58 JSX |
@@ -351,7 +351,7 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (2311+ tests)
+- `npm test` → vitest (2359 tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`

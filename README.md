@@ -35,7 +35,7 @@ The engine infers a day profile from calendar event keywords:
 
 ## Watch collection
 
-Seeded in `src/data/watchSeed.js` with 13 genuine pieces. Never modified by sync or imports.
+Seeded in `src/data/watchSeed.js` with 23 watches (13 genuine, 10 replica). Never modified by sync or imports.
 
 ---
 
@@ -62,23 +62,47 @@ Supabase is **optional**. The app runs fully offline using IndexedDB.
 npm test
 ```
 
-23 tests covering outfit engine, watch rotation, day profile mapping, and edge cases.
+2,359 tests across 131 files — outfit engine, watch rotation, day profiles, scoring, AI functions, stores, components, and integration flows.
 
 ---
 
 ## Architecture
 
 ```
-src/
-  app/           bootstrap + orchestration only
-  components/    UI only — no logic
-  engine/        scoring, rotation, day profiles, outfit generation
+src/                    136 files, ~22,500 LOC
+  app/                  bootstrap.js, AppShell.jsx
+  components/           58 JSX components — UI only, no logic
+  config/               scoringWeights.js, strapRules.js, weatherRules.js
+  engine/               watch scoring, rotation, day profiles (legacy, active)
+  outfitEngine/         PRIMARY: outfitBuilder.js, scoring.js, confidence.js,
+                        explain.js, watchStyles.js, strapRecommender.js,
+                        scoringFactors/ (diversity, repetition, rotation, season, weight)
   features/
-    wardrobe/    photo import pipeline
-  services/      cache (IndexedDB), Supabase sync, image pipeline
-  stores/        Zustand state (watches, wardrobe, history)
-  workers/       photoWorker.js — thumbnail + hash off the main thread
-  data/          watchSeed.js — never replaced
+    wardrobe/           photo import pipeline, classifier, garment naming
+    watch/              WatchSelector.jsx
+    outfits/            generateOutfit.js
+    weather/            getWeather.js, weatherRules.js
+  classifier/           pipeline.js, colorDetection.js, duplicateDetection.js, personFilter.js
+  services/             localCache.js (IDB), supabaseSync.js, imagePipeline.js,
+                        backgroundQueue.js, backupService.js, photoQueue.js, safeFetch.js
+  stores/               9 Zustand stores: wardrobe, watch, history, theme, pref,
+                        strap, reject, styleLearn, + historyPersistence
+  domain/               contextMemory.js, rotationStats.js, preferenceLearning.js, historyWindow.js
+  data/                 watchSeed.js — IMMUTABLE, never replace
+  aiStylist/            claudeStylist.js — Claude API outfit critique
+  workers/              photoWorker.js — image processing (currently disabled)
+netlify/functions/      25 serverless functions + 3 helpers (~3,700 LOC)
+  auto-heal.js          daily self-healing cron (5am UTC)
+  push-brief.js         daily + weekly push notification brief (6:30am UTC)
+  daily-pick.js         Claude's Pick — AI outfit recommendation
+  ai-audit.js           full wardrobe audit
+  wardrobe-chat.js      conversational wardrobe actions (fix tags, add straps, exclude garments)
+  monthly-report.js     monthly outfit diversity report
+  watch-value.js        CPW calculation + rising value identification
+  skill-snapshot.js     live health endpoint
+  ... (25 total)
+supabase/
+  schema.sql            garments, watches, history tables
 ```
 
 ### Startup performance
@@ -92,8 +116,8 @@ No network call blocks first render. No images are processed at startup.
 ### Wardrobe import pipeline
 
 1. File selected → `runPhotoImport(file)`
-2. `processImage(file)` dispatches to a Web Worker (canvas fallback if worker unavailable)
-3. Worker generates 240×240 WebP thumbnail + dHash perceptual hash
+2. `processImage(file)` runs on main thread (canvas; worker disabled)
+3. Generates 240×240 WebP thumbnail + dHash perceptual hash
 4. Original file queued for background IndexedDB caching
 5. Garment object returned immediately — UI never freezes
 
@@ -106,8 +130,54 @@ No network call blocks first render. No images are processed at startup.
 
 ---
 
+## Recent changes (April 2026)
+
+### v1.12.12
+- **Wardrobe chat actions** — chat can now fix garment tags, add straps, exclude garments, fix history entries
+- **Strap-shoe rule disabled** — removed hard veto; shoe scoring now independent
+- **Garment picker collapsed** by default in outfit builder
+- **Rating backlog cleared** — stale nudge ratings removed
+- **JLC Reverso** — brown alligator strap added
+- **TodayPanel / WatchDashboard** — ReferenceError crashes resolved
+- **Tests:** 2,311 → 2,359 (+48), files 130 → 131
+  - `weatherService.test.js` — 14 new tests: `getLayerTransition()`, WeatherBadge hourly display
+  - `weekPlannerLogic.test.js` — 9 new tests: OutfitSlotChip "None — remove", `_isLogged` per-slot overrides
+
+### v1.12.10–v1.12.11
+- Score persistence, slot removal, strap add, nudge dismiss, rating UX fixes
+- Retired watches in picker, header count, vibe labels, dial flip, strap nag
+
+### v1.12.9 (March–April 2026)
+- Monthly report function: watch diversity ratio, caching
+- Wardrobe chat function: CORS, auth, conversation history
+- Watch value function: CPW calculation, rising value identification
+- ClaudePick component: slot filtering, score colors, weather display
+- Auto-heal: tuning cap isolation, orphan reset, stagnation detection
+- Scoring weights: `neverWornRecencyScore` 0.75→0.50, `neverWornRotationPressure` 0.70→0.50
+
+---
+
 ## Supabase schema
 
 See `supabase/schema.sql`.
 
 Tables: `watches`, `garments`, `history`.
+
+---
+
+## Codebase metrics
+
+| Metric | Value |
+|--------|-------|
+| Version | 1.12.12 |
+| Source files | 136 |
+| Source LOC | ~22,500 |
+| Test files | 131 |
+| Tests | 2,359 |
+| Test pass rate | 100% |
+| Netlify functions | 25 (+3 helpers) |
+| Components | 58 JSX |
+| Zustand stores | 9 |
+| Build output | ~570 kB (167 kB gzip) |
+| Live | https://watch-advisor2.netlify.app |
+| Last audited | 2026-04-08 |
