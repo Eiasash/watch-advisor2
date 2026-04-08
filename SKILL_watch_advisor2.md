@@ -13,15 +13,15 @@
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 136 |
 | Source LOC | ~22,500 |
-| Test files | 130 |
-| Tests | 2311+ |
+| Test files | 131 |
+| Tests | 2359 |
 | Netlify functions | 25 (+3 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
 | Components | 58 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB |
 | Live URL | https://watch-advisor2.netlify.app |
-| Last audited | 2026-04-07 |
+| Last audited | 2026-04-08 |
 
 ---
 
@@ -118,7 +118,7 @@ netlify/functions/
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
 supabase/migrations/      — SQL migration audit trail (commit .sql after every apply_migration)
-tests/                    — 130 Vitest test files (2311+ tests)
+tests/                    — 131 Vitest test files (2359 tests)
 ```
 
 ---
@@ -243,8 +243,8 @@ Visible in DebugConsole + `app_config.monthly_token_usage`.
 ### Supabase Tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | 73 active, fully tagged (seasons/contexts/material/weight) |
-| `history` | Wear log | 44+ entries. `payload_version: "v1"` on all entries |
+| `garments` | Wardrobe items | 72 active, fully tagged (seasons/contexts/material/weight) |
+| `history` | Wear log | 45 entries. `payload_version: "v1"` on all entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
@@ -397,7 +397,7 @@ Expected healthy state:
 
 ### Run tests
 ```bash
-timeout 120 node node_modules/.bin/vitest run   # 2311+ tests, zero failures
+timeout 120 node node_modules/.bin/vitest run   # 2359 tests, zero failures
 ```
 
 ### Trigger auto-heal

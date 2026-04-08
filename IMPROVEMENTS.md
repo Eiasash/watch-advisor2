@@ -1,4 +1,45 @@
 # Auto-Generated Improvement Proposals
+Generated: 2026-04-08 (Phase 7 — Skill/doc update after audit-fix-deploy)
+
+## Session 2026-04-08
+
+### Fixes shipped
+- Corrected stale scoring weight values in IMPROVEMENTS.md (neverWornRecencyScore 0.75→0.50, neverWornRotationPressure 0.70→0.50, both changed April 2026)
+
+### Tests added (2311 → 2359, 130 → 131 files)
+- `weatherService.test.js`: 14 new tests for `getLayerTransition()` and WeatherBadge hourly display logic (tempMorning/tempMidday/tempEvening, shed-layer hint threshold)
+- `weekPlannerLogic.test.js`: 9 new tests — OutfitSlotChip "None — remove" option, `_isLogged` entries accepting per-slot overrides
+
+### Dead code confirmed
+- `netlify/functions/watch-rec.js` — still uncalled from client, confirmed dead code
+- Circular dep `historyPersistence → historyStore` — intentional, already handled with dynamic imports
+
+### DB state (from skill-snapshot)
+- garments: 72 active (was 73)
+- history: 45 entries (was 44)
+- orphans: 0
+- autoHeal: healthy (7 checks, 0 fixes, ran 2026-04-08 05:00)
+- activeModel: claude-sonnet-4-6
+- token cost April 2026: $4.55 (vs $0.68 in March — higher usage)
+
+### Wardrobe health (from snapshot)
+| Category | Count | Wear rate 30d | Idle |
+|----------|-------|---------------|------|
+| Shirts | 22 | 55% | 10 |
+| Sweaters | 15 | 67% | 5 |
+| Pants | 15 | 80% | 3 |
+| Shoes | 10 | 70% | 3 |
+| Jackets | 5 | 80% | 1 |
+| Belts | 4 | 100% | 0 |
+
+Shirt idle improved significantly (was 17/21 = 81% idle in March, now 10/22 = 45% idle).
+
+### Remaining TODO
+1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check DB-flagged. Physical tailor visit needed.
+2. **Pasha navy alligator strap** — pending DayDayWatchband delivery.
+3. **Tudor canvas straps** — navy + olive pending. Move to blackbay.straps[] when delivered.
+
+---
 Generated: 2026-04-07 (Phase 5 — Autonomous Self-Improvement)
 
 ---
@@ -323,8 +364,8 @@ Implemented:
 |--------|-------|--------|
 | rotationFactor | 0.40 | Correct |
 | repetitionPenalty | -0.28 | Correct |
-| neverWornRecencyScore | 0.75 | Correct |
-| neverWornRotationPressure | 0.70 | Correct |
+| neverWornRecencyScore | 0.50 | Changed April 2026 (was 0.75) |
+| neverWornRotationPressure | 0.50 | Changed April 2026 (was 0.70) |
 | warm/cool coherence | +0.20 | Correct |
 | diversityFactor | -0.12 | Correct |
 | SCORE_CEILING | 30 | **FIXED** (was 0.60) |
