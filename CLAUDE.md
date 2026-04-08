@@ -12,7 +12,7 @@ Stack: React 18 (createElement, no JSX except .jsx files) + Vite 7 + Zustand 4 +
 ## Architecture — strict, do not violate
 
 ```
-src/                          136 files, ~22,500 LOC
+src/                          145 files, ~23,000 LOC
   app/            bootstrap.js (boot sequence), AppShell.jsx (layout + tabs)
   components/     UI only — no business logic (23 JSX files)
     WatchDashboard.jsx     today's watch + outfit builder + AI stylist
@@ -76,7 +76,7 @@ src/                          136 files, ~22,500 LOC
     watchSeed.js  ← NEVER REPLACE. 23 watches (13 genuine, 10 replica). Sacred.
   aiStylist/      claudeStylist.js — builds prompt + calls Netlify function
   workers/        photoWorker.js — image processing worker (USE_WORKER=false currently)
-netlify/functions/           25 serverless functions + 3 helpers, ~3,700 LOC
+netlify/functions/           24 serverless functions + 3 helpers, ~3,900 LOC
   _claudeClient.js     Claude API client helper (shared, retry, model config, token logging)
   _blobCache.js        Netlify Blobs caching layer (shared)
   bulk-tag.js          bulk garment tagger — seasons/contexts/material/pattern (Haiku)
@@ -96,7 +96,6 @@ netlify/functions/           25 serverless functions + 3 helpers, ~3,700 LOC
   push-brief.js        daily + Monday weekly AI brief push notification (6:30am UTC)
   supabase-keepalive.js  Supabase ping every 5 days
   skill-snapshot.js    live health endpoint (GET, no auth)
-  github-pat.js        GitHub PAT for Claude session access (GET, x-api-secret auth)
 supabase/
   schema.sql      garments, watches, history tables
 ```
@@ -134,7 +133,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2359 tests across 131 files** — run `npm test` to see current count
+- **2350 tests across 131 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -146,7 +145,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (131 files)
+### Test file inventory (131 files, 2350 tests)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -268,6 +267,20 @@ tests/
   monthlyReport.test.js        monthly-report function: report structure, watch diversity, caching
   wardrobeChat.test.js         wardrobe-chat function: CORS, auth, conversation history, Claude response
   watchValue.test.js           watch-value function: CPW calculation, rising values, never-worn handling
+  autoHealScoringIntegration.test.js  auto-heal ↔ scoring pipeline integration
+  buildOutfitContext.test.js   buildOutfit context parameter handling
+  clearCachedState.test.js     clearCachedState IDB cleanup
+  contextInference.test.js     context inference logic
+  currentSeason.test.js        currentSeason — Jerusalem timezone
+  normalizeAIColor.test.js     normalizeAIColor mapping
+  pairHarmonyScore.test.js     pair harmony color scoring
+  phase5_6.test.js             Phase 5/6 autonomous self-improvement
+  pullCloudStateConcurrent.test.js  pullCloudState concurrency handling
+  runMigrations.test.js        run-migrations function
+  scoringOverrides.test.js     scoring overrides from app_config
+  seasonContextFactor.test.js  season/context factor scoring
+  supabaseSyncSettings.test.js Supabase settings sync
+  weightFactor.test.js         weight factor — untagged/missing garment weights
 ```
 
 ### Mobile-first UX rules
@@ -323,14 +336,14 @@ tests/
 
 | Metric | Value |
 |--------|-------|
-| Source files | 136 |
-| Source LOC | ~22,500 |
+| Source files | 145 |
+| Source LOC | ~23,000 |
 | Test files | 131 |
-| Test LOC | ~22,800 |
-| Tests | 2359 |
+| Test LOC | ~23,000 |
+| Tests | 2350 |
 | Test pass rate | 100% |
-| Netlify functions | 25 (+3 helpers) |
-| Components | 58 JSX |
+| Netlify functions | 24 (+3 helpers) |
+| Components | 63 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB (167 kB gzip) |
 
@@ -351,10 +364,9 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (2359 tests)
+- `npm test` → vitest (2350 tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`
-- GitHub PAT auto-fetch: `GET /.netlify/functions/github-pat` with header `x-api-secret: <OPEN_API_KEY>`
 - Dependencies: react 18, react-dom 18, zustand 4, @supabase/supabase-js 2, idb 8, react-window 1
 - DevDeps: vite 7, vitest 4, @vitejs/plugin-react 5, jsdom 28, @netlify/blobs 10

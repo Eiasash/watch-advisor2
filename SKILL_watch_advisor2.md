@@ -11,13 +11,13 @@
 |--------|-------|
 | Version | 1.12.13 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 136 |
-| Source LOC | ~22,500 |
+| Source files | 145 |
+| Source LOC | ~23,000 |
 | Test files | 131 |
-| Tests | 2359 |
-| Netlify functions | 25 (+3 helpers) |
+| Tests | 2350 |
+| Netlify functions | 24 (+3 helpers) |
 | Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
-| Components | 58 JSX |
+| Components | 63 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB |
 | Live URL | https://watch-advisor2.netlify.app |
@@ -106,7 +106,6 @@ netlify/functions/
   push-brief.js           — scheduled daily outfit brief + no-wear 7-day reminder (cron, no CORS)
   supabase-keepalive.js   — Supabase ping every 5 days (cron, no CORS)
   skill-snapshot.js       — live app state + autoHeal status endpoint (GET, no auth)
-  github-pat.js           — GitHub PAT endpoint for Claude session access (GET, x-api-secret auth)
   generate-embedding.js   — OpenAI embedding generation
   daily-pick.js           — Claude-generated daily outfit pick (browser, CORS, maxAttempts: 1; 4h cache)
   monthly-report.js       — Monthly self-improvement analysis cron (1st of month 7am UTC, no CORS)
@@ -118,12 +117,12 @@ netlify/functions/
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
 supabase/migrations/      — SQL migration audit trail (commit .sql after every apply_migration)
-tests/                    — 131 Vitest test files (2359 tests)
+tests/                    — 131 Vitest test files (2350 tests)
 ```
 
 ---
 
-## §3 Scoring System (last audited: 2026-04-06)
+## §3 Scoring System (last audited: 2026-04-08)
 
 ### Base formula
 ```
@@ -244,7 +243,7 @@ Visible in DebugConsole + `app_config.monthly_token_usage`.
 | Table | Purpose | Notes |
 |-------|---------|-------|
 | `garments` | Wardrobe items | 72 active, fully tagged (seasons/contexts/material/weight) |
-| `history` | Wear log | 45 entries. `payload_version: "v1"` on all entries |
+| `history` | Wear log | 47 entries. `payload_version: "v1"` on all entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
@@ -381,12 +380,7 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 GET https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
 ```
 
-### GitHub PAT (auto-fetch at session start)
-```
-GET https://watch-advisor2.netlify.app/.netlify/functions/github-pat
-Header: x-api-secret: <OPEN_API_KEY>
-```
-Returns: `{ "pat": "github_pat_..." }` — use for clone/push to `Eiasash/watch-advisor2`.
+### Skill snapshot
 Returns: `garmentCount`, `orphanedHistoryCount`, `activeModel`, `tokenUsage`,
 `autoHeal`, `outfitQualityTrend`, `wardrobeHealth`, `health` checks.
 
@@ -400,7 +394,7 @@ Expected healthy state:
 
 ### Run tests
 ```bash
-timeout 120 node node_modules/.bin/vitest run   # 2359 tests, zero failures
+timeout 120 node node_modules/.bin/vitest run   # 2350 tests, zero failures
 ```
 
 ### Trigger auto-heal

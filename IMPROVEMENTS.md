@@ -1,5 +1,29 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-08 (v1.12.13 — audit-fix-deploy full cycle)
+Generated: 2026-04-08 (v1.12.14 — audit-fix-deploy full cycle)
+
+## Session 2026-04-08b (v1.12.14) — Doc Sync + Metric Correction
+
+### Audit Results
+- **Static analysis**: Clean — no circular deps (historyPersistence↔historyStore pre-existing), no dead code, no inlined constants, maxAttempts=1 on all Vision functions
+- **Engine integrity**: 14 checks verified. rotationFactor=0.40, repetitionPenalty=-0.28, SCORE_CEILING=30, contextFormality=0.5, contextMatch=0.10, coherence=+0.20, shiftWatch gate active, default temp=15, sweater warm transition=18°C/4.0
+- **Intentional changes noted**: neverWornRotationPressure=0.50 (was 0.75), recencyScore=0.50 (was 0.75) — April 2026 auto-heal tuning
+- **Supabase (via snapshot)**: 72 active garments, 47 history entries, 0 orphans, 0 dupes
+- **Tests**: 2350 tests, 131 files, 0 failures
+- **Build**: clean (~570 kB)
+- **Snapshot health gate**: ALL pass — garmentCount=72, orphans=0, activeModel=claude-sonnet-4-6, all health="ok", tokenUsage.month=2026-04
+
+### Fixes shipped
+1. **Doc metric corrections** — Source files 136→145, LOC ~22,500→~23,000, test LOC ~22,800→~23,000, components 58→63, functions 25→24 (+3 helpers), tests 2359→2350
+2. **Removed stale github-pat.js references** — function was deleted but references remained in CLAUDE.md and SKILL_watch_advisor2.md
+3. **Updated history count** — 45→47 entries in SKILL §5
+
+### No scoring weight changes needed
+- Watch rotation: healthy (no single watch dominant)
+- Garment stagnation: healthy
+- Never-worn: 28% (below 50% threshold)
+- Score distribution: 6.5–9 (varied)
+
+---
 
 ## Session 2026-04-08 (v1.12.13)
 
