@@ -35,12 +35,12 @@ describe("strapShoeScore — colored alligator straps have specific shoe rules",
     expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "white" })).toBe(1.0);
   });
 
-  it("navy alligator + burgundy shoes → 0.0 (navy strap still hard-blocks unrelated colors)", () => {
-    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "burgundy" })).toBe(0.0);
+  it("navy alligator + burgundy shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore({ strap: "navy alligator" }, { type: "shoes", color: "burgundy" })).toBe(1.0);
   });
 
-  it("grey alligator + tan shoes → 0.3 (grey strap tolerates non-ideal shoes)", () => {
-    expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "tan" })).toBe(0.3);
+  it("grey alligator + tan shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore({ strap: "grey alligator" }, { type: "shoes", color: "tan" })).toBe(1.0);
   });
 
   it("grey alligator + black shoes → 1.0 (grey strap + black shoes = preferred)", () => {
@@ -55,8 +55,8 @@ describe("strapShoeScore — colored alligator straps have specific shoe rules",
     expect(strapShoeScore({ strap: "teal leather" }, { type: "shoes", color: "white" })).toBe(1.0);
   });
 
-  it("teal leather + brown shoes → 0.3 (teal strap tolerates non-ideal shoes)", () => {
-    expect(strapShoeScore({ strap: "teal leather" }, { type: "shoes", color: "brown" })).toBe(0.3);
+  it("teal leather + brown shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore({ strap: "teal leather" }, { type: "shoes", color: "brown" })).toBe(1.0);
   });
 });
 
@@ -81,8 +81,8 @@ describe("strapShoeScore — navy hybrid strap priority", () => {
   it("navy canvas strap + brown shoes → 1.0 (navy allows brown since Mar 2026)", () => {
     expect(strapShoeScore({ strap: "navy canvas" }, { type: "shoes", color: "brown" })).toBe(1.0);
   });
-  it("plain rubber strap (no color) + brown shoes → 0.8 (pure rubber = soft path only)", () => {
-    expect(strapShoeScore({ strap: "white rubber" }, { type: "shoes", color: "brown" })).toBe(0.8);
+  it("plain rubber strap + brown shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore({ strap: "white rubber" }, { type: "shoes", color: "brown" })).toBe(1.0);
   });
 });
 
@@ -101,8 +101,8 @@ describe("strapShoeScore — honey/cognac/caramel strap variants", () => {
     expect(strapShoeScore({ strap: "caramel calfskin" }, { type: "shoes", color: "dark brown" })).toBe(1.0);
   });
 
-  it("honey leather + black shoes → 0.0", () => {
-    expect(strapShoeScore({ strap: "honey leather" }, { type: "shoes", color: "black" })).toBe(0.0);
+  it("honey leather + black shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore({ strap: "honey leather" }, { type: "shoes", color: "black" })).toBe(1.0);
   });
 });
 
@@ -117,8 +117,8 @@ describe("strapShoeScore — suede strap", () => {
     expect(strapShoeScore({ strap: "brown suede" }, { type: "shoes", color: "brown" })).toBe(1.0);
   });
 
-  it("black suede + brown shoes → 0.0", () => {
-    expect(strapShoeScore({ strap: "black suede" }, { type: "shoes", color: "brown" })).toBe(0.0);
+  it("black suede + brown shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore({ strap: "black suede" }, { type: "shoes", color: "brown" })).toBe(1.0);
   });
 });
 
@@ -216,10 +216,10 @@ describe("scoreGarment — type field", () => {
     expect(score).toBeGreaterThan(0);
   });
 
-  it("shoes with type field apply strap-shoe rule", () => {
+  it("shoes with type field score > 0 (rule disabled)", () => {
     const watch = { dial: "black", formality: 7, style: "dress", strap: "black leather" };
     const brownShoes = { type: "shoes", color: "brown", formality: 7 };
-    expect(scoreGarment(watch, brownShoes)).toBe(0);
+    expect(scoreGarment(watch, brownShoes)).toBeGreaterThan(0);
   });
 });
 

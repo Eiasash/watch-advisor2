@@ -169,12 +169,13 @@ describe("shuffle-style diversity via heavy fake history", () => {
     expect(outfit.sweater).toBeNull();
   });
 
-  it("strap-shoe coordination: brown leather penalizes black shoes", () => {
+  it("strap-shoe rule disabled: both shoe colors score > 0 with brown leather strap", () => {
     const brownStrapWatch = { ...MOCK_WATCH, strap: "brown leather" };
     const scoreBlack = garmentScore(brownStrapWatch, MOCK_GARMENTS.find(g => g.id === "sh1"), { tempC: 18 }, []);
     const scoreBrown = garmentScore(brownStrapWatch, MOCK_GARMENTS.find(g => g.id === "sh2"), { tempC: 18 }, []);
-    // Brown shoes should score higher than black with brown strap
-    expect(scoreBrown).toBeGreaterThan(scoreBlack);
+    // strapShoeScore disabled — both shoes score > 0
+    expect(scoreBlack).toBeGreaterThan(0);
+    expect(scoreBrown).toBeGreaterThan(0);
   });
 
   it("bracelet strap does not penalize any shoe color", () => {

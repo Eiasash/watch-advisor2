@@ -20,14 +20,14 @@ describe("strapShoeScore — black leather strap", () => {
   it("black shoes → 1.0", () => {
     expect(strapShoeScore(watch, { type: "shoes", color: "black" })).toBe(1.0);
   });
-  it("brown shoes → 0.0 (hard constraint)", () => {
-    expect(strapShoeScore(watch, { type: "shoes", color: "brown" })).toBe(0.0);
+  it("brown shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(watch, { type: "shoes", color: "brown" })).toBe(1.0);
   });
-  it("tan shoes → 0.0", () => {
-    expect(strapShoeScore(watch, { type: "shoes", color: "tan" })).toBe(0.0);
+  it("tan shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(watch, { type: "shoes", color: "tan" })).toBe(1.0);
   });
-  it("white shoes → 0.0", () => {
-    expect(strapShoeScore(watch, { type: "shoes", color: "white" })).toBe(0.0);
+  it("white shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(watch, { type: "shoes", color: "white" })).toBe(1.0);
   });
 });
 
@@ -43,11 +43,11 @@ describe("strapShoeScore — brown leather strap", () => {
   it("cognac shoes → 1.0", () => {
     expect(strapShoeScore(watch, { type: "shoes", color: "cognac" })).toBe(1.0);
   });
-  it("black shoes → 0.0 (hard constraint)", () => {
-    expect(strapShoeScore(watch, { type: "shoes", color: "black" })).toBe(0.0);
+  it("black shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(watch, { type: "shoes", color: "black" })).toBe(1.0);
   });
-  it("white shoes → 0.0", () => {
-    expect(strapShoeScore(watch, { type: "shoes", color: "white" })).toBe(0.0);
+  it("white shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(watch, { type: "shoes", color: "white" })).toBe(1.0);
   });
 });
 
@@ -60,8 +60,8 @@ describe("strapShoeScore — alligator strap (brown variant)", () => {
   it("tan shoes → 1.0", () => {
     expect(strapShoeScore(watch, { type: "shoes", color: "tan" })).toBe(1.0);
   });
-  it("black shoes → 0.0", () => {
-    expect(strapShoeScore(watch, { type: "shoes", color: "black" })).toBe(0.0);
+  it("black shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(watch, { type: "shoes", color: "black" })).toBe(1.0);
   });
 });
 
@@ -91,12 +91,12 @@ describe("strapShoeScore — NATO / canvas / rubber", () => {
   it("nato + tan shoes → 1.0", () => {
     expect(strapShoeScore({ strap: "nato" }, { type: "shoes", color: "tan" })).toBe(1.0);
   });
-  it("nato + red shoes → 0.8 (soft preference)", () => {
-    expect(strapShoeScore({ strap: "nato" }, { type: "shoes", color: "red" })).toBe(0.8);
+  it("nato + red shoes → 1.0 (rule disabled)", () => {
+    expect(strapShoeScore({ strap: "nato" }, { type: "shoes", color: "red" })).toBe(1.0);
   });
-  it("rubber → soft preference", () => {
+  it("rubber → 1.0 (rule disabled)", () => {
     expect(strapShoeScore({ strap: "rubber" }, { type: "shoes", color: "white" })).toBe(1.0);
-    expect(strapShoeScore({ strap: "rubber" }, { type: "shoes", color: "red" })).toBe(0.8);
+    expect(strapShoeScore({ strap: "rubber" }, { type: "shoes", color: "red" })).toBe(1.0);
   });
 });
 
@@ -196,10 +196,10 @@ describe("scoreGarment — composite", () => {
     expect(score).toBeGreaterThan(0);
   });
 
-  it("strap-shoe mismatch zeroes shoe score", () => {
+  it("strap-shoe mismatch: shoe still scores > 0 (rule disabled)", () => {
     const watch = { dial: "black", formality: 7, style: "dress", strap: "black leather" };
     const brownShoes = { type: "shoes", color: "brown", formality: 7 };
-    expect(scoreGarment(watch, brownShoes)).toBe(0);
+    expect(scoreGarment(watch, brownShoes)).toBeGreaterThan(0);
   });
 
   it("strap-shoe match preserves shoe score", () => {

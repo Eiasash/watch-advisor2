@@ -62,20 +62,20 @@ describe("eid/family context formality", () => {
 // ── Strap-shoe rule relaxation ────────────────────────────────────────────────
 
 describe("strapShoeScore context relaxation", () => {
-  it("brown strap + navy shoes = 0.0 in clinic (strict)", () => {
-    expect(strapShoeScore(brownStrapWatch, navyShoes, "clinic")).toBe(0.0);
+  it("brown strap + navy shoes = 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(brownStrapWatch, navyShoes, "clinic")).toBe(1.0);
   });
 
-  it("brown strap + navy shoes = 0.6 in eid-celebration (relaxed)", () => {
-    expect(strapShoeScore(brownStrapWatch, navyShoes, "eid-celebration")).toBe(0.6);
+  it("brown strap + navy shoes = 1.0 in eid-celebration (rule disabled)", () => {
+    expect(strapShoeScore(brownStrapWatch, navyShoes, "eid-celebration")).toBe(1.0);
   });
 
-  it("brown strap + navy shoes = 0.6 in family-event (relaxed)", () => {
-    expect(strapShoeScore(brownStrapWatch, navyShoes, "family-event")).toBe(0.6);
+  it("brown strap + navy shoes = 1.0 in family-event (rule disabled)", () => {
+    expect(strapShoeScore(brownStrapWatch, navyShoes, "family-event")).toBe(1.0);
   });
 
-  it("black strap + navy shoes = 0.6 in eid-celebration", () => {
-    expect(strapShoeScore(blackStrapWatch, navyShoes, "eid-celebration")).toBe(0.6);
+  it("black strap + navy shoes = 1.0 in eid-celebration (rule disabled)", () => {
+    expect(strapShoeScore(blackStrapWatch, navyShoes, "eid-celebration")).toBe(1.0);
   });
 
   it("brown strap + brown shoes = 1.0 regardless of context", () => {
@@ -92,13 +92,13 @@ describe("strapShoeScore context relaxation", () => {
     expect(strapShoeScore(brownStrapWatch, navyPants, "eid-celebration")).toBe(1.0);
   });
 
-  it("brown strap + navy shoes = 0.0 in smart-casual (default strict)", () => {
-    expect(strapShoeScore(brownStrapWatch, navyShoes, "smart-casual")).toBe(0.0);
+  it("brown strap + navy shoes = 1.0 in smart-casual (rule disabled)", () => {
+    expect(strapShoeScore(brownStrapWatch, navyShoes, "smart-casual")).toBe(1.0);
   });
 
-  it("null context keeps strict rules", () => {
-    expect(strapShoeScore(brownStrapWatch, navyShoes, null)).toBe(0.0);
-    expect(strapShoeScore(brownStrapWatch, navyShoes, undefined)).toBe(0.0);
+  it("null/undefined context returns 1.0 (rule disabled)", () => {
+    expect(strapShoeScore(brownStrapWatch, navyShoes, null)).toBe(1.0);
+    expect(strapShoeScore(brownStrapWatch, navyShoes, undefined)).toBe(1.0);
   });
 });
 
@@ -107,10 +107,10 @@ describe("strapShoeScore context relaxation", () => {
 describe("filterShoesByStrap with context", () => {
   const allShoes = [navyShoes, brownShoes, blackShoes, whiteShoes];
 
-  it("strict context filters out mismatched shoes", () => {
+  it("strict context — all shoes pass (rule disabled)", () => {
     const filtered = filterShoesByStrap(brownStrapWatch, allShoes, "clinic");
-    expect(filtered.map(s => s.id)).not.toContain("s1"); // navy excluded
-    expect(filtered.map(s => s.id)).toContain("s2");     // brown included
+    // strapShoeScore returns 1.0 for all shoes, so all 4 pass
+    expect(filtered.length).toBe(4);
   });
 
   it("eid context keeps all shoes (relaxed 0.6 > 0.0 threshold)", () => {
@@ -132,8 +132,8 @@ describe("scoreGarment with eid/family context", () => {
     expect(score).toBeGreaterThan(0);
   });
 
-  it("navy shoes score === 0.0 with brown strap in clinic", () => {
+  it("navy shoes score > 0 with brown strap in clinic (rule disabled)", () => {
     const score = scoreGarment(brownStrapWatch, navyShoes, {}, null, "clinic");
-    expect(score).toBe(0.0);
+    expect(score).toBeGreaterThan(0);
   });
 });

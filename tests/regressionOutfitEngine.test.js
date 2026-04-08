@@ -57,9 +57,8 @@ const clinicWardrobe = [
 describe("Fix 1: strap resolution uses straps[0].label for single-strap watches", () => {
   it("Reverso resolves to 'Navy alligator' not generic 'leather'", () => {
     const outfit = buildOutfit(reverso, clinicWardrobe, { tempC: 15 });
-    // Navy alligator → black shoes or white sneakers only (NOT brown/tan)
+    // strapShoeScore disabled — any shoe can be picked, just verify one is returned
     expect(outfit.shoes).toBeTruthy();
-    expect(["black", "white"]).toContain(outfit.shoes.color);
   });
 
   it("Navy alligator strap scores black shoes at 1.0", () => {
@@ -70,7 +69,7 @@ describe("Fix 1: strap resolution uses straps[0].label for single-strap watches"
     expect(strapShoeScore({ strap: "Navy alligator" }, { type: "shoes", color: "brown" })).toBe(1.0);
   });
 
-  it("constructs 'brown leather' from {color:'brown', type:'leather'} when no label", () => {
+  it("constructs strap string from {color, type} when no label — shoe picked (rule disabled)", () => {
     const watch = {
       id: "test", style: "dress", formality: 8, dial: "navy",
       strap: "leather", straps: [{ color: "brown", type: "leather" }],
@@ -82,7 +81,8 @@ describe("Fix 1: strap resolution uses straps[0].label for single-strap watches"
       { id: "sh2", type: "shoes", color: "black", formality: 7, name: "Black shoes" },
     ];
     const outfit = buildOutfit(watch, garments, {});
-    expect(outfit.shoes.color).toBe("brown"); // brown leather → brown shoes
+    // strapShoeScore disabled — any shoe is valid, just verify one is returned
+    expect(outfit.shoes).toBeTruthy();
   });
 });
 

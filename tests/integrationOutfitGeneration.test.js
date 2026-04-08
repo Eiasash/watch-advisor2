@@ -117,10 +117,10 @@ describe("integration — garment scoring with real watches", () => {
     expect(score).toBe(1.0); // bracelet = no restriction
   });
 
-  it("brown shoes get 0.0 with black leather strap", () => {
+  it("brown shoes get 1.0 with black leather strap (rule disabled)", () => {
     const blackLeatherWatch = { ...SAMPLE_WATCHES[0], strap: "black leather" };
     const score = strapShoeScore(blackLeatherWatch, SAMPLE_GARMENTS[5]);
-    expect(score).toBe(0.0); // brown shoes + black leather = hard veto
+    expect(score).toBe(1.0); // strapShoeScore disabled — always 1.0
   });
 
   it("black shoes get 1.0 with black leather strap", () => {

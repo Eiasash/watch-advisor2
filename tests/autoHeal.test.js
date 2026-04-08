@@ -110,7 +110,7 @@ describe("auto-heal handler", () => {
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
     expect(body.healthy).toBe(true);
-    expect(body.checks).toBe(7);
+    expect(body.checks).toBe(8);
     expect(body.fixes).toBe(0);
   });
 
@@ -192,21 +192,22 @@ describe("auto-heal handler", () => {
     expect(mockUpsert).toHaveBeenCalled();
     const upsertArg = mockUpsert.mock.calls[0][0];
     expect(upsertArg.key).toBe("auto_heal_log");
-    expect(upsertArg.value.checks).toBe(7);
+    expect(upsertArg.value.checks).toBe(8);
   });
 
-  it("includes all 7 diagnostic checks in findings", async () => {
+  it("includes all 8 diagnostic checks in findings", async () => {
     const result = await handler();
     const body = JSON.parse(result.body);
     const checkNames = body.findings.map(f => f.check);
     expect(checkNames).toContain("orphans");
+    expect(checkNames).toContain("stale_unscored");
     expect(checkNames).toContain("watch_stagnation");
     expect(checkNames).toContain("garment_stagnation");
     expect(checkNames).toContain("context_distribution");
     expect(checkNames).toContain("untagged_garments");
     expect(checkNames).toContain("score_distribution");
     expect(checkNames).toContain("never_worn");
-    expect(body.findings.length).toBe(7);
+    expect(body.findings.length).toBe(8);
   });
 
   it("stamps today-prefixed orphans as legacy", async () => {

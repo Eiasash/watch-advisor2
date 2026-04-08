@@ -30,11 +30,10 @@ describe("strapRecommender", () => {
     expect(result.recommended.color).toBe("brown");
   });
 
-  it("recommends black strap with black shoes", () => {
+  it("recommends a strap with black shoes (rule disabled — no shoe-color enforcement)", () => {
     const outfit = { shoes: blackShoes, shirt: { color: "white" }, pants: { color: "charcoal" } };
     const result = recommendStrap(watch, outfit, "formal");
     expect(result).not.toBeNull();
-    expect(result.recommended.color).toBe("black");
   });
 
   it("bracelet is always viable (score 0.70)", () => {
@@ -44,12 +43,11 @@ describe("strapRecommender", () => {
     expect(result).not.toBeNull();
   });
 
-  it("hard fails strap with mismatched shoe color", () => {
+  it("recommends some strap regardless of shoe color (rule disabled)", () => {
     const watchBrownBlack = { ...watch, straps: [brownStrap, blackStrap] };
     const outfit = { shoes: blackShoes, shirt: { color: "white" }, pants: { color: "grey" } };
     const result = recommendStrap(watchBrownBlack, outfit, "formal");
     expect(result).not.toBeNull();
-    expect(result.recommended.color).toBe("black");
   });
 
   it("formal context boosts leather strap", () => {

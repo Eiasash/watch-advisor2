@@ -19,10 +19,10 @@ describe("Integration: strapShoeScore scoring", () => {
     expect(strapShoeScore(watch, shoe)).toBe(1.0);
   });
 
-  it("brown leather strap + black shoes → 0.0 (veto)", () => {
+  it("brown leather strap + black shoes → 1.0 (rule disabled)", () => {
     const watch = { strap: "brown leather", dial: "silver-white", formality: 7 };
     const shoe = { type: "shoes", color: "black", formality: 7 };
-    expect(strapShoeScore(watch, shoe)).toBe(0.0);
+    expect(strapShoeScore(watch, shoe)).toBe(1.0);
   });
 
   it("black leather strap + black shoes → 1.0", () => {
@@ -43,7 +43,7 @@ describe("Integration: strapShoeScore scoring", () => {
 });
 
 describe("Integration: buildOutfit strap-shoe veto", () => {
-  it("brown strap watch should not pick black shoes when brown shoes available", () => {
+  it("brown strap watch picks some shoe (rule disabled, any color accepted)", () => {
     const watch = {
       id: "w1", brand: "JLC", model: "Reverso", dial: "silver-white",
       style: "dress", formality: 8, genuine: true,
@@ -57,7 +57,6 @@ describe("Integration: buildOutfit strap-shoe veto", () => {
     ];
     const outfit = buildOutfit(watch, garments, {}, [], [], {});
     expect(outfit.shoes).not.toBeNull();
-    expect(outfit.shoes.color).toBe("brown");
   });
 
   it("bracelet watch accepts any shoe color", () => {

@@ -41,14 +41,15 @@ describe("BUG A — outfitEngine grey alligator strap should not demand brown sh
     expect(score).toBeGreaterThan(0);
   });
 
-  it("genuine brown alligator strap: brown shoes still score 1.0 strapShoe", () => {
+  it("genuine brown alligator strap: all shoes score > 0 (rule disabled)", () => {
     const watch = mkWatch({ strap: "brown alligator" });
     const brownShoes = mkGarment({ type: "shoes", color: "brown" });
     const whiteShoes = mkGarment({ type: "shoes", color: "white" });
     const brownScore = garmentScore(watch, brownShoes, {}, [], "smart-casual");
     const whiteScore = garmentScore(watch, whiteShoes, {}, [], "smart-casual");
-    // Brown strap → brown shoes should score higher than brown strap → white shoes
-    expect(brownScore).toBeGreaterThan(whiteScore);
+    // strapShoeScore disabled — both score > 0
+    expect(brownScore).toBeGreaterThan(0);
+    expect(whiteScore).toBeGreaterThan(0);
   });
 
   it("teal alligator strap: does not trigger brown shoe requirement", () => {
