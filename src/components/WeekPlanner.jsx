@@ -447,7 +447,7 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
           Watch
         </div>
         <div style={{ border: `1px solid ${border}`, borderRadius: 10, overflow: "hidden", maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
-          {watches.map(w => {
+          {watches.filter(w => !w.retired).map(w => {
             const isSelected = watchId === w.id;
             return (
               <div key={w.id}
@@ -858,6 +858,8 @@ export default function WeekPlanner() {
   const [pendingAddOutfit, setPendingAddOutfit] = useState(null);
   const [pickingDay, setPickingDay]         = useState(null);
   const [aiLoadingDay, setAiLoadingDay]     = useState(null); // date string of day being AI-picked
+  // Per-day dual-dial side override: { [YYYY-MM-DD]: "A" | "B" | null }
+  const [dialSideOverrides, setDialSideOverrides] = useState({});
   // Per-day per-slot garment overrides: { [YYYY-MM-DD]: { shirt: garmentId, ... } }
   // Keyed by ISO date (not offset) so overrides survive midnight correctly.
   // Offset-keyed overrides would shift: what was tomorrow (offset:1) becomes today
@@ -989,6 +991,12 @@ export default function WeekPlanner() {
         ?? (dayWatchId && activeStrap[dayWatchId]) ?? null;
       const dayStrapObj = dayStrapId ? straps[dayStrapId] : null;
       let enrichedWatch = day.watch;
+      // Apply dual-dial side override (Reverso: "A" = navy, "B" = white)
+      const dialSide = dialSideOverrides[day.date];
+      if (enrichedWatch?.dualDial && dialSide) {
+        const dialColor = dialSide === "B" ? enrichedWatch.dualDial.sideB : enrichedWatch.dualDial.sideA;
+        enrichedWatch = { ...enrichedWatch, dial: dialColor };
+      }
       if (dayStrapObj) {
         const strapStr = dayStrapObj.type === "bracelet" || dayStrapObj.type === "integrated"
           ? dayStrapObj.type
@@ -1074,7 +1082,7 @@ export default function WeekPlanner() {
 
       return outfit;
     });
-  }, [rotation, wearable, garments, history, forecast, outfitOverrides, watchOverrides, strapOverrides, straps, activeStrap, shuffleSeeds]);
+  }, [rotation, wearable, garments, history, forecast, outfitOverrides, watchOverrides, strapOverrides, straps, activeStrap, shuffleSeeds, dialSideOverrides]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -1147,13 +1155,8 @@ export default function WeekPlanner() {
         if (match) overrides[slot] = match.id;
       }
 
-      // Apply watch override if AI picked a different watch
-      if (pick.watchId) {
-        const aiWatch = watches.find(w => w.id === pick.watchId);
-        if (aiWatch) {
-          setWatchOverrides(prev => ({ ...prev, [date]: pick.watchId }));
-        }
-      }
+      // Do NOT apply watch override from AI — user already selected their watch.
+      // AI should only recommend garments around the user's current watch choice.
 
       setOutfitOverrides(prev => ({ ...prev, [date]: overrides }));
       setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
@@ -1306,7 +1309,7 @@ export default function WeekPlanner() {
               {pickingDay === day.offset && (
                 <div style={{ marginTop: 8, border: `1px solid ${border}`, borderRadius: 10,
                               background: isDark ? "#171a21" : "#fff", overflow: "hidden" }}>
-                  {watches.map(w => {
+                  {watches.filter(w => !w.retired).map(w => {
                     const isSelected = (watchOverrides[day.date] ?? day.watch?.id) === w.id;
                     return (
                       <div key={w.id}>
@@ -1367,6 +1370,43 @@ export default function WeekPlanner() {
                         {straps[activeStrapId].useCase}
                       </div>
                     )}
+                  </div>
+                );
+              })()}
+
+              {/* Dual-dial toggle (Reverso) */}
+              {(() => {
+                const dayWatch = watches.find(w => w.id === (watchOverrides[day.date] ?? day.watch?.id));
+                if (!dayWatch?.dualDial) return null;
+                const activeSide = dialSideOverrides[day.date] ?? null;
+                const displayLabel = activeSide === "B" ? dayWatch.dualDial.sideB_label
+                  : activeSide === "A" ? dayWatch.dualDial.sideA_label
+                  : dayWatch.dualDial.sideA_label + " (auto)";
+                return (
+                  <div style={{
+                    display:"flex", alignItems:"center", gap:6, padding:"6px 10px",
+                    borderRadius:8, marginTop:8,
+                    border:`1px solid ${isDark?"#312e81":"#c7d2fe"}`,
+                    background:isDark?"#1e1b4b":"#eef2ff", fontSize:11,
+                  }}>
+                    <span style={{fontSize:13}}>🔄</span>
+                    <span style={{color:isDark?"#a5b4fc":"#4338ca", fontWeight:600}}>
+                      {displayLabel}
+                    </span>
+                    <div style={{marginLeft:"auto", display:"flex", gap:4}}>
+                      {["A","B"].map(side => (
+                        <button key={side}
+                          onClick={() => setDialSideOverrides(prev => ({ ...prev, [day.date]: prev[day.date] === side ? null : side }))}
+                          style={{
+                            fontSize:10, padding:"2px 7px", borderRadius:5, cursor:"pointer", fontWeight:600,
+                            border:`1px solid ${activeSide === side ? "#6366f1" : (isDark?"#3730a3":"#c7d2fe")}`,
+                            background:activeSide === side ? "#6366f122" : "transparent",
+                            color:isDark?"#a5b4fc":"#4338ca",
+                          }}>
+                          {side === "A" ? dayWatch.dualDial.sideA_label : dayWatch.dualDial.sideB_label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
