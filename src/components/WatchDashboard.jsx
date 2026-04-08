@@ -294,6 +294,8 @@ export default function WatchDashboard() {
   const [shuffleSeed, setShuffleSeed] = useState(0);
   // Per-slot manual overrides: { shirt: garmentObj, pants: garmentObj, ... }
   const [slotOverrides, setSlotOverrides] = useState({});
+  // Manual dial side override for dual-dial watches (null = engine pick, "A" | "B")
+  const [dialSideOverride, setDialSideOverride] = useState(null);
   // Slots explicitly removed by user
   const [removedSlots, setRemovedSlots] = useState(new Set());
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -484,8 +486,8 @@ export default function WatchDashboard() {
             <WatchCard watch={selectedWatch} label="Selected" accent="#3b82f6" isDark={isDark} />
           </div>
 
-          {/* Strap recommendation for today's outfit */}
-          {strapRec && (
+          {/* Strap recommendation — only show if recommended differs from current active */}
+          {strapRec && activeStrapObj?.id !== strapRec.recommended.id && (
             <div style={{
               marginBottom: 14, padding: "10px 14px", borderRadius: 10,
               background: isDark ? "#0f1318" : "#f0fdf4",
@@ -675,19 +677,37 @@ export default function WatchDashboard() {
             )}
 
             {/* Dual-dial recommendation (Reverso) */}
-            {mergedOutfit._recommendedDial && (
+            {selectedWatch?.dualDial && (
               <div style={{
-                display:"flex", alignItems:"center", gap:8, padding:"6px 10px",
+                display:"flex", alignItems:"center", gap:6, padding:"6px 10px",
                 borderRadius:8, marginTop:4,
                 border:`1px solid ${isDark?"#312e81":"#c7d2fe"}`,
-                background:isDark?"#1e1b4b":"#eef2ff", fontSize:12,
-                color:isDark?"#a5b4fc":"#4338ca",
+                background:isDark?"#1e1b4b":"#eef2ff", fontSize:11,
               }}>
-                <span style={{fontSize:14}}>🔄</span>
-                <span style={{fontWeight:600}}>Wear {mergedOutfit._recommendedDial.label}</span>
-                <span style={{marginLeft:"auto",opacity:0.7,fontSize:10}}>
-                  {mergedOutfit._recommendedDial.side === "B" ? "contrast" : "tonal depth"}
+                <span style={{fontSize:13}}>🔄</span>
+                <span style={{color:isDark?"#a5b4fc":"#4338ca", fontWeight:600}}>
+                  {dialSideOverride === "B" ? selectedWatch.dualDial.sideB_label : dialSideOverride === "A" ? selectedWatch.dualDial.sideA_label : (mergedOutfit._recommendedDial?.label ?? selectedWatch.dualDial.sideA_label)}
                 </span>
+                <div style={{marginLeft:"auto", display:"flex", gap:4}}>
+                  {["A","B"].map(side => (
+                    <button key={side}
+                      onClick={() => setDialSideOverride(prev => prev === side ? null : side)}
+                      style={{
+                        fontSize:10, padding:"2px 7px", borderRadius:5, cursor:"pointer", fontWeight:600,
+                        border:`1px solid ${(dialSideOverride === side || (!dialSideOverride && mergedOutfit._recommendedDial?.side === side)) ? "#6366f1" : (isDark?"#3730a3":"#c7d2fe")}`,
+                        background:(dialSideOverride === side || (!dialSideOverride && mergedOutfit._recommendedDial?.side === side)) ? "#6366f122" : "transparent",
+                        color:isDark?"#a5b4fc":"#4338ca",
+                      }}>
+                      {side === "A" ? selectedWatch.dualDial.sideA_label : selectedWatch.dualDial.sideB_label}
+                    </button>
+                  ))}
+                  {dialSideOverride && (
+                    <button onClick={() => setDialSideOverride(null)}
+                      style={{fontSize:10,padding:"2px 5px",borderRadius:5,cursor:"pointer",border:"none",background:"transparent",color:"#9ca3af"}}>
+                      Auto
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

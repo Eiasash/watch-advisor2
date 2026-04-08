@@ -55,8 +55,7 @@ function useTodayKey() {
 }
 
 const CONTEXT_OPTIONS = [
-  { key: null,            label: "Any Vibe" },
-  { key: "smart-casual", label: "Smart Casual" },
+  { key: null,            label: "Any" },
   { key: "clinic",       label: "Clinic" },
   { key: "casual",       label: "Casual" },
   { key: "date-night",   label: "Date Night" },
@@ -279,7 +278,7 @@ export default function TodayPanel() {
 
       {/* Watch + strap picker */}
       <WatchPicker
-        watches={watches}
+        watches={active}
         watchId={watchId}
         onSelectWatch={setWatchId}
         entries={entries}

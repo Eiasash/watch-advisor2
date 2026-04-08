@@ -27,7 +27,7 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
           watch-advisor
         </h1>
         <div style={{ color: isDark ? "#9ca3af" : "#6b7280", fontSize: 13, marginTop: 2 }}>
-          Watch-first outfit planner &middot; {watches.length} watches &middot; {garments.filter(g => !g.excludeFromWardrobe).length} garments &middot; <span style={{ color: isDark ? "#6b7280" : "#9ca3af" }}>v{__BUILD_NUMBER__}</span>
+          Watch-first outfit planner &middot; {watches.filter(w => !w.retired).length} watches &middot; {garments.filter(g => !g.excludeFromWardrobe).length} garments &middot; <span style={{ color: isDark ? "#6b7280" : "#9ca3af" }}>v{__BUILD_NUMBER__}</span>
         </div>
       </div>
       <div className="wa-header-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
