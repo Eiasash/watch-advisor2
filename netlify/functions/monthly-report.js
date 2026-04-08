@@ -15,7 +15,6 @@
  * NO CORS — cron only.
  */
 import { createClient } from "@supabase/supabase-js";
-import { cors } from "./_cors.js";
 
 export async function handler() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;

@@ -26,7 +26,7 @@
 
 import { STYLE_FORMALITY_TARGET } from "./watchStyles.js";
 import { DIAL_COLOR_MAP, getGarmentColorFamily } from "../data/dialColorMap.js";
-import { SCORE_WEIGHTS, STYLE_LEARN } from "../config/scoringWeights.js";
+import { SCORE_WEIGHTS } from "../config/scoringWeights.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 import {
   BLACK_STRAP_TERMS, BROWN_STRAP_TERMS, BROWN_SHOE_COLORS, BLACK_SHOE_COLORS,

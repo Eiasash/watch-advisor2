@@ -88,15 +88,16 @@ export async function handler() {
     const watchFreq = {};
     recent10.forEach(e => { if (e.watch_id) watchFreq[e.watch_id] = (watchFreq[e.watch_id] ?? 0) + 1; });
     const stagnant = Object.entries(watchFreq).find(([, n]) => n / Math.max(1, recent10.length) > 0.4);
+    let tunedRotation = null;
     if (stagnant) {
       const old = current("rotationFactor");
       const next = Math.min(+(old + 0.05).toFixed(2), LIMITS.rotationFactor);
-      if (next !== old) { overrides.rotationFactor = next; tuned.push(`rotationFactor ${old}→${next}`); }
+      if (next !== old) { overrides.rotationFactor = next; tunedRotation = `rotationFactor ${old}→${next}`; tuned.push(tunedRotation); }
     }
     log.push({
       check: "watch_stagnation",
       found: stagnant ? `${stagnant[0]} at ${Math.round(stagnant[1] / recent10.length * 100)}%` : "healthy",
-      action: stagnant ? (tuned.length ? `auto-tuned: ${tuned[tuned.length-1]}` : "at limit") : "none",
+      action: stagnant ? (tunedRotation ? `auto-tuned: ${tunedRotation}` : "at limit") : "none",
     });
 
     // ── 4. Garment repetition (>5× same garment in 14 days) ──────────────
@@ -106,15 +107,16 @@ export async function handler() {
     const gFreq = {};
     recent14d.forEach(e => (e.payload?.garmentIds ?? []).forEach(gid => { gFreq[gid] = (gFreq[gid] ?? 0) + 1; }));
     const stagnantG = Object.entries(gFreq).filter(([, n]) => n > 5);
+    let tunedRepetition = null;
     if (stagnantG.length > 0) {
       const old = current("repetitionPenalty");
       const next = Math.max(+(old - 0.03).toFixed(2), LIMITS.repetitionPenalty);
-      if (next !== old) { overrides.repetitionPenalty = next; tuned.push(`repetitionPenalty ${old}→${next}`); }
+      if (next !== old) { overrides.repetitionPenalty = next; tunedRepetition = `repetitionPenalty ${old}→${next}`; tuned.push(tunedRepetition); }
     }
     log.push({
       check: "garment_stagnation",
       found: stagnantG.length > 0 ? stagnantG.map(([id, n]) => `${id}:${n}`).join(", ") : "healthy",
-      action: stagnantG.length > 0 ? (tuned.length ? `auto-tuned: ${tuned[tuned.length-1]}` : "at limit") : "none",
+      action: stagnantG.length > 0 ? (tunedRepetition ? `auto-tuned: ${tunedRepetition}` : "at limit") : "none",
     });
 
     // ── 5. Context distribution (>80% null = broken UI) ───────────────────
@@ -167,16 +169,17 @@ export async function handler() {
       historyDepthSufficient = hist.length >= active.length * 2;
     } catch { /* non-fatal */ }
     // AUTO-TUNE: bump neverWornRotationPressure by +0.05 (cap 0.90)
+    let tunedNeverWorn = null;
     if (neverWornPct > 50 && historyDepthSufficient) {
       const old = current("neverWornRotationPressure");
       const next = Math.min(+(old + 0.05).toFixed(2), LIMITS.neverWornRotationPressure);
-      if (next !== old) { overrides.neverWornRotationPressure = next; tuned.push(`neverWornRotationPressure ${old}→${next}`); }
+      if (next !== old) { overrides.neverWornRotationPressure = next; tunedNeverWorn = `neverWornRotationPressure ${old}→${next}`; tuned.push(tunedNeverWorn); }
     }
     log.push({
       check: "never_worn",
       found: `${Math.round(neverWornPct)}% (${hist.length} entries / ${historyDepthSufficient ? "sufficient" : "sparse"} data)`,
       action: (neverWornPct > 50 && historyDepthSufficient)
-        ? (tuned.length ? `auto-tuned: ${tuned[tuned.length-1]}` : "at limit")
+        ? (tunedNeverWorn ? `auto-tuned: ${tunedNeverWorn}` : "at limit")
         : "none",
     });
 
