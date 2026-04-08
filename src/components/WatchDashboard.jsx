@@ -99,7 +99,7 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
   );
 }
 
-function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, isOverridden, signals }) {
+function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, onRemove, isOverridden, signals }) {
   const [open, setOpen] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const ICONS = { shirt: "\u{1F454}", sweater: "\u{1FAA2}", layer: "\u{1F9E3}", pants: "\u{1F456}", shoes: "\u{1F45F}", jacket: "\u{1F9E5}" };
@@ -197,6 +197,16 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
           border: `1px solid ${border}`, borderRadius: 8, marginTop: 2,
           boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
         }}>
+          <div
+            onClick={() => { onRemove && onRemove(slot); setOpen(false); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+              cursor: "pointer", borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
+              color: "#9ca3af", fontSize: 11,
+            }}
+          >
+            🚫 Remove from outfit
+          </div>
           {isOverridden && (
             <div
               onClick={() => { onSwap && onSwap(slot, null); setOpen(false); }}
@@ -284,6 +294,8 @@ export default function WatchDashboard() {
   const [shuffleSeed, setShuffleSeed] = useState(0);
   // Per-slot manual overrides: { shirt: garmentObj, pants: garmentObj, ... }
   const [slotOverrides, setSlotOverrides] = useState({});
+  // Slots explicitly removed by user
+  const [removedSlots, setRemovedSlots] = useState(new Set());
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   useEffect(() => {
@@ -391,8 +403,10 @@ export default function WatchDashboard() {
 
   // Merge: engine base + per-slot manual overrides
   const mergedOutfit = useMemo(() => {
-    return { ...outfit, ...slotOverrides };
-  }, [outfit, slotOverrides]);
+    const merged = { ...outfit, ...slotOverrides };
+    for (const s of removedSlots) delete merged[s];
+    return merged;
+  }, [outfit, slotOverrides, removedSlots]);
 
   const explanation = useMemo(() => {
     if (!enrichedWatch) return "";
@@ -592,7 +606,7 @@ export default function WatchDashboard() {
               </button>
               {(Object.keys(slotOverrides).length > 0 || shuffleSeed > 0) && (
                 <button
-                  onClick={() => { setSlotOverrides({}); setShuffleSeed(0); }}
+                  onClick={() => { setSlotOverrides({}); setShuffleSeed(0); setRemovedSlots(new Set()); }}
                   style={{
                     fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
                     border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
@@ -611,6 +625,7 @@ export default function WatchDashboard() {
           <div className="wa-outfit-grid">
             {["shirt", "sweater", "layer", "pants", "shoes", "jacket"].map(slot => {
               if ((slot === "sweater" || slot === "layer") && !mergedOutfit[slot]) return null;
+              if (removedSlots.has(slot)) return null;
               return (
                 <OutfitSlot
                   key={slot}
@@ -627,10 +642,23 @@ export default function WatchDashboard() {
                       setSlotOverrides(prev => ({ ...prev, [s]: g }));
                     }
                   }}
+                  onRemove={s => setRemovedSlots(prev => new Set([...prev, s]))}
                   onSelect={setSelectedGarmentId}
                 />
               );
             })}
+
+            {removedSlots.size > 0 && (
+              <div style={{ gridColumn: "1/-1", display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+                {[...removedSlots].map(s => (
+                  <button key={s} onClick={() => setRemovedSlots(prev => { const n = new Set(prev); n.delete(s); return n; })}
+                    style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6,
+                      border: "1px dashed #6b7280", background: "transparent", color: "#6b7280", cursor: "pointer" }}>
+                    + Restore {s}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Belt — auto-derived from shoes, not swappable */}
             {mergedOutfit.belt && (

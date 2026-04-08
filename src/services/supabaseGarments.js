@@ -72,6 +72,7 @@ async function _doPull() {
         context:    row.payload?.context     ?? null,
         notes:      row.payload?.notes       ?? null,
         loggedAt:   row.payload?.loggedAt    ?? null,
+        score:      row.payload?.score       ?? null,
         quickLog:   row.payload?.quickLog    ?? false,
         legacy:     row.payload?.legacy      ?? false,
       })),
@@ -164,6 +165,7 @@ export async function pushHistoryEntry(entry) {
         notes:            entry.notes         ?? null,
         // outfitPhoto excluded from cloud — could be large base64; keep local only
         loggedAt:         entry.loggedAt      ?? null,
+        score:            typeof entry.score === 'number' ? entry.score : null,
         quickLog:         entry.quickLog      ?? false,
         legacy:           entry.legacy        ?? false,
         payload_version:  "v1",

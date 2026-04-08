@@ -6,6 +6,8 @@
 import React, { useState } from "react";
 import { useStrapStore } from "../../stores/strapStore.js";
 
+const STRAP_TYPES = ['leather','bracelet','nato','canvas','rubber','suede'];
+
 const TYPE_EMOJI = { leather: "🔗", bracelet: "⌚", canvas: "🎽", nato: "🎽", rubber: "🏊", suede: "🦌" };
 
 export default function QuickStrapSwap({ watchId, isDark }) {
@@ -14,6 +16,9 @@ export default function QuickStrapSwap({ watchId, isDark }) {
   const setActive = useStrapStore(s => s.setActiveStrap);
   const incrementWear = useStrapStore(s => s.incrementWearCount);
   const [justSwapped, setJustSwapped] = useState(null);
+  const addStrap = useStrapStore(s => s.addStrap);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ label: '', color: '', type: 'leather', useCase: '' });
 
   if (!allStraps.length || allStraps.length <= 1) return null;
 
@@ -59,6 +64,54 @@ export default function QuickStrapSwap({ watchId, isDark }) {
           );
         })}
       </div>
+
+      {!showAdd ? (
+        <button onClick={() => setShowAdd(true)} style={{
+          marginTop: 6, fontSize: 10, padding: '3px 8px', borderRadius: 6,
+          border: `1px dashed ${border}`, background: 'transparent',
+          color: muted, cursor: 'pointer',
+        }}>+ Add strap</button>
+      ) : (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <input placeholder="Label (e.g. Brown leather)" value={addForm.label}
+            onChange={e => setAddForm(f => ({ ...f, label: e.target.value }))}
+            style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6,
+              border: `1px solid ${border}`, background: 'transparent', color: text, outline: 'none' }} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <input placeholder="Color" value={addForm.color}
+              onChange={e => setAddForm(f => ({ ...f, color: e.target.value }))}
+              style={{ flex: 1, fontSize: 11, padding: '4px 8px', borderRadius: 6,
+                border: `1px solid ${border}`, background: 'transparent', color: text, outline: 'none' }} />
+            <select value={addForm.type} onChange={e => setAddForm(f => ({ ...f, type: e.target.value }))}
+              style={{ fontSize: 11, padding: '4px', borderRadius: 6,
+                border: `1px solid ${border}`, background: 'transparent', color: text }}>
+              {STRAP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <input placeholder="Use case (optional)" value={addForm.useCase}
+            onChange={e => setAddForm(f => ({ ...f, useCase: e.target.value }))}
+            style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6,
+              border: `1px solid ${border}`, background: 'transparent', color: text, outline: 'none' }} />
+          <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+            <button onClick={() => {
+              if (!addForm.label.trim()) return;
+              const id = addStrap(watchId, {
+                label: addForm.label.trim(),
+                color: addForm.color.trim() || 'unknown',
+                type: addForm.type,
+                useCase: addForm.useCase.trim(),
+              });
+              if (id) setActive(watchId, id);
+              setAddForm({ label: '', color: '', type: 'leather', useCase: '' });
+              setShowAdd(false);
+            }} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6,
+              border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+            <button onClick={() => setShowAdd(false)}
+              style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6,
+                border: `1px solid ${border}`, background: 'transparent', color: muted, cursor: 'pointer' }}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

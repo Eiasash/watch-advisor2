@@ -10,12 +10,17 @@ import React, { useState, useMemo } from "react";
 export default function ScoreBackfill({ entries, watches, garments, onScore, isDark }) {
   const [page, setPage] = useState(0);
   const [expandedEntry, setExpandedEntry] = useState(null);
+  const [dismissed, setDismissed] = useState(new Set());
 
   const unscored = useMemo(() => {
     return entries.filter(e => {
+      if (e.quickLog || e.payload?.quickLog) return false;
+      if (e.legacy || e.payload?.legacy) return false;
+      const gids = e.garmentIds ?? e.payload?.garmentIds ?? [];
+      if (!Array.isArray(gids) || gids.length === 0) return false;
       const s = e.score ?? e.payload?.score;
       return s == null || s === undefined;
-    }).sort((a, b) => new Date(b.date || b.loggedAt) - new Date(a.date || a.loggedAt));
+    }).filter(e => !dismissed.has(e.id)).sort((a, b) => new Date(b.date || b.loggedAt) - new Date(a.date || a.loggedAt));
   }, [entries]);
 
   if (!unscored.length) return null;
@@ -96,7 +101,7 @@ export default function ScoreBackfill({ entries, watches, garments, onScore, isD
                 })}
               </div>
             )}
-            <div style={{ display: "flex", gap: 3 }}>
+            <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
               {[5, 6, 7, 8, 9, 10].map(s => (
                 <button key={s} onClick={() => onScore(entry.id, s)}
                   style={{
@@ -106,6 +111,9 @@ export default function ScoreBackfill({ entries, watches, garments, onScore, isD
                     color: isDark ? "#fde68a" : "#92400e",
                   }}>{s}</button>
               ))}
+              <button onClick={() => setDismissed(prev => new Set([...prev, entry.id]))}
+                style={{ marginLeft: 4, height: 28, padding: "0 8px", borderRadius: 6, border: "none",
+                  fontSize: 11, cursor: "pointer", background: "transparent", color: muted }}>Skip</button>
             </div>
           </div>
         );
