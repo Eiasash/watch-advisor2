@@ -401,9 +401,6 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
       if (excludedPerSlot[slotName]?.has(g.id)) return false;
       return gType === type;
     });
-    // Shoes: pre-filter by strap–shoe rule BEFORE scoring so hard mismatches
-    // can never be rescued by diversity / coherence bonuses in the shortlist.
-    if (slotName === "shoes") pool = filterShoesByStrap(watchWithStrap, pool, context);
     coreSlotCandidates[slotName] = pool;
   }
 
@@ -673,8 +670,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     const cm = colorMatchScore(watchWithStrap, g);
     const fm = formalityMatchScore(watchWithStrap, g, outfitFormality);
     const wc = watchCompatibilityScore(watchWithStrap, g);
-    const ss = strapShoeScore(watchWithStrap, g, context);
-    _slotSignals[slotName] = { colorMatch: cm, formalityMatch: fm, watchCompat: wc, strapShoe: ss };
+    _slotSignals[slotName] = { colorMatch: cm, formalityMatch: fm, watchCompat: wc };
   }
   outfit._slotSignals = _slotSignals;
 

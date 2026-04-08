@@ -13,6 +13,11 @@ export default function GarmentPicker({
   filter, setFilter,
   isDark, card, border, muted,
 }) {
+  const { useState, useEffect } = React;
+  const [collapsed, setCollapsed] = useState(true);
+  // Auto-expand when items already selected (restoring today's entry)
+  useEffect(() => { if (selected.size > 0) setCollapsed(false); }, []);
+
   const activeGarments = garments.filter(
     g => !g.excludeFromWardrobe && g.type !== "outfit-photo" && g.type !== "outfit-shot"
   );
@@ -29,19 +34,23 @@ export default function GarmentPicker({
     : activeGarments.filter(g => (g.type ?? "").toLowerCase() === filter);
 
   return (
-    <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+    <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: collapsed ? "10px 16px" : 16, marginBottom: 14 }}>
+      <div
+        onClick={() => setCollapsed(c => !c)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: collapsed ? 0 : 10, cursor: "pointer", userSelect: "none" }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          Garments {selected.size > 0 && <span style={{ color: "#3b82f6" }}>({selected.size})</span>}
+          Garments {selected.size > 0 ? <span style={{ color: "#3b82f6" }}> · {selected.size} selected</span> : null}
+          <span style={{ marginLeft: 6, opacity: 0.4 }}>{collapsed ? "▼" : "▲"}</span>
         </div>
-        {selected.size > 0 && (
-          <button onClick={onClearAll}
+        {selected.size > 0 && !collapsed && (
+          <button onClick={e => { e.stopPropagation(); onClearAll(); }}
             style={{ fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>
             Clear all
           </button>
         )}
       </div>
 
+      {!collapsed && (<>
       {/* Type filter tabs */}
       <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 4 }}>
         {garmentTypes.map(t => (
@@ -61,6 +70,7 @@ export default function GarmentPicker({
             onClick={() => toggleGarment(g.id)} isDark={isDark} />
         ))}
       </div>
+      </>)}
     </div>
   );
 }

@@ -49,6 +49,27 @@ export async function handler() {
       log.push({ check: "orphans", found: 0, action: "none" });
     }
 
+    // ── 2b. Mark unscored outfit entries >3 days old as legacy ─────────────
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const staleUnscored = hist.filter(h => {
+      const p = h.payload ?? {};
+      if (p.legacy || p.quickLog || p.score != null) return false;
+      const gids = Array.isArray(p.garmentIds) ? p.garmentIds : [];
+      if (gids.length === 0) return false;
+      return (h.date ?? "") < threeDaysAgo;
+    });
+    if (staleUnscored.length > 0) {
+      for (const e of staleUnscored) {
+        await supabase.from("history")
+          .update({ payload: { ...(e.payload ?? {}), legacy: true, payload_version: "v1" } })
+          .eq("id", e.id);
+      }
+      fixes.push(`marked ${staleUnscored.length} stale unscored entries as legacy`);
+      log.push({ check: "stale_unscored", found: staleUnscored.length, action: "marked_legacy" });
+    } else {
+      log.push({ check: "stale_unscored", found: 0, action: "none" });
+    }
+
     // ── Load current scoring overrides (auto-tune reads + writes these) ───
     let overrides = {};
     try {

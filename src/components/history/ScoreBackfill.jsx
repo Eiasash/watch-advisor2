@@ -20,7 +20,12 @@ export default function ScoreBackfill({ entries, watches, garments, onScore, isD
       if (!Array.isArray(gids) || gids.length === 0) return false;
       const s = e.score ?? e.payload?.score;
       return s == null || s === undefined;
-    }).filter(e => !dismissed.has(e.id)).sort((a, b) => new Date(b.date || b.loggedAt) - new Date(a.date || a.loggedAt));
+    }).filter(e => {
+      // Only show entries from last 3 days — older unscored entries are gone, no backlog
+      if (dismissed.has(e.id)) return false;
+      const d = new Date(e.date || e.loggedAt);
+      return (Date.now() - d.getTime()) <= 3 * 24 * 60 * 60 * 1000;
+    }).sort((a, b) => new Date(b.date || b.loggedAt) - new Date(a.date || a.loggedAt));
   }, [entries]);
 
   if (!unscored.length) return null;

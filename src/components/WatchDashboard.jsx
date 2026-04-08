@@ -161,7 +161,6 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
                       { k: "colorMatch", l: "clr" },
                       { k: "formalityMatch", l: "frm" },
                       { k: "watchCompat", l: "wtch" },
-                      ...(slot === "shoes" ? [{ k: "strapShoe", l: "strap" }] : []),
                     ].map(({ k, l }) => {
                       const v = signals[k];
                       if (v == null) return null;

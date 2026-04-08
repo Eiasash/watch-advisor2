@@ -122,11 +122,12 @@ export function weatherLayerScore(garment, weather) {
 }
 
 /**
- * Score how well shoes match the watch strap color.
- * Non-negotiable: leather strap → matching leather shoe color.
- * Returns 0–1. Returns 0.0 on hard strap–shoe mismatch.
+ * Strap-shoe scoring disabled — rule is a guideline, not enforced.
+ * Always returns 1.0 so it has zero effect on shoe selection.
  */
 export function strapShoeScore(watch, garment, context) {
+  return 1.0;
+  // eslint-disable-next-line no-unreachable
   if ((garment.type) !== "shoes") return 1.0;
 
   const strap = (watch.strap ?? "").toLowerCase();
