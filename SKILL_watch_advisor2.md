@@ -9,7 +9,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.9.1 |
+| Version | 1.12.13 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 136 |
 | Source LOC | ~22,500 |
@@ -337,6 +337,9 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 | **SyncAnglesPanel** | Audit tab backfill tool for garments with local-only base64 angles. Queries Supabase directly (not local state). Auto-hides when nothing to sync. |
 | **strapRecommender v2** | Scores straps against shoe color + outfit palette + dial harmony + context. Used by both outfitBuilder (Plan tab) and WatchDashboard (Today tab). Never revert to shoe-only matching. |
 | **strapRules.js** | Single source of truth for strap-shoe rules. olive/green straps allow brown/tan/white/black shoes. |
+| **WeekPlanner AI button** | `handleAskClaude` must NOT override user's watch selection. AI only sets garment overrides via `setOutfitOverrides`. Watch override removed in v1.12.13. |
+| **WeekPlanner retired filter** | Both watch-override picker and AddOutfitModal must filter `!w.retired`. Was missing until v1.12.13. |
+| **Reverso dual-dial in Plan** | `dialSideOverrides` state (per-day) in WeekPlanner. Feeds `enrichedWatch.dial` to `buildOutfit()` for color matching. Toggle UI renders when `day.watch?.dualDial` exists. |
 
 ---
 

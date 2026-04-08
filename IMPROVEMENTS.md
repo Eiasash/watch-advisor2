@@ -1,43 +1,48 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-08 (Phase 7 — Skill/doc update after audit-fix-deploy)
+Generated: 2026-04-08 (v1.12.13 — audit-fix-deploy full cycle)
 
-## Session 2026-04-08
+## Session 2026-04-08 (v1.12.13)
 
 ### Fixes shipped
-- Corrected stale scoring weight values in IMPROVEMENTS.md (neverWornRecencyScore 0.75→0.50, neverWornRotationPressure 0.70→0.50, both changed April 2026)
+1. **Retired watches in WeekPlanner pickers** — watch-override picker and AddOutfitModal listed retired watches (SBGW267, Sinn 613, Rolex Date 15203). Added `!w.retired` filter to both.
+2. **AI robot button no longer swaps watch** — `handleAskClaude` applied `pick.watchId` as watch override, overriding user's manual selection. Removed — AI now only sets garment overrides.
+3. **JLC Reverso dual-dial toggle in Plan tab** — toggle existed in WatchDashboard (Today) but not WeekPlanner (Plan). Added `dialSideOverrides` state (per-day) + toggle UI + `enrichedWatch.dial` override feeding correct dial color into `buildOutfit()` for color matching.
 
-### Tests added (2311 → 2359, 130 → 131 files)
-- `weatherService.test.js`: 14 new tests for `getLayerTransition()` and WeatherBadge hourly display logic (tempMorning/tempMidday/tempEvening, shed-layer hint threshold)
-- `weekPlannerLogic.test.js`: 9 new tests — OutfitSlotChip "None — remove" option, `_isLogged` entries accepting per-slot overrides
+### Full audit results (Phase 1)
+- **Static analysis**: All clean — no `generateOutfit` legacy, no inlined constants, `maxAttempts:1` on all Vision functions
+- **Engine integrity**: All values correct — rotationFactor=0.40, repetitionPenalty=-0.28, SCORE_CEILING=30, coherence=+0.20, shiftWatch gate active
+- **Supabase**: 72 active garments, 0 dupes, 0 orphans, 0 untagged, 46 history entries
+- **app_config**: all 4 keys present and healthy
+- **Tests**: All passing (2359+), 0 failures
+- **Skill snapshot**: all health "ok", autoHeal healthy
+- **Context distribution**: healthy (25 smart-casual, 11 casual, 4 shift, 2 formal, 1 clinic, 1 eid, 1 date-night, 1 null)
 
-### Dead code confirmed
-- `netlify/functions/watch-rec.js` — still uncalled from client, confirmed dead code
-- Circular dep `historyPersistence → historyStore` — intentional, already handled with dynamic imports
+### Self-improvement analysis (Phase 5)
+- Watch rotation: Rikka at 40% of last 10 — at threshold, not breaching
+- Garment stagnation: Brown Eccos at 4x/14d — expected (daily driver shoe)
+- Never-worn: 23/72 = 32% — below 50% threshold, no auto-tune needed
+- Score distribution: 6.5–9.0 (varied, not stuck)
+- Orphaned garmentIds: 3 IDs reference excluded dupes — benign, history display only
+- No scoring weight changes needed this session
 
-### DB state (from skill-snapshot)
-- garments: 72 active (was 73)
-- history: 45 entries (was 44)
+### Noted changes (not bugs)
+- `neverWornRotationPressure`: 0.75→0.50 (auto-heal tuning, April 2026)
+- `recencyScore` never-worn: 0.75→0.50 (same cycle)
+- Garment count: 72 (was 75 at last full audit — 3 excluded)
+
+### DB state
+- garments: 72 active
+- history: 46 entries, latest 2026-04-08
 - orphans: 0
-- autoHeal: healthy (7 checks, 0 fixes, ran 2026-04-08 05:00)
+- autoHeal: healthy (7 checks, 0 fixes)
 - activeModel: claude-sonnet-4-6
-- token cost April 2026: $4.55 (vs $0.68 in March — higher usage)
-
-### Wardrobe health (from snapshot)
-| Category | Count | Wear rate 30d | Idle |
-|----------|-------|---------------|------|
-| Shirts | 22 | 55% | 10 |
-| Sweaters | 15 | 67% | 5 |
-| Pants | 15 | 80% | 3 |
-| Shoes | 10 | 70% | 3 |
-| Jackets | 5 | 80% | 1 |
-| Belts | 4 | 100% | 0 |
-
-Shirt idle improved significantly (was 17/21 = 81% idle in March, now 10/22 = 45% idle).
 
 ### Remaining TODO
-1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check DB-flagged. Physical tailor visit needed.
+1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check DB-flagged. Physical tailor visit needed. Pickup Thu Apr 9.
 2. **Pasha navy alligator strap** — pending DayDayWatchband delivery.
-3. **Tudor canvas straps** — navy + olive pending. Move to blackbay.straps[] when delivered.
+3. **Tudor canvas straps** — navy + olive pending.
+4. **Rikka bracelet repair** — watchmaker + Seiya Japan/GS service, outcome pending.
+5. **Netlify deploy** — v1.12.13 pushed to GitHub but build not triggered. Check build minutes or trigger manually from Netlify dashboard.
 
 ---
 Generated: 2026-04-07 (Phase 5 — Autonomous Self-Improvement)
