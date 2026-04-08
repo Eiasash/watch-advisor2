@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 let mockHistoryData = [];
 let mockGarmentsData = [];
+let mockScoringOverrides = null; // null = no overrides stored
 
 const mockUpdateEq = vi.fn(() => ({ data: null, error: null }));
 const mockUpdate = vi.fn(() => ({ eq: mockUpdateEq }));
@@ -30,6 +31,16 @@ const mockFrom = vi.fn((table) => {
   if (table === "app_config") {
     return {
       upsert: mockUpsert,
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            data: mockScoringOverrides !== null
+              ? [{ value: mockScoringOverrides }]
+              : [],
+            error: null,
+          })),
+        })),
+      })),
     };
   }
   return { select: vi.fn(() => ({ data: null, error: null })) };
@@ -59,6 +70,7 @@ describe("auto-heal handler", () => {
     vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-key");
     mockHistoryData = [];
     mockGarmentsData = [];
+    mockScoringOverrides = null;
     mockFrom.mockClear();
     mockUpdate.mockClear();
     mockUpdateEq.mockClear();
@@ -216,5 +228,75 @@ describe("auto-heal handler", () => {
     expect(mockUpdate).toHaveBeenCalled();
     const updateArg = mockUpdate.mock.calls[0][0];
     expect(updateArg.payload.quickLog).toBe(true);
+  });
+
+  it("reports 'at limit' for watch stagnation when rotationFactor already at cap (0.60)", async () => {
+    // Pre-set override at the cap
+    mockScoringOverrides = { rotationFactor: 0.60 };
+    mockHistoryData = Array.from({ length: 10 }, (_, i) => ({
+      id: `e${i}`,
+      date: `2026-04-0${i + 1}`,
+      watch_id: i < 5 ? "capped-watch" : `watch-${i}`,
+      payload: { garmentIds: ["g1"] },
+    }));
+
+    const result = await handler();
+    const body = JSON.parse(result.body);
+    const stagnation = body.findings.find(f => f.check === "watch_stagnation");
+    expect(stagnation.found).toContain("capped-watch");
+    expect(stagnation.action).toBe("at limit");
+  });
+
+  it("reports 'at limit' for garment stagnation when repetitionPenalty already at cap (-0.40)", async () => {
+    mockScoringOverrides = { repetitionPenalty: -0.40 };
+    const today = new Date();
+    mockHistoryData = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      return {
+        id: `e${i}`,
+        date: d.toISOString().split("T")[0],
+        watch_id: "w1",
+        payload: { garmentIds: ["repeat-shirt"] },
+      };
+    });
+
+    const result = await handler();
+    const body = JSON.parse(result.body);
+    const gStag = body.findings.find(f => f.check === "garment_stagnation");
+    expect(gStag.found).toContain("repeat-shirt");
+    expect(gStag.action).toBe("at limit");
+  });
+
+  it("each stagnation check reports its own tuning independently (regression: shared tuned array bug)", async () => {
+    // Both watch stagnation AND garment stagnation active simultaneously.
+    // watch_stagnation should auto-tune rotationFactor.
+    // garment_stagnation cap hit — should report "at limit", NOT the rotation tuning result.
+    mockScoringOverrides = { repetitionPenalty: -0.40 }; // garment cap hit
+    const today = new Date();
+    // 10 entries, 5 same watch (stagnant) + 7 repeat same garment (stagnant)
+    mockHistoryData = Array.from({ length: 10 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      return {
+        id: `e${i}`,
+        date: d.toISOString().split("T")[0],
+        watch_id: i < 5 ? "stagnant-watch" : `watch-${i}`,
+        payload: { garmentIds: ["repeat-shirt"] },
+      };
+    });
+
+    const result = await handler();
+    const body = JSON.parse(result.body);
+    const watchStag = body.findings.find(f => f.check === "watch_stagnation");
+    const gStag = body.findings.find(f => f.check === "garment_stagnation");
+
+    // Watch rotation should have tuned (rotationFactor not at cap)
+    expect(watchStag.action).toContain("auto-tuned");
+    expect(watchStag.action).toContain("rotationFactor");
+
+    // Garment stagnation should independently report "at limit" — NOT inherit rotation tuning
+    expect(gStag.action).toBe("at limit");
+    expect(gStag.action).not.toContain("rotationFactor");
   });
 });

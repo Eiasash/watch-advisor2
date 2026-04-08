@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getLayerRecommendation, formatWeatherText, fetchWeather, fetchWeatherForecast } from "../src/weather/weatherService.js";
+import { getLayerRecommendation, getLayerTransition, formatWeatherText, fetchWeather, fetchWeatherForecast } from "../src/weather/weatherService.js";
 
 // ─── Pure function tests ─────────────────────────────────────────────────────
 
@@ -202,5 +202,76 @@ describe("fetchWeatherForecast", () => {
 
     const result = await fetchWeatherForecast();
     expect(result).toEqual([]);
+  });
+});
+
+// ─── getLayerTransition ───────────────────────────────────────────────────────
+
+describe("getLayerTransition", () => {
+  it("returns null when forecast is null", () => {
+    expect(getLayerTransition(null)).toBeNull();
+  });
+
+  it("returns null when tempMorning is missing", () => {
+    expect(getLayerTransition({ tempC: 15, description: "Clear sky" })).toBeNull();
+  });
+
+  it("returns morning-only string when no midday/evening", () => {
+    const result = getLayerTransition({ tempMorning: 12 });
+    expect(result).toMatch(/12°C morning/);
+    expect(result).not.toMatch(/midday/);
+    expect(result).not.toMatch(/evening/);
+  });
+
+  it("includes midday transition when layer differs from morning", () => {
+    // 8°C morning (coat) → 22°C midday (none)
+    const result = getLayerTransition({ tempMorning: 8, tempMidday: 22 });
+    expect(result).toContain("8°C morning");
+    expect(result).toContain("22°C midday");
+  });
+
+  it("omits midday when layer is the same as morning", () => {
+    // 5°C morning (coat) → 8°C midday (coat) — same layer, no mention
+    const result = getLayerTransition({ tempMorning: 5, tempMidday: 8 });
+    expect(result).not.toMatch(/midday/);
+  });
+
+  it("includes evening transition when layer changes from midday", () => {
+    // 20°C midday (light-jacket) → 10°C evening (sweater)
+    const result = getLayerTransition({ tempMorning: 20, tempMidday: 20, tempEvening: 10 });
+    expect(result).toContain("10°C evening");
+    expect(result).toContain("sweater");
+  });
+
+  it("uses midpoint separator between parts", () => {
+    const result = getLayerTransition({ tempMorning: 8, tempMidday: 22, tempEvening: 10 });
+    expect(result).toContain(" · ");
+    expect(result?.split(" · ").length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ─── WeatherBadge hourly logic ───────────────────────────────────────────────
+
+describe("WeatherBadge hourly display logic", () => {
+  it("hasHourly is true when tempMorning is present", () => {
+    const forecast = { tempMorning: 12, tempMidday: 18, tempEvening: 10 };
+    expect(forecast.tempMorning != null).toBe(true);
+  });
+
+  it("hasHourly is false when tempMorning is absent", () => {
+    const forecast = { tempC: 15 };
+    expect(forecast.tempMorning != null).toBe(false);
+  });
+
+  it("shed-layer hint triggers when midday > morning + 4", () => {
+    const forecast = { tempMorning: 10, tempMidday: 20, tempEvening: 14 };
+    const shed = forecast.tempMidday != null && forecast.tempMidday > forecast.tempMorning + 4;
+    expect(shed).toBe(true);
+  });
+
+  it("shed-layer hint does NOT trigger when midday rise is small", () => {
+    const forecast = { tempMorning: 15, tempMidday: 17 };
+    const shed = forecast.tempMidday != null && forecast.tempMidday > forecast.tempMorning + 4;
+    expect(shed).toBe(false);
   });
 });
