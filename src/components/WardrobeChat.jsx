@@ -5,12 +5,15 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useThemeStore } from "../stores/themeStore.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
+import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import { useStrapStore } from "../stores/strapStore.js";
 
 const QUICK_PROMPTS = [
   "What should I wear today?",
   "Which watches am I neglecting?",
   "Plan 3 outfits for this week",
-  "What's my most underused garment?",
+  "Add a brown leather strap to my JLC Reverso",
+  "Fix any garments with missing season tags",
   "Suggest a date night look",
 ];
 
@@ -128,7 +131,40 @@ export default function WardrobeChat({ weather, todayContext }) {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setMessages(prev => [...prev, { role: "assistant", content: data.response, ts: new Date().toISOString() }]);
+
+      // Apply client-side actions (add_strap etc)
+      if (Array.isArray(data.clientActions)) {
+        for (const ca of data.clientActions) {
+          if (ca.type === "add_strap") {
+            useStrapStore.getState().addStrap(ca.watchId, {
+              label: ca.label, color: ca.color, type: ca.strap_type, useCase: ca.useCase ?? "",
+            });
+          }
+        }
+      }
+
+      // Apply server-side garment changes to local store
+      if (Array.isArray(data.actions)) {
+        for (const a of data.actions) {
+          if (a.tool === "update_garment" && a.garment_id && a.changes) {
+            useWardrobeStore.getState().updateGarment(a.garment_id, a.changes);
+          }
+          if ((a.tool === "exclude_garment") && a.garment_id) {
+            useWardrobeStore.getState().updateGarment(a.garment_id, { excludeFromWardrobe: true });
+          }
+          if (a.tool === "reactivate_garment" && a.garment_id) {
+            useWardrobeStore.getState().updateGarment(a.garment_id, { excludeFromWardrobe: false });
+          }
+        }
+      }
+
+      const allActions = [...(data.actions ?? []), ...(data.clientActions ?? [])];
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: data.response,
+        actions: allActions.length > 0 ? allActions : undefined,
+        ts: new Date().toISOString(),
+      }]);
     } catch (e) {
       setMessages(prev => [...prev, { role: "assistant", content: `Error: ${e.message}`, ts: new Date().toISOString() }]);
     } finally {
@@ -231,6 +267,35 @@ export default function WardrobeChat({ weather, todayContext }) {
               }}>
                 {msg.content}
               </div>
+              {msg.role === "assistant" && msg.actions?.length > 0 && (
+                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {msg.actions.map((a, ai) => {
+                    const label = a.type === "add_strap"
+                      ? `✅ Added strap: ${a.label} → ${a.watchId}`
+                      : a.tool === "update_garment"
+                      ? `✅ Updated garment`
+                      : a.tool === "exclude_garment"
+                      ? `🗑️ Excluded garment`
+                      : a.tool === "reactivate_garment"
+                      ? `♻️ Reactivated garment`
+                      : a.tool === "fix_history_entry"
+                      ? `🔧 Fixed history entry`
+                      : null;
+                    if (!label) return null;
+                    return (
+                      <span key={ai} style={{
+                        fontSize: 10, padding: "3px 8px", borderRadius: 6,
+                        background: isDark ? "#0f2818" : "#dcfce7",
+                        color: isDark ? "#4ade80" : "#166534",
+                        border: `1px solid ${isDark ? "#166534" : "#86efac"}`,
+                        fontWeight: 600,
+                      }}>
+                        {label}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div style={{ fontSize: 9, color: muted, marginTop: 2, textAlign: msg.role === "user" ? "right" : "left" }}>
               {msg.role === "user" ? "You" : "AI"}
