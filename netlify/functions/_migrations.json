@@ -178,5 +178,9 @@
   {
     "name": "20260321_stamp_legacy_history_entries",
     "sql": "-- Stamp 6 legacy history entries (today-*/dash-* IDs) with legacy:true and payload_version:v1\n-- These entries predate March 2026 garmentIds tracking and cannot be reconstructed.\n-- Stamping them prevents skill-snapshot from counting them as orphaned.\n\nUPDATE history\nSET payload = jsonb_set(\n  jsonb_set(\n    payload,\n    '{legacy}',\n    'true'::jsonb\n  ),\n  '{payload_version}',\n  '\"v1\"'::jsonb\n)\nWHERE id IN (\n  'dash-1773006908290',\n  'today-1772908305255',\n  'today-1772970627677',\n  'today-1773032645000',\n  'today-1773207408927',\n  'today-1773580800000'\n);\n"
+  },
+  {
+    "name": "20260408170000_tighten_app_settings_rls",
+    "sql": "-- Tighten RLS on app_settings: this is a single-row settings table\n-- used by a personal app. Restrict to anon role (client) with id='default' only.\n-- This prevents any row-level abuse even if other roles or users exist.\n\nDROP POLICY IF EXISTS \"allow_all_authenticated\" ON public.app_settings;\n\n-- Allow anon reads for the default row only\nCREATE POLICY \"anon_read_default\" ON public.app_settings\n  FOR SELECT USING (id = 'default');\n\n-- Allow anon writes for the default row only\nCREATE POLICY \"anon_write_default\" ON public.app_settings\n  FOR INSERT WITH CHECK (id = 'default');\n\nCREATE POLICY \"anon_update_default\" ON public.app_settings\n  FOR UPDATE USING (id = 'default') WITH CHECK (id = 'default');\n"
   }
 ]

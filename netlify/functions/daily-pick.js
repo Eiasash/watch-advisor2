@@ -195,6 +195,8 @@ Respond ONLY with this JSON structure, no markdown:
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify(pick) };
   } catch (err) {
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
+    console.error("[daily-pick] Error:", err.message);
+    const isBilling = err.message?.includes("BILLING");
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: isBilling ? err.message : "Daily pick generation failed" }) };
   }
 }
