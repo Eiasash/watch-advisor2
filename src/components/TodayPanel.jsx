@@ -151,6 +151,7 @@ export default function TodayPanel() {
   const text   = isDark ? "#e2e8f0" : "#1f2937";
   const muted  = isDark ? "#8b93a7" : "#9ca3af";
 
+  const active         = watches.filter(w => !w.retired);
   const selectedWatch  = watches.find(w => w.id === watchId);
   const watchStraps    = Object.values(straps).filter(s => s.watchId === watchId);
   const activeStrapId  = activeStrap[watchId];

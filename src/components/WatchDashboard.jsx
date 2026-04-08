@@ -315,6 +315,8 @@ export default function WatchDashboard() {
   }, []);
 
   const selectedWatch = activeWatch ?? watches.find(w => !w.retired) ?? null;
+  const _activeStrapId  = selectedWatch ? strapActiveMap[selectedWatch.id] : null;
+  const activeStrapObj  = _activeStrapId ? strapStraps[_activeStrapId] : null;
 
   // Clear manual overrides when watch changes
   useEffect(() => {
