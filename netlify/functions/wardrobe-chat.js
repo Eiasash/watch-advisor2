@@ -164,6 +164,7 @@ export async function handler(event) {
     if (userMessage.length > 2000) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "message too long (max 2000 chars)" }) };
 
     if (Array.isArray(body.conversationHistory)) {
+      if (body.conversationHistory.length > 50) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "conversationHistory too long (max 50 messages)" }) };
       const oversized = body.conversationHistory.some(m => typeof m.content === "string" && m.content.length > 4000);
       if (oversized) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "conversationHistory message too long (max 4000 chars each)" }) };
     }

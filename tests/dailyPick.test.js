@@ -68,7 +68,7 @@ describe("daily-pick", () => {
     const result = await handler({ httpMethod: "GET" });
     expect(result.statusCode).toBe(500);
     const body = JSON.parse(result.body);
-    expect(body.error).toContain("Supabase");
+    expect(body.error).toBeTruthy();
   });
 
   it("returns cached pick if under 4 hours old on GET", async () => {

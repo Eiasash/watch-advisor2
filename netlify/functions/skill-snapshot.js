@@ -20,10 +20,11 @@ export async function handler(event) {
     return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-  );
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+  if (!process.env.SUPABASE_URL || !serviceKey) {
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "Server configuration missing" }) };
+  }
+  const supabase = createClient(process.env.SUPABASE_URL, serviceKey);
 
   try {
     // Active garment count
@@ -195,10 +196,11 @@ export async function handler(event) {
     };
 
   } catch (err) {
+    console.error("[skill-snapshot] Error:", err.message);
     return {
       statusCode: 500,
       headers: { ...CORS, "Content-Type": "application/json" },
-      body: JSON.stringify({ error: err.message, snapshotAt: new Date().toISOString() })
+      body: JSON.stringify({ error: "Internal server error", snapshotAt: new Date().toISOString() })
     };
   }
 }

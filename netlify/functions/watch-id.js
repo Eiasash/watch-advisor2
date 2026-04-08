@@ -18,12 +18,10 @@ export async function handler(event) {
     if (!apiKey) return { statusCode:500, headers:CORS, body:JSON.stringify({ error:"CLAUDE_API_KEY not set" }) };
     if (!image) return { statusCode:400, headers:CORS, body:JSON.stringify({ error:"image required" }) };
 
-    // Cache key: sample beginning + middle of base64 + length
-    // BUG FIX: image.slice(-300) was wrong — trailing base64 chars are often identical
-    // padding across different images, causing cache collisions where one watch's result
-    // was returned for a completely different watch photo.
+    // Cache key: sample 5 slices spread across the image + length for collision resistance
     const imgLen  = image.length;
-    const ckInput = image.slice(30, 330) + "|" + image.slice(Math.floor(imgLen / 2), Math.floor(imgLen / 2) + 200) + "|" + imgLen;
+    const step = Math.floor(imgLen / 6);
+    const ckInput = [1,2,3,4,5].map(i => image.slice(i * step, i * step + 100)).join("|") + "|" + imgLen;
     const ck = `watchid2:${hashText(ckInput)}`;
     const hit = await cacheGet(ck);
     if (hit) return { statusCode:200, headers:{...CORS,"X-Cache":"HIT"}, body:JSON.stringify(hit) };
@@ -98,6 +96,8 @@ Return ONLY valid JSON, no markdown:
     cacheSet(ck, parsed);
     return { statusCode:200, headers:{...CORS,"X-Cache":"MISS"}, body:JSON.stringify(parsed) };
   } catch(e) {
-    return { statusCode:500, headers:CORS, body:JSON.stringify({ error:e.message }) };
+    console.error("[watch-id] Error:", e.message);
+    const isBilling = e.message?.includes("BILLING");
+    return { statusCode:500, headers:CORS, body:JSON.stringify({ error: isBilling ? e.message : "Watch identification failed" }) };
   }
 }

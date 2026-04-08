@@ -12,7 +12,7 @@ export async function getConfiguredModel() {
   const DEFAULT_MODEL = "claude-sonnet-4-6";
   try {
     const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
     if (!url || !key) return DEFAULT_MODEL;
     const supabase = createClient(url, key);
     const { data } = await supabase
@@ -107,7 +107,7 @@ export async function callClaude(apiKey, payload, opts = {}) {
 function _logTokenUsage(input, output) {
   try {
     const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
     if (!url || !key) return;
     const supabase = createClient(url, key);
     supabase.rpc('increment_token_usage', { p_input: input, p_output: output }).then(
