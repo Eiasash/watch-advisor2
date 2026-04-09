@@ -156,21 +156,20 @@ function AppContent() {
               .wa-tab-bar {
                 position:fixed; bottom:0; left:0; right:0; z-index:200;
                 margin:0; padding:0; gap:0;
-                overflow-x:auto; overflow-y:hidden;
-                -webkit-overflow-scrolling:touch;
+                display:flex !important;
                 background:${isDark?"#171a21":"#fff"};
                 border-top:1px solid ${isDark?"#2b3140":"#d1d5db"};
                 padding-bottom: env(safe-area-inset-bottom, 0px);
-                scrollbar-width:none;
               }
-              .wa-tab-bar::-webkit-scrollbar { display:none; }
               .wa-tab-bar button {
-                flex:0 0 auto; min-width:56px;
+                flex:1 1 0; min-width:0;
                 border-radius:0 !important; border:none !important;
                 border-top:2px solid transparent !important;
-                padding:8px 6px 6px !important; font-size:11px !important;
-                flex-direction:column; display:flex; align-items:center; gap:1px;
+                padding:8px 4px 6px !important; font-size:11px !important;
+                flex-direction:column; display:flex; align-items:center; justify-content:center; gap:1px;
                 white-space:nowrap;
+                -webkit-tap-highlight-color:transparent;
+                touch-action:manipulation;
               }
               .wa-tab-bar button.active {
                 border-top:2px solid #3b82f6 !important;
