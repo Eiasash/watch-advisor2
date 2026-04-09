@@ -4,7 +4,7 @@ async function _persist(prefProfile) {
   try {
     const { setCachedState } = await import("../services/localCache.js");
     await setCachedState({ prefProfile });
-  } catch {}
+  } catch (e) { if (import.meta.env?.DEV) console.warn("[prefStore] persist failed:", e.message); }
 }
 
 function _update(p, g) {
@@ -52,5 +52,5 @@ export async function hydratePrefStore() {
     if (cached.prefProfile && typeof cached.prefProfile === "object")
       usePrefStore.getState().hydrate(cached.prefProfile);
     usePrefStore.getState().decayOnSession();
-  } catch {}
+  } catch (e) { if (import.meta.env?.DEV) console.warn("[prefStore] hydrate failed:", e.message); }
 }

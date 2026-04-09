@@ -5,8 +5,8 @@
  * Auto-expires entries older than 30 days on hydration.
  */
 import { create } from "zustand";
-async function _getCache() { try { const { getCachedState } = await import("../services/localCache.js"); return await getCachedState(); } catch { return {}; } }
-async function _setCache(p) { try { const { setCachedState } = await import("../services/localCache.js"); await setCachedState(p); } catch {} }
+async function _getCache() { try { const { getCachedState } = await import("../services/localCache.js"); return await getCachedState(); } catch (e) { if (import.meta.env?.DEV) console.warn("[rejectStore] getCache failed:", e.message); return {}; } }
+async function _setCache(p) { try { const { setCachedState } = await import("../services/localCache.js"); await setCachedState(p); } catch (e) { if (import.meta.env?.DEV) console.warn("[rejectStore] setCache failed:", e.message); } }
 
 const EXPIRY_DAYS = 30;
 const MS = 1000 * 60 * 60 * 24;
@@ -74,5 +74,5 @@ export async function hydrateRejectStore() {
     const { getCachedState } = await import("../services/localCache.js");
     const cached = await getCachedState();
     if (Array.isArray(cached?.rejectLog)) useRejectStore.getState().hydrate(cached.rejectLog);
-  } catch {}
+  } catch (e) { if (import.meta.env?.DEV) console.warn("[rejectStore] hydrate failed:", e.message); }
 }
