@@ -1,5 +1,34 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-08 (v1.12.14 — audit-fix-deploy full cycle)
+Generated: 2026-04-09 (v1.12.15 — audit-fix-deploy full cycle)
+
+## Session 2026-04-09 (v1.12.15) — Test Coverage Expansion
+
+### Audit Results
+- **Static analysis**: Clean — 1 circular dep (historyPersistence↔historyStore, pre-existing), no dead code, no inlined constants, maxAttempts=1 on all Vision functions
+- **Engine integrity**: 20 checks verified. All scoring weights correct. neverWornRecencyScore=0.50, rotationPressure=0.50 (April 2026 tuning)
+- **Tests**: 2350→2467 tests, 131→143 files, 0 failures
+- **Build**: clean (~570 kB)
+
+### Fixes shipped
+1. **supabase-keepalive.js JSDoc fix** — `*/5` in cron expression inside `/** */` comment broke Vite parser; converted to `//` comment style
+2. **12 new test files** covering previously untested Netlify functions and UI logic:
+   - `classifyImage.test.js` — classify-image Vision handler (10 tests)
+   - `detectDuplicate.test.js` — detect-duplicate Haiku handler (10 tests)
+   - `watchId.test.js` — watch-id handler, URL validation, JSON repair (14 tests)
+   - `seasonalAudit.test.js` — seasonal-audit handler, never-worn/gaps (9 tests)
+   - `supabaseKeepalive.test.js` — keepalive handler, env fallback (5 tests)
+   - `selfieCheck.test.js` — selfie-check handler, multi-image, cache (8 tests)
+   - `relabelGarment.test.js` — relabel-garment handler, corrections, JSON repair (7 tests)
+   - `occasionPlanner.test.js` — occasion-planner handler, cache HIT (5 tests)
+   - `verifyGarmentPhoto.test.js` — verify-garment-photo handler, outfit detection (10 tests)
+   - `styleDna.test.js` — style-dna handler, history threshold (4 tests)
+   - `aiAudit.test.js` — ai-audit handler, auth, billing errors (9 tests)
+   - `weekPlannerSwap.test.js` — swap/shuffle/reset logic, None-remove, logged overrides (16 tests)
+
+### No scoring weight changes needed
+- All engine values verified correct
+
+---
 
 ## Session 2026-04-08b (v1.12.14) — Doc Sync + Metric Correction
 
