@@ -359,16 +359,16 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 - **outfitScore default** is `null` (not 7). Log button requires score selection.
 - **Never-worn reservation** fires on `history.length % 3 === 0`. Uses `_wornIds` Set built from all history garmentIds.
 - **strapStore.moveStrap** sets `originalWatchId` and `crossStrapped: true`. `returnStrap` reverses.
-- **TailorCountdown pickupDate** is hardcoded to `2026-04-09`. Update when tailor schedule changes.
+- **TailorCountdown pickupDate** is loaded from `app_config.tailor_config` via `tailorConfig.js`. Currently cleared (garments picked up Apr 9).
 - **strapRecommender weather** — `weather.precipMm` and `weather.tempC` drive bonuses. Undefined = no weather effect.
 
 ---
 
 ## §8b TODO (not yet implemented)
 
-1. **Tailor follow-up (UI badge only)** — Scoring exclusion already exists in `outfitBuilder.js:337-342`. Remaining work: add visual "at tailor" badge in wardrobe grid. Nautica White/Navy stripe + Tommy Hilfiger slate micro-check blocked from clinic/formal until cleared. 5 pieces dropped off Apr 5, pickup Apr 9.
+1. ~~**Tailor follow-up (UI badge only)**~~ — **DONE.** Garments picked up Apr 9. Scoring exclusion exists in `outfitBuilder.js:337-342`. Garment notes should be cleared to unblock from formal contexts.
 2. **Cross-strap UI** — strapStore has moveStrap/returnStrap but no UI component yet. Build StrapSwapCard for visual strap management.
-3. **Dynamic tailor pickupDate** — currently hardcoded. Move to app_config or wardrobeStore.
+3. ~~**Dynamic tailor pickupDate**~~ — **DONE.** Moved to `app_config.tailor_config.pickupDate` via `tailorConfig.js` singleton, loaded at bootstrap.
 4. **Garment picker sort bias** — add "recently worn" / "frequency" sort to check-in garment picker so daily drivers (e.g. Ecco S-Lite, RL light blue shirt) float above similar-looking duplicates. Currently mis-suggests wrong Ecco and wrong light blue shirt during check-in.
 
 ---

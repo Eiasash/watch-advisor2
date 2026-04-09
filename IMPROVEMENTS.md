@@ -91,7 +91,7 @@ Generated: 2026-04-09 (v1.12.15 — audit-fix-deploy full cycle)
 - activeModel: claude-sonnet-4-6
 
 ### Remaining TODO
-1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check DB-flagged. Physical tailor visit needed. Pickup Thu Apr 9.
+1. ~~**Tailor follow-up**~~ — **DONE.** Garments picked up Apr 9.
 2. **Pasha navy alligator strap** — pending DayDayWatchband delivery.
 3. **Tudor canvas straps** — navy + olive pending.
 4. **Rikka bracelet repair** — watchmaker + Seiya Japan/GS service, outcome pending.
@@ -199,7 +199,7 @@ Implemented:
 
 1. **[HIGH] Wire `buildRotationTable` into WatchRotationPanel** — this utility computes idle/wear stats per watch and is fully tested, but no component displays it. Adding a rotation table to the Plan tab would surface neglected watches visually. Estimated: 1 session.
 
-2. **[HIGH] Dynamic tailor pickupDate** — `TailorCountdown` has a hardcoded Apr 9 pickup date. Move to `app_config` so it updates without a deploy. Estimated: 30 min.
+2. ~~**[HIGH] Dynamic tailor pickupDate**~~ — **DONE.** Moved to `app_config.tailor_config.pickupDate` via `tailorConfig.js` singleton, loaded at bootstrap.
 
 3. **[MEDIUM] `recommendationConfidence` integration** — add a confidence badge (strong/moderate/weak) to outfit cards in WatchDashboard and WeekPlanner. The domain function is ready; just needs UI wiring. Estimated: 1 session.
 
@@ -252,7 +252,7 @@ Implemented:
 
 ### Remaining TODO
 1. Cross-strap swap UI component (StrapSwapCard) — backend ready, no frontend yet
-2. Dynamic tailor pickupDate — currently hardcoded, move to app_config
+2. ~~Dynamic tailor pickupDate~~ — **DONE** (moved to `app_config`)
 3. Auto-unblock tailor garments on pickup day
 
 ---
@@ -303,12 +303,12 @@ Implemented:
 - Silitop Green Button-Down Shirt
 - Gant Blue/Tan Multistripe Shirt (excluded — tight)
 
-### Tailor Queue (5 pieces)
-1. Pavarotti navy jacket — let out waist seams
-2. Nautica white/navy stripe shirt — suppress side seams
-3. Tommy Hilfiger navy micro-dot — assess chest let-out
-4. Kiral white dress shirt — shorten sleeves
-5. Gant White Oxford — narrow cuffs
+### Tailor Queue (5 pieces) — PICKED UP Apr 9
+1. ~~Pavarotti navy jacket — let out waist seams~~
+2. ~~Nautica white/navy stripe shirt — suppress side seams~~
+3. ~~Tommy Hilfiger navy micro-dot — assess chest let-out~~
+4. ~~Kiral white dress shirt — shorten sleeves~~
+5. ~~Gant White Oxford — narrow cuffs~~
 
 ---
 
@@ -429,7 +429,7 @@ Implemented:
 | SCORE_CEILING | 30 | **FIXED** (was 0.60) |
 
 ## Remaining TODO
-1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check DB-flagged. Physical tailor visit needed.
+1. ~~**Tailor follow-up**~~ — **DONE.** Garments picked up Apr 9.
 2. **Pasha navy alligator strap** — pending DayDayWatchband delivery. Move from PENDING_STRAPS to pasha.straps[] when arrived.
 3. **Tudor canvas straps** — navy + olive pending. Move to blackbay.straps[] when delivered.
 4. **Scoring weight review** — if BB41 stagnation persists after 50+ entries, consider rotationFactor 0.40 -> 0.45.
