@@ -1,9 +1,7 @@
-/**
- * Supabase keep-alive — prevents free tier pause after 7 days inactivity.
- * Scheduled: every 5 days via netlify.toml
- * [functions.supabase-keepalive]
- *   schedule = "0 6 */5 * *"
- */
+// Supabase keep-alive — prevents free tier pause after 7 days inactivity.
+// Scheduled: every 5 days via netlify.toml
+// [functions.supabase-keepalive]
+//   schedule = "0 6 */5 * *"
 import { createClient } from '@supabase/supabase-js';
 
 export async function handler() {

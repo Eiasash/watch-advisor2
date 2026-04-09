@@ -133,7 +133,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2350 tests across 131 files** — run `npm test` to see current count
+- **2467 tests across 143 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -145,7 +145,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (131 files, 2350 tests)
+### Test file inventory (143 files, 2467 tests)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -281,6 +281,18 @@ tests/
   seasonContextFactor.test.js  season/context factor scoring
   supabaseSyncSettings.test.js Supabase settings sync
   weightFactor.test.js         weight factor — untagged/missing garment weights
+  aiAudit.test.js              ai-audit function: auth, CORS, JSON parse, billing errors, Sonnet model
+  classifyImage.test.js        classify-image function: Vision classification, cache, type validation, media type
+  detectDuplicate.test.js      detect-duplicate function: Haiku model, angle shot, JSON extraction, fallback
+  occasionPlanner.test.js      occasion-planner function: occasion validation, outfit suggestions, cache
+  relabelGarment.test.js       relabel-garment function: label verification, corrections, JSON repair
+  seasonalAudit.test.js        seasonal-audit function: never-worn, over-worn, gaps, watch utilization
+  selfieCheck.test.js          selfie-check function: multi-image, Vision maxAttempts:1, cache, items_detected
+  styleDna.test.js             style-dna function: history threshold, Supabase credentials, CORS
+  supabaseKeepalive.test.js    supabase-keepalive function: upsert, env fallback, error handling
+  verifyGarmentPhoto.test.js   verify-garment-photo function: verification, cache, outfit detection, URL validation
+  watchId.test.js              watch-id function: identification, collection context, JSON repair, URL validation
+  weekPlannerSwap.test.js      WeekPlanner swap/shuffle/reset logic, OutfitSlotChip None-remove, logged overrides
 ```
 
 ### Mobile-first UX rules
@@ -338,9 +350,9 @@ tests/
 |--------|-------|
 | Source files | 145 |
 | Source LOC | ~23,000 |
-| Test files | 131 |
-| Test LOC | ~23,000 |
-| Tests | 2350 |
+| Test files | 143 |
+| Test LOC | ~25,000 |
+| Tests | 2467 |
 | Test pass rate | 100% |
 | Netlify functions | 24 (+3 helpers) |
 | Components | 63 JSX |
@@ -364,7 +376,7 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (2350 tests)
+- `npm test` → vitest (2467 tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`
