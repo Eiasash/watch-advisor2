@@ -185,6 +185,6 @@
   },
   {
     "name": "20260409_add_tailor_config",
-    "sql": "-- Seed tailor_config into app_config so pickupDate is no longer hardcoded\nINSERT INTO app_config (key, value) VALUES\n  ('tailor_config', '{\"pickupDate\":\"2026-04-09\"}')\nON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();\n"
+    "sql": "-- Seed tailor_config into app_config so pickupDate is no longer hardcoded\n-- Garments picked up 2026-04-09 — pickupDate cleared\nINSERT INTO app_config (key, value) VALUES\n  ('tailor_config', '{}')\nON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();\n"
   }
 ]
