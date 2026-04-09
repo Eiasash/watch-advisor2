@@ -1,11 +1,11 @@
-/**
- * historyPersistence — IDB-first history entry writes.
+﻿/**
+ * historyPersistence â€” IDB-first history entry writes.
  *
  * Write order (mandatory):
  *   1. IndexedDB (history_items store)
  *   2. Zustand setState
  *
- * Never update Zustand before IDB — a crash between writes would leave
+ * Never update Zustand before IDB â€” a crash between writes would leave
  * in-memory state ahead of persisted state with no way to reconcile.
  *
  * Migration: on first call to loadAll(), if history_items is empty but the
@@ -16,7 +16,7 @@ import { db } from "../db.js";
 import { safeLoad } from "../dbSafeLoad.js";
 
 // useHistoryStore imported lazily inside functions to break the circular dependency:
-// historyPersistence → historyStore → historyPersistence
+// historyPersistence â†’ historyStore â†’ historyPersistence
 // If imported at module level, esbuild evaluates one before the other and hits a TDZ.
 function getHistoryStore() {
   // Dynamic require-style: module is guaranteed to be initialized by the time
@@ -26,7 +26,7 @@ function getHistoryStore() {
 
 const STORE = "history_items";
 
-// ── Read ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Read â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Load all history entries from IDB.
@@ -44,7 +44,7 @@ export async function loadAll() {
         await db.putAll(STORE, cached.history);
         entries = cached.history;
         if (import.meta.env?.DEV) {
-          console.log(`[historyPersistence] migrated ${entries.length} entries from legacy blob`);
+          if (import.meta.env.DEV) console.log(`[historyPersistence] migrated ${entries.length} entries from legacy blob`);
         }
       }
     } catch (_) {}
@@ -53,7 +53,7 @@ export async function loadAll() {
   return entries;
 }
 
-// ── Write ────────────────────────────────────────────────────────────────────
+// â”€â”€ Write â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Add or upsert a history entry.
@@ -88,3 +88,4 @@ export async function remove(id) {
     entries: state.entries.filter(e => e.id !== id),
   }));
 }
+
