@@ -199,7 +199,7 @@ Implemented:
 
 1. **[HIGH] Wire `buildRotationTable` into WatchRotationPanel** — this utility computes idle/wear stats per watch and is fully tested, but no component displays it. Adding a rotation table to the Plan tab would surface neglected watches visually. Estimated: 1 session.
 
-2. **[HIGH] Dynamic tailor pickupDate** — `TailorCountdown` has a hardcoded Apr 9 pickup date. Move to `app_config` so it updates without a deploy. Estimated: 30 min.
+2. ~~**[HIGH] Dynamic tailor pickupDate**~~ — **DONE.** Moved to `app_config.tailor_config.pickupDate` via `tailorConfig.js` singleton, loaded at bootstrap.
 
 3. **[MEDIUM] `recommendationConfidence` integration** — add a confidence badge (strong/moderate/weak) to outfit cards in WatchDashboard and WeekPlanner. The domain function is ready; just needs UI wiring. Estimated: 1 session.
 
@@ -252,7 +252,7 @@ Implemented:
 
 ### Remaining TODO
 1. Cross-strap swap UI component (StrapSwapCard) — backend ready, no frontend yet
-2. Dynamic tailor pickupDate — currently hardcoded, move to app_config
+2. ~~Dynamic tailor pickupDate~~ — **DONE** (moved to `app_config`)
 3. Auto-unblock tailor garments on pickup day
 
 ---

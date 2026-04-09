@@ -133,7 +133,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2467 tests across 143 files** — run `npm test` to see current count
+- **2475 tests across 144 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -145,7 +145,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (143 files, 2467 tests)
+### Test file inventory (144 files, 2475 tests)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -239,6 +239,7 @@ tests/
   strapStore.test.js           strap store
   supabaseSync.test.js         Supabase sync (pull, push)
   supabaseSyncCrud.test.js     uploadPhoto, deleteGarment, fuzzy/semantic search
+  tailorConfig.test.js         tailor config singleton (pickupDate from app_config)
   tailorFlag.test.js           tailor flag detection + exclusion from formal contexts
   syncBar.test.js              sync bar component
   todayPanel.test.js           daysSinceWorn, garment type ordering
@@ -350,9 +351,9 @@ tests/
 |--------|-------|
 | Source files | 145 |
 | Source LOC | ~23,000 |
-| Test files | 143 |
+| Test files | 144 |
 | Test LOC | ~25,000 |
-| Tests | 2467 |
+| Tests | 2475 |
 | Test pass rate | 100% |
 | Netlify functions | 24 (+3 helpers) |
 | Components | 63 JSX |
@@ -376,7 +377,7 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (2467 tests)
+- `npm test` → vitest (2475 tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`

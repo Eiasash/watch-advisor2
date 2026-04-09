@@ -68,6 +68,23 @@ export async function pullScoringOverrides() {
   }
 }
 
+export async function pullTailorConfig() {
+  if (IS_PLACEHOLDER) return null;
+  try {
+    const { data, error } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "tailor_config")
+      .maybeSingle();
+    if (error) { console.warn("[supabaseSync] pullTailorConfig error:", error.message); return null; }
+    const val = data?.value;
+    return (val && typeof val === "object") ? val : null;
+  } catch (e) {
+    console.warn("[supabaseSync] pullTailorConfig failed:", e.message);
+    return null;
+  }
+}
+
 export async function pushSettings(settings) {
   if (IS_PLACEHOLDER) return;
   try {

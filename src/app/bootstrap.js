@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { loadAll as loadHistoryEntries } from "../services/persistence/historyPersistence.js";
 import { safeGet } from "../services/dbSafeLoad.js";
-import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings, pullThumbnails, pullScoringOverrides } from "../services/supabaseSync.js";
+import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings, pullThumbnails, pullScoringOverrides, pullTailorConfig } from "../services/supabaseSync.js";
 import { setScoringOverrides } from "../config/scoringOverrides.js";
+import { setTailorConfig } from "../config/tailorConfig.js";
 import { registerHandler, resumePendingTasks, flushTasksByType } from "../services/backgroundQueue.js";
 import { checkAndBackup } from "../services/backupService.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
@@ -199,6 +200,11 @@ export function useBootstrap() {
           // Load auto-tuned scoring overrides from app_config into scoring engine
           pullScoringOverrides().then(overrides => {
             if (overrides) setScoringOverrides(overrides);
+          }).catch(() => {});
+
+          // Load tailor config (pickupDate) from app_config
+          pullTailorConfig().then(config => {
+            if (config) setTailorConfig(config);
           }).catch(() => {});
 
           // Pull settings (weekCtx, onCallDates, active straps)

@@ -368,7 +368,7 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 
 1. **Tailor follow-up (UI badge only)** — Scoring exclusion already exists in `outfitBuilder.js:337-342`. Remaining work: add visual "at tailor" badge in wardrobe grid. Nautica White/Navy stripe + Tommy Hilfiger slate micro-check blocked from clinic/formal until cleared. 5 pieces dropped off Apr 5, pickup Apr 9.
 2. **Cross-strap UI** — strapStore has moveStrap/returnStrap but no UI component yet. Build StrapSwapCard for visual strap management.
-3. **Dynamic tailor pickupDate** — currently hardcoded. Move to app_config or wardrobeStore.
+3. ~~**Dynamic tailor pickupDate**~~ — **DONE.** Moved to `app_config.tailor_config.pickupDate` via `tailorConfig.js` singleton, loaded at bootstrap.
 4. **Garment picker sort bias** — add "recently worn" / "frequency" sort to check-in garment picker so daily drivers (e.g. Ecco S-Lite, RL light blue shirt) float above similar-looking duplicates. Currently mis-suggests wrong Ecco and wrong light blue shirt during check-in.
 
 ---

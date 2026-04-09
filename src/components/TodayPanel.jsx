@@ -30,6 +30,7 @@ import StrapSuggestion  from "./today/StrapSuggestion.jsx";
 import QuickStrapSwap   from "./today/QuickStrapSwap.jsx";
 import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
 import TailorCountdown  from "./today/TailorCountdown.jsx";
+import { getTailorPickupDate } from "../config/tailorConfig.js";
 
 import SelfiePanel  from "./SelfiePanel.jsx";
 import OnCallPlanner from "./OnCallPlanner.jsx";
@@ -266,7 +267,7 @@ export default function TodayPanel() {
         onSelect={(id) => setSelected(prev => new Set([...prev, id]))}
       />
       <SeasonalTransition garments={garments} isDark={isDark} />
-      <TailorCountdown garments={garments} isDark={isDark} pickupDate="2026-04-09" />
+      <TailorCountdown garments={garments} isDark={isDark} pickupDate={getTailorPickupDate()} />
 
       {/* OnCall Planner — shown when shift context selected */}
       {context === "shift" && (
