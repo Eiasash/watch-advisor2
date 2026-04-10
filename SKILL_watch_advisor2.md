@@ -13,8 +13,8 @@
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
 | Source files | 146 |
 | Source LOC | ~23,100 |
-| Test files | 144 |
-| Tests | 2475+ |
+| Test files | 148 |
+| Tests | 2564+ |
 | Netlify functions | 24 (+3 helpers) |
 | Cron functions | 3 (auto-heal 5am UTC, push-brief 6:30am UTC, keepalive /5d) |
 | Components | 63 JSX |
@@ -105,7 +105,7 @@ netlify/functions/
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
 supabase/migrations/      — SQL migration audit trail (commit .sql after every apply_migration)
-tests/                    — 144 Vitest test files, 2475+ tests
+tests/                    — 148 Vitest test files, 2564+ tests
 ```
 
 ---

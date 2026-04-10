@@ -133,7 +133,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2475 tests across 144 files** — run `npm test` to see current count
+- **2564 tests across 148 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -145,7 +145,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (144 files, 2475 tests)
+### Test file inventory (148 files, 2564 tests)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -294,6 +294,10 @@ tests/
   verifyGarmentPhoto.test.js   verify-garment-photo function: verification, cache, outfit detection, URL validation
   watchId.test.js              watch-id function: identification, collection context, JSON repair, URL validation
   weekPlannerSwap.test.js      WeekPlanner swap/shuffle/reset logic, OutfitSlotChip None-remove, logged overrides
+  styleDNA.test.js             styleDNA domain: colorDNA, formalityDNA, watchAffinityDNA, contextDNA, comfortZoneDNA
+  tradeSimulator.test.js       trade simulator: dial diversity, genuine/replica, straps, verdicts, multi-trade
+  rejectionIntelligence.test.js rejection intelligence: penalty tiers, insights, rejected color combos
+  strapLifecycle.test.js       strap lifecycle: lifespan estimation, wear tracking, health %, replacement dates
 ```
 
 ### Mobile-first UX rules
@@ -351,9 +355,9 @@ tests/
 |--------|-------|
 | Source files | 146 |
 | Source LOC | ~23,000 |
-| Test files | 144 |
-| Test LOC | ~25,000 |
-| Tests | 2475 |
+| Test files | 148 |
+| Test LOC | ~26,000 |
+| Tests | 2564 |
 | Test pass rate | 100% |
 | Netlify functions | 24 (+3 helpers) |
 | Components | 63 JSX |
@@ -377,7 +381,7 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (2475 tests)
+- `npm test` → vitest (2564 tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`
