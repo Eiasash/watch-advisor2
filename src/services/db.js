@@ -36,8 +36,8 @@ export const dbPromise = openDB(DB_NAME, DB_VERSION, {
 
 /** Typed store interface — all persistence services use this, not raw idb calls. */
 export const db = {
-  async put(store, value) {
-    return (await dbPromise).put(store, value);
+  async put(store, value, key) {
+    return (await dbPromise).put(store, value, key);
   },
 
   async get(store, key) {

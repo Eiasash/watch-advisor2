@@ -14,8 +14,8 @@
 
 // Additive engine ceiling (March 2026 recalibration).
 //
-// Per-garment max: (1.0×2.5)+(1.0×3)+(1.0×3)+(1.0×1)+(1.0×1.5) = 11
-// 3 garments × 11 = 33, harmony ~1.0, coherence ~+0.3 → ~33.3 theoretical max.
+// Per-garment max: (1.0×2.5)+(1.0×3)+(1.0×3)+(1.0×1)+(1.0×0.5) = 10
+// 3 garments × 10 = 30, harmony ~1.0 → ~30 theoretical max.
 // Typical "decent" outfit: 3× ~6.0 = 18, harmony 0.9 → ~16.4.
 // Ceiling set at 30 so: perfect → 1.0 "strong", decent → 0.55 "good",
 // mixed → 0.40 "moderate", bad → 0.17 "weak".
