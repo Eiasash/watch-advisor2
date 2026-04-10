@@ -15,8 +15,8 @@ export default function GarmentPicker({
 }) {
   const { useState, useEffect } = React;
   const [collapsed, setCollapsed] = useState(false);
-  // Auto-expand when items already selected (restoring today's entry)
-  useEffect(() => { if (selected.size > 0) setCollapsed(false); }, []);
+  // Auto-expand when items already selected (restoring today's entry or async IDB load)
+  useEffect(() => { if (selected.size > 0) setCollapsed(false); }, [selected.size]);
 
   const activeGarments = garments.filter(
     g => !g.excludeFromWardrobe && g.type !== "outfit-photo" && g.type !== "outfit-shot"
