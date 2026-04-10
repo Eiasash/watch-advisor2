@@ -14,7 +14,7 @@ export default function GarmentPicker({
   isDark, card, border, muted,
 }) {
   const { useState, useEffect } = React;
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   // Auto-expand when items already selected (restoring today's entry)
   useEffect(() => { if (selected.size > 0) setCollapsed(false); }, []);
 
