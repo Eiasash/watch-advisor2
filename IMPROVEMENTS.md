@@ -1,37 +1,6 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-10 (full session)
 
-## Session 2026-04-10 — Full Audit Cycle (Clean)
-
-### Audit Results
-- **Static analysis**: Clean — 1 circular dep (historyPersistence↔historyStore, pre-existing), no dead code, no inlined constants, maxAttempts=1 on all Vision functions
-- **Engine integrity**: 19 checks verified. All scoring weights correct. rotationFactor=0.40, repetitionPenalty=-0.28, SCORE_CEILING=30, contextFormality=0.5, contextMatch=0.10, coherence=+0.20, neverWornRecencyScore=0.50, neverWornRotationPressure=0.50, default temp=15, sweater warm transition=18°C/4.0
-- **Supabase (via snapshot)**: 81 active garments, 47 history entries, 0 orphans, 0 dupes, 0 untagged
-- **Tests**: 2475 tests, 144 files, 0 failures
-- **Build**: clean (~570 kB)
-- **Snapshot health gate**: ALL pass — garmentCount=81, orphans=0, activeModel=claude-sonnet-4-6, all health="ok", tokenUsage.month=2026-04
-
-### Documentation fixes shipped
-1. **SKILL §1 Zustand stores**: 8 → 9 (debugStore was missing from count)
-2. **SKILL §4 contextMatch**: +0.25 → +0.10 (was reduced in v1.5.7, doc never updated)
-3. **CLAUDE.md source files**: 145 → 146
-4. **Dates updated**: last audited → 2026-04-10
-
-### No scoring weight changes needed
-- Watch rotation: healthy (no single watch dominant)
-- Garment stagnation: healthy
-- Shirt wear rate: 42% (above 35% threshold)
-- Never-worn: 36% (below 50% threshold)
-- Score distribution: 6.5–9 (varied)
-- Outfit quality trend: improving (7.75 → 8.67 avg)
-
-### Wear pattern analysis
-- No watch >40% in last 10 — no rotationFactor bump needed
-- No garment >3× in 14d — no repetitionPenalty change needed
-- autoHeal: 8 checks, 0 fixes, healthy
-
----
-
 ## Session 2026-04-09 (v1.12.15) — Test Coverage Expansion
 
 ### Audit Results
