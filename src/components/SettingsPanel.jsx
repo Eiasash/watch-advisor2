@@ -124,7 +124,9 @@ export default function SettingsPanel({ onClose, scrollTo }) {
       localStorage.setItem("wa-supabase-key", supabaseKey);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {}
+    } catch (e) {
+      console.error("[settings] save failed:", e.message, e);
+    }
   }, [supabaseUrl, supabaseKey]);
 
   const bg = isDark ? "#171a21" : "#ffffff";
@@ -156,11 +158,11 @@ export default function SettingsPanel({ onClose, scrollTo }) {
             <div>
               <div style={{ fontSize:13, fontWeight:600 }}>Daily push notification</div>
               <div style={{ fontSize:11, color: isDark ? "#6b7280" : "#9ca3af", marginTop:2 }}>
-                {pushStatus === "subscribed" && "✓ Active — 6:30am daily"}
+                {pushStatus === "subscribed" && "\u2713 Active \u2014 6:30am daily"}
                 {pushStatus === "unsubscribed" && "Watch + outfit pick sent at 6:30am"}
-                {pushStatus === "denied" && "⚠ Permission blocked — check browser settings"}
+                {pushStatus === "denied" && "\u26a0 Permission blocked \u2014 check browser settings"}
                 {pushStatus === "unsupported" && "Not supported on this browser"}
-                {pushStatus === "loading" && "Checking…"}
+                {pushStatus === "loading" && "Checking\u2026"}
               </div>
             </div>
             {pushStatus !== "unsupported" && pushStatus !== "denied" && pushStatus !== "loading" && (
@@ -173,7 +175,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
                   color:"#fff", fontSize:12, fontWeight:700, flexShrink:0, marginLeft:12,
                 }}
               >
-                {pushLoading ? "…" : pushStatus === "subscribed" ? "Turn off" : "Enable"}
+                {pushLoading ? "\u2026" : pushStatus === "subscribed" ? "Turn off" : "Enable"}
               </button>
             )}
           </div>
@@ -244,7 +246,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
               transition: "background 0.2s",
             }}
           >
-            {backupSaved ? "✓ Saved to Downloads" : "⬇ Save Backup"}
+            {backupSaved ? "\u2713 Saved to Downloads" : "\u2b07 Save Backup"}
           </button>
           <div style={{ fontSize: 11, color: mutedColor, marginTop: 6 }}>
             Full backup — garments, photos, history, watches. {garments.length}g · {history.length} log entries

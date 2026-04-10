@@ -57,7 +57,7 @@ function useTodayKey() {
 
 const CONTEXT_OPTIONS = [
   { key: null,            label: "Any" },
-  { key: "clinic",       label: "Clinic" },
+
   { key: "casual",       label: "Casual" },
   { key: "date-night",   label: "Date Night" },
   { key: "shift",        label: "On-Call" },

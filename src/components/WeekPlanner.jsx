@@ -15,7 +15,7 @@ import WeekPlanLock from "./plan/WeekPlanLock.jsx";
 const CONTEXTS = [
   { key: null,                      label:"Any Vibe" },
   { key:"smart-casual",            label:"Smart Casual" },
-  { key:"clinic",                  label:"Clinic" },
+
   { key:"casual",                  label:"Casual" },
   { key:"date-night",             label:"Date Night" },
   { key:"shift",                   label:"On-Call Shift" },
@@ -323,8 +323,8 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
 
   const selectedWatch = watches.find(w => w.id === watchId);
 
-  const CONTEXTS = [null,"smart-casual","clinic","casual","date-night","eid-celebration","family-event","riviera","shift"];
-  const CONTEXT_LABELS = { [null]: "Any Vibe", "smart-casual": "Smart Casual", clinic: "Clinic", casual: "Casual", "date-night": "Date Night", "eid-celebration": "Eid", "family-event": "Family", riviera: "Riviera", shift: "On-Call" };
+  const CONTEXTS = [null,"smart-casual","casual","date-night","eid-celebration","family-event","riviera","shift"];
+  const CONTEXT_LABELS = { [null]: "Any Vibe", "smart-casual": "Smart Casual", casual: "Casual", "date-night": "Date Night", "eid-celebration": "Eid", "family-event": "Family", riviera: "Riviera", shift: "On-Call" };
 
   // Build outfit with shuffle + pin support — same pattern as WatchDashboard
   const dayWeather = useMemo(() => {

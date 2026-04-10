@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // ─── Phase 6.8: payload version stamping ────────────────────────────────────

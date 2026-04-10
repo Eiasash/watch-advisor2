@@ -40,7 +40,7 @@ import {
 // Garments below `min` are hard-excluded (return -Infinity); `target` biases scoring.
 export const CONTEXT_FORMALITY = {
   "hospital-smart-casual": { min: 5, target: 7 },
-  "clinic":                { min: 5, target: 7 },
+
   "formal":                { min: 6, target: 8 },
   "smart-casual":          { min: 3, target: 6 },
   "casual":                { min: 1, target: 4 },

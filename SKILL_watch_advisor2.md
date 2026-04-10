@@ -1,6 +1,6 @@
 # SKILL — Watch Advisor 2
 
-> Auto-generated skill file. Updated by `/update-skill` command.
+> Auto-generated skill file. Updated 2026-04-09.
 > Do NOT edit manually — run `/update-skill` to refresh from codebase + Supabase.
 
 ---
@@ -9,90 +9,76 @@
 
 | Metric | Value |
 |--------|-------|
-| Version | 1.12.13 |
+| Version | 1.12.15 |
 | Stack | React 18 + Vite 7 + Zustand 4 + IndexedDB + Supabase + Netlify Functions |
-| Source files | 145 |
-| Source LOC | ~23,000 |
-| Test files | 143 |
-| Tests | 2467 |
+| Source files | 146 |
+| Source LOC | ~23,100 |
+| Test files | 144 |
+| Tests | 2475+ |
 | Netlify functions | 24 (+3 helpers) |
-| Cron functions | 3 (auto-heal 5am, push-brief 6:30am, keepalive /5d) |
+| Cron functions | 3 (auto-heal 5am UTC, push-brief 6:30am UTC, keepalive /5d) |
 | Components | 63 JSX |
-| Zustand stores | 9 |
-| Build output | ~570 kB |
+| Zustand stores | 8 |
 | Live URL | https://watch-advisor2.netlify.app |
+| Netlify site ID | 4d21d73c-b37f-4d3a-8954-8347045536dd (NOT 85d12386 — Toranot) |
+| Supabase project | oaojkanozbfpofbewtfq |
 | Last audited | 2026-04-09 |
 
 ---
 
-## §2 Architecture
+## §2 Repo Structure
 
 ```
 src/
   app/
-    AppShell.jsx          — router, nav, theme, boot status, storage quota toast
-    bootstrap.js          — IDB load → cloud pull, task handlers (incl. upload-angle with URL writeback), backup + storage quota + debugStore push
-  components/             — 58 JSX UI components (see Key Components)
+    AppShell.jsx          — router, nav, theme, boot status
+    bootstrap.js          — IDB load → cloud pull, task handlers, backup + storage quota check
   config/
     scoringWeights.js     — SCORE_WEIGHTS + STYLE_LEARN — ONLY place to change weights
-    strapRules.js         — strap-shoe rule constants
+    scoringOverrides.js   — runtime weight overrides from app_config (April 2026)
+    strapRules.js         — strap-shoe rule constants (DEAD — strapShoeScore always 1.0)
     weatherRules.js       — layer temp brackets
   data/
-    watchSeed.js          — 23 active + 3 retired watches, source of truth — IMMUTABLE
+    watchSeed.js          — 23 watches (13 genuine + 10 replica), source of truth
     dialColorMap.js       — CANONICAL dial color → garment color map (shared)
   domain/
-    contextMemory.js      — repetitionPenalty() — recently-worn garment penalty (-0.28)
-    rotationStats.js      — daysIdle(), rotationPressure(), garmentDaysIdle(), neglectedGenuine()
+    contextMemory.js      — repetitionPenalty() (-0.28)
+    rotationStats.js      — daysIdle(), rotationPressure(), garmentDaysIdle()
     preferenceLearning.js — learnPreferenceWeights() from history
-    historyWindow.js      — recentHistory() calendar-day-based window, recentWatchIds()
   engine/                 — LEGACY watch scoring (still active for watch rotation)
-    dayProfile.js         — scoreWatchForDay(), inferDayProfile(), DAY_PROFILES. shiftWatch gate.
+    dayProfile.js         — scoreWatchForDay(), inferDayProfile(), DAY_PROFILES
     weekRotation.js       — genWeekRotation() — 7-day watch rotation
   outfitEngine/           — PRIMARY outfit scoring engine
-    outfitBuilder.js      — buildOutfit() — entry point, beam-search combo + slot picking
-    scoring.js            — scoreGarment(), strapShoeScore(), contextFormalityScore()
-    confidence.js         — outfitConfidence() — SCORE_CEILING = 30 (additive engine)
-    explain.js            — explainOutfit(), explainSeasonContext() — Jerusalem timezone
+    outfitBuilder.js      — buildOutfit() — entry point, all slot picking
+    scoring.js            — scoreGarment(), contextFormalityScore()
     watchStyles.js        — STYLE_TO_SLOTS, STYLE_FORMALITY_TARGET
-    strapRecommender.js   — recommendStrap() — palette-aware strap scoring (shoe + outfit + dial + context)
     scoringFactors/
-      index.js            — registerFactor(), applyFactors() — factor pipeline
       diversityFactor.js  — diversity bonus
-      repetitionFactor.js — garment repetition penalty (-0.28 if worn in last 5)
-      rotationFactor.js   — rotation pressure × 0.40 weight
-      seasonContextFactor.js — season/context tag matching, Jerusalem timezone
-      weightFactor.js     — garment weight (light/heavy) vs temperature scoring
-  hooks/
-    useTodayFormState.js  — TodayPanel form state, auto-detects shift from onCallDates
-  aiStylist/
-    claudeStylist.js      — getAISuggestion() client
-  classifier/
-    pipeline.js           — runClassifierPipeline() — Vision fallback chain
-    colorDetection.js     — detectDominantColor() (canvas pixel analysis)
+      repetitionFactor.js — -0.28 if worn in last 5
+      rotationFactor.js   — rotationPressure × 0.40 weight
+      seasonContextFactor.js — +0.30 season, +0.25 context
+      weightFactor.js     — light/heavy scoring
   services/
-    supabaseSync.js       — pullCloudState(), pushGarment(), uploadPhoto(), pushHistoryEntry()
-    backgroundQueue.js    — IDB task queue, retry logic (max 3), orphan reset
+    supabaseSync.js       — pullCloudState(), pushGarment(), uploadPhoto()
+    backgroundQueue.js    — IDB task queue, retry (max 3), orphan reset
     localCache.js         — IDB state/image/planner stores
     backupService.js      — rolling 4-snapshot weekly backup
-    imagePipeline.js      — resizeImage(), processImage() (canvas, no worker)
+    imagePipeline.js      — resizeImage(), processImage() (canvas, USE_WORKER=false)
     safeFetch.js          — hardened fetch: 502/504 handling, JSON fallback
   stores/
     wardrobeStore.js      — garments, weekCtx, onCallDates, _outfitOverrides
     watchStore.js         — watches, activeWatch
-    historyStore.js       — wear history entries (quickLog + legacy flags preserved)
-    strapStore.js         — per-watch active strap selection
+    historyStore.js       — wear history (quickLog + legacy flags preserved)
+    strapStore.js         — per-watch active strap
     rejectStore.js        — rejected garment/watch combos
     styleLearnStore.js    — preference learning profile
-    debugStore.js         — error ring buffer (max 200) + pushDebugEntry() helper
+    debugStore.js         — error ring buffer (max 200)
     themeStore.js         — dark/light mode
-  weather/
-    weatherService.js     — Open-Meteo API, geolocation fallback to Jerusalem, 7-day forecast
 netlify/functions/
-  _claudeClient.js        — shared Claude API client, retry + model from app_config + token logging
+  _claudeClient.js        — shared Claude API client, retry + model from app_config
   _blobCache.js           — Netlify Blobs AI result cache
-  auto-heal.js            — daily self-healing cron (5am UTC) — stamps orphans, detects stagnation
   classify-image.js       — Vision: garment type/color/formality (maxAttempts: 1)
-  selfie-check.js         — Vision: outfit photo analysis (maxAttempts: 1, max_tokens: 1100)
+  selfie-check.js         — Vision: outfit photo (maxAttempts: 1, max_tokens: 1100)
   watch-id.js             — Vision: watch identification (maxAttempts: 1)
   verify-garment-photo.js — Vision: garment photo verification (maxAttempts: 1)
   ai-audit.js             — wardrobe AI audit + strap advisor
@@ -101,244 +87,228 @@ netlify/functions/
   detect-duplicate.js     — duplicate garment detection
   extract-outfit.js       — extract outfit from photo
   occasion-planner.js     — occasion-based outfit planning
+  daily-pick.js           — AI daily outfit pick
+  style-dna.js            — AI style DNA analysis
+  wardrobe-chat.js        — AI wardrobe chat assistant
+  auto-heal.js            — scheduled self-healing audit (cron, NO CORS, NO HTTP)
+  monthly-report.js       — monthly wardrobe report (cron, NO CORS)
+  run-migrations.js       — scheduled migration runner (cron, NO CORS)
+  watch-value.js          — watch collection value tracking
+  seasonal-audit.js       — seasonal wardrobe audit
   relabel-garment.js      — AI garment relabelling
   push-subscribe.js       — push notification subscription
-  push-brief.js           — scheduled daily outfit brief + no-wear 7-day reminder (cron, no CORS)
-  supabase-keepalive.js   — Supabase ping every 5 days (cron, no CORS)
-  skill-snapshot.js       — live app state + autoHeal status endpoint (GET, no auth)
+  push-brief.js           — daily outfit brief (cron, NO CORS)
+  push-no-wear.js         — push if no wear in 7 days (cron, NO CORS)
+  supabase-keepalive.js   — Supabase ping every 5 days (cron, NO CORS)
+  skill-snapshot.js       — live health endpoint (GET, no auth)
   generate-embedding.js   — OpenAI embedding generation
-  daily-pick.js           — Claude-generated daily outfit pick (browser, CORS, maxAttempts: 1; 4h cache)
-  monthly-report.js       — Monthly self-improvement analysis cron (1st of month 7am UTC, no CORS)
-  style-dna.js            — Style DNA extraction from wear history (browser, CORS, maxAttempts: 1)
-  wardrobe-chat.js        — Conversational AI wardrobe advisor (browser, CORS, maxAttempts: 1)
-  watch-value.js          — Watch cost-per-wear calculation (browser, CORS)
-  seasonal-audit.js       — Seasonal wardrobe audit + garment recommendations (browser, CORS)
-  run-migrations.js       — Bundled migration runner (admin, no CORS)
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
 supabase/migrations/      — SQL migration audit trail (commit .sql after every apply_migration)
-tests/                    — 143 Vitest test files (2467 tests)
+tests/                    — 144 Vitest test files, 2475+ tests
 ```
 
 ---
 
-## §3 Scoring System (last audited: 2026-04-08)
+## §3 Mandatory Workflow — After Every Change
+
+```bash
+# 1. Tests — zero failures required
+timeout 120 node node_modules/.bin/vitest run
+
+# 2. Bump version in package.json (patch=fix, minor=feature, major=breaking)
+# 3. Commit + push
+git add -A && git commit -m "<type>: <msg>"
+git push origin main
+
+# 4. Verify deploy via MCP
+Netlify:netlify-project-services-reader → operation: "get-project"
+  → siteId: "4d21d73c-b37f-4d3a-8954-8347045536dd"
+  → assert state === "ready"
+```
+
+### Git identity (sandbox)
+```bash
+git config user.email "eias@watch-advisor2"
+git config user.name "Eias"
+git pull --rebase origin main
+```
+
+### Schema changes
+`apply_migration` MCP → immediately commit `.sql` to `supabase/migrations/`.
+
+---
+
+## §4 Scoring Engine
 
 ### Base formula
 ```
 scoreGarment = (colorMatch × 2.5) + (formalityMatch × 3) + (watchCompatibility × 3)
              + (weatherLayer × 1) + (contextFormality × 0.5)
 ```
-All weights live exclusively in `src/config/scoringWeights.js`. Never inline.
+All weights in `src/config/scoringWeights.js` — never inline elsewhere.
 
-### Post-score modifiers (applied in outfitBuilder._scoreCandidate)
+### Runtime overrides (April 2026)
+`src/config/scoringOverrides.js` → `getOverride(key, defaultVal)` reads `app_config.scoring_overrides`.
+```sql
+UPDATE app_config SET value = '{"rotationFactor": 0.45}'::jsonb WHERE key = 'scoring_overrides';
+-- Reset: UPDATE app_config SET value = '{}'::jsonb WHERE key = 'scoring_overrides';
+```
+
+### Post-score modifiers
 | Modifier | Value | Source |
 |----------|-------|--------|
-| rotationFactor weight | ×0.40 | `rotationFactor.js` |
-| repetitionPenalty | -0.28 (if worn in recent 5 entries) | `contextMemory.js` |
-| diversityPenalty | -0.12 × recent appearances (last 7 days) | `outfitBuilder.js diversityBonus()` |
-| rejectPenalty | -0.30 | rejectStore |
-| replicaPenalty | -60% of baseScore in clinic/formal/shift | `outfitBuilder.js` |
-| seasonMatch | +0.30 (in-season), -0.80 (opposite season) | `seasonContextFactor.js` |
-| contextMatch | +0.10 | `seasonContextFactor.js` |
-| weightFactor | ±0.15 max (heavy in heat / ultralight in cold) | `weightFactor.js` |
-| coherenceBonus | ±20% of baseScore (scaled from -0.40 to +0.20 raw) | `outfitBuilder.js _crossSlotCoherence()` |
-| brightnessNudge | ±0.05 (dark penalty / light boost) | `scoring.js` |
-| preferenceWeights | formality lean from wear history | `preferenceLearning.js` |
+| rotationFactor | ×0.40 | rotationFactor.js |
+| repetitionPenalty | −0.28 (worn in last 5) | contextMemory.js |
+| diversityFactor | −0.12 × min(count,5) last 7d | outfitBuilder.js |
+| rejectPenalty | −0.30 | rejectStore |
+| seasonMatch | +0.30 | seasonContextFactor.js |
+| contextMatch | +0.25 | seasonContextFactor.js |
+| weightFactor | ±light/heavy | weightFactor.js |
 
-### Cross-Slot Coherence — v2
-```
-Exact color repeat          → -0.40
-Neutral candidate           → +0.10
-Warm/cool contrast          → +0.20  ← reward contrast, do NOT revert
-Same tone, 1 piece          → +0.15
-Same tone, 2+ pieces        → -0.05
-```
+### Cross-slot coherence (v2)
+| Condition | Delta |
+|-----------|-------|
+| Exact color repeat | −0.40 |
+| Neutral candidate | +0.10 |
+| Warm/cool contrast | +0.20 ← do NOT revert |
+| Same tone, 1 piece | +0.15 |
+| Same tone, 2+ pieces | −0.05 |
 
-### Confidence (SCORE_CEILING = 30)
-Combo score = sum of 3 garment base scores + coherence bonuses × pair-harmony multiplier.
-Typical range: 5–33. Normalised against ceiling of 30.
-Labels: strong ≥0.75, good ≥0.55, moderate ≥0.35, weak <0.35.
-**SCORE_CEILING was 0.60 (broken, multiplicative era) — fixed March 22 2026 to 30.**
-
-### Context Values
-Valid: `clinic`, `smart-casual`, `formal`, `shift`, `casual`, `date-night`, `riviera`,
-`eid-celebration`, `family-event`
-
-### Watch Rotation — v2
+### Watch rotation (v2)
 ```
 worn in last 7 days  → recencyScore 0.0
-never worn           → recencyScore 0.50 (gentle nudge, not aggressive)
+never worn           → recencyScore 0.50 (lowered April 2026, was 0.75)
 idle N days          → min(N/14, 1.0)
-rotationPressure(Infinity) = 0.50
+rotationPressure(∞)  → 0.50 (lowered April 2026, was 0.70)
 ```
 
-### On-Call / Shift Watch Pool
-`dayProfile.js` hard-gates shift context: `if (!watch.shiftWatch) return 0;`
-Only 3 watches have `shiftWatch: true` in watchSeed.js: **Speedmaster**, **Tudor BB41**, **Hanhart**.
-All others score 0 in shift context — no dress watches, no replicas.
+### Context values
+Valid: `smart-casual`, `formal`, `shift`, `casual`, `date-night`, `riviera`, `eid-celebration`, `family-event`
+**`clinic` is REMOVED** — Israeli hospital ward has no dress code. Use `smart-casual` for work days.
 
-### Outfit Generation Pipeline
-1. Read selected watch + active strap → enrichedWatch
-2. Filter wearable garments (exclude accessories, tailor-flagged in formal)
-3. Pre-filter shoes by strap-shoe rule (hard 0.0 elimination)
-4. Build top-N shortlists per core slot (shirt/pants/shoes)
-5. Beam-search over all combinations: sum-of-scores × pair-harmony × coherence
-6. Fill remaining slots (jacket, sweater, layer, belt) per-slot greedy
-7. Multilayer logic: sweater if <22°C, second layer if <8°C (pullover/zip differentiation)
-8. Belt auto-matched to shoe color
-9. Pants-shoe palette coherence swap if harmony ≤0.4
-10. Dual-dial recommendation (Reverso: dark outfit → white side, light → navy)
-11. Confidence + explanation
+### Strap-shoe rule
+**DEAD as of v1.12.12.** `strapShoeScore()` always returns 1.0. No filtering by strap.
+Do NOT re-add strap-shoe filtering.
 
-### Shuffle Mechanism
-- Each shuffle increment adds previous picks to `excludedPerSlot` (hard) AND injects
-  5 fake history entries with both `.outfit` and `.garmentIds` so both `diversityBonus`
-  and `repetitionPenalty` fire on shuffled-away picks.
-- Three shuffle paths (all consistent): WatchDashboard, WeekPlanner rotation, AddOutfitModal.
+### On-call shift watch pool
+`dayProfile.js` hard-gates shift: only watches with `shiftWatch: true` score > 0.
+Pool: **Speedmaster, Tudor BB41, Hanhart** only.
 
-### Weather Integration
-- Open-Meteo API with geolocation (fallback: Jerusalem 31.7683, 35.2137)
-- WatchDashboard: single current weather, deferred 2s after mount
-- WeekPlanner: 7-day forecast with 1-hour IDB cache, per-day weather to buildOutfit
-- AddOutfitModal: receives forecast prop, resolves per-day weather
-- OnCallPlanner: 2-day forecast (Day 1 + Day 2), independent fetch
-- Layer brackets: <10°C = coat (1.0), <16°C = sweater (0.8), <22°C = light jacket (0.5), ≥22°C = no layer (0.1)
+### FORMAL_CONTEXTS set
+`new Set(["formal", "hospital-smart-casual", "shift"])` — clinic removed April 2026.
+Replica penalty only fires for these contexts.
 
 ---
 
-## §4 Automation & Self-Healing
+## §5 Netlify Functions Rules
 
-### Daily auto-heal cron (`auto-heal.js` — 5:00 UTC)
-Runs 7 diagnostic checks, auto-fixes what it can, logs results to `app_config.auto_heal_log`:
+- Browser-called functions: CORS headers required
+- Cron functions (`auto-heal`, `push-brief`, `push-no-wear`, `supabase-keepalive`, `monthly-report`, `run-migrations`): NO CORS, never browser-called
+- `auto-heal.js`: Netlify rejects HTTP invocation. **Dashboard trigger only.**
+- Vision functions (`classify-image`, `selfie-check`, `watch-id`, `verify-garment-photo`): `maxAttempts: 1` mandatory. `selfie-check` also `max_tokens: 1100`.
 
-| Check | Auto-fix | Threshold |
-|-------|----------|-----------|
-| Orphaned history entries | Stamps quickLog/legacy | Any unstamped empty garmentIds |
-| Watch rotation stagnation | Auto-tunes rotationFactor +0.05 (cap 0.60) | Same watch >40% of last 10 |
-| Garment slot stagnation | Auto-tunes repetitionPenalty -0.03 (cap -0.40) | Same garment >5× in 14d |
-| Context distribution | Flags broken UI | >80% null contexts |
-| Untagged garments | Flags for BulkTagger | >10 missing season/context/material |
-| Score distribution | Flags stuck scoring | All scores identical |
-| Never-worn percentage | Flags for rotation pressure increase | >50% wardrobe never worn |
-
-### Daily push-brief (`push-brief.js` — 6:30 UTC)
-- If no outfit logged in 7+ days → sends no-wear reminder instead of outfit brief
-
-### Supabase keepalive (`supabase-keepalive.js` — every 5 days)
-- Prevents free tier pause after 7 days inactivity
-
-### Weekly GitHub Action (`weekly-audit.yml` — Monday 6am UTC)
-- Full autonomous audit via Claude Code. Secrets: `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
-
-### Token usage
-`_claudeClient.js` fire-and-forget calls `increment_token_usage` RPC after every Claude call.
-Visible in DebugConsole + `app_config.monthly_token_usage`.
+### Claude model
+Current: `claude-sonnet-4-6`. Update without deploy:
+```sql
+UPDATE app_config SET value = '"claude-sonnet-4-6"'::jsonb WHERE key = 'claude_model';
+```
+Value must be JSONB string literal.
 
 ---
 
-## §5 Data Layer
+## §6 Data Layer
 
-### Supabase Tables
+### Supabase tables
 | Table | Purpose | Notes |
 |-------|---------|-------|
-| `garments` | Wardrobe items | 72 active, fully tagged (seasons/contexts/material/weight) |
-| `history` | Wear log | 47 entries. `payload_version: "v1"` on all entries |
+| `garments` | Wardrobe items | 81 active as of Apr 9 2026 |
+| `history` | Wear log | 47 entries. `payload_version: "v1"` on all new entries |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
-| `app_settings` | **Legacy** | Do NOT use — use `app_config` |
+| `app_settings` | Legacy | Do NOT use — use `app_config` |
 
-### History entry flags
-| Flag | Meaning | Orphan check excluded |
-|------|---------|----------------------|
-| `quickLog: true` | One-tap watch log, no garments | Yes |
-| `legacy: true` | Pre-March 2026, garmentIds unrecoverable | Yes |
-| `payload_version: "v1"` | Schema version | Required on all entries |
+### Garment count (Apr 9 2026)
+81 active. Includes 7 new garments added Apr 9 (3x Timberland bottoms, 2x Kiral shirts, 2x Gant shirts).
+`clinic` removed from all garment contexts — replaced with `smart-casual`.
+
+### History INSERT pattern
+```sql
+INSERT INTO history (id, watch_id, date, payload, created_at)
+VALUES (
+  'wear-YYYY-MM-DD-{watchId}', '{watchId}', 'YYYY-MM-DD',
+  '{"context":"smart-casual","garmentIds":[...],"payload_version":"v1"}'::jsonb,
+  NOW()
+) ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload;
+```
 
 ### Garment exclusion
 Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHERE id = '...'`
 
 ---
 
-## §6 Key Components
+## §7 Automation & Self-Healing
 
-| Component | Role |
-|-----------|------|
-| `WatchDashboard.jsx` | Today's outfit. buildOutfit only. Hidden when context="shift" (OnCallPlanner takes over). |
-| `TodayPanel.jsx` | Watch logging (full + quick). Context pills. Shows OnCallPlanner when shift selected. |
-| `OnCallPlanner.jsx` | Shift outfit. Watch pool: Speedmaster, BB41, Hanhart only (`shiftWatch` flag). |
-| `WeekPlanner.jsx` | 7-day rotation + AddOutfitModal. Weather-aware per-day. |
-| `SelfiePanel.jsx` | Photo analysis. 640/512/420px scaling. |
-| `AuditPanel.jsx` | AI audit + orphan patch (search + camera) + Sync Angles backfill + Debug section. |
-| `StatsPanel.jsx` | Wear analytics. Lives under History tab. |
-| `DebugConsole.jsx` | Error log + App Health dashboard (tokens, wear rates, auto-heal). |
-| `GarmentEditor.jsx` | Metadata edit. Tailor badge for flagged garments. |
-| `WardrobeGrid.jsx` | Browse + filter. Tailor badge visible. |
-| `WatchSelector.jsx` | Watch dropdown. Filters retired watches (`!w.retired`). |
+### Crons (netlify.toml)
+| Function | Schedule | Purpose |
+|----------|----------|---------|
+| `auto-heal` | `0 5 * * *` | 8 diagnostic checks, orphan stamping, stagnation flags |
+| `push-brief` | `30 6 * * *` | Daily outfit brief |
+| `push-no-wear` | separate cron | Push if no wear in 7 days |
+| `supabase-keepalive` | `0 6 */5 * *` | Prevents free-tier pause |
 
-### Tab layout
-| Tab | Contents |
-|-----|----------|
-| Today | TodayPanel + WatchDashboard (hidden when shift) |
-| Wardrobe | ImportPanel + WardrobeGrid |
-| Plan | WeekPlanner + WatchRotationPanel |
-| History | OutfitHistory + StatsPanel |
-| Audit | AI Audit + OrphanedHistoryPatch + DebugSection |
+### Auto-heal checks
+Orphans · Stale unscored · Watch stagnation · Garment stagnation · Context distribution · Untagged garments · Score distribution · Never-worn %
 
-### On-Call UX Flow
-1. User marks dates as on-call in WeekPlanner calendar
-2. `useTodayFormState` auto-detects on-call → defaults context to "shift"
-3. OnCallPlanner renders inside TodayPanel (orange border card)
-4. WatchDashboard returns null — no duplicate outfit
-5. OnCallPlanner generates 3 Day-1 alternatives + Day-2 post-call outfit + pack list
+### Token usage (Apr 2026)
+$5.79 / month (1.3M input + 127K output tokens). Check: `app_config.monthly_token_usage`.
 
 ---
 
-## §7 Key Gotchas
+## §8 Key Components
+
+| Component | Role |
+|-----------|------|
+| `WatchDashboard.jsx` | Today's outfit. buildOutfit() only. Hidden when context=shift. |
+| `TodayPanel.jsx` | Watch logging. Context pills — no clinic option. |
+| `WeekPlanner.jsx` | 7-day rotation. buildOutfit in try/catch. |
+| `OnCallPlanner.jsx` | Shift outfit. Speedmaster/BB41/Hanhart only. |
+| `SelfiePanel.jsx` | Photo analysis. 640/512/420px scaling. |
+| `AuditPanel.jsx` | AI audit + orphan patch + debug. |
+| `GarmentEditor.jsx` | Metadata edit. Tailor badge for flagged garments. |
+| `WardrobeGrid.jsx` | Browse + filter. |
+| `BulkTaggerPanel.jsx` | Batch AI tagging. |
+| `DebugConsole.jsx` | Error log + monthly API cost. |
+
+---
+
+## §9 Key Gotchas
 
 | Gotcha | Detail |
 |--------|--------|
-| **Netlify site IDs** | `4d21d73c` = watch-advisor2. `85d12386` = Toranot. NEVER mix. |
-| **Vision timeout** | 10s hard limit. `maxAttempts: 1` mandatory on all 4 Vision functions. |
-| **auto-heal HTTP** | Netlify rejects scheduled function HTTP calls → Internal Error. Dashboard only. |
-| **Legacy engine** | `src/engine/outfitEngine.js` exists but NOT used. Do not re-add `generateOutfit()`. |
-| **DIAL_COLOR_MAP** | Only in `src/data/dialColorMap.js`. Never inline. |
-| **Scoring weights** | Only in `src/config/scoringWeights.js`. Never inline. |
-| **Coherence v2** | warm/cool contrast = +0.20. Do NOT revert to -0.15. |
-| **Never-worn** | recencyScore 0.50 (gentle nudge). rotationPressure(Infinity) = 0.50. |
-| **rotationFactor** | 0.40 default, auto-tunable via `scoringOverrides`. Do not lower. |
-| **repetitionPenalty** | -0.28 default in `contextMemory.js`, auto-tunable via `scoringOverrides`. |
-| **SCORE_CEILING** | `confidence.js` ceiling = 30 (additive engine). Was 0.60 (broken). Never lower without recalibrating. |
-| **Context soft nudge** | `contextFormality` weight = 0.5 (was 1.5). No -Infinity hard gate. Context is optional — null = "Any Vibe" (0.75 neutral). Shift mode still hard-gates via dayProfile.js shiftWatch flag. |
-| **contextMatch** | seasonContextFactor bonus = 0.10 (was 0.25). Context is a nudge, weather+rotation+color drive selection. |
-| **AddOutfitModal weather** | Must receive `forecast` prop. Was hardcoded 22°C. Fixed March 22. |
-| **Shuffle garmentIds** | Fake history entries MUST include `.garmentIds` array so repetitionPenalty fires. |
-| **Season timezone** | Both `seasonContextFactor.js` and `explain.js` use Asia/Jerusalem. Must match. |
-| **Retired watches** | 3 retired in watchSeed.js. Filtered from ALL UI selectors + engine. Kept for history display. |
-| **shiftWatch gate** | `dayProfile.js`: shift context → `return 0` if `!watch.shiftWatch`. Only speedmaster/blackbay/hanhart. |
-| **WatchDashboard shift** | Returns null when `todayContext === "shift"` — OnCallPlanner is sole shift UI. |
-| **useTodayFormState** | Auto-detects on-call from `onCallDates` store. Defaults to "shift" if today is on-call. |
-| **Migration commit** | Always commit `.sql` to `supabase/migrations/` after `apply_migration`. |
-| **garmentIds** | Always include + `payload_version: "v1"` in history payload. |
-| **w_ seed garments** | 53 exist, all `exclude_from_wardrobe = true`. Do NOT re-activate. |
-| **app_config JSONB** | Supabase auto-parses JSONB. Never double `JSON.parse()`. |
-| **app_config model** | Must be `'"model-name"'::jsonb`, not bare text. |
-| **watch-rec.js** | DELETED March 21 2026. |
-| **push-no-wear.js** | Does NOT exist. No-wear logic is embedded in `push-brief.js`. |
-| **Dead code removed** | `VersionChip`, `detectDominantColorFromDataURL` — deleted March 21 2026. |
-| **USE_WORKER** | `false` in `imagePipeline.js`. Do not re-enable. |
-| **quickLog/legacy flags** | Never remove from history entries — orphan health check depends on them. |
-| **Vitest command** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
-| **Outfit overrides** | Keyed by ISO date string, not `day.offset`. |
-| **Rejection context** | Uses actual context, not hardcoded `"smart-casual"`. |
-| **upload-angle handler** | Must write publicUrl back to garment.photoAngles + pushGarment. Was broken (discarded URL) until April 3 2026 fix. |
-| **SyncAnglesPanel** | Audit tab backfill tool for garments with local-only base64 angles. Queries Supabase directly (not local state). Auto-hides when nothing to sync. |
-| **strapRecommender v2** | Scores straps against shoe color + outfit palette + dial harmony + context. Used by both outfitBuilder (Plan tab) and WatchDashboard (Today tab). Never revert to shoe-only matching. |
-| **strapRules.js** | Single source of truth for strap-shoe rules. olive/green straps allow brown/tan/white/black shoes. |
-| **WeekPlanner AI button** | `handleAskClaude` must NOT override user's watch selection. AI only sets garment overrides via `setOutfitOverrides`. Watch override removed in v1.12.13. |
-| **WeekPlanner retired filter** | Both watch-override picker and AddOutfitModal must filter `!w.retired`. Was missing until v1.12.13. |
-| **Reverso dual-dial in Plan** | `dialSideOverrides` state (per-day) in WeekPlanner. Feeds `enrichedWatch.dial` to `buildOutfit()` for color matching. Toggle UI renders when `day.watch?.dualDial` exists. |
+| Netlify site ID | `4d21d73c` = watch-advisor2. `85d12386` = Toranot. NEVER mix. |
+| Vision timeout | 10s hard limit. `maxAttempts: 1` mandatory. |
+| Legacy engine | `src/engine/outfitEngine.js` NOT used. Do not re-add `generateOutfit()`. |
+| DIAL_COLOR_MAP | Only in `src/data/dialColorMap.js`. Never inline. |
+| Scoring weights | Only in `src/config/scoringWeights.js`. Never inline. |
+| Coherence v2 | warm/cool contrast = +0.20. Do NOT revert to −0.15. |
+| rotationFactor | 0.40 default. Do not lower. |
+| repetitionPenalty | −0.28 in contextMemory.js. |
+| clinic context | REMOVED Apr 2026. Use smart-casual for work. Never re-add clinic. |
+| Strap-shoe rule | DEAD. strapShoeScore() always 1.0. Do not re-add filtering. |
+| FORMAL_CONTEXTS | formal, hospital-smart-casual, shift ONLY. clinic removed. |
+| Migration commit | Always commit `.sql` after `apply_migration`. |
+| garmentIds | Always include + `payload_version: "v1"` in history payload. |
+| legacy history | `today-{ts}` IDs = no garmentIds. Stamp with [] + legacy note only. |
+| w_ seed garments | 53 exist, all excluded. Do NOT re-activate. |
+| app_config model | Value must be JSONB string: `'"model-name"'::jsonb`. |
+| scoringOverrides | Runtime weight overrides via app_config. getOverride() in scoring. |
+| USE_WORKER | false in imagePipeline.js. Don't re-enable. |
+| auto-heal | Dashboard trigger only. HTTP invocation fails. |
+| Vitest command | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
+| quickLog/legacy | Never remove from history entries — orphan check depends on them. |
+| never-worn | recencyScore 0.50, rotationPressure(∞) 0.50 (lowered April 2026). |
 
 ---
 
@@ -370,35 +340,39 @@ Never hard-delete. Always: `UPDATE garments SET exclude_from_wardrobe = true WHE
 2. **Cross-strap UI** — strapStore has moveStrap/returnStrap but no UI component yet. Build StrapSwapCard for visual strap management.
 3. ~~**Dynamic tailor pickupDate**~~ — **DONE.** Moved to `app_config.tailor_config.pickupDate` via `tailorConfig.js` singleton, loaded at bootstrap.
 4. **Garment picker sort bias** — add "recently worn" / "frequency" sort to check-in garment picker so daily drivers (e.g. Ecco S-Lite, RL light blue shirt) float above similar-looking duplicates. Currently mis-suggests wrong Ecco and wrong light blue shirt during check-in.
+## §10 TODO
+
+1. **Tailor follow-up** — Nautica White/Navy stripe + Tommy Hilfiger slate micro-check still need tailor visit. Gant Oxford cuffs need to go back (cuffs too long, not done Apr 9).
+2. **BulkTagger** — Run on newly added garments (7 added Apr 9) to refine tags.
+3. **Rikka bracelet** — Sent to watchmaker Apr 6. Repair status pending.
+4. **Pasha + BB41 straps** — DayDayWatchband delivery pending.
 
 ---
 
-## §9 Quick Reference
+## §11 Quick Reference
 
 ### Health check
 ```
 GET https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
 ```
 
-### Skill snapshot
-Returns: `garmentCount`, `orphanedHistoryCount`, `activeModel`, `tokenUsage`,
-`autoHeal`, `outfitQualityTrend`, `wardrobeHealth`, `health` checks.
-
-Expected healthy state:
-- `garmentCount >= 70`
-- `orphanedHistoryCount === 0`
-- `activeModel !== "unknown"`
-- All `health.*` === `"ok"`
-- `autoHeal.healthy === true`
-- `tokenUsage.month` === current month
-
 ### Run tests
 ```bash
-timeout 120 node node_modules/.bin/vitest run   # 2467 tests, zero failures
+timeout 120 node node_modules/.bin/vitest run
 ```
 
 ### Trigger auto-heal
-Netlify dashboard → Functions → `auto-heal` → Trigger button. (HTTP invocation will fail.)
+Netlify dashboard → Functions → `auto-heal` → Trigger button.
+
+### Check token cost
+```sql
+SELECT value FROM app_config WHERE key = 'monthly_token_usage';
+```
+
+### Scoring overrides (live, no deploy)
+```sql
+UPDATE app_config SET value = '{"rotationFactor": 0.45}'::jsonb WHERE key = 'scoring_overrides';
+```
 
 ### Hard constraints — never violate
 - Never re-add `generateOutfit()` fallback
@@ -406,31 +380,10 @@ Netlify dashboard → Functions → `auto-heal` → Trigger button. (HTTP invoca
 - Never set `maxAttempts > 1` on Vision functions
 - Never hard-delete garments
 - Never reactivate `w_` seed garments
-- Never mix Netlify site IDs `4d21d73c` / `85d12386`
+- Never mix Netlify site IDs
 - Never apply migration without committing `.sql` immediately
 - Never double `JSON.parse` app_config values
 - Never skip `garmentIds` + `payload_version: "v1"` in history payload
 - Never invoke `auto-heal.js` via HTTP
-- Never lower SCORE_CEILING without recalibrating confidence labels
-
-### Claude's Pick (daily-pick.js + ClaudePick.jsx) — Added April 3 2026
-- Netlify function `daily-pick.js` fetches garments, watches, 14d history, hourly weather
-- Calls Claude with full styling rules (same as human conversation)
-- Returns JSON: watch, strap, all garment slots, reasoning, score, layerTip
-- 4-hour cache in `app_config.daily_pick`, force-refresh button in UI
-- ClaudePick.jsx: purple accent card in Today tab, collapsible
-- Plan tab: "🤖" button per day calls daily-pick with that day's weather, applies as overrides
-
-### Hourly Weather — Added April 3 2026
-- `fetchWeatherForecast()` requests `hourly=temperature_2m` from Open-Meteo
-- Computes `tempMorning` (7-10am), `tempMidday` (11-14), `tempEvening` (17-20)
-- Primary outfit temp = morning temp (you dress for the morning)
-- WeatherBadge shows: 🌅 8° · ☀️ 15° · 🌙 10° + "Shed the layer after noon"
-- Default temp fallback: 22°C → 15°C everywhere (outfitBuilder, WatchDashboard, WeekPlanner)
-
-### Weekly AI Brief — push-brief.js enhanced April 3 2026
-- Mondays: buildWeeklyBrief() generates a 7-day watch rotation with outfit suggestions per day
-- Other days: buildBrief() with hourly weather (morning/midday temps from Open-Meteo)
-- Both include: layer transition tips, strap recommendations, Pasha bracelet avoidance
-- Weekly brief cached in app_config.weekly_brief
-- Daily brief includes layerTip field
+- Never re-add `clinic` as a context option
+- Never re-add strap-shoe filtering (strapShoeScore always 1.0)
