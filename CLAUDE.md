@@ -12,7 +12,7 @@ Stack: React 18 (createElement, no JSX except .jsx files) + Vite 7 + Zustand 4 +
 ## Architecture — strict, do not violate
 
 ```
-src/                          145 files, ~23,000 LOC
+src/                          146 files, ~23,000 LOC
   app/            bootstrap.js (boot sequence), AppShell.jsx (layout + tabs)
   components/     UI only — no business logic (23 JSX files)
     WatchDashboard.jsx     today's watch + outfit builder + AI stylist
@@ -349,7 +349,7 @@ tests/
 
 | Metric | Value |
 |--------|-------|
-| Source files | 145 |
+| Source files | 146 |
 | Source LOC | ~23,000 |
 | Test files | 144 |
 | Test LOC | ~25,000 |

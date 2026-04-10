@@ -1,6 +1,6 @@
 # SKILL — Watch Advisor 2
 
-> Auto-generated skill file. Updated 2026-04-09.
+> Auto-generated skill file. Updated 2026-04-10.
 > Do NOT edit manually — run `/update-skill` to refresh from codebase + Supabase.
 
 ---
@@ -18,11 +18,11 @@
 | Netlify functions | 24 (+3 helpers) |
 | Cron functions | 3 (auto-heal 5am UTC, push-brief 6:30am UTC, keepalive /5d) |
 | Components | 63 JSX |
-| Zustand stores | 8 |
+| Zustand stores | 9 |
 | Live URL | https://watch-advisor2.netlify.app |
 | Netlify site ID | 4d21d73c-b37f-4d3a-8954-8347045536dd (NOT 85d12386 — Toranot) |
 | Supabase project | oaojkanozbfpofbewtfq |
-| Last audited | 2026-04-09 |
+| Last audited | 2026-04-10 |
 
 ---
 
@@ -163,7 +163,7 @@ UPDATE app_config SET value = '{"rotationFactor": 0.45}'::jsonb WHERE key = 'sco
 | diversityFactor | −0.12 × min(count,5) last 7d | outfitBuilder.js |
 | rejectPenalty | −0.30 | rejectStore |
 | seasonMatch | +0.30 | seasonContextFactor.js |
-| contextMatch | +0.25 | seasonContextFactor.js |
+| contextMatch | +0.10 | seasonContextFactor.js |
 | weightFactor | ±light/heavy | weightFactor.js |
 
 ### Cross-slot coherence (v2)
