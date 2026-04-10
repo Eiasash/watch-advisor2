@@ -133,7 +133,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2564 tests across 148 files** — run `npm test` to see current count
+- **2715 tests across 164 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -145,7 +145,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (148 files, 2564 tests)
+### Test file inventory (164 files, 2715 tests)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -298,6 +298,22 @@ tests/
   tradeSimulator.test.js       trade simulator: dial diversity, genuine/replica, straps, verdicts, multi-trade
   rejectionIntelligence.test.js rejection intelligence: penalty tiers, insights, rejected color combos
   strapLifecycle.test.js       strap lifecycle: lifespan estimation, wear tracking, health %, replacement dates
+  dbWrapper.test.js            db wrapper: put/get/getAll/delete/clear/putAll, key forwarding
+  dbSafeLoad.test.js           dbSafeLoad: safe IDB reads, error recovery, database reset
+  supabaseSyncState.test.js    sync state: pub/sub, snapshot isolation, merge behavior
+  garmentPersistence.test.js   garment persistence: IDB-first upsert/patch/remove, Zustand sync
+  settingsPersistence.test.js  settings persistence: weekCtx/onCallDates/strap, key param regression
+  debugStore.test.js           debug store: ring buffer cap (200), push/clear, exportJSON
+  debugLogger.test.js          debug logger: console patching, idempotency, tryStringify
+  scoringFactorsRegistry.test.js  scoring factor registry: register/apply/getFactors, snapshot copy
+  diversityFactor.test.js      diversity factor: bonus passthrough, null/undefined guards
+  repetitionFactor.test.js     repetition factor: compounding prevention, contextMemory delegation
+  rotationFactor.test.js       rotation factor: pressure × multiplier, override support, edge cases
+  cors.test.js                 CORS helper: origin validation, deploy previews, fallback behavior
+  outfitFeedback.test.js       outfit feedback: AI score recording, scoreGap calculation
+  rotationSelectors.test.js    rotation selectors: buildRotationMap idle/wearCount/cpw
+  rejectStoreEdge.test.js      reject store: isRejected vs isRecentlyRejected threshold, reason stats
+  toArray.test.js              toArray utility: coercion guards for all non-array types
 ```
 
 ### Mobile-first UX rules
@@ -355,9 +371,9 @@ tests/
 |--------|-------|
 | Source files | 146 |
 | Source LOC | ~23,000 |
-| Test files | 148 |
-| Test LOC | ~26,000 |
-| Tests | 2564 |
+| Test files | 164 |
+| Test LOC | ~27,400 |
+| Tests | 2715 |
 | Test pass rate | 100% |
 | Netlify functions | 24 (+3 helpers) |
 | Components | 63 JSX |
