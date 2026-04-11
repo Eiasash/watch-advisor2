@@ -351,12 +351,12 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
     watchWithStrap.dial = watch.dualDial.sideA;
   }
 
-  const TAILOR_RE = /tailor|pulls at chest|billows|wide in torso/i;
+  const TAILOR_RE = /tailor|pulls at chest|billows|wide in torso|cuffs too|too wide|too long|needs shortening/i;
   const formalContext = FORMAL_CONTEXTS.has(context);
   const wearable = wardrobe.filter(g => {
     if (ACCESSORY_TYPES.has(g.type) || g.excludeFromWardrobe) return false;
     // Exclude tailor-flagged garments from clinic/formal contexts
-    if (formalContext && TAILOR_RE.test(g.notes ?? "")) return false;
+    if (formalContext && (g.fit === "tight" || g.fit === "needs-tailor" || TAILOR_RE.test(g.notes ?? ""))) return false;
     return true;
   });
 

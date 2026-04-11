@@ -21,7 +21,8 @@ export default function TailorQueue({ garments, onMarkDone, isDark }) {
       const fit = g.fit ?? "";
       const notes = (g.notes ?? "").toLowerCase();
       return fit === "tight" || fit === "needs-tailor" ||
-        notes.includes("tailor") || notes.includes("cuff") ||
+        notes.includes("tailor") || notes.includes("cuffs too") ||
+        notes.includes("needs cuff") || notes.includes("cuff alteration") ||
         notes.includes("sleeve") || notes.includes("billows") ||
         notes.includes("pulls at") || notes.includes("too wide") ||
         notes.includes("too long");

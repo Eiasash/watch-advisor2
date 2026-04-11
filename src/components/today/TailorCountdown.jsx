@@ -17,7 +17,7 @@ export default function TailorCountdown({ garments, isDark, pickupDate }) {
       const notes = (g.notes ?? "").toLowerCase();
       return notes.includes("tailor") || notes.includes("pulls at chest") ||
              notes.includes("billows") || notes.includes("wide in torso") ||
-             notes.includes("sleeves") || notes.includes("cuffs");
+             notes.includes("sleeves") || notes.includes("cuffs too");
     });
   }, [garments]);
 
