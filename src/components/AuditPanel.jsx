@@ -237,7 +237,9 @@ export default function AuditPanel() {
       const g = garments.find(x => x.id === id);
       if (g) {
         const { updateGarment } = useWardrobeStore.getState();
-        updateGarment(id, { fit: "regular", notes: (g.notes ?? "").replace(/tailor|cuff|sleeve|billows|pulls at|too wide|too long/gi, "[FIXED]") });
+        const updates = { fit: "regular", notes: (g.notes ?? "").replace(/tailor|cuff|sleeve|billows|pulls at|too wide|too long/gi, "[FIXED]") };
+        updateGarment(id, updates);
+        pushGarment({ ...g, ...updates }).catch(() => {});
       }
     }} isDark={isDark} />
     <div style={{ padding:"18px 20px", borderRadius:16, background:bg, border:`1px solid ${border}`, marginBottom:16 }}>
