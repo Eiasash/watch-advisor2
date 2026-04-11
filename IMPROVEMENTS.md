@@ -84,7 +84,7 @@ Generated: 2026-04-11 (cumulative)
 3. **Pasha navy alligator strap** — pending DayDayWatchband delivery. Move to pasha straps when arrived.
 4. **Tudor canvas straps** — navy + olive pending. Move to blackbay straps when delivered.
 5. **GS Rikka bracelet repair** — sent to watchmaker Apr 6. Awaiting collar fabrication outcome + Seiya Japan response.
-6. **SKILL_wardrobe update in repo** — replace v9 with v10 (100 garments, +2 new, TV70102 color fix).
+6. ~~**SKILL_wardrobe update in repo**~~ — DONE (v10 published in commit 3b28889).
 
 ### Low Priority
 7. **Scoring weight review** — if shirt stagnation persists after BulkTagger, consider rotationFactor 0.40→0.45 via scoringOverrides.
