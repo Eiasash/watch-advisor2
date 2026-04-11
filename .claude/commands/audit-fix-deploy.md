@@ -150,7 +150,7 @@ Add session with date. List fixes shipped, weight changes, dead code, remaining 
 Update test count, architecture if files changed, commands table.
 
 ### Wardrobe/collection project knowledge
-If DB garments changed → update SKILL_wardrobe_v7.md counts and garment lists.
+If DB garments changed → update SKILL_wardrobe_v10.md counts and garment lists.
 If watches/straps changed → update Watch_Collection_v11-3.md.
 
 ---
