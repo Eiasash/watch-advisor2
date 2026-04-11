@@ -49,7 +49,7 @@ const ACCESSORY_TYPES = new Set(["belt","sunglasses","hat","scarf","bag","access
 
 // Contexts where replica watches receive a scoring penalty.
 // Module-scoped to avoid rebuilding the Set on every _scoreCandidate call.
-const FORMAL_CONTEXTS = new Set(["formal","hospital-smart-casual","shift"]);
+const FORMAL_CONTEXTS = new Set(["formal","clinic","shift"]);
 
 // Subtype keywords for sweater differentiation.
 // Pullovers layer under zip-ups; two pullovers stacked = structural failure.
@@ -237,7 +237,7 @@ function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, o
   const minSweaterScore = warmTransition ? 4.0 : 0; // higher bar in warm weather
 
   const isFormalCtx = context === "formal"
-    || context === "hospital-smart-casual" || context === "shift";
+    || context === "hospital-smart-casual" || context === "clinic" || context === "shift";
   const sweaters = wearable.filter(candidate => {
     if ((candidate.type) !== "sweater") return false;
     if (isFormalCtx) {
@@ -295,7 +295,7 @@ function _fillJacket(outfit, wearable, watchWithStrap, weather, history, outfitF
   if (temp >= 22) return;
 
   const isFormalCtx = context === "formal"
-    || context === "hospital-smart-casual" || context === "shift";
+    || context === "hospital-smart-casual" || context === "clinic" || context === "shift";
   const jackets = wearable.filter(candidate => {
     if ((candidate.type) !== "jacket") return false;
     if (isFormalCtx) {

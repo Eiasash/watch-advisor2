@@ -180,9 +180,9 @@ export default function StatsPanel() {
     return Object.entries(freq).sort((a, b) => b[1] - a[1]);
   }, [filtered]);
 
-  const CONTEXT_LABELS = { "smart-casual":"Smart Casual", "hospital-smart-casual":"Clinic",
+  const CONTEXT_LABELS = { "smart-casual":"Smart Casual", "hospital-smart-casual":"Clinic", "clinic":"Clinic",
     formal:"Formal", casual:"Casual", shift:"On-Call" };
-  const CONTEXT_EMOJIS = { "smart-casual":"👔", "hospital-smart-casual":"🏥", formal:"🎩", casual:"👕", shift:"🚨" };
+  const CONTEXT_EMOJIS = { "smart-casual":"👔", "hospital-smart-casual":"🏥", "clinic":"🏥", formal:"🎩", casual:"👕", shift:"🚨" };
 
 
   // ── Wear streak ────────────────────────────────────────────────────────────

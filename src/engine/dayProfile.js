@@ -43,6 +43,7 @@ const STYLE_SUITABILITY = {
 // Profiles where replicas are strongly discouraged
 const GENUINE_PREFERRED_PROFILES = new Set([
   "hospital-smart-casual",
+  "clinic",
   "formal",
   "shift",
 ]);
