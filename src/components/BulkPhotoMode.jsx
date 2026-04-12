@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import { useWatchStore } from "../stores/watchStore.js";
+import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { setCachedState } from "../services/localCache.js";
 import { pushGarment, uploadPhoto } from "../services/supabaseSync.js";
@@ -30,8 +32,10 @@ const CAT_META = {
 };
 
 export default function BulkPhotoMode({ onClose }) {
-  const { garments, watches, updateGarment } = useWardrobeStore();
-  const history = useWardrobeStore(s => s.history);
+  const garments = useWardrobeStore(s => s.garments) ?? [];
+  const updateGarment = useWardrobeStore(s => s.updateGarment);
+  const watches = useWatchStore(s => s.watches) ?? [];
+  const history = useHistoryStore(s => s.entries) ?? [];
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
   const addToast = useToast();
@@ -87,8 +91,8 @@ export default function BulkPhotoMode({ onClose }) {
       updateGarment(current.id, { thumbnail: dataUrl });
       // Persist to IDB
       const updated = useWardrobeStore.getState().garments;
-      const ws = useWardrobeStore.getState().watches ?? watches;
-      const hist = useWardrobeStore.getState().history ?? history;
+      const ws = useWatchStore.getState().watches ?? [];
+      const hist = useHistoryStore.getState().entries ?? [];
       setCachedState({ watches: ws, garments: updated, history: hist }).catch(() => {});
       // Save image to IDB
       saveImage(current.id, dataUrl).catch(() => {});
@@ -105,7 +109,7 @@ export default function BulkPhotoMode({ onClose }) {
     } finally {
       setUploading(false);
     }
-  }, [current, updateGarment, watches, history, addToast]);
+  }, [current, updateGarment, addToast]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   function advanceToNext() {
