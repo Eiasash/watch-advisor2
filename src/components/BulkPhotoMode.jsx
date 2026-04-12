@@ -42,9 +42,10 @@ export default function BulkPhotoMode({ onClose }) {
   const queue = useMemo(() => {
     const noPhoto = garments.filter(g => {
       if (g.exclude_from_wardrobe || g.excludeFromWardrobe) return false;
-      const cat = g.category || g.type;
+      const cat = g.type || g.category;
       if (["outfit-photo", "watch", "outfit-shot"].includes(cat)) return false;
-      const hasPhoto = g.thumbnail || g.photoUrl || g.photo_url;
+      // Check all possible photo field names (store fields + DB row spread fields)
+      const hasPhoto = g.thumbnail || g.photoUrl || g.photo_url || g.thumbnail_url;
       return !hasPhoto;
     });
     return sortByWearCount(noPhoto, history);

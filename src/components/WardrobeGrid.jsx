@@ -305,9 +305,10 @@ export default function WardrobeGrid() {
   const noPhotoCount = useMemo(() => {
     return (garments ?? []).filter(g => {
       if (g.exclude_from_wardrobe || g.excludeFromWardrobe) return false;
-      const cat = g.category || g.type;
+      const cat = g.type || g.category;
       if (["outfit-photo", "watch", "outfit-shot"].includes(cat)) return false;
-      return !(g.thumbnail || g.photoUrl || g.photo_url);
+      // Check all possible photo field names (store + DB row spread)
+      return !(g.thumbnail || g.photoUrl || g.photo_url || g.thumbnail_url);
     }).length;
   }, [garments]);
   
