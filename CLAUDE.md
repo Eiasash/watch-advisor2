@@ -133,7 +133,7 @@ supabase/
 - Accessories detected via Claude Vision fallback or filename; never by pixel zones
 
 ### Tests — auto-expansion mandatory
-- **2715 tests across 164 files** — run `npm test` to see current count
+- **2922 tests across 172 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - **Auto-expand rule:** Every feature, improvement, or bug fix MUST include new or updated tests:
@@ -145,7 +145,7 @@ supabase/
 - Test files live in `tests/` — name pattern: `tests/<module>.test.js`
 - Run `/wa-audit` after significant changes to verify full coverage
 
-### Test file inventory (164 files, 2715 tests)
+### Test file inventory (172 files, 2922 tests)
 ```
 tests/
   setup.js                     vitest global setup — IndexedDB stub for jsdom
@@ -238,16 +238,22 @@ tests/
   strapPanel.test.js           strap panel component
   strapStore.test.js           strap store
   supabaseSync.test.js         Supabase sync (pull, push)
+  supabaseGarments.test.js     Supabase garment CRUD: pullCloudState, pushGarment type/category mapping, delete, history
+  supabaseSearch.test.js       Supabase search: fuzzy and semantic garment search
+  supabaseStorage.test.js      Supabase storage: photo upload, angle upload, delete storage photo
   supabaseSyncCrud.test.js     uploadPhoto, deleteGarment, fuzzy/semantic search
   tailorConfig.test.js         tailor config singleton (pickupDate from app_config)
   tailorFlag.test.js           tailor flag detection + exclusion from formal contexts
   syncBar.test.js              sync bar component
   todayPanel.test.js           daysSinceWorn, garment type ordering
+  todayPanelOrchestration.test.js  TodayPanel orchestration: context options, default watch ID, canLog validation, buildLogEntry
+  useRecommendationEngine.test.js  recommendation engine: accessory type filter, watch scoring/sorting, tomorrow preview
   utilizationScore.test.js     utilization scoring
   wardrobeGrid.test.js         TYPE_FILTER predicates, search filtering
 
   wardrobeStoreActions.test.js setGarments, setWeekCtx, setOnCallDates, navigation, select mode
   watchCompare.test.js         watch comparison component
+  watchDashboard.test.js       WatchDashboard orchestration: dial swatch mapping, watch resolution, filterWearable, mergeOutfit
   watchDashboardAiApply.test.js  AI suggestion apply logic
   watchRotationEdge.test.js    pickWatch/pickWatchPair edge cases
   watchRotationEngine.test.js  pickWatch, pickWatchPair
@@ -258,6 +264,7 @@ tests/
   claudePick.test.js           ClaudePick component: slot filtering, score colors, fetch logic, weather display
   dailyPick.test.js            daily-pick function: CORS, cache, force refresh, JSON output, maxAttempts
   strapRecommender.test.js     strap recommender: shoe matching, context boost, palette affinity, Pasha bracelet
+  strapRulesConfig.test.js     strap rules config: black/brown strap terms, shoe color arrays, exempt/casual terms
   weatherRules.test.js         weather rules
   weatherService.test.js       weather service
   weekOutfitRotation.test.js   week outfit rotation
@@ -293,6 +300,7 @@ tests/
   supabaseKeepalive.test.js    supabase-keepalive function: upsert, env fallback, error handling
   verifyGarmentPhoto.test.js   verify-garment-photo function: verification, cache, outfit detection, URL validation
   watchId.test.js              watch-id function: identification, collection context, JSON repair, URL validation
+  weekPlannerPanel.test.js     WeekPlanner panel orchestration: on-call calendar grid, date toggling, day navigation, context changes
   weekPlannerSwap.test.js      WeekPlanner swap/shuffle/reset logic, OutfitSlotChip None-remove, logged overrides
   styleDNA.test.js             styleDNA domain: colorDNA, formalityDNA, watchAffinityDNA, contextDNA, comfortZoneDNA
   tradeSimulator.test.js       trade simulator: dial diversity, genuine/replica, straps, verdicts, multi-trade
@@ -371,9 +379,9 @@ tests/
 |--------|-------|
 | Source files | 146 |
 | Source LOC | ~23,000 |
-| Test files | 164 |
-| Test LOC | ~27,400 |
-| Tests | 2715 |
+| Test files | 172 |
+| Test LOC | ~29,000 |
+| Tests | 2922 |
 | Test pass rate | 100% |
 | Netlify functions | 24 (+3 helpers) |
 | Components | 63 JSX |
@@ -397,7 +405,7 @@ tests/
 ## Environment
 
 - Node 22, npm
-- `npm test` → vitest (2564 tests)
+- `npm test` → vitest (2922 tests)
 - `npm run build` → vite build → `dist/`
 - Netlify auto-deploys from `main` branch pushes
 - No `.env` in repo — Netlify env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`
