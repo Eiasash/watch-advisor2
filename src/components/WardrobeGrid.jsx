@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { FixedSizeGrid } from "react-window";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
@@ -7,6 +7,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { setCachedState } from "../services/localCache.js";
 import { deleteGarment, pushGarment, deleteStoragePhoto } from "../services/supabaseSync.js";
 import GarmentEditor from "./GarmentEditor.jsx";
+const BulkPhotoMode = lazy(() => import("./BulkPhotoMode.jsx"));
 
 const CELL_HEIGHT = 272;
 const GRID_HEIGHT = 580;
@@ -298,6 +299,17 @@ export default function WardrobeGrid() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [query, setQuery]       = useState("");
   const [editing, setEditing]   = useState(null);
+  const [showBulkPhoto, setShowBulkPhoto] = useState(false);
+
+  // Count garments without photos (for banner)
+  const noPhotoCount = useMemo(() => {
+    return (garments ?? []).filter(g => {
+      if (g.exclude_from_wardrobe || g.excludeFromWardrobe) return false;
+      const cat = g.category || g.type;
+      if (["outfit-photo", "watch", "outfit-shot"].includes(cat)) return false;
+      return !(g.thumbnail || g.photoUrl || g.photo_url);
+    }).length;
+  }, [garments]);
   
   const [gridWidth, setGridWidth] = useState(
     typeof window !== "undefined" ? Math.min(window.innerWidth - 40, 840) : 840
@@ -477,6 +489,20 @@ export default function WardrobeGrid() {
         </div>
       )}
 
+      {/* Bulk photo banner */}
+      {noPhotoCount > 0 && !selectMode && (
+        <button onClick={() => setShowBulkPhoto(true)} style={{
+          width:"100%", boxSizing:"border-box", padding:"10px 14px",
+          borderRadius:10, border:`1px solid ${isDark?"#1e3a5f":"#bfdbfe"}`,
+          background:isDark?"#172554":"#eff6ff", color:isDark?"#93c5fd":"#1d4ed8",
+          fontSize:13, fontWeight:600, marginBottom:10, cursor:"pointer",
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+        }}>
+          <span>📸 {noPhotoCount} garments missing photos</span>
+          <span style={{ fontSize:12, fontWeight:400 }}>Bulk add →</span>
+        </button>
+      )}
+
       {/* Search */}
       <input
         value={query} onChange={e => setQuery(e.target.value)}
@@ -537,6 +563,11 @@ export default function WardrobeGrid() {
           onSetType={handleBatchSetType}
           onCancel={exitSelectMode}
         />
+      )}
+      {showBulkPhoto && (
+        <Suspense fallback={null}>
+          <BulkPhotoMode onClose={() => setShowBulkPhoto(false)} />
+        </Suspense>
       )}
     </div>
   );
