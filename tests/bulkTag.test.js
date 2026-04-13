@@ -40,8 +40,8 @@ const garments = [
 ];
 
 const claudeResponse = [
-  { id: "g1", seasons: ["spring", "summer", "autumn"], contexts: ["clinic", "smart-casual"], material: "cotton", pattern: "solid" },
-  { id: "g2", seasons: ["all-season"], contexts: ["clinic", "smart-casual", "casual"], material: "cotton", pattern: "solid" },
+  { id: "g1", seasons: ["spring", "summer", "autumn"], contexts: ["formal", "smart-casual"], material: "cotton", pattern: "solid" },
+  { id: "g2", seasons: ["all-season"], contexts: ["formal", "smart-casual", "casual"], material: "cotton", pattern: "solid" },
 ];
 
 describe("bulk-tag handler", () => {
@@ -155,8 +155,8 @@ describe("bulk-tag handler", () => {
   it("filters out invalid seasons and contexts", async () => {
     const bad = [{
       id: "g1",
-      seasons: ["spring", "rainy"],     // "rainy" is not valid
-      contexts: ["clinic", "poolside"], // "poolside" is not valid
+      seasons: ["spring", "rainy"],           // "rainy" is not valid
+      contexts: ["smart-casual", "poolside"], // "poolside" is not valid
       material: "cotton",
       pattern: "solid",
     }];
@@ -165,7 +165,7 @@ describe("bulk-tag handler", () => {
     const res = await handler({ httpMethod: "POST", body: JSON.stringify({ garments: [garments[0]] }), headers: { origin: "https://watch-advisor2.netlify.app" } });
     const result = JSON.parse(res.body).results[0];
     expect(result.seasons).toEqual(["spring"]);
-    expect(result.contexts).toEqual(["clinic"]);
+    expect(result.contexts).toEqual(["smart-casual"]);
   });
 
   it("drops entries missing id", async () => {
