@@ -217,8 +217,9 @@ Return ONLY valid JSON:
   "icon": "single emoji"
 }`;
 
+  // haiku sufficient — structured list generation from explicit inputs, no complex reasoning needed
   const data = await callClaude(apiKey, {
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 1000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -267,11 +268,11 @@ export async function handler() {
       }
     }
 
-    // Monday = weekly brief, other days = daily brief
-    const isMonday = new Date().toLocaleDateString("en-US", { weekday: "long", timeZone: "Asia/Jerusalem" }) === "Monday";
+    // Sunday = Israeli work week start (equivalent to Monday in Western calendar)
+    const isSunday = new Date().toLocaleDateString("en-US", { weekday: "long", timeZone: "Asia/Jerusalem" }) === "Sunday";
     let title, body;
 
-    if (isMonday) {
+    if (isSunday) {
       const weekly = await buildWeeklyBrief(apiKey);
       title = `${weekly.icon ?? "📅"} ${weekly.title ?? "Weekly Rotation"}`;
       const dayLines = (weekly.days ?? []).slice(0, 3).map(d => `${d.day}: ${d.watch}`).join(" · ");
