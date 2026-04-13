@@ -30,10 +30,10 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
 | Tests | 2475+ tests, 144 files (Vitest) |
-| Version | **1.12.19** |
+| Version | **1.12.23** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-04-11 |
+| Last audited | 2026-04-13 |
 | Active model | `claude-sonnet-4-6` |
 | April token cost | $5.85 (1.3M input / 128K output) |
 | Wardrobe skill | SKILL_wardrobe_v10.md |
@@ -329,6 +329,8 @@ VALUES (
 | **Never-worn** | recencyScore 0.50, rotationPressure(Infinity) 0.50. |
 | **SCORE_CEILING** | 30. Never lower without recalibrating. |
 | **IDB arrays** | Use `Array.isArray()` not `?? []`. Six prior attempts all failed. |
+| **seasonContextFactor** | Uses `toArray()` for seasons/contexts (v1.12.23). Was `?? []`. |
+| **filterShoesByStrap** | Removed from outfitBuilder import (v1.12.23). Was dead code — strapShoeScore always 1.0. |
 | **Migration commit** | Always commit `.sql` after `apply_migration`. |
 | **garmentIds** | Always include + `payload_version: "v1"` in history payload. |
 | **app_config JSONB** | Supabase auto-parses. Never double `JSON.parse()`. |
@@ -336,7 +338,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.19**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.23**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |

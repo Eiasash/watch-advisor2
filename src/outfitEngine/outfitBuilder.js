@@ -12,7 +12,7 @@
 import { recentHistory } from "../domain/historyWindow.js";
 import { STYLE_TO_SLOTS } from "./watchStyles.js";
 import { recommendStrap as _recommendStrap } from "./strapRecommender.js";
-import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore, filterShoesByStrap, clearScoreCache,
+import { scoreGarment, pantsShoeHarmony, pickBelt, strapShoeScore, clearScoreCache,
   colorMatchScore, formalityMatchScore, watchCompatibilityScore } from "./scoring.js";
 import { REPLICA_PENALTY, OUTFIT_TEMP_THRESHOLDS } from "../config/scoringWeights.js";
 import { useRejectStore } from "../stores/rejectStore.js";

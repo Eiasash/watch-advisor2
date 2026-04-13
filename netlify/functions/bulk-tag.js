@@ -12,7 +12,10 @@ import { cors } from "./_cors.js";
 
 
 const SEASONS  = ["spring","summer","autumn","winter","all-season"];
-const CONTEXTS = ["clinic","formal","smart-casual","casual","date-night","riviera","sport","lounge"];
+// NOTE: "clinic" is intentionally excluded — it was removed from the app context system.
+// Garments previously tagged clinic were migrated to smart-casual.
+// BulkTagger AI will suggest clinic (it doesn't know) — this allowlist strips it.
+const CONTEXTS = ["formal","smart-casual","casual","date-night","riviera","sport","lounge"];
 
 export async function handler(event) {
   const CORS = cors(event);
@@ -50,7 +53,7 @@ Return ONLY a JSON array — one object per garment, same order, no markdown:
   {
     "id": "<same id>",
     "seasons": [<subset of: "spring","summer","autumn","winter","all-season">],
-    "contexts": [<subset of: "clinic","formal","smart-casual","casual","date-night","riviera","sport","lounge">],
+    "contexts": [<subset of: "formal","smart-casual","casual","date-night","riviera","sport","lounge">],
     "material": "<wool|cotton|linen|denim|leather|suede|synthetic|cashmere|knit|corduroy|tweed|flannel|canvas|rubber|jersey|silk|nylon|chambray|seersucker|unknown>",
     "pattern": "<solid|striped|plaid|checked|cable knit|ribbed|textured|printed|houndstooth|herringbone|paisley|geometric|floral|color block|windowpane|micro-check>",
     "formality": <1-10 integer — refined based on garment details>,
@@ -67,7 +70,7 @@ SEASON RULES — be specific:
 - Layering pieces (cardigans, lightweight knits) → spring/autumn (transitional)
 
 CONTEXT RULES:
-- clinic = professional medical setting (neat, polished — polos/oxfords/chinos/derbies, NOT jeans/sneakers)
+- smart-casual = professional/office settings including medical (neat, polished — polos/oxfords/chinos/derbies, NOT jeans/sneakers)
 - formal = suit/tie events (dress shirts, dress trousers, oxford shoes)
 - smart-casual = office/dinner no tie (knits, chinos, blazers, derbies/loafers)
 - casual = weekend/errand (jeans, tees, sneakers, hoodies)

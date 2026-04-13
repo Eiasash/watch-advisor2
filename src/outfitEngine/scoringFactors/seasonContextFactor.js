@@ -1,3 +1,5 @@
+import { toArray } from "../../utils/toArray.js";
+
 /**
  * Season + context scoring factor.
  *
@@ -47,8 +49,8 @@ export default function seasonContextFactor(candidate, context) {
   const { garment } = candidate;
   if (!garment) return 0;
 
-  const seasons  = garment.seasons  ?? [];
-  const contexts = garment.contexts ?? [];
+  const seasons  = toArray(garment.seasons);
+  const contexts = toArray(garment.contexts);
   let score = 0;
 
   // ── Season ─────────────────────────────────────────────────────────────────
