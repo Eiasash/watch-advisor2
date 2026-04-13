@@ -138,7 +138,7 @@ NEGLECTED GENUINE WATCHES (not worn in 7+ days): ${neglected.join(", ") || "none
 WARDROBE (by category, items marked [WORN RECENTLY] should be avoided, [AT TAILOR] are unavailable):
 ${garmentLines}
 
-WATCH COLLECTION: Grand Seiko Snowflake (silver, grey/navy/titanium straps), Grand Seiko Rikka (green, teal alligator — bracelet broken), Cartier Pasha 41mm grey (black alligator preferred — bracelet poor fit), Cartier Santos Large white/gold (bracelet or brown calfskin), Santos Octagon YG vintage, GP Laureato 42mm blue (integrated bracelet), JLC Reverso navy (navy alligator), Tudor BB41 black/red (bracelet, brown distressed, black leather, NATO, Laco brown cross-strap), TAG Monaco (black or brown rally), Omega Speedmaster (10 straps incl bracelet, currently on GS Rikka brown leather), Rolex GMT-Master II (Oyster bracelet), Hanhart Pioneer (6 straps), Laco Flieger (currently no strap — on BB41).
+WATCH COLLECTION: Grand Seiko Snowflake (silver, grey/navy/titanium straps), Grand Seiko Rikka (green, teal alligator or titanium bracelet), Cartier Pasha 41mm grey (black alligator preferred — bracelet poor fit), Cartier Santos Large white/gold (bracelet or brown calfskin), Santos Octagon YG vintage, GP Laureato 42mm blue (integrated bracelet), JLC Reverso navy (navy alligator), Tudor BB41 black/red (bracelet, brown distressed, black leather, NATO, Laco brown cross-strap), TAG Monaco (black or brown rally), Omega Speedmaster (10 straps incl bracelet, currently on GS Rikka brown leather), Rolex GMT-Master II (Oyster bracelet), Hanhart Pioneer (6 straps), Laco Flieger (currently no strap — on BB41).
 
 RULES:
 - Prioritize NEGLECTED watches over recently worn ones

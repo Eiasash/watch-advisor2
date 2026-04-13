@@ -59,6 +59,7 @@
 |-------|--------|--------|----------|
 | Teal alligator | Gentry Tao | Seiko script | Primary — complements green dial |
 | Brown leather | — | — | Smart casual, pairs with brown Ecco lace-ups |
+| Titanium bracelet | Grand Seiko OEM | Folding clasp | Any footwear — repaired Apr 13 2026 (collar/bushing fixed) |
 
 ### Cartier Pasha de Cartier WSPA0026
 
