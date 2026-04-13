@@ -1,7 +1,7 @@
 ---
 name: wardrobe
 description: >
-  Eias full wardrobe reference — DB-audited & deduped April 11 2026. 100 active garments.
+  Eias full wardrobe reference — DB-audited & deduped April 13 2026. 103 active garments.
   Use for outfit building, watch pairing, context-based styling, and garment-specific
   recommendations. Always reference this file instead of guessing garments.
   STRAP-SHOE RULE IS DEAD — never enforce or mention strap-shoe color matching.
@@ -9,7 +9,7 @@ description: >
 
 # Eias Wardrobe — April 2026 (v10 — DB-Audited April 11 2026)
 
-**Source: Supabase live query. 100 active garments across 7 categories.**
+**Source: Supabase live query. 103 active garments across 7 categories (Apr 13 2026).**
 **Body:** Broad shoulders, solid build, medium height. Some shirts wide in torso — tailoring needed on older pieces.
 **Work:** Inpatient geriatric ward, Israeli hospital. No dress code. Smart-casual is the ceiling — never flag anything as "too casual" for work. Comfort is priority.
 **Strap-shoe rule:** ELIMINATED in v1.12.12. `strapShoeScore()` always returns 1.0. Do NOT mention strap-shoe coordination unless explicitly asked.
@@ -161,13 +161,14 @@ description: >
 
 ---
 
-## TAILOR QUEUE (as of April 11 2026)
+## TAILOR QUEUE (as of April 13 2026)
+All tailor jobs marked DONE as of Apr 11 2026. Queue empty.
 | Item | Issue | Status |
 |------|-------|--------|
-| Tommy Hilfiger Blue Micro-Dot | Pulls at chest | Needs tailor |
-| White Striped Oxford (Gant) | Cuffs too wide | Needs return to tailor (not completed Apr 9) |
-| Kiral White Dress Shirt | Cuffs too long | Needs shortening |
-| Nautica White Navy Stripe Shirt | Wide in torso | Needs tailoring before clinic use |
+| Tommy Hilfiger Blue Micro-Dot | Pulls at chest | ✅ DONE |
+| White Striped Oxford (Gant) | Cuffs too wide | ✅ DONE |
+| Kiral White Dress Shirt | Cuffs too long | ✅ DONE |
+| Nautica White Navy Stripe Shirt | Wide in torso | ✅ DONE |
 
 ---
 
@@ -221,13 +222,15 @@ description: >
 ## CATEGORY COUNT SUMMARY
 | Category | Count |
 |----------|-------|
-| Shirts | 34 |
+| Shirts | 35 |
 | Pants | 22 |
-| Sweaters | 21 |
+| Sweaters | 20 |
 | Shoes | 14 |
 | Jackets | 5 |
 | Belts | 4 |
 | Accessories | 1 |
 | **Total** | **101** |
+
+> Note: DB active count = 103 (accessories excluded from outfit engine). Outfit-eligible = 102. Sweater count reflects DB state (20) — skill doc previously listed 21 including duplicates.
 
 > Note: DB active count = 100 (accessory excluded from outfit engine). Outfit-eligible = 99.

@@ -2,15 +2,15 @@
 Generated: 2026-04-11 (cumulative)
 
 ## Current State
-- **Version**: 1.12.19
+- **Version**: 1.12.25
 - **Engine integrity**: All checks PASS
-- **Supabase**: 100 active garments, 0 dupes, 0 orphans
+- **Supabase**: 103 active garments, 0 dupes, 0 orphans
 - **Tests**: 2475+ passing (144 files)
 - **Snapshot**: All health "ok", autoHeal healthy
 - **Build**: Auto-deploy on push to main
-- **Token usage**: $5.85 for April 2026 (1.3M/128K tokens)
-- **Model**: claude-sonnet-4-6
-- **Wardrobe skill**: SKILL_wardrobe_v10.md
+- **Token usage**: $11.47 for April 2026 to date (2.6M/249K tokens — Apr 13 snapshot)
+- **Model**: claude-sonnet-4-6 (buildWeeklyBrief → haiku as of v1.12.25)
+- **Wardrobe skill**: SKILL_wardrobe_v10.md (wardrobe doc stale — 100→103 garments)
 
 ---
 
@@ -52,6 +52,18 @@ Generated: 2026-04-11 (cumulative)
 21. **Data fix** — Kiral TV70102 cardigan color corrected khaki→brown (tag confirmed KRL-2604XX, "BROWN").
 22. **Full dedup audit** — 100 garments scanned, 0 duplicates found. Both Chelsea boots confirmed distinct items.
 
+### v1.12.24 — Audit Fixes (April 13 2026)
+23. **bulk-tag.js clinic context bug** — `clinic` was in CONTEXTS allowlist so AI suggestions passed through unfiltered. Removed from allowlist, prompt schema, and CONTEXT RULES. smart-casual now covers professional/medical contexts server-side — no manual strip needed.
+24. **seasonContextFactor toArray** — `garment.seasons ?? []` and `garment.contexts ?? []` replaced with `toArray()`. Consistent with IDB array safety mandate — ?? [] passes truthy non-arrays.
+25. **Dead filterShoesByStrap import removed** — `outfitBuilder.js` was still importing it. `strapShoeScore()` always returns 1.0 since v1.12.12 so it can never filter anything.
+26. **SKILL_watch_advisor2.md** — Bumped to v1.12.24, updated garment count, audit date, 3 new gotchas.
+
+### v1.12.25 — Token Cost + Garment Sync (April 13 2026)
+27. **push-brief.js buildWeeklyBrief: sonnet→haiku** — Weekly 7-day rotation is structured list gen from explicit inputs; haiku handles it fine. Projected saving: ~$3-4/month (~15% of April spend).
+28. **push-brief.js isMonday→isSunday** — Weekly brief was triggering on Western Monday (Tuesday in Jerusalem time). Fixed to use Sunday = Israeli work week start.
+29. **+7 garments onboarded** — 4 shirts (Gant Blue/Brown/White Stripe, Kiral Stone Pinstripe, Olive Navy Block Plaid Flannel, White V-Neck Basic Tee), 2 sweaters (Kiral Brown Zippered Cardigan TV70102, Gant Dark Navy Cable Knit), 1 shoe (Blundstone Rustic Brown Chelsea). Total: 100→103.  
+30. **Data fix** — Di Porto Navy Orange Plaid Flannel had wrong name/brand (was stored as "Tommy Hilfiger Red Striped Shirt" with brand Di Porto).
+
 ---
 
 ## Scoring Weights (Verified April 11 2026)
@@ -77,8 +89,8 @@ Generated: 2026-04-11 (cumulative)
 ## Remaining TODO
 
 ### High Priority
-1. **Shirt idle rate** — 14/25 shirts idle (44% wear rate). BulkTagger re-run on shirt category needed. Weight-aware scoring for ~200 garments.
-2. **Tailor follow-up** — Tommy Hilfiger blue micro-dot (chest), Gant White Oxford (cuffs), Kiral white dress shirt (cuffs), Nautica white navy stripe (torso).
+1. **BulkTagger re-run** — 35 shirts now in DB; many missing season/context tags. Run BulkTagger on shirt + sweater categories to improve rotation scoring.
+2. **Token cost monitoring** — $11.47 at Apr 13 (projected ~$26/month). buildWeeklyBrief downgraded to haiku (v1.12.25). Monitor post-fix; if still spiking, audit wardrobe-chat usage.
 
 ### Medium Priority
 3. **Pasha navy alligator strap** — pending DayDayWatchband delivery. Move to pasha straps when arrived.
