@@ -95,7 +95,7 @@ Generated: 2026-04-11 (cumulative)
 ### Medium Priority
 3. **Pasha navy alligator strap** — pending DayDayWatchband delivery. Move to pasha straps when arrived.
 4. **Tudor canvas straps** — navy + olive pending. Move to blackbay straps when delivered.
-5. **GS Rikka bracelet repair** — sent to watchmaker Apr 6. Awaiting collar fabrication outcome + Seiya Japan response.
+5. ~~**GS Rikka bracelet repair**~~ — DONE. Collar/bushing repaired Apr 13 2026. Titanium bracelet now usable.
 6. ~~**SKILL_wardrobe update in repo**~~ — DONE (v10 published in commit 3b28889).
 
 ### Low Priority
