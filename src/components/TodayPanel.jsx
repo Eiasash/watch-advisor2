@@ -56,11 +56,15 @@ function useTodayKey() {
 }
 
 const CONTEXT_OPTIONS = [
-  { key: null,            label: "Any" },
-
-  { key: "casual",       label: "Casual" },
-  { key: "date-night",   label: "Date Night" },
-  { key: "shift",        label: "On-Call" },
+  { key: "smart-casual",     label: "Work" },
+  { key: "clinic",           label: "Clinic" },
+  { key: "casual",           label: "Casual" },
+  { key: "formal",           label: "Formal" },
+  { key: "date-night",       label: "Date Night" },
+  { key: "shift",            label: "On-Call" },
+  { key: "family-event",     label: "Family" },
+  { key: "eid-celebration",  label: "Eid" },
+  { key: "riviera",          label: "Riviera" },
 ];
 
 /** Get top AI-recommended watches for today's context with scores */

@@ -251,7 +251,7 @@ function AppContent() {
       {/* Chat FAB */}
       {!showChat && (
         <button onClick={() => setShowChat(true)} style={{
-          position: "fixed", bottom: 80, right: 16, zIndex: 100,
+          position: "fixed", bottom: 80, right: 16, zIndex: 210,
           width: 52, height: 52, borderRadius: "50%",
           background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
           border: "none", boxShadow: "0 4px 16px rgba(59,130,246,0.4)",

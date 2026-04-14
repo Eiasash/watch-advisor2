@@ -31,9 +31,10 @@ export function useTodayFormState({ todayEntry, watches, defaultWatchId }) {
     const onCallDates = state.onCallDates ?? [];
     if (onCallDates.includes(todayIso)) return "shift";
     // Fall back to weekCtx if user pre-planned this day's context
-    const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
-    const weekCtx = state.weekCtx ?? {};
-    if (weekCtx[dayName]) return weekCtx[dayName];
+    const weekCtx = state.weekCtx ?? [];
+    const dayIdx = new Date().getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+    const planned = Array.isArray(weekCtx) ? weekCtx[dayIdx] : null;
+    if (planned && planned !== "Any Vibe") return planned;
     return null;
   });
   const [notes,      setNotes]      = useState(() => todayEntry?.notes ?? "");

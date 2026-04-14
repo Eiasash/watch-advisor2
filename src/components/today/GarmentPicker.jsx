@@ -2,7 +2,7 @@ import React from "react";
 import GarmentThumb from "./GarmentThumb.jsx";
 
 // Normalised to lowercase to match garment.type values (DB stores lowercase)
-const GARMENT_PRIORITY = ["shoes", "pants", "shirt", "sweater", "jacket", "coat"];
+const GARMENT_PRIORITY = ["shoes", "pants", "shirt", "sweater", "jacket", "coat", "belt"];
 
 /**
  * Garment selection grid with type-filter tabs.
