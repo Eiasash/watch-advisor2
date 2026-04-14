@@ -237,7 +237,7 @@ function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, o
   const minSweaterScore = warmTransition ? 4.0 : 0; // higher bar in warm weather
 
   const isFormalCtx = context === "formal"
-    || context === "hospital-smart-casual" || context === "clinic" || context === "shift";
+    || context === "clinic" || context === "shift";
   const sweaters = wearable.filter(candidate => {
     if ((candidate.type) !== "sweater") return false;
     if (isFormalCtx) {
@@ -295,7 +295,7 @@ function _fillJacket(outfit, wearable, watchWithStrap, weather, history, outfitF
   if (temp >= 22) return;
 
   const isFormalCtx = context === "formal"
-    || context === "hospital-smart-casual" || context === "clinic" || context === "shift";
+    || context === "clinic" || context === "shift";
   const jackets = wearable.filter(candidate => {
     if ((candidate.type) !== "jacket") return false;
     if (isFormalCtx) {

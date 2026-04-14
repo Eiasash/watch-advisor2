@@ -8,7 +8,7 @@
  * The function maps context → formality bucket to derive preference weights.
  */
 
-const FORMAL_CONTEXTS = new Set(["formal", "clinic", "hospital-smart-casual", "shift", "date-night"]);
+const FORMAL_CONTEXTS = new Set(["formal", "clinic", "shift", "date-night"]);
 const CASUAL_CONTEXTS = new Set(["casual", "riviera"]);
 
 /**

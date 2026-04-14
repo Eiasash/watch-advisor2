@@ -1,7 +1,7 @@
 /**
  * SelfiePanel — AI Selfie / Outfit Photo Checker
  * Upload or take a photo → Claude Vision analyzes the full look.
- * Shows impact score, color story, strap-shoe check, upgrade suggestion.
+ * Shows impact score, color story, upgrade suggestion.
  */
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useWatchStore }    from "../stores/watchStore.js";
@@ -215,7 +215,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
     <div style={{ padding: "0 0 80px" }}>
       <div style={{ fontSize: 20, fontWeight: 800, color: text, marginBottom: 4 }}>Outfit Check</div>
       <div style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
-        AI analyzes your full look — garments, watch, strap-shoe rule, color harmony.
+        AI analyzes your full look — garments, watch, color harmony.
       </div>
 
       {/* Upload area — always visible when no result */}

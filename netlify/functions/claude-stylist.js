@@ -3,7 +3,7 @@ import { cors } from "./_cors.js";
 /**
  * Netlify serverless function — Claude AI Stylist.
  * Validates/improves the engine's outfit pick around the selected watch.
- * Enforces strap-shoe rule, dial color coordination, formality match.
+ * Validates outfit via AI — dial color coordination, formality match, context fit.
  *
  * POST body: { garments, watch, weather, engineOutfit, dayProfile, pinnedSlots }
  * Returns: { shirt, pants, shoes, jacket, explanation, strapShoeOk }
@@ -66,30 +66,20 @@ export async function handler(event) {
       ? `${watch.brand} ${watch.model} · ${watch.dial} dial · ${watch.style} style · formality ${watch.formality}/10 · active strap: ${activeStrapLabel}`
       : "No watch";
 
-    const strapRule = (() => {
-      const strap = (watch?.strap ?? "").toLowerCase();
-      const isLeather = strap.includes("leather") || strap.includes("alligator")
-        || strap.includes("calfskin") || strap.includes("nato")
-        || strap.includes("canvas") || strap.includes("suede");
-      if (isLeather) {
-        const strapColor = strap.includes("black") ? "black"
-          : (strap.includes("brown") || strap.includes("tan") || strap.includes("cognac")
-             || strap.includes("honey") || strap.includes("caramel")) ? "brown"
-          : null; // non-standard color
-        if (!strapColor) {
-          return "STRAP-SHOE RULE: non-standard strap color (" + activeStrapLabel + "). Prefer white sneakers. Avoid strict black/brown shoe enforcement.";
-        }
-        return "STRAP-SHOE RULE (non-negotiable): " + activeStrapLabel + " strap — shoes MUST be " + strapColor + " leather. Flag any violation.";
-      }
-      return "Strap-shoe rule: " + activeStrapLabel + " — bracelet/integrated, shoe color unrestricted.";
-    })();
+    const strapRule = `Active strap: ${activeStrapLabel}. Strap-shoe color matching is NOT a rule — do not flag mismatches.`;
 
     const contextLabel = {
-      "hospital-smart-casual": "hospital smart casual (professional medical environment)",
-      "smart-casual":  "smart casual",
-      "formal":        "formal",
-      "casual":        "casual / weekend",
-      "travel":        "travel",
+      "clinic":          "clinic (professional medical environment, smart casual)",
+      "smart-casual":    "smart casual",
+      "formal":          "formal",
+      "casual":          "casual / weekend",
+      "travel":          "travel",
+      "date-night":      "date night",
+      "shift":           "on-call shift (tool watches only)",
+      "family-event":    "family event",
+      "eid-celebration": "Eid celebration",
+      "riviera":         "riviera / summer resort",
+      "hospital-smart-casual": "clinic (professional medical environment, smart casual)",
     }[dayProfile] ?? dayProfile;
 
     const prompt = `You are an expert menswear stylist specializing in watch-first coordination.
@@ -112,8 +102,8 @@ ${garmentLines}
 
 TASK:
 1. Respect ALL [PINNED] slots — return their exact ID unchanged.
-2. For unpinned slots: evaluate the engine's pick against dial color, formality, strap rule, and pinned items. Improve if a clearly better match exists in the wardrobe.
-3. Enforce the strap-shoe rule strictly — fix violations in unpinned shoe slot only.
+2. For unpinned slots: evaluate the engine's pick against dial color, formality, context, and pinned items. Improve if a clearly better match exists in the wardrobe.
+3. Strap-shoe color matching is NOT a rule — do not flag or fix shoe color based on strap color.
 4. Return IDs exactly as they appear (the "ID:XXXXX" values, without the "ID:" prefix).
 5. In the explanation, specifically mention dial color coordination and any pinned-item logic you used.
 

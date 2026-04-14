@@ -82,7 +82,7 @@ Neglected garments (30+ days or never worn, ${neglectedGarments.length} items): 
 OWNER CONTEXT:
 - Hospital-based physician: clinic days require genuine watches + formal attire
 - Watch philosophy: genuine for understated prestige, replicas for bold dial colors in casual/date contexts
-- Strap-shoe rule: brown leather strap = brown shoes. Black strap = black shoes. Non-negotiable.
+- Strap-shoe color matching is NOT a rule — do not flag strap-shoe mismatches.
 
 Provide a precise, critical wardrobe audit. Reference specific items. Return ONLY valid JSON:
 {

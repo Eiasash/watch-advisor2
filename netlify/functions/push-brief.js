@@ -144,7 +144,7 @@ RULES:
 - Prioritize NEGLECTED watches over recently worn ones
 - Avoid garments marked [WORN RECENTLY] or [AT TAILOR]
 - Be specific: name exact garments, exact watch, exact strap
-- Brown leather strap → brown shoes (Ecco pebble grain). Black strap → black formal shoes. Bracelet → any shoes.
+- Strap-shoe color matching is NOT a rule — do not enforce.
 - Layer if morning temp < midday by 5°+
 
 Return ONLY valid JSON (no markdown fences):

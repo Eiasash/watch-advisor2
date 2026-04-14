@@ -13,7 +13,7 @@
 import { strapShoeScore } from "./scoring.js";
 
 const EXEMPT_TYPES = new Set(["bracelet", "integrated"]);
-const FORMAL_CONTEXTS = new Set(["clinic", "formal", "hospital-smart-casual", "shift"]);
+const FORMAL_CONTEXTS = new Set(["clinic", "formal", "shift"]);
 
 const COLOR_FAMILIES = {
   earth:    ["brown", "tan", "cognac", "camel", "khaki", "beige", "stone", "mink", "rustic"],

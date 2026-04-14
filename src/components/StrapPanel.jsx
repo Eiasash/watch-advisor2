@@ -265,13 +265,13 @@ ${strapList.map(s => `- ${s.label} (${s.type}, ${s.color})${s.isActive ? " [CURR
 WARDROBE CONTEXT (recent pieces):
 ${wearable.map(g => `- ${g.color} ${g.type}`).join("\n")}
 
-STRAP-SHOE RULE: If strap is leather/alligator/canvas, shoes must match strap color. Metal/rubber = exempt.
+STRAP-SHOE: NOT a rule — do not enforce strap-shoe color matching.
 
 Return ONLY valid JSON:
 {
   "recommended_label": "exact strap label string",
   "reason": "2 sentences: why this strap works with the dial color, formality, and wardrobe context",
-  "shoe_required": "black" | "brown" | null
+  "shoe_required": null
 }`;
 
       const res = await fetch("/.netlify/functions/ai-audit", {

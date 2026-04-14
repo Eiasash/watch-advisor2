@@ -127,7 +127,7 @@ DATE: ${todayStr}
 WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
 
 STYLING RULES (non-negotiable):
-- Strap-shoe coordination: brown leather strap → brown shoes, black leather strap → black shoes. Metal/titanium bracelet → any footwear.
+- Strap-shoe color matching is NOT a rule — do not enforce strap-shoe coordination.
 - No loafers ever.
 - Pasha 41 = dress-sport, excluded from on-call/shift pool.
 - Laco = field/casual only.

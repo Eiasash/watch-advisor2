@@ -1,7 +1,7 @@
 /**
  * Netlify function — AI Selfie / Outfit Photo Checker (aiSelfieCheck)
  * Claude Vision analyzes a full outfit photo: garments, watch detection,
- * strap-shoe rule, color harmony, fit, proportion, upgrade suggestions.
+ * color harmony, fit, proportion, upgrade suggestions.
  *
  * POST body: { image (base64 data URL or https:// URL), watches, context, confirmedWatchId? }
  * Returns: { impact, impact_why, vision, color_story, proportion_note,
@@ -62,7 +62,7 @@ export async function handler(event) {
 
     const confirmed = confirmedWatchId ? watches.find(w => w.id === confirmedWatchId) : null;
     const confirmedLine = confirmed ? `CONFIRMED WATCH: ${confirmed.brand} ${confirmed.model}${confirmed.ref ? ` (Ref ${confirmed.ref})` : ""}\n` : "";
-    const activeStrapLine = activeStrapLabel ? `ACTIVE STRAP TODAY: ${activeStrapLabel} — apply strap-shoe rule against this specific strap.\n` : "";
+    const activeStrapLine = activeStrapLabel ? `ACTIVE STRAP TODAY: ${activeStrapLabel}\n` : "";
 
     // Build wardrobe context — compact format, max 30 items to keep prompt lean
     const wardrobeItems = (garments ?? [])
@@ -86,12 +86,12 @@ ${confirmedLine}${activeStrapLine}${wardrobeLine}
 CONTEXT: ${Array.isArray(context) ? context.join(" + ") : context}
 
 COLOR PAIRING RULES:
-• STRAP-SHOE (MANDATORY): brown leather strap = brown shoes. Black strap = black shoes. Metal bracelet/rubber/NATO = neutral (no rule).
+• STRAP-SHOE: NOT a rule — do not flag strap-shoe color mismatches.
 • DIAL-OUTFIT: Blue→grey/white/navy/cream. Green→brown/tan/olive/cream. Black→neutral. Teal→grey/navy/white. White/silver→universal. Burgundy→navy/grey/cream. Purple→grey/navy/charcoal.
 • TEMPERATURE: Warm dials (gold/champagne) pair with warm outfit tones. Cool dials with cool tones.
 • STRAP AS BRIDGE: strap color connects watch to outfit palette.
 
-Analyze: 1) Every garment — precise color (navy≠black, cream≠white, olive≠khaki), material, fit. 2) WATCH: match wrist watch against collection by case shape, dial color, bracelet/strap. 3) Color harmony across every element. 4) Strap-shoe rule strictly. 5) Proportion and silhouette.
+Analyze: 1) Every garment — precise color (navy≠black, cream≠white, olive≠khaki), material, fit. 2) WATCH: match wrist watch against collection by case shape, dial color, bracelet/strap. 3) Color harmony across every element. 4) Proportion and silhouette.
 
 Return ONLY valid JSON, no markdown:
 {

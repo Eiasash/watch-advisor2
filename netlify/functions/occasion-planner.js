@@ -41,7 +41,7 @@ WATCHES:
 ${JSON.stringify(watchList)}
 
 RULES:
-- STRAP-SHOE (MANDATORY): brown leather strap = brown shoes only. Black strap = black shoes only. Metal bracelet/integrated/rubber/NATO = any footwear.
+- STRAP-SHOE: NOT a rule — do not enforce strap-shoe color matching.
 - Genuine watches for formal/clinic/credibility contexts. Replicas acceptable for casual/date/riviera.
 - Build outfits from actual wardrobe items listed above only.
 
