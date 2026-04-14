@@ -104,9 +104,17 @@ export async function handler() {
     //    AUTO-TUNE: bump repetitionPenalty by -0.03 (cap -0.40)
     const cutoff14d = new Date(Date.now() - 14 * 864e5).toISOString().split("T")[0];
     const recent14d = hist.filter(h => h.date >= cutoff14d);
+    // Exclude belts/shoes from stagnation — they're daily-driver categories with limited rotation
+    const DAILY_DRIVER_CATS = new Set(["belt", "shoes"]);
     const gFreq = {};
     recent14d.forEach(e => (e.payload?.garmentIds ?? []).forEach(gid => { gFreq[gid] = (gFreq[gid] ?? 0) + 1; }));
-    const stagnantG = Object.entries(gFreq).filter(([, n]) => n > 5);
+    // Look up garment category to skip daily drivers
+    let garmentCategoryMap = {};
+    try {
+      const { data: gCats } = await supabase.from("garments").select("id, type");
+      (gCats ?? []).forEach(g => { garmentCategoryMap[g.id] = g.type; });
+    } catch { /* non-fatal */ }
+    const stagnantG = Object.entries(gFreq).filter(([gid, n]) => n > 5 && !DAILY_DRIVER_CATS.has(garmentCategoryMap[gid]));
     let tunedRepetition = null;
     if (stagnantG.length > 0) {
       const old = current("repetitionPenalty");
@@ -136,7 +144,7 @@ export async function handler() {
         .from("garments")
         .select("id, exclude_from_wardrobe, category, seasons, contexts, material");
       untaggedCount = (allG ?? []).filter(g =>
-        !g.exclude_from_wardrobe && !["outfit-photo", "watch"].includes(g.category) &&
+        !g.exclude_from_wardrobe && !["outfit-photo", "watch", "outfit-shot"].includes(g.category) &&
         (!g.material || !g.seasons || (Array.isArray(g.seasons) && g.seasons.length === 0))
       ).length;
     } catch { /* non-fatal */ }
@@ -162,7 +170,7 @@ export async function handler() {
       const { data: allG2 } = await supabase
         .from("garments")
         .select("id, exclude_from_wardrobe, category");
-      const active = (allG2 ?? []).filter(g => !g.exclude_from_wardrobe && !["outfit-photo", "watch"].includes(g.category));
+      const active = (allG2 ?? []).filter(g => !g.exclude_from_wardrobe && !["outfit-photo", "watch", "outfit-shot"].includes(g.category));
       const worn = new Set();
       hist.forEach(e => (e.payload?.garmentIds ?? []).forEach(id => worn.add(id)));
       neverWornPct = active.length > 0 ? ((active.length - worn.size) / active.length) * 100 : 0;
