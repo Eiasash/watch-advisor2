@@ -83,11 +83,15 @@ Both false = different garments.`,
     const jsonMatch = text.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {
-      return {
-        statusCode: 200,
-        headers: { ...CORS, "Content-Type": "application/json" },
-        body: JSON.stringify(JSON.parse(jsonMatch[0])),
-      };
+      try {
+        return {
+          statusCode: 200,
+          headers: { ...CORS, "Content-Type": "application/json" },
+          body: JSON.stringify(JSON.parse(jsonMatch[0])),
+        };
+      } catch {
+        // Claude returned non-JSON text that matched the regex — fall through to default
+      }
     }
 
     return {
