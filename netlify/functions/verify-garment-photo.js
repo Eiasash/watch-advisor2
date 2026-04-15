@@ -169,6 +169,17 @@ Rules:
       parsed = { ok: false, confidence: 0, reason: "AI parse error" };
     }
 
+    // Validate correctedType/correctedColor against allowed values (AI can hallucinate)
+    if (parsed.correctedType && !VALID_TYPES.includes(parsed.correctedType)) {
+      parsed.correctedType = currentType ?? "accessory";
+    }
+    if (parsed.correctedColor && !VALID_COLORS.includes(parsed.correctedColor)) {
+      parsed.correctedColor = currentColor ?? "unknown";
+    }
+    if (parsed.correctedMaterial && !VALID_MATERIALS.includes(parsed.correctedMaterial)) {
+      parsed.correctedMaterial = "unknown";
+    }
+
     // ── Cache write ──────────────────────────────────────────────────────────
     if (cacheKey) {
       cacheSet(cacheKey, parsed); // fire-and-forget, never awaited
