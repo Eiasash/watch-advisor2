@@ -314,7 +314,7 @@ export default function WatchDashboard() {
     return () => clearTimeout(t);
   }, []);
 
-  const selectedWatch = activeWatch ?? watches.find(w => !w.retired) ?? null;
+  const selectedWatch = activeWatch ?? watches.find(w => !w.retired && !w.pending) ?? null;
   const _activeStrapId  = selectedWatch ? strapActiveMap[selectedWatch.id] : null;
   const activeStrapObj  = _activeStrapId ? strapStraps[_activeStrapId] : null;
 

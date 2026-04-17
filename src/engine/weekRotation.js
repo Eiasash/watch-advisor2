@@ -15,7 +15,7 @@ const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 export function genWeekRotation(watches, history = [], weekCtx = [], onCallDates = []) {
   if (!watches.length) return [];
 
-  const activeWatches = watches.filter(w => !w.retired);
+  const activeWatches = watches.filter(w => !w.retired && !w.pending);
   const active = activeWatches.filter(w => w.status === "active" || !w.status);
   if (!active.length) return [];
 

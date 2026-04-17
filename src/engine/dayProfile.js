@@ -110,7 +110,7 @@ const PILOT_FORMALITY_FLOOR = {
  * Adds daily jitter to break ties so the same watch doesn't always win.
  */
 export function scoreWatchForDay(watch, dayProfile, history = []) {
-  if (watch.retired) return 0;
+  if (watch.retired || watch.pending) return 0;
 
   // Shift context: only watches explicitly flagged as shift-appropriate score.
   // Prevents precious/dress pieces (Snowflake, Pasha, Reverso, etc.) from

@@ -27,7 +27,7 @@ export default function TradeSimulator() {
   const muted = isDark ? "#6b7280" : "#9ca3af";
   const accent = "#f59e0b";
 
-  const active = watches.filter(w => !w.retired && !w.replica);
+  const active = watches.filter(w => !w.retired && !w.pending && !w.replica);
 
   const result = useMemo(() => {
     if (!tradeOut.length) return null;

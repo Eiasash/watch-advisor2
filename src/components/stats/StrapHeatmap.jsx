@@ -26,7 +26,7 @@ export default function StrapHeatmap({ history, watches, isDark }) {
     const result = [];
     for (const [watchId, straps] of Object.entries(usage)) {
       const watch = watches?.find(w => w.id === watchId);
-      if (!watch || watch.retired) continue;
+      if (!watch || watch.retired || watch.pending) continue;
       const entries = Object.entries(straps)
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count);

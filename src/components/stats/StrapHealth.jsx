@@ -25,7 +25,7 @@ export default function StrapHealth() {
 
   // Group straps by watch (only non-bracelet straps — bracelets don't wear out)
   const watchGroups = watches
-    .filter(w => !w.retired)
+    .filter(w => !w.retired && !w.pending)
     .map(w => {
       const watchStraps = Object.values(straps)
         .filter(s => s.watchId === w.id && s.type !== "bracelet")

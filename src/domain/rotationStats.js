@@ -38,7 +38,7 @@ export function wearCount(watchId, history) {
  * Returns null when watches or history is empty.
  */
 export function neglectedGenuine(watches, history) {
-  const genuine = (watches ?? []).filter(w => !w.replica && !w.retired);
+  const genuine = (watches ?? []).filter(w => !w.replica && !w.retired && !w.pending);
   if (!genuine.length) return null;
 
   let worst = null;

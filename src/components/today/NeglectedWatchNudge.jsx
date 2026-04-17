@@ -12,7 +12,7 @@ export default function NeglectedWatchNudge({ watches, history, currentWatchId, 
   const [dismissed, setDismissed] = useState(null); // dismissed watchId
   if (!watches?.length || !history?.length) return null;
 
-  const genuine = watches.filter(w => !w.replica && !w.retired);
+  const genuine = watches.filter(w => !w.replica && !w.retired && !w.pending);
   if (!genuine.length) return null;
 
   // Find the most idle genuine watch that isn't already selected

@@ -70,7 +70,7 @@ const CONTEXT_OPTIONS = [
 /** Get top AI-recommended watches for today's context with scores */
 function getWatchRecommendations(watches, history, context) {
   if (!watches.length) return [];
-  const active = watches.filter(w => !w.retired);
+  const active = watches.filter(w => !w.retired && !w.pending);
   const scored = active.map(w => ({
     watch: w,
     score: scoreWatchForDay(w, context, history),
@@ -126,7 +126,7 @@ export default function TodayPanel() {
   const defaultWatchId = useMemo(() => {
     if (todayEntry?.watchId) return todayEntry.watchId;
     const recs = getWatchRecommendations(watches, entries, null);
-    return recs[0]?.watch?.id ?? watches.find(w => !w.retired)?.id ?? null;
+    return recs[0]?.watch?.id ?? watches.find(w => !w.retired && !w.pending)?.id ?? null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
@@ -156,7 +156,7 @@ export default function TodayPanel() {
   const text   = isDark ? "#e2e8f0" : "#1f2937";
   const muted  = isDark ? "#8b93a7" : "#9ca3af";
 
-  const active         = watches.filter(w => !w.retired);
+  const active         = watches.filter(w => !w.retired && !w.pending);
   const selectedWatch  = watches.find(w => w.id === watchId);
   const watchStraps    = Object.values(straps).filter(s => s.watchId === watchId);
   const activeStrapId  = activeStrap[watchId];

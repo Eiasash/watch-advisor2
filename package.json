@@ -1,6 +1,6 @@
 {
   "name": "watch-advisor2",
-  "version": "1.12.30",
+  "version": "1.12.31",
   "private": true,
   "type": "module",
   "scripts": {

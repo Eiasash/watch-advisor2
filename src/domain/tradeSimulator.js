@@ -44,7 +44,7 @@ function getDialFamily(dial) {
  * @returns {object} impact analysis
  */
 export function simulateTrade({ collection, history, tradeOut = [], tradeIn, cashDelta = 0 }) {
-  const active = collection.filter(w => !w.retired);
+  const active = collection.filter(w => !w.retired && !w.pending);
   const incoming = Array.isArray(tradeIn) ? tradeIn : tradeIn ? [tradeIn] : [];
 
   // Current state

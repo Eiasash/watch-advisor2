@@ -309,7 +309,7 @@ const TIME_SLOTS = [
 
 function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wearable, slotCandidates, onConfirm, onCancel }) {
   const [timeSlot,  setTimeSlot]  = useState("evening");
-  const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches.find(w => !w.retired)?.id ?? null);
+  const [watchId,   setWatchId]   = useState(day?.watch?.id ?? watches.find(w => !w.retired && !w.pending)?.id ?? null);
   const [notes,     setNotes]     = useState("");
   const [outfitSlots, setOutfitSlots] = useState({});
   const [slotOverrides, setSlotOverrides] = useState({});
@@ -447,7 +447,7 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
           Watch
         </div>
         <div style={{ border: `1px solid ${border}`, borderRadius: 10, overflow: "hidden", maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
-          {watches.filter(w => !w.retired).map(w => {
+          {watches.filter(w => !w.retired && !w.pending).map(w => {
             const isSelected = watchId === w.id;
             return (
               <div key={w.id}
@@ -1309,7 +1309,7 @@ export default function WeekPlanner() {
               {pickingDay === day.offset && (
                 <div style={{ marginTop: 8, border: `1px solid ${border}`, borderRadius: 10,
                               background: isDark ? "#171a21" : "#fff", overflow: "hidden" }}>
-                  {watches.filter(w => !w.retired).map(w => {
+                  {watches.filter(w => !w.retired && !w.pending).map(w => {
                     const isSelected = (watchOverrides[day.date] ?? day.watch?.id) === w.id;
                     return (
                       <div key={w.id}>

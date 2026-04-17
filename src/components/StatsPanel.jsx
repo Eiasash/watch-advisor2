@@ -304,7 +304,7 @@ export default function StatsPanel() {
           {/* Watch cost per wear */}
           {(() => {
             const watchCpw = watches
-              .filter(w => w.priceILS > 0 && !w.retired)
+              .filter(w => w.priceILS > 0 && !w.retired && !w.pending)
               .map(w => {
                 const wears = entries.filter(e => e.watchId === w.id).length;
                 return { w, wears, cpw: wears > 0 ? Math.round(w.priceILS / wears) : null };

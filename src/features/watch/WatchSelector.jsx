@@ -3,7 +3,7 @@ import React from "react";
 export default function WatchSelector({ watches, activeWatch, onChange, isDark = false }) {
   // Filter retired (traded) watches from the selection dropdown.
   // Retired watches remain in the store for history display lookups.
-  const selectable = watches.filter(w => !w.retired);
+  const selectable = watches.filter(w => !w.retired && !w.pending);
   return (
     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
       <label style={{ fontSize:12, fontWeight:600, color: isDark ? "#8b93a7" : "#6b7280", whiteSpace:"nowrap" }}>Watch</label>

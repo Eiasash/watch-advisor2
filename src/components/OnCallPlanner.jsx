@@ -175,8 +175,8 @@ export default function OnCallPlanner({ isDark: propDark }) {
   // Only shift-flagged watches are candidates — Speedmaster, BB41, Hanhart.
   // shiftWatch flag in watchSeed.js is the single source of truth.
   const shiftWatch = useMemo(() => {
-    const candidates = watches.filter(w => !w.retired && w.shiftWatch);
-    if (!candidates.length) return watches.find(w => w.genuine !== false && !w.retired) ?? watches.find(w => !w.retired) ?? null;
+    const candidates = watches.filter(w => !w.retired && !w.pending && w.shiftWatch);
+    if (!candidates.length) return watches.find(w => w.genuine !== false && !w.retired && !w.pending) ?? watches.find(w => !w.retired && !w.pending) ?? null;
     const scored = candidates.map(w => ({
       watch: w,
       score: scoreWatchForDay(w, "shift", history),
