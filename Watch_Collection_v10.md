@@ -1,9 +1,9 @@
 # Eias Watch Collection
 
-**Total Pieces:** 23 (13 genuine, 10 replica)  
-**Active:** 23 | **Pending Trade:** 0 | **Incoming:** 0  
-**App Version:** v24  
-**Last Updated:** 5 March 2026
+**Total Pieces:** 24 (13 genuine active + 10 replica + 1 genuine pending)  
+**Active:** 23 | **Pending Delivery:** 1 (Atelier Wen Perception) | **Incoming:** 0  
+**App Version:** v1.12.31  
+**Last Updated:** 18 April 2026
 
 ---
 
@@ -41,6 +41,12 @@
 | 8 | Rolex Day-Date | Turquoise | 36mm | Rose gold President |
 | 9 | Rolex Oyster Perpetual | Purple/Grape | 36mm | Steel Oyster |
 | 10 | Breguet Tradition | Black | 40mm | Leather |
+
+### Pending Delivery (1)
+
+| # | Watch | Ref | Size | Dial | Movement | Straps | Status |
+|---|-------|-----|------|------|----------|--------|--------|
+| 1 | Atelier Wen Perception × Revolution "Paris-Beijing" | N°25/50 LE | 39mm (20mm lug) | Silver guilloché (concentric + starburst, Greek-key chapter ring, blue hands) | Micro-rotor automatic | Steel integrated bracelet (hexagonal links) + grey FKM rubber w/ signed Atelier Wen deployant | **Pending delivery from Singapore** — bought by friend for SGD 5,000 (~₪11,750). Limited to 50 pieces. |
 
 ---
 
@@ -245,3 +251,22 @@
 | v20 | Explicit straps[] arrays for all watches. Traded pieces removed. |
 | v15 | Collection audit: removed Sinn 613, Rolex Date, Sugess, Seiko SRPH. Added Speedmaster 3861. |
 | v14 | Alpine Eagle 8HF added as incoming. VC Overseas Perpetual + IWC Ingenieur added to replicas. |
+
+---
+
+## Next Acquisition Target
+
+**OPEN — as of 18 April 2026.**
+
+Previous target: **GP Laureato Infinite Grey Grand Feu** — removed from consideration. The incoming Atelier Wen Perception (silver dial, integrated steel bracelet, sport-luxe) fills the same archetype slot the Laureato Grey was meant to occupy. Pursuing both would violate the zero-redundancy principle.
+
+**Open slots in the collection (dial colors / archetypes NOT yet covered):**
+- Proper **dive watch** with deep-water cred (genuine — Tudor Pelagos, Omega Seamaster 300, Blancpain Fifty Fathoms)
+- **Dress watch with complication** (perpetual calendar, moonphase on a dress case — genuine Lange, Patek, Vacheron Patrimony)
+- **Bronze / unusual case material** — patina pieces
+- **Orange or yellow dial** — warm statement color not yet in collection
+- **Salmon / rosé dial** — dress dial color gap
+- **Minute repeater, chronograph with column wheel, tourbillon** — complication territory (replica plays)
+
+**Recommended pivot direction:** Tudor Pelagos 39 or Omega Seamaster 300 — a proper tool dive watch is the clearest functional gap. The Speedmaster + BB41 + Hanhart shift pool is chronograph/pilot-heavy with no ISO 6425 dive watch. Budget bracket also fits the freed-up Laureato fund.
+

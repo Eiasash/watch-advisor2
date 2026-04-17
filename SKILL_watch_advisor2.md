@@ -30,7 +30,7 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
 | Tests | 2475+ tests, 144 files (Vitest) |
-| Version | **1.12.26** |
+| Version | **1.12.31** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
 | Last audited | 2026-04-13 |
@@ -338,13 +338,15 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.26**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.31**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
 | **Scheduled functions** | Cannot be invoked via HTTP. Dashboard trigger only. |
 | **Shirt idle rate** | 14/34 idle. Needs BulkTagger re-run + rotation pressure tuning. |
 | **TV70102 color** | Kiral Khaki Zippered Cardigan is actually BROWN (tag KRL-2604XX confirmed). DB corrected Apr 11. |
+| **Pending watches** | `pending:true` on watch excludes from rotation everywhere (engine + UI). Mirrors `retired` filter. Use `src/utils/watchFilters.js:isActiveWatch()` for any new filter point. 19 sites extend `!w.retired && !w.pending`. |
+| **silver dial** | Not in DIAL_COLOR_MAP. Use `"silver-white"` for light silver dials (matches Snowflake). Adding a "silver" key broke colorMaterialDetection test. |
 
 ---
 

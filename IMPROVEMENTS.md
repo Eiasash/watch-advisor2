@@ -1,16 +1,16 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-11 (cumulative)
+Generated: 2026-04-18 (cumulative)
 
 ## Current State
-- **Version**: 1.12.25
+- **Version**: 1.12.31
 - **Engine integrity**: All checks PASS
-- **Supabase**: 103 active garments, 0 dupes, 0 orphans
-- **Tests**: 2475+ passing (144 files)
+- **Supabase**: 101 active garments, 0 dupes, 0 orphans
+- **Watches**: 23 active + 1 pending (Atelier Wen Perception, Singapore shipment)
+- **Tests**: 2475+ passing (144 files) — critical paths verified green
 - **Snapshot**: All health "ok", autoHeal healthy
 - **Build**: Auto-deploy on push to main
-- **Token usage**: $11.47 for April 2026 to date (2.6M/249K tokens — Apr 13 snapshot)
-- **Model**: claude-sonnet-4-6 (buildWeeklyBrief → haiku as of v1.12.25)
-- **Wardrobe skill**: SKILL_wardrobe_v10.md (wardrobe doc stale — 100→103 garments)
+- **Model**: claude-sonnet-4-6
+- **Acquisition target**: OPEN — GP Laureato Infinite Grey off the table (Apr 18, Perception fills the silver-integrated slot)
 
 ---
 
@@ -63,6 +63,12 @@ Generated: 2026-04-11 (cumulative)
 28. **push-brief.js isMonday→isSunday** — Weekly brief was triggering on Western Monday (Tuesday in Jerusalem time). Fixed to use Sunday = Israeli work week start.
 29. **+7 garments onboarded** — 4 shirts (Gant Blue/Brown/White Stripe, Kiral Stone Pinstripe, Olive Navy Block Plaid Flannel, White V-Neck Basic Tee), 2 sweaters (Kiral Brown Zippered Cardigan TV70102, Gant Dark Navy Cable Knit), 1 shoe (Blundstone Rustic Brown Chelsea). Total: 100→103.  
 30. **Data fix** — Di Porto Navy Orange Plaid Flannel had wrong name/brand (was stored as "Tommy Hilfiger Red Striped Shirt" with brand Di Porto).
+
+### v1.12.31 — Pending Watches + Atelier Wen Perception (April 18 2026)
+31. **New `pending:true` watch flag** — parallel to `retired`, excludes from rotation everywhere (engine + UI) without treating as traded. First pending watch: Atelier Wen Perception x Revolution Paris-Beijing N°25/50.
+32. **Centralized watch filter** — new `src/utils/watchFilters.js` with `isActiveWatch()` / `activeWatches()` helpers. Single source of truth replacing 19 inline `!w.retired` filter sites.
+33. **19 filter points extended** — `!w.retired` → `!w.retired && !w.pending` across `src/engine/dayProfile.js`, `src/engine/weekRotation.js`, `src/domain/{rotationStats,tradeSimulator}.js`, and 13 components (OnCallPlanner, TodayPanel, WatchDashboard, WeekPlanner, Header, StatsPanel, StrapHealth, StrapHeatmap, TradeSimulator, NeglectedWatchNudge, WatchSelector).
+34. **Atelier Wen Perception added** — 41mm-ish (39mm dial window), silver-white guilloché dial, integrated bracelet + grey FKM rubber w/ signed deployant, limited N°25/50. Bought by friend in Singapore for SGD 5,000 (~₪11,750). Status: `pending:true` until received. `dial:"silver-white"` chosen over `dial:"silver"` — latter broke colorMaterialDetection test (no DIAL_COLOR_MAP entry for "silver").
 
 ---
 
