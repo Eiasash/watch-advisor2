@@ -2,9 +2,9 @@
 Generated: 2026-04-18 (cumulative)
 
 ## Current State
-- **Version**: 1.12.31
+- **Version**: 1.12.32
 - **Engine integrity**: All checks PASS
-- **Supabase**: 101 active garments, 0 dupes, 0 orphans
+- **Supabase**: 104 active garments, 0 dupes, 0 orphans (Pavarotti trousers recovered + 2 orphans excluded Apr 18)
 - **Watches**: 23 active + 1 pending (Atelier Wen Perception, Singapore shipment)
 - **Tests**: 2475+ passing (144 files) — critical paths verified green
 - **Snapshot**: All health "ok", autoHeal healthy
@@ -70,6 +70,18 @@ Generated: 2026-04-18 (cumulative)
 33. **19 filter points extended** — `!w.retired` → `!w.retired && !w.pending` across `src/engine/dayProfile.js`, `src/engine/weekRotation.js`, `src/domain/{rotationStats,tradeSimulator}.js`, and 13 components (OnCallPlanner, TodayPanel, WatchDashboard, WeekPlanner, Header, StatsPanel, StrapHealth, StrapHeatmap, TradeSimulator, NeglectedWatchNudge, WatchSelector).
 34. **Atelier Wen Perception added** — 41mm-ish (39mm dial window), silver-white guilloché dial, integrated bracelet + grey FKM rubber w/ signed deployant, limited N°25/50. Bought by friend in Singapore for SGD 5,000 (~₪11,750). Status: `pending:true` until received. `dial:"silver-white"` chosen over `dial:"silver"` — latter broke colorMaterialDetection test (no DIAL_COLOR_MAP entry for "silver").
 
+### v1.12.32 — Data Integrity + Kiral DB Suit (April 18 2026)
+35. **CRITICAL: outfit-photo category trap** — Real garments silently miscategorized as `outfit-photo` are invisible to engine (`category NOT IN ('outfit-photo','watch','outfit-shot')` filter). Found 3 instances:
+    - **Pavarotti Navy Pinstripe Suit Trousers** — stored under id `g_20260404_pavarotti_trousers` with name "Navy Suit Mirror Selfie" and category `outfit-photo` since Apr 4 2026. Half of the Pavarotti suit was broken in engine pairings for **14 days**. Recovered: category → `pants`, name → `Navy Pinstripe Suit Trousers`, proper notes.
+    - **White V-Neck Basic Tee duplicate** (`g_1775897419_whtee1`) — orphan under outfit-photo. Real entry exists as `g_1776054760_white_vneck` in shirt category. Excluded the orphan.
+    - **Tan Textured Knit Pullover orphan** (`g_1773490572693_2ybo2`) — no match to any real garment, no history references, likely leftover from camera-roll import. Excluded.
+36. **watch_id canonical form normalized** — `gp-laureato` (1 history entry, Apr 16) vs `laureato` (7 entries) → merged to `laureato`. Single-source history for the GP.
+37. **Kiral Navy Double-Breasted Suit acquired** — jacket + trousers added as formality 9 garments. Navy Prince of Wales check (glen plaid), dark tonal engraved buttons, DB peak lapel 6x2. First wear: wedding 17 Apr 2026 with GP Laureato blue (intentional texture match: Clous de Paris hobnail ↔ PoW check grid). Contexts: formal, date-night, eid-celebration, family-event (NOT smart-casual, NOT clinic).
+38. **Pattern rhyme pairing principle documented** — Clous de Paris / hobnail dials (GP Laureato, VC Overseas rep) pair by structural grid with PoW check / glen plaid / nailhead / bird's-eye fabrics. Captured in Kiral DB jacket notes field so AI stylist surfaces it. New gotcha added to SKILL_watch_advisor2.md §7.
+39. **3 new gotchas documented** — outfit-photo category trap, watch_id canonical form, pattern rhyme pairing. All in SKILL §7.
+40. **Wardrobe doc reconciled** — removed duplicate "Kiral Cream Cable Knit Sweater" row, fixed stale footer counts (was 101, now 104), removed orphan "DB active count = 100" line, added Formal/Events + Pairing Principles sections.
+41. **Active garment count**: 101 → 104 (+2 new Kiral DB pieces, +1 Pavarotti recovery).
+
 ---
 
 ## Scoring Weights (Verified April 11 2026)
@@ -95,8 +107,10 @@ Generated: 2026-04-18 (cumulative)
 ## Remaining TODO
 
 ### High Priority
-1. **BulkTagger re-run** — 35 shirts now in DB; many missing season/context tags. Run BulkTagger on shirt + sweater categories to improve rotation scoring.
+1. **BulkTagger re-run** — 36 shirts now in DB; many missing season/context tags. Run BulkTagger on shirt + sweater categories to improve rotation scoring.
 2. **Token cost monitoring** — $11.47 at Apr 13 (projected ~$26/month). buildWeeklyBrief downgraded to haiku (v1.12.25). Monitor post-fix; if still spiking, audit wardrobe-chat usage.
+3. **Auto-heal: outfit-photo trap guard (NEW)** — Add check to `netlify/functions/auto-heal.js` that flags suspicious outfit-photo entries whose `name` doesn't match phantom patterns (`IMG%`, pure numeric, `%Selfie`, `%Photo`, `%Shelf`, `%Shot`, `%Outfit`). Three real garments silently hidden from engine for up to 14 days in v1.12.32 session — this class of bug should never again be caught by manual inspection.
+4. **Shirt list reconciliation** — DB has 36 shirts, SKILL_wardrobe_v10.md table lists 34. Names drift (`Olive Striped Shirt (Gant)` vs `Gant Olive Striped Shirt`) making audit hard. One-off alignment pass needed.
 
 ### Medium Priority
 3. **Pasha navy alligator strap** — pending DayDayWatchband delivery. Move to pasha straps when arrived.

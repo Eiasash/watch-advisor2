@@ -30,10 +30,10 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
 | Tests | 2475+ tests, 144 files (Vitest) |
-| Version | **1.12.31** |
+| Version | **1.12.32** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-04-13 |
+| Last audited | 2026-04-18 |
 | Active model | `claude-sonnet-4-6` |
 | April token cost | $11.47 (2.6M input / 249K output — Apr 13 snapshot, ~$26/mo projected) |
 | Wardrobe skill | SKILL_wardrobe_v10.md |
@@ -338,7 +338,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.31**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.32**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
@@ -347,6 +347,9 @@ VALUES (
 | **TV70102 color** | Kiral Khaki Zippered Cardigan is actually BROWN (tag KRL-2604XX confirmed). DB corrected Apr 11. |
 | **Pending watches** | `pending:true` on watch excludes from rotation everywhere (engine + UI). Mirrors `retired` filter. Use `src/utils/watchFilters.js:isActiveWatch()` for any new filter point. 19 sites extend `!w.retired && !w.pending`. |
 | **silver dial** | Not in DIAL_COLOR_MAP. Use `"silver-white"` for light silver dials (matches Snowflake). Adding a "silver" key broke colorMaterialDetection test. |
+| **outfit-photo category trap** | Real garments silently miscategorized as `outfit-photo` (excluded by engine filter) are invisible landmines. Fixed Apr 18: Pavarotti navy suit trousers (14-day hidden from engine), White V-Neck Basic Tee dupe, Tan Textured Knit Pullover orphan. Periodically audit: `SELECT * FROM garments WHERE category='outfit-photo' AND name NOT SIMILAR TO '(IMG%\|[0-9]+\|%Selfie%\|%Photo%\|%Shelf%\|%Shot%\|%Outfit%)'`. |
+| **watch_id canonical form** | Keep one form per watch in history. Apr 18 found `gp-laureato` (1 entry) alongside `laureato` (7) — normalized to `laureato`. When logging wears via SQL, always query existing watch_ids first to match the canonical form. |
+| **Pattern rhyme pairing** | Clous de Paris / hobnail dials (Laureato, VC Overseas rep, Ingenieur rep hobnail texture) pair best with small-scale gridded fabrics: Prince of Wales check, glen plaid, nailhead, bird's-eye. The match is structural (grid-on-grid), not color. Documented on the Kiral DB Suit jacket notes for the AI stylist. |
 
 ---
 
