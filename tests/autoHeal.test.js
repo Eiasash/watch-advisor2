@@ -110,7 +110,7 @@ describe("auto-heal handler", () => {
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
     expect(body.healthy).toBe(true);
-    expect(body.checks).toBe(8);
+    expect(body.checks).toBe(9);
     expect(body.fixes).toBe(0);
   });
 
@@ -192,10 +192,10 @@ describe("auto-heal handler", () => {
     expect(mockUpsert).toHaveBeenCalled();
     const upsertArg = mockUpsert.mock.calls[0][0];
     expect(upsertArg.key).toBe("auto_heal_log");
-    expect(upsertArg.value.checks).toBe(8);
+    expect(upsertArg.value.checks).toBe(9);
   });
 
-  it("includes all 8 diagnostic checks in findings", async () => {
+  it("includes all 9 diagnostic checks in findings", async () => {
     const result = await handler();
     const body = JSON.parse(result.body);
     const checkNames = body.findings.map(f => f.check);
@@ -207,7 +207,43 @@ describe("auto-heal handler", () => {
     expect(checkNames).toContain("untagged_garments");
     expect(checkNames).toContain("score_distribution");
     expect(checkNames).toContain("never_worn");
-    expect(body.findings.length).toBe(8);
+    expect(checkNames).toContain("outfit_photo_trap");
+    expect(body.findings.length).toBe(9);
+  });
+
+  it("flags outfit-photo entries with garment-word names as suspicious (trap guard)", async () => {
+    mockGarmentsData = [
+      // Legit phantom outfit-photos — should NOT be flagged
+      { id: "g_1773488261178_3hyhy", name: "IMG20260208060236", category: "outfit-photo", exclude_from_wardrobe: false },
+      { id: "g_1773488197114_5sr9m", name: "84315", category: "outfit-photo", exclude_from_wardrobe: false },
+      // Real garments miscategorized — SHOULD be flagged
+      { id: "g_20260404_pavarotti_trousers", name: "Navy Suit Mirror Selfie", category: "outfit-photo", exclude_from_wardrobe: false },
+      { id: "g_1775897419_whtee1", name: "White V-Neck Basic Tee", category: "outfit-photo", exclude_from_wardrobe: false },
+      // Already excluded — should be skipped even if suspicious-looking
+      { id: "g_1773490572693_2ybo2", name: "Tan Textured Knit Pullover", category: "outfit-photo", exclude_from_wardrobe: true },
+    ];
+    const result = await handler();
+    const body = JSON.parse(result.body);
+    const trap = body.findings.find(f => f.check === "outfit_photo_trap");
+    expect(trap.action).toContain("WARN");
+    expect(trap.action).toContain("2 real garment"); // exactly 2 suspicious
+    expect(trap.found).toContain("pavarotti_trousers"); // handcrafted id caught
+    expect(trap.found).toContain("White V-Neck Basic Tee"); // garment word caught
+    expect(trap.found).not.toContain("IMG20260208060236"); // pure phantom
+    expect(trap.found).not.toContain("Pullover"); // already excluded → skipped
+    expect(body.healthy).toBe(false); // warnings flip healthy false
+  });
+
+  it("reports outfit_photo_trap healthy when no suspicious entries", async () => {
+    mockGarmentsData = [
+      { id: "g_1773488261178_3hyhy", name: "IMG20260208060236", category: "outfit-photo", exclude_from_wardrobe: false },
+      { id: "g_1773488197114_5sr9m", name: "84315", category: "outfit-photo", exclude_from_wardrobe: false },
+    ];
+    const result = await handler();
+    const body = JSON.parse(result.body);
+    const trap = body.findings.find(f => f.check === "outfit_photo_trap");
+    expect(trap.found).toBe("healthy");
+    expect(trap.action).toBe("none");
   });
 
   it("stamps today-prefixed orphans as legacy", async () => {

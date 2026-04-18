@@ -2,7 +2,7 @@
  * auto-heal.js — Daily autonomous self-healing cron.
  * Schedule: 5:00 UTC daily (before push-brief at 6:30)
  *
- * Runs 7 diagnostic checks, auto-fixes orphans, logs to app_config.
+ * Runs 9 diagnostic checks, auto-fixes orphans, logs to app_config.
  * NO CORS — cron only. Cannot be invoked via HTTP (Netlify rejects it).
  * Test via: Netlify dashboard > Functions > auto-heal > Trigger
  */
@@ -188,6 +188,36 @@ export async function handler() {
       found: `${Math.round(neverWornPct)}% (${hist.length} entries / ${historyDepthSufficient ? "sufficient" : "sparse"} data)`,
       action: (neverWornPct > 50 && historyDepthSufficient)
         ? (tunedNeverWorn ? `auto-tuned: ${tunedNeverWorn}` : "at limit")
+        : "none",
+    });
+
+    // ── 9. outfit-photo category trap — real garments silently hidden ─────
+    //    (v1.12.32: added after discovering Pavarotti trousers hidden for 14 days
+    //     + 2 orphan duplicates. Dual signal: name has garment word OR id isn't
+    //     phantom-id pattern. Warns only — category changes need human review.)
+    let suspiciousOutfitPhotos = [];
+    try {
+      const { data: outfitPhotoRows } = await supabase
+        .from("garments")
+        .select("id, name, category, exclude_from_wardrobe");
+      const PHOTO_CATS = new Set(["outfit-photo", "outfit-shot"]);
+      const GARMENT_WORDS = /\b(shirt|jacket|trouser|pant|sweater|cardigan|coat|blazer|suit|polo|oxford|pullover|flannel|chino|denim|jean|boot|sneaker|derby|hoodie|tee|dress)s?\b/i;
+      const PHANTOM_ID = /^g_\d{13,}_[a-z0-9]{5,6}$/;
+      suspiciousOutfitPhotos = (outfitPhotoRows ?? []).filter(g => {
+        if (!PHOTO_CATS.has(g.category)) return false;
+        if (g.exclude_from_wardrobe) return false; // already dealt with
+        const nameLooksLikeGarment = g.name && GARMENT_WORDS.test(g.name);
+        const idLooksHandcrafted = g.id && !PHANTOM_ID.test(g.id);
+        return nameLooksLikeGarment || idLooksHandcrafted;
+      });
+    } catch { /* non-fatal */ }
+    log.push({
+      check: "outfit_photo_trap",
+      found: suspiciousOutfitPhotos.length > 0
+        ? suspiciousOutfitPhotos.slice(0, 5).map(g => `${g.id}:${g.name ?? ""}`).join(", ") + (suspiciousOutfitPhotos.length > 5 ? ` (+${suspiciousOutfitPhotos.length - 5} more)` : "")
+        : "healthy",
+      action: suspiciousOutfitPhotos.length > 0
+        ? `WARN — ${suspiciousOutfitPhotos.length} real garment(s) miscategorized as outfit-photo, invisible to engine`
         : "none",
     });
 

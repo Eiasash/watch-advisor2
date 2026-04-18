@@ -2,12 +2,12 @@
 Generated: 2026-04-18 (cumulative)
 
 ## Current State
-- **Version**: 1.12.32
+- **Version**: 1.12.33
 - **Engine integrity**: All checks PASS
 - **Supabase**: 104 active garments, 0 dupes, 0 orphans (Pavarotti trousers recovered + 2 orphans excluded Apr 18)
 - **Watches**: 23 active + 1 pending (Atelier Wen Perception, Singapore shipment)
-- **Tests**: 2475+ passing (144 files) — critical paths verified green
-- **Snapshot**: All health "ok", autoHeal healthy
+- **Tests**: 2477+ passing (144 files, +2 new autoHeal trap-guard tests) — critical paths verified green
+- **Snapshot**: All health "ok", autoHeal healthy (9 checks now, was 8)
 - **Build**: Auto-deploy on push to main
 - **Model**: claude-sonnet-4-6
 - **Acquisition target**: OPEN — GP Laureato Infinite Grey off the table (Apr 18, Perception fills the silver-integrated slot)
@@ -82,6 +82,15 @@ Generated: 2026-04-18 (cumulative)
 40. **Wardrobe doc reconciled** — removed duplicate "Kiral Cream Cable Knit Sweater" row, fixed stale footer counts (was 101, now 104), removed orphan "DB active count = 100" line, added Formal/Events + Pairing Principles sections.
 41. **Active garment count**: 101 → 104 (+2 new Kiral DB pieces, +1 Pavarotti recovery).
 
+### v1.12.33 — Auto-heal outfit-photo trap guard (April 18 2026)
+42. **NEW auto-heal check #9: `outfit_photo_trap`** — closes the class of bug that hid Pavarotti trousers for 14 days. Runs daily at 05:00 UTC via existing cron. Queries garments for `category IN ('outfit-photo','outfit-shot')`, filters out `exclude_from_wardrobe=true` rows, then flags any remaining entry where EITHER:
+    - `name` contains a garment-word regex match (`shirt|jacket|trouser|pant|sweater|cardigan|coat|blazer|suit|polo|oxford|pullover|flannel|chino|denim|jean|boot|sneaker|derby|hoodie|tee|dress`), OR
+    - `id` does not match the phantom-id pattern `^g_\d{13,}_[a-z0-9]{5,6}$` (i.e. handcrafted IDs like `g_20260404_pavarotti_trousers` fail and get flagged).
+    
+    When suspicious entries found: reports first 5 in `findings[].found`, action `WARN — N real garment(s) miscategorized as outfit-photo, invisible to engine`, flips `healthy: false`. Does NOT auto-fix (category changes need human review).
+43. **Test coverage**: 2 new tests in `tests/autoHeal.test.js` (16 total, was 14) — positive case verifies dual-signal detection (flags Pavarotti handcrafted-id case AND White V-Neck garment-word case, skips phantom IMG/numeric names, skips already-excluded rows); negative case verifies `healthy: true` when outfit-photos are clean. All 16 autoHeal tests pass.
+44. **Check count bumped**: auto-heal header comment `7 → 9`. Tests updated: `body.checks` from 8 → 9 (3 locations), findings length from 8 → 9, new `outfit_photo_trap` key added to `toContain` assertions.
+
 ---
 
 ## Scoring Weights (Verified April 11 2026)
@@ -109,7 +118,7 @@ Generated: 2026-04-18 (cumulative)
 ### High Priority
 1. **BulkTagger re-run** — 36 shirts now in DB; many missing season/context tags. Run BulkTagger on shirt + sweater categories to improve rotation scoring.
 2. **Token cost monitoring** — $11.47 at Apr 13 (projected ~$26/month). buildWeeklyBrief downgraded to haiku (v1.12.25). Monitor post-fix; if still spiking, audit wardrobe-chat usage.
-3. **Auto-heal: outfit-photo trap guard (NEW)** — Add check to `netlify/functions/auto-heal.js` that flags suspicious outfit-photo entries whose `name` doesn't match phantom patterns (`IMG%`, pure numeric, `%Selfie`, `%Photo`, `%Shelf`, `%Shot`, `%Outfit`). Three real garments silently hidden from engine for up to 14 days in v1.12.32 session — this class of bug should never again be caught by manual inspection.
+3. ~~**Auto-heal: outfit-photo trap guard**~~ — DONE v1.12.33. Check #9 `outfit_photo_trap` runs daily, flips `healthy: false` on any miscategorized real garment.
 4. **Shirt list reconciliation** — DB has 36 shirts, SKILL_wardrobe_v10.md table lists 34. Names drift (`Olive Striped Shirt (Gant)` vs `Gant Olive Striped Shirt`) making audit hard. One-off alignment pass needed.
 
 ### Medium Priority
