@@ -1,0 +1,7 @@
+{
+  "name": "cowork",
+  "version": "0.1.0",
+  "description": "Cowork branch + second-opinion workflow for watch-advisor2: Watch_Collection_v10.md edits, wardrobe skill tweaks, outfit decisions. Turns ad-hoc branches into a structured handoff + style-partner review cycle.",
+  "author": { "name": "eiasash" },
+  "keywords": ["cowork", "handoff", "watch", "wardrobe", "style", "second-opinion"]
+}
