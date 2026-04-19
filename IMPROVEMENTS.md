@@ -10,7 +10,7 @@ Generated: 2026-04-18 (cumulative)
 - **Snapshot**: All health "ok", autoHeal healthy (9 checks now, was 8)
 - **Build**: Auto-deploy on push to main
 - **Model**: claude-sonnet-4-6
-- **Acquisition target**: OPEN — GP Laureato Infinite Grey off the table (Apr 18, Perception fills the silver-integrated slot)
+- **Acquisition target**: Fears Brunswick 38 Champagne (primary, Fears UK order in motion); anOrdain Model 2 Brown Fumé passive at $2,500 distressed-floor only
 
 ---
 
