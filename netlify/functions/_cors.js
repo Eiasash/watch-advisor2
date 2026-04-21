@@ -30,8 +30,8 @@ export function cors(event) {
 
   return {
     "Access-Control-Allow-Origin": allowed ? origin : "https://watch-advisor2.netlify.app",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-api-secret",
+    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
     "Content-Type": "application/json",
     "Vary": "Origin",
   };

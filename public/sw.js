@@ -7,10 +7,26 @@
  *   - Push notifications: same as before
  */
 
-const SHELL_CACHE  = "wa2-shell-v9";
+const SHELL_CACHE  = "wa2-shell-v10";
 const IMAGE_CACHE  = "wa2-images-v4";
 const API_CACHE    = "wa2-api-v4";
 const MAX_IMAGES   = 200;
+
+// Functions whose responses are per-user / non-deterministic — never cache.
+// Caching Claude responses cross-session can leak recommendations between
+// users on a shared browser, and for a single user, serving yesterday's
+// "today outfit" from cache while offline is worse UX than an honest error.
+const NO_CACHE_FUNCTIONS = new Set([
+  "claude-stylist","wardrobe-chat","style-dna","bulk-tag","classify-image",
+  "ai-audit","occasion-planner","selfie-check","detect-duplicate","extract-outfit",
+  "relabel-garment","verify-garment-photo","watch-id","watch-value",
+  "generate-embedding","daily-pick","monthly-report","push-brief","seasonal-audit",
+  "skill-snapshot","github-pat","run-migrations","push-subscribe",
+]);
+function isUncachedFunction(pathname){
+  const m = pathname.match(/^\/\.netlify\/functions\/([^/?]+)/);
+  return m ? NO_CACHE_FUNCTIONS.has(m[1]) : false;
+}
 
 const SHELL_URLS = [
   "/manifest.json",
@@ -61,6 +77,16 @@ self.addEventListener("fetch", e => {
 
   // Netlify functions → Network-First (always fresh), stale fallback
   if (url.pathname.startsWith("/.netlify/functions/")) {
+    if (isUncachedFunction(url.pathname)) {
+      // Pass through without caching — per-user / non-deterministic responses
+      // (Claude, push-subscribe, GitHub PAT, migrations). Offline returns an
+      // explicit error instead of a stale cross-session response.
+      e.respondWith(fetch(request).catch(() => new Response(
+        JSON.stringify({ error: "Offline", code: "NO_CACHE_FUNCTION" }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
+      )));
+      return;
+    }
     e.respondWith(networkFirst(request, API_CACHE));
     return;
   }

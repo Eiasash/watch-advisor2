@@ -28,6 +28,7 @@ describe("push-subscribe handler", () => {
   beforeEach(async () => {
     vi.stubEnv("SUPABASE_URL", "https://test.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-key");
+    vi.stubEnv("OPEN_API_KEY", "test-open-secret");
     mockUpsert.mockReset().mockResolvedValue({ data: null, error: null });
     mockEq.mockReset().mockResolvedValue({ data: null, error: null });
     mockDelete.mockReset().mockReturnValue({ eq: mockEq });
@@ -88,6 +89,7 @@ describe("push-subscribe handler", () => {
   it("DELETE success returns 200", async () => {
     const r = await handler({
       httpMethod: "DELETE",
+      headers: { "x-api-secret": "test-open-secret" },
       body: JSON.stringify({ endpoint: "https://push.example.com/sub1" }),
     });
     expect(r.statusCode).toBe(200);
@@ -97,9 +99,19 @@ describe("push-subscribe handler", () => {
     expect(mockEq).toHaveBeenCalledWith("endpoint", "https://push.example.com/sub1");
   });
 
+  it("DELETE returns 401 without x-api-secret", async () => {
+    const r = await handler({
+      httpMethod: "DELETE",
+      body: JSON.stringify({ endpoint: "https://push.example.com/sub1" }),
+    });
+    expect(r.statusCode).toBe(401);
+    expect(JSON.parse(r.body).error).toContain("Unauthorized");
+  });
+
   it("DELETE returns 400 when endpoint is missing", async () => {
     const r = await handler({
       httpMethod: "DELETE",
+      headers: { "x-api-secret": "test-open-secret" },
       body: JSON.stringify({}),
     });
     expect(r.statusCode).toBe(400);
