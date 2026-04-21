@@ -22,6 +22,13 @@ export async function handler(event) {
     const body = JSON.parse(event.body ?? "{}");
 
     if (event.httpMethod === "DELETE") {
+      // DELETE requires auth — endpoint strings are opaque but guessable if
+      // leaked; unauthenticated delete lets anyone unsubscribe anyone's device.
+      // POST (subscribe) stays public so new devices can register themselves.
+      const secret = event.headers?.["x-api-secret"];
+      if (!process.env.OPEN_API_KEY || !secret || secret !== process.env.OPEN_API_KEY) {
+        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: "Unauthorized" }) };
+      }
       const { endpoint } = body;
       if (!endpoint) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing endpoint" }) };
       await sb().from("push_subscriptions").delete().eq("endpoint", endpoint);

@@ -36,7 +36,7 @@ supabase/                    schema.sql
 - **Garment canonical types:** `shirt | pants | shoes | jacket | sweater | belt | sunglasses | hat | scarf | bag | accessory | outfit-photo`
 - **Outfit slot types (only these appear in outfit):** `shirt, pants, shoes, jacket`
 - **Sweater layer:** added when `tempC < 22`. Second `layer` when `tempC < 12`
-- **Leather coordination rule (non-negotiable):** brown strap → brown shoes; black → black; metal → any
+- **Leather coordination rule:** documented in SKILL_watch_advisor2.md as a styling guideline. The runtime veto was removed in v1.12.12 (`strapShoeScore` now returns 1.0 unconditionally). Re-enabling would mean reinstating the hard multiplier in `outfitEngine/scoring.js`.
 - **watchSeed.js is immutable.** Never touch it.
 
 ### Scoring system
@@ -83,8 +83,9 @@ supabase/                    schema.sql
 
 ### Service Worker
 - Reload-loop guard (3 reloads in 10s = bail)
-- No self.skipWaiting() — main thread sends SKIP_WAITING message
-- Three caches: shell (wa2-shell-v5), images (wa2-images-v3), API (wa2-api-v3)
+- No self.skipWaiting() on install — main thread sends SKIP_WAITING; 30s auto-activate safety net
+- Three caches: shell (wa2-shell-v10), images (wa2-images-v4), API (wa2-api-v4)
+- `NO_CACHE_FUNCTIONS` list in sw.js: Claude + admin + push-subscribe endpoints pass through uncached (per-user / non-deterministic responses)
 
 ### Performance
 - `USE_WORKER=false` in imagePipeline.js

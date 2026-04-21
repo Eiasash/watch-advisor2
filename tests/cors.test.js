@@ -67,8 +67,10 @@ describe("_cors.js — CORS helper", () => {
 
   it("includes required CORS headers", () => {
     const headers = cors({ headers: { origin: "https://watch-advisor2.netlify.app" } });
-    expect(headers["Access-Control-Allow-Headers"]).toBe("Content-Type");
-    expect(headers["Access-Control-Allow-Methods"]).toBe("POST, GET, OPTIONS");
+    // x-api-secret is required for authenticated endpoints (push-subscribe DELETE, ai-audit, github-pat).
+    // DELETE is required so push-subscribe can unsubscribe devices.
+    expect(headers["Access-Control-Allow-Headers"]).toBe("Content-Type, x-api-secret");
+    expect(headers["Access-Control-Allow-Methods"]).toBe("POST, GET, DELETE, OPTIONS");
     expect(headers["Content-Type"]).toBe("application/json");
     expect(headers["Vary"]).toBe("Origin");
   });

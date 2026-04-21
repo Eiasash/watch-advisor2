@@ -2,12 +2,14 @@ import { describe, it, expect } from "vitest";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 
 describe("watchSeed data integrity", () => {
-  it("contains exactly 26 watches (23 active + 3 retired)", () => {
-    expect(WATCH_COLLECTION).toHaveLength(26);
+  it("contains exactly 27 watches (13 active genuine + 1 pending + 10 replica + 3 retired)", () => {
+    expect(WATCH_COLLECTION).toHaveLength(27);
   });
 
-  it("has 13 active genuine watches", () => {
-    const genuine = WATCH_COLLECTION.filter(w => !w.replica && !w.retired);
+  it("has 13 active genuine watches (excludes pending/perception)", () => {
+    // `perception` = incoming acquisition not yet in rotation; `pending` = generic flag.
+    // Only "ready to wear" genuine pieces count as active.
+    const genuine = WATCH_COLLECTION.filter(w => !w.replica && !w.retired && !w.perception && !w.pending);
     expect(genuine).toHaveLength(13);
   });
 
