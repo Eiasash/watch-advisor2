@@ -82,6 +82,29 @@ Generated: 2026-04-18 (cumulative)
 40. **Wardrobe doc reconciled** — removed duplicate "Kiral Cream Cable Knit Sweater" row, fixed stale footer counts (was 101, now 104), removed orphan "DB active count = 100" line, added Formal/Events + Pairing Principles sections.
 41. **Active garment count**: 101 → 104 (+2 new Kiral DB pieces, +1 Pavarotti recovery).
 
+### 2026-04-22 — /audit-fix-deploy § A full cycle
+
+**Audit state snapshot**
+- garmentCount=99, historyCount=59, orphanedHistoryCount=0, autoHeal.healthy=true
+- 3024/3024 tests pass (175 files), build green (973 ms)
+- RLS pass: 0 holes (0 tables with rowsecurity=false among user schemas), 0 zero-policy tables, 9 tables with policies reviewed
+
+**Shipped**
+1. **`security: drop public photos-bucket list policy`** (`7583604`) — Supabase advisor flagged `storage.objects` policy `photos_anon_select` (SELECT for anon, `USING bucket_id='photos'`) as allowing anon clients to enumerate the bucket. Dropped via migration `20260422210000_drop_photos_bucket_list_policy.sql`. Bucket stays public, `getPublicUrl()` still works, and `src/services/supabaseStorage.js` only calls `upload`/`getPublicUrl`/`remove`-by-path — never `.list()`. Precedent: same fix applied to Toranot's question-images bucket on 2026-04-21.
+
+**Not auto-applied (held back, explanation below)**
+2. **`neverWornRotationPressure` bump** — skill's § A.5 rule says "never-worn > 30% → bump +0.05". Current: 35.4% (35/99). BUT production `netlify/functions/auto-heal.js` uses a stricter guard (>50% AND history-depth-sufficient, `hist.length ≥ active.length × 2` = 198; we have 59 entries). Auto-heal's nightly run correctly held back; I deferred to it. **Action required**: reconcile the skill's threshold with auto-heal's — or remove the weight-tune line from the skill entirely, since auto-heal owns that loop now.
+3. **`repetitionPenalty` bump** — skill rule: "same garment >3/14d → penalty -0.03". Two garments breach: `g_belt_tan_daily` (Sarar Cognac belt, 7×/14d) and `g_1773168996440_gk2f4` (Brown Ecco shoes, 4×/14d). Both are structural staples — belt and workhorse shoes are meant to repeat. Bumping repetitionPenalty would hurt core-item usage. **Action required**: add category filter (`belt`, `shoes`) to the `repetition` check in `auto-heal.js` and to the skill's § A.5 rule row.
+
+**New findings to track**
+4. **65% of wear entries have null `score`** — 43 of 66 history rows have `payload.score === null`. The skill captures "score always 7.0" (force-default hint) but the actual data is worse: score is literally missing. Wear-log UI should enforce a numeric score input (or default-to-7 with ✎ affordance to change) before allowing the entry to persist. Distribution of the 23 scored entries is healthy (10:3, 9:3, 8:3, plus 8.0/8.5/8.7/8.2/7.5/7) — so users who do score, score thoughtfully.
+5. **`scoring_overrides` is `{}`** — no auto-tunes have ever been persisted. Combined with finding #2, this means either (a) autoheal has never crossed its thresholds, or (b) persistence is broken. Worth verifying: write a known-override manually and confirm bootstrap.js loads it on next app refresh.
+6. **Skill vs. code drift in `audit-fix-deploy` SKILL.md** — § A.1 claimed `rotationPressure(Infinity) === 0.7` and never-worn `recencyScore === 0.75`. Code has 0.50 for both since April 2026; repo's own `SKILL_watch_advisor2.md` already documented the lowering. Fixed the audit-fix-deploy skill in this run. Also added Windows-specific vitest invocation (`node node_modules/vitest/vitest.mjs run`) — on Windows, `node_modules/.bin/vitest` is a bash shim Node can't parse.
+7. **Dependabot — 5 vulnerabilities (4 high, 1 low)** on the repo's default branch. GitHub flagged on push. Triage: https://github.com/Eiasash/watch-advisor2/security/dependabot
+8. **Madge static cycle** — `services/persistence/historyPersistence.js ↔ stores/historyStore.js`. Runtime-safe (explicit lazy `import()` in both directions documented inline), but madge reports it on every audit. Either add `--exclude` for this specific pair to the skill check, or refactor into a third common module.
+9. **CRLF noise in `netlify/functions/_migrations.json`** — `scripts/bundle-migrations.js` on Windows stores SQL strings with `\r\n`-encoded newlines; on Linux CI, clean `\n`. Ping-pongs on every cross-platform commit. Fix: add `.gitattributes` with `netlify/functions/_migrations.json text eol=lf`.
+10. **Supabase advisor false-positive baseline (this project)** — 9× `rls_policy_always_true` WARN on `app_settings`, `errors`(INSERT), `garments`×3, `history`×3, `push_subscriptions`. All intentional given the single-user-no-Supabase-Auth architecture; anon *is* the user role. Documented in `~/.claude/projects/C--Users-User/memory/project_watchadvisor2_supabase.md` so future audits stop re-flagging them.
+
 ### v1.12.33 — Auto-heal outfit-photo trap guard (April 18 2026)
 42. **NEW auto-heal check #9: `outfit_photo_trap`** — closes the class of bug that hid Pavarotti trousers for 14 days. Runs daily at 05:00 UTC via existing cron. Queries garments for `category IN ('outfit-photo','outfit-shot')`, filters out `exclude_from_wardrobe=true` rows, then flags any remaining entry where EITHER:
     - `name` contains a garment-word regex match (`shirt|jacket|trouser|pant|sweater|cardigan|coat|blazer|suit|polo|oxford|pullover|flannel|chino|denim|jean|boot|sneaker|derby|hoodie|tee|dress`), OR
