@@ -29,11 +29,11 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 2475+ tests, 144 files (Vitest) |
+| Tests | 3024 tests, 175 files (Vitest) |
 | Version | **1.12.33** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-04-18 |
+| Last audited | 2026-04-22 (garmentCount=99, historyCount=59, all autoHeal checks healthy; photos-bucket list policy dropped) |
 | Active model | `claude-sonnet-4-6` |
 | April token cost | $11.47 (2.6M input / 249K output — Apr 13 snapshot, ~$26/mo projected) |
 | Wardrobe skill | SKILL_wardrobe_v10.md |
