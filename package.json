@@ -32,5 +32,10 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.60.1"
+  },
+  "overrides": {
+    "tar-fs": "^2.1.4",
+    "ws": "^8.17.1",
+    "cookie": "^0.7.0"
   }
 }
