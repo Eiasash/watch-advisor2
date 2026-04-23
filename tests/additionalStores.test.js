@@ -6,9 +6,12 @@ vi.mock("../src/services/localCache.js", () => ({
 }));
 
 import { useRejectStore } from "../src/stores/rejectStore.js";
+import { hydrateRejectStore } from "../src/stores/rejectStore.js";
 import { useStyleLearnStore } from "../src/stores/styleLearnStore.js";
 import { usePrefStore } from "../src/stores/prefStore.js";
+import { hydratePrefStore } from "../src/stores/prefStore.js";
 import { useThemeStore } from "../src/stores/themeStore.js";
+import { getCachedState, setCachedState } from "../src/services/localCache.js";
 
 // ─── rejectStore ────────────────────────────────────────────────────────────
 
@@ -209,6 +212,16 @@ describe("prefStore", () => {
     const s = usePrefStore.getState().score({ color: "unknown", type: "unknown" });
     expect(s).toBe(0.5);
   });
+
+  it("_persist catch block: handles setCachedState rejection gracefully", async () => {
+    setCachedState.mockRejectedValueOnce(new Error("storage full"));
+    usePrefStore.setState({ profile: { colors: {}, types: {} } });
+    // recordWear triggers _persist which will hit the catch block
+    usePrefStore.getState().recordWear([{ color: "navy", type: "shirt" }]);
+    await new Promise(r => setTimeout(r, 20));
+    // Store should still have been updated despite _persist error
+    expect(usePrefStore.getState().profile.colors.navy).toBeCloseTo(0.52, 2);
+  });
 });
 
 // ─── themeStore ──────────────────────────────────────────────────────────────
@@ -231,5 +244,113 @@ describe("themeStore", () => {
     useThemeStore.getState().toggle();
     useThemeStore.getState().toggle();
     expect(useThemeStore.getState().mode).toBe("dark");
+  });
+});
+
+// ─── hydratePrefStore ────────────────────────────────────────────────────────
+
+describe("hydratePrefStore", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    usePrefStore.setState({ profile: { colors: {}, types: {} } });
+    getCachedState.mockResolvedValue({});
+  });
+
+  it("does nothing when cache has no prefProfile", async () => {
+    getCachedState.mockResolvedValue({});
+    await hydratePrefStore();
+    expect(usePrefStore.getState().profile).toEqual({ colors: {}, types: {} });
+  });
+
+  it("hydrates profile from cache when prefProfile is present", async () => {
+    getCachedState.mockResolvedValue({
+      prefProfile: { colors: { navy: 0.8 }, types: { shirt: 0.7 } },
+    });
+    await hydratePrefStore();
+    // hydratePrefStore calls decayOnSession after hydrating (navy: 0.8 × 0.98 = 0.784)
+    expect(usePrefStore.getState().profile.colors.navy).toBeCloseTo(0.784, 2);
+  });
+
+  it("calls decayOnSession after hydration", async () => {
+    getCachedState.mockResolvedValue({
+      prefProfile: { colors: { navy: 1.0 }, types: {} },
+    });
+    await hydratePrefStore();
+    // decayOnSession reduces by 2%
+    expect(usePrefStore.getState().profile.colors.navy).toBeCloseTo(0.98, 2);
+  });
+
+  it("ignores non-object prefProfile", async () => {
+    getCachedState.mockResolvedValue({ prefProfile: "not-an-object" });
+    await hydratePrefStore();
+    // Should not hydrate — profile stays default (then decay runs, no-op on empty)
+    expect(usePrefStore.getState().profile.colors).toEqual({});
+  });
+
+  it("handles getCachedState rejection gracefully", async () => {
+    getCachedState.mockRejectedValueOnce(new Error("IDB unavailable"));
+    await expect(hydratePrefStore()).resolves.not.toThrow();
+  });
+});
+
+// ─── rejectStore — clearAll async path & hydrateRejectStore ─────────────────
+
+describe("rejectStore — clearAll async path", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCachedState.mockResolvedValue({});
+    setCachedState.mockResolvedValue(undefined);
+    useRejectStore.setState({ entries: [] });
+  });
+
+  it("clearAll persists empty rejectLog to cache (async path)", async () => {
+    useRejectStore.getState().addRejection("w1", ["g1"]);
+    useRejectStore.getState().clearAll();
+    // Wait for async _getCache → _setCache chain to complete (covers line 46)
+    await new Promise(r => setTimeout(r, 50));
+    // Store should be empty and async path completed without error
+    expect(useRejectStore.getState().entries).toHaveLength(0);
+  });
+});
+
+describe("hydrateRejectStore", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCachedState.mockResolvedValue({});
+    useRejectStore.setState({ entries: [] });
+  });
+
+  it("does nothing when cache has no rejectLog", async () => {
+    getCachedState.mockResolvedValue({});
+    await hydrateRejectStore();
+    expect(useRejectStore.getState().entries).toHaveLength(0);
+  });
+
+  it("hydrates entries from cache rejectLog", async () => {
+    const recentEntry = { watchId: "w1", garmentIds: ["g1"], rejectedAt: Date.now() };
+    getCachedState.mockResolvedValue({ rejectLog: [recentEntry] });
+    await hydrateRejectStore();
+    expect(useRejectStore.getState().entries).toHaveLength(1);
+    expect(useRejectStore.getState().entries[0].watchId).toBe("w1");
+  });
+
+  it("filters expired entries on hydration", async () => {
+    const expired = { watchId: "w1", garmentIds: ["g1"], rejectedAt: Date.now() - 31 * 86400000 };
+    const recent = { watchId: "w2", garmentIds: ["g2"], rejectedAt: Date.now() };
+    getCachedState.mockResolvedValue({ rejectLog: [expired, recent] });
+    await hydrateRejectStore();
+    expect(useRejectStore.getState().entries).toHaveLength(1);
+    expect(useRejectStore.getState().entries[0].watchId).toBe("w2");
+  });
+
+  it("handles getCachedState rejection gracefully", async () => {
+    getCachedState.mockRejectedValueOnce(new Error("IDB unavailable"));
+    await expect(hydrateRejectStore()).resolves.not.toThrow();
+  });
+
+  it("ignores non-array rejectLog in cache", async () => {
+    getCachedState.mockResolvedValue({ rejectLog: "corrupted" });
+    await hydrateRejectStore();
+    expect(useRejectStore.getState().entries).toHaveLength(0);
   });
 });

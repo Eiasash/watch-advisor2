@@ -177,3 +177,76 @@ describe("historyStore — removeEntry", () => {
     expect(useHistoryStore.getState().entries).toHaveLength(0);
   });
 });
+
+// ─── setEntries / sanitiseEntry ─────────────────────────────────────────────
+
+describe("historyStore — setEntries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useHistoryStore.setState({ entries: [] });
+  });
+
+  it("replaces entries via setEntries", () => {
+    useHistoryStore.getState().setEntries([
+      { id: "h1", date: "2026-01-01", watchId: "w1", garmentIds: ["g1"] },
+    ]);
+    expect(useHistoryStore.getState().entries).toHaveLength(1);
+    expect(useHistoryStore.getState().entries[0].id).toBe("h1");
+  });
+
+  it("setEntries with non-array input results in empty entries", () => {
+    useHistoryStore.getState().setEntries(null);
+    expect(useHistoryStore.getState().entries).toEqual([]);
+  });
+
+  it("setEntries with string input results in empty entries", () => {
+    useHistoryStore.getState().setEntries("invalid");
+    expect(useHistoryStore.getState().entries).toEqual([]);
+  });
+
+  it("sanitiseEntry: non-array garmentIds is coerced to empty array", () => {
+    useHistoryStore.getState().setEntries([
+      { id: "h1", watchId: "w1", garmentIds: "corrupted-string" },
+    ]);
+    expect(useHistoryStore.getState().entries[0].garmentIds).toEqual([]);
+  });
+
+  it("sanitiseEntry: numeric garmentIds is coerced to empty array", () => {
+    useHistoryStore.getState().setEntries([
+      { id: "h1", watchId: "w1", garmentIds: 42 },
+    ]);
+    expect(useHistoryStore.getState().entries[0].garmentIds).toEqual([]);
+  });
+
+  it("sanitiseEntry: valid array garmentIds preserved", () => {
+    useHistoryStore.getState().setEntries([
+      { id: "h1", watchId: "w1", garmentIds: ["g1", "g2"] },
+    ]);
+    expect(useHistoryStore.getState().entries[0].garmentIds).toEqual(["g1", "g2"]);
+  });
+
+  it("sanitiseEntry: missing garmentIds field left as-is", () => {
+    useHistoryStore.getState().setEntries([
+      { id: "h1", watchId: "w1" }, // no garmentIds key
+    ]);
+    expect(useHistoryStore.getState().entries[0].garmentIds).toBeUndefined();
+  });
+
+  it("sanitiseEntry: null entry in array is returned as-is (falsy guard)", () => {
+    useHistoryStore.getState().setEntries([null, { id: "h1", watchId: "w1" }]);
+    // null passes through sanitiseEntry's `if (!e) return e` guard
+    expect(useHistoryStore.getState().entries[0]).toBeNull();
+    expect(useHistoryStore.getState().entries[1].id).toBe("h1");
+  });
+
+  it("setEntries replaces previous entries entirely", () => {
+    useHistoryStore.setState({
+      entries: [{ id: "old", date: "2025-12-01" }],
+    });
+    useHistoryStore.getState().setEntries([
+      { id: "new", date: "2026-01-01" },
+    ]);
+    expect(useHistoryStore.getState().entries).toHaveLength(1);
+    expect(useHistoryStore.getState().entries[0].id).toBe("new");
+  });
+});
