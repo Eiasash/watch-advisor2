@@ -1,16 +1,16 @@
 # Auto-Generated Improvement Proposals
-Generated: 2026-04-18 (cumulative)
+Generated: 2026-04-23 (cumulative)
 
 ## Current State
-- **Version**: 1.12.33
+- **Version**: 1.12.35
 - **Engine integrity**: All checks PASS
 - **Supabase**: 104 active garments, 0 dupes, 0 orphans (Pavarotti trousers recovered + 2 orphans excluded Apr 18)
-- **Watches**: 23 active + 1 pending (Atelier Wen Perception, Singapore shipment)
+- **Watches**: 23 active + 2 pending (Atelier Wen Perception SG → IL; Fears Brunswick 38 Champagne SG → IL, invoice INV-3936 issued 22 Apr, £2,500 GBP)
 - **Tests**: 2477+ passing (144 files, +2 new autoHeal trap-guard tests) — critical paths verified green
 - **Snapshot**: All health "ok", autoHeal healthy (9 checks now, was 8)
 - **Build**: Auto-deploy on push to main
 - **Model**: claude-sonnet-4-6
-- **Acquisition target**: Fears Brunswick 38 Champagne (primary, Fears UK order in motion); anOrdain Model 2 Brown Fumé passive at $2,500 distressed-floor only
+- **Acquisition target**: Fears Brunswick 38 Champagne ordered Apr 22 (pending SG→IL); anOrdain Model 2 Brown Fumé passive at $2,500 distressed-floor only
 
 ---
 
@@ -113,6 +113,13 @@ Generated: 2026-04-18 (cumulative)
     When suspicious entries found: reports first 5 in `findings[].found`, action `WARN — N real garment(s) miscategorized as outfit-photo, invisible to engine`, flips `healthy: false`. Does NOT auto-fix (category changes need human review).
 43. **Test coverage**: 2 new tests in `tests/autoHeal.test.js` (16 total, was 14) — positive case verifies dual-signal detection (flags Pavarotti handcrafted-id case AND White V-Neck garment-word case, skips phantom IMG/numeric names, skips already-excluded rows); negative case verifies `healthy: true` when outfit-photos are clean. All 16 autoHeal tests pass.
 44. **Check count bumped**: auto-heal header comment `7 → 9`. Tests updated: `body.checks` from 8 → 9 (3 locations), findings length from 8 → 9, new `outfit_photo_trap` key added to `toContain` assertions.
+
+### v1.12.35 — Fears Brunswick 38 Champagne added (April 23 2026)
+45. **Fears Brunswick added as `pending:true`** — invoice INV-3936 issued 22 Apr 2026 by Fears Watch Co. Ltd. (Bristol, UK). Total £2,500 GBP (~₪11,600). Serial 1919, ref BS23800B, champagne dial, 38mm cushion, 20mm lug, formality 7, style `dress-sport`. Ships to Fish Jaafar, 15 Harper Road #01-01C, Singapore 367678 → forward to Israel as gift. 5-link SS bracelet pre-sized to 160mm + Pewter Grey Barenia leather (OEM complimentary, short).
+46. **DIAL_COLOR_MAP extended** — new `"champagne"` key added to `src/data/dialColorMap.js`. Pairs with cream, ecru, beige, tan, camel, brown, cognac, stone, sand, navy, black, charcoal, grey, white, olive, khaki, denim, burgundy, brick. Warm-dial spec aligned with earth-tone wardrobe. 109 colorMaterialDetection tests still green.
+47. **Test updates** — `tests/watchSeed.test.js` length assertion bumped 27 → 28; description updated `1 pending → 2 pending`. All 12 watchSeed tests pass.
+48. **Seed header comment** — `src/data/watchSeed.js` v11.1 → v11.2, `1 pending → 2 pending`, date Apr 18 → Apr 23.
+49. **Aftermarket bracelet order deferred** — Forstner Klip + Beads-of-Rice ($205 total) NOT ordered. Factory 5-link bracelet + complimentary Barenia cover day-one needs. Revisit after 6 months of wear.
 
 ---
 

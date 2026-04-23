@@ -56,4 +56,5 @@ export const DIAL_COLOR_MAP = {
   "turquoise":    ["white", "beige", "stone", "navy", "cream", "charcoal", "khaki", "tan", "denim"],
   "red":          ["black", "grey", "white", "navy", "charcoal", "cream", "denim"],
   "meteorite":    ["black", "grey", "navy", "white", "brown", "charcoal", "olive", "khaki", "tan", "denim", "camel"],
+  "champagne":    ["cream", "ecru", "beige", "tan", "camel", "brown", "cognac", "stone", "sand", "navy", "black", "charcoal", "grey", "gray", "white", "olive", "khaki", "denim", "burgundy", "brick"],
 };

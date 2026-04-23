@@ -30,7 +30,7 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
 | Tests | 3024 tests, 175 files (Vitest) |
-| Version | **1.12.33** |
+| Version | **1.12.35** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
 | Last audited | 2026-04-22 (garmentCount=99, historyCount=59, all autoHeal checks healthy; photos-bucket list policy dropped) |
@@ -338,7 +338,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.33**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.35**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
