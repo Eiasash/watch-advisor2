@@ -309,7 +309,7 @@ describe("pullTailorConfig", () => {
     expect(result.avoidPatterns).toContain("plaid");
   });
 
-  it("returns null when value is null (no data key)", async () => {
+  it("returns null when value is null", async () => {
     const { supabase } = await import("../src/services/supabaseClient.js");
     supabase.from.mockImplementationOnce(() => ({
       select: vi.fn(() => ({

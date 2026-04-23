@@ -242,15 +242,10 @@ describe("scoreGarment — composite", () => {
     expect(score).toBeGreaterThan(0);
   });
 
-  it("scoreGarment returns -Infinity for layer garment in extreme heat (wl=0)", () => {
+  it("scoreGarment returns positive score for layer garment in hot weather (not -Infinity)", () => {
     const watch = { dial: "black", formality: 5, style: "sport-elegant", strap: "bracelet" };
     const jacket = { type: "jacket", color: "black", formality: 5 };
-    // very high temp → weatherLayerScore returns 0 → hard gate
-    // From weatherRules: no bracket covers > very high temp, returns NEUTRAL_SCORE (0.5)
-    // Let's check the exact bracket that yields 0
-    // Looking at LAYER_TEMP_BRACKETS: above all brackets → NEUTRAL_SCORE (not 0)
-    // So jacket at 30°C → returns 0.1 (from test "jacket in hot (30°C) → 0.1")
-    // A score of 0 would require a specific bracket. Let's test the non-Infinity path.
+    // weatherLayerScore for jacket at 30°C returns 0.1 (not 0), so the gate is not triggered
     const score = scoreGarment(watch, jacket, { tempC: 30 });
     expect(score).toBeGreaterThan(0); // 0.1 from weather, so positive
   });
