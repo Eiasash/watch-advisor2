@@ -1075,6 +1075,8 @@ function SyncAnglesPanel({ isDark }) {
     let cancelled = false;
     (async () => {
       try {
+        const { IS_PLACEHOLDER } = await import("../services/supabaseSyncState.js");
+        if (IS_PLACEHOLDER) { if (!cancelled) setDbBackfillIds([]); return; }
         const { supabase } = await import("../services/supabaseClient.js");
         const { data } = await supabase
           .from("garments")
