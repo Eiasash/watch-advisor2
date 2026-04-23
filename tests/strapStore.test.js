@@ -160,3 +160,275 @@ describe("strapStore", () => {
     expect(JSON.stringify(after)).toBe(JSON.stringify(before));
   });
 });
+
+// ─── moveStrap ───────────────────────────────────────────────────────────────
+
+describe("strapStore — moveStrap", () => {
+  beforeEach(resetStore);
+
+  it("moves a strap to a different watch", () => {
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    const strap = useStrapStore.getState().straps["snowflake-navy-alligator"];
+    expect(strap.watchId).toBe("reverso");
+    expect(strap.crossStrapped).toBe(true);
+    expect(strap.originalWatchId).toBe("snowflake");
+  });
+
+  it("auto-activates the moved strap on the target watch", () => {
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    expect(useStrapStore.getState().activeStrap["reverso"]).toBe("snowflake-navy-alligator");
+  });
+
+  it("falls back active strap on source watch when moved strap was active", () => {
+    // Set navy as active, then move it
+    useStrapStore.getState().setActiveStrap("snowflake", "snowflake-navy-alligator");
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    // Source watch should fall back to another strap
+    const activeOnSnowflake = useStrapStore.getState().activeStrap["snowflake"];
+    expect(activeOnSnowflake).not.toBe("snowflake-navy-alligator");
+  });
+
+  it("sets source active to null when no fallback remains", () => {
+    // Create a watch with only one strap to test null fallback
+    useStrapStore.setState(s => ({
+      straps: { ...s.straps, "solo-strap": { id: "solo-strap", watchId: "solo-watch", custom: true } },
+      activeStrap: { ...s.activeStrap, "solo-watch": "solo-strap" },
+    }));
+    useStrapStore.getState().moveStrap("solo-strap", "solo-watch", "reverso");
+    expect(useStrapStore.getState().activeStrap["solo-watch"]).toBeNull();
+  });
+
+  it("does nothing when strap does not exist", () => {
+    const before = JSON.stringify(useStrapStore.getState().serialise());
+    useStrapStore.getState().moveStrap("nonexistent-strap", "snowflake", "reverso");
+    const after = JSON.stringify(useStrapStore.getState().serialise());
+    expect(after).toBe(before);
+  });
+
+  it("preserves originalWatchId if already set (nested cross-strap)", () => {
+    // First move to reverso
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    // Then move again to another watch — originalWatchId should stay as "snowflake"
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "reverso", "speedmaster");
+    const strap = useStrapStore.getState().straps["snowflake-navy-alligator"];
+    expect(strap.originalWatchId).toBe("snowflake");
+    expect(strap.watchId).toBe("speedmaster");
+  });
+});
+
+// ─── returnStrap ─────────────────────────────────────────────────────────────
+
+describe("strapStore — returnStrap", () => {
+  beforeEach(resetStore);
+
+  it("returns a cross-strapped strap to its original watch", () => {
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    useStrapStore.getState().returnStrap("snowflake-navy-alligator");
+    const strap = useStrapStore.getState().straps["snowflake-navy-alligator"];
+    expect(strap.watchId).toBe("snowflake");
+    expect(strap.crossStrapped).toBe(false);
+  });
+
+  it("activates the strap on its original watch after return", () => {
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    useStrapStore.getState().returnStrap("snowflake-navy-alligator");
+    expect(useStrapStore.getState().activeStrap["snowflake"]).toBe("snowflake-navy-alligator");
+  });
+
+  it("falls back active on current watch when returned strap was active there", () => {
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    // navy-alligator is now active on reverso (set by moveStrap)
+    useStrapStore.getState().returnStrap("snowflake-navy-alligator");
+    // reverso should fall back to another strap or null
+    expect(useStrapStore.getState().activeStrap["reverso"]).not.toBe("snowflake-navy-alligator");
+  });
+
+  it("does nothing when strap has no originalWatchId", () => {
+    const before = JSON.stringify(useStrapStore.getState().serialise());
+    useStrapStore.getState().returnStrap("snowflake-grey-alligator"); // not cross-strapped
+    const after = JSON.stringify(useStrapStore.getState().serialise());
+    expect(after).toBe(before);
+  });
+
+  it("does nothing for nonexistent strap", () => {
+    const before = JSON.stringify(useStrapStore.getState().serialise());
+    useStrapStore.getState().returnStrap("nonexistent-strap");
+    const after = JSON.stringify(useStrapStore.getState().serialise());
+    expect(after).toBe(before);
+  });
+});
+
+// ─── getCrossStrapped ─────────────────────────────────────────────────────────
+
+describe("strapStore — getCrossStrapped", () => {
+  beforeEach(resetStore);
+
+  it("returns empty array when no straps are cross-strapped", () => {
+    expect(useStrapStore.getState().getCrossStrapped()).toHaveLength(0);
+  });
+
+  it("returns cross-strapped straps after a move", () => {
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    const xStrapped = useStrapStore.getState().getCrossStrapped();
+    expect(xStrapped).toHaveLength(1);
+    expect(xStrapped[0].id).toBe("snowflake-navy-alligator");
+  });
+
+  it("returns multiple cross-strapped straps", () => {
+    useStrapStore.getState().moveStrap("snowflake-navy-alligator", "snowflake", "reverso");
+    useStrapStore.getState().moveStrap("snowflake-grey-alligator", "snowflake", "speedmaster");
+    expect(useStrapStore.getState().getCrossStrapped()).toHaveLength(2);
+  });
+});
+
+// ─── incrementWearCount ───────────────────────────────────────────────────────
+
+describe("strapStore — incrementWearCount", () => {
+  beforeEach(resetStore);
+
+  it("increments wearCount from 0 to 1", () => {
+    useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    const strap = useStrapStore.getState().straps["snowflake-grey-alligator"];
+    expect(strap.wearCount).toBe(1);
+  });
+
+  it("accumulates wear counts across multiple calls", () => {
+    useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    expect(useStrapStore.getState().straps["snowflake-grey-alligator"].wearCount).toBe(3);
+  });
+
+  it("sets lastWorn to today's date", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    expect(useStrapStore.getState().straps["snowflake-grey-alligator"].lastWorn).toBe(today);
+  });
+
+  it("does nothing for nonexistent strap", () => {
+    const before = JSON.stringify(useStrapStore.getState().serialise());
+    useStrapStore.getState().incrementWearCount("nonexistent-strap");
+    const after = JSON.stringify(useStrapStore.getState().serialise());
+    expect(after).toBe(before);
+  });
+});
+
+// ─── getStrapStats ────────────────────────────────────────────────────────────
+
+describe("strapStore — getStrapStats", () => {
+  beforeEach(resetStore);
+
+  it("returns null for nonexistent strap", () => {
+    expect(useStrapStore.getState().getStrapStats("nonexistent")).toBeNull();
+  });
+
+  it("returns correct stats for a fresh strap", () => {
+    const stats = useStrapStore.getState().getStrapStats("snowflake-grey-alligator");
+    expect(stats).not.toBeNull();
+    expect(stats.wears).toBe(0);
+    expect(stats.lastWorn).toBeNull();
+    expect(stats.healthPct).toBe(100);
+    expect(stats.needsReplacement).toBe(false);
+  });
+
+  it("healthPct decreases as wears increase", () => {
+    // Wear the strap many times
+    for (let i = 0; i < 100; i++) {
+      useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    }
+    const stats = useStrapStore.getState().getStrapStats("snowflake-grey-alligator");
+    // leather type → lifespan 200; 100/200 = 50% used → 50% health
+    expect(stats.wears).toBe(100);
+    expect(stats.healthPct).toBe(50);
+    expect(stats.lifespan).toBe(200);
+  });
+
+  it("healthPct is clamped to 0 at max wears", () => {
+    for (let i = 0; i < 220; i++) {
+      useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    }
+    const stats = useStrapStore.getState().getStrapStats("snowflake-grey-alligator");
+    expect(stats.healthPct).toBe(0);
+    expect(stats.needsReplacement).toBe(true);
+  });
+
+  it("bracelet type uses 9999 lifespan → near 100% health", () => {
+    const stats = useStrapStore.getState().getStrapStats("snowflake-titanium-bracelet");
+    expect(stats).not.toBeNull();
+    expect(stats.lifespan).toBe(9999);
+    expect(stats.healthPct).toBe(100);
+    expect(stats.needsReplacement).toBe(false);
+  });
+
+  it("includes lastWorn date after wear", () => {
+    useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
+    const stats = useStrapStore.getState().getStrapStats("snowflake-grey-alligator");
+    expect(stats.lastWorn).not.toBeNull();
+    expect(stats.lastWorn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+// ─── selectActiveStrap / selectStrapsForWatch ──────────────────────────────
+
+describe("strapStore — selectActiveStrap and selectStrapsForWatch selectors", () => {
+  beforeEach(resetStore);
+
+  it("selectActiveStrap returns same reference when strap unchanged", async () => {
+    const { selectActiveStrap } = await import("../src/stores/strapStore.js");
+    const selector = selectActiveStrap("snowflake");
+    const s1 = selector(useStrapStore.getState());
+    const s2 = selector(useStrapStore.getState());
+    // No change → same reference
+    expect(s1).toBe(s2);
+  });
+
+  it("selectActiveStrap returns new reference when strap changes", async () => {
+    const { selectActiveStrap } = await import("../src/stores/strapStore.js");
+    const selector = selectActiveStrap("snowflake");
+    const s1 = selector(useStrapStore.getState());
+    // Change the active strap
+    useStrapStore.getState().setActiveStrap("snowflake", "snowflake-navy-alligator");
+    const s2 = selector(useStrapStore.getState());
+    expect(s1?.id).not.toBe(s2?.id);
+  });
+
+  it("selectActiveStrap returns null for a watch with no active strap", async () => {
+    const { selectActiveStrap } = await import("../src/stores/strapStore.js");
+    const selector = selectActiveStrap("watch-with-no-straps");
+    const result = selector(useStrapStore.getState());
+    expect(result).toBeNull();
+  });
+
+  it("selectStrapsForWatch returns straps for a watch", async () => {
+    const { selectStrapsForWatch } = await import("../src/stores/strapStore.js");
+    const selector = selectStrapsForWatch("snowflake");
+    const straps = selector(useStrapStore.getState());
+    expect(straps.length).toBeGreaterThan(0);
+    expect(straps.every(s => s.watchId === "snowflake")).toBe(true);
+  });
+
+  it("selectStrapsForWatch returns same reference when straps unchanged", async () => {
+    const { selectStrapsForWatch } = await import("../src/stores/strapStore.js");
+    const selector = selectStrapsForWatch("snowflake");
+    const r1 = selector(useStrapStore.getState());
+    const r2 = selector(useStrapStore.getState());
+    expect(r1).toBe(r2);
+  });
+
+  it("selectStrapsForWatch returns new reference when straps change", async () => {
+    const { selectStrapsForWatch } = await import("../src/stores/strapStore.js");
+    const selector = selectStrapsForWatch("snowflake");
+    const r1 = selector(useStrapStore.getState());
+    // Add a new strap
+    useStrapStore.getState().addStrap("snowflake", { label: "Test NATO", type: "nato" });
+    const r2 = selector(useStrapStore.getState());
+    expect(r1.length).not.toBe(r2.length);
+  });
+
+  it("selectStrapsForWatch returns empty array for unknown watch", async () => {
+    const { selectStrapsForWatch } = await import("../src/stores/strapStore.js");
+    const selector = selectStrapsForWatch("unknown-watch-id");
+    const result = selector(useStrapStore.getState());
+    expect(result).toEqual([]);
+  });
+});

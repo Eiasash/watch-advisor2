@@ -70,7 +70,7 @@ vi.mock("../src/stores/wardrobeStore.js", () => {
 
 vi.stubEnv("VITE_SUPABASE_URL", "https://real-project.supabase.co");
 
-const { pullSettings, pushSettings, pullThumbnails } = await import("../src/services/supabaseSync.js");
+const { pullSettings, pushSettings, pullThumbnails, pullScoringOverrides, pullTailorConfig } = await import("../src/services/supabaseSync.js");
 
 // ── pullSettings ─────────────────────────────────────────────────────────────
 
@@ -216,5 +216,135 @@ describe("pullThumbnails", () => {
     // Both should resolve (second piggybacks on first)
     expect(r1).toBeUndefined();
     expect(r2).toBeUndefined();
+  });
+});
+
+// ── pullScoringOverrides ──────────────────────────────────────────────────────
+
+describe("pullScoringOverrides", () => {
+  it("returns null when no data exists (default mock)", async () => {
+    const result = await pullScoringOverrides();
+    expect(result).toBeNull();
+  });
+
+  it("returns scoring overrides object when present", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({
+            data: { value: { scoreWeights: { colorMatch: 3.0, formality: 4.0 } } },
+            error: null,
+          })),
+        })),
+      })),
+    }));
+    const result = await pullScoringOverrides();
+    expect(result).toEqual({ scoreWeights: { colorMatch: 3.0, formality: 4.0 } });
+  });
+
+  it("returns null when value is not an object", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: { value: "not-an-object" }, error: null })),
+        })),
+      })),
+    }));
+    const result = await pullScoringOverrides();
+    expect(result).toBeNull();
+  });
+
+  it("returns null on Supabase error", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: { message: "not found" } })),
+        })),
+      })),
+    }));
+    const result = await pullScoringOverrides();
+    expect(result).toBeNull();
+  });
+
+  it("returns null when data row is null", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        })),
+      })),
+    }));
+    const result = await pullScoringOverrides();
+    expect(result).toBeNull();
+  });
+});
+
+// ── pullTailorConfig ──────────────────────────────────────────────────────────
+
+describe("pullTailorConfig", () => {
+  it("returns null when no data exists (default mock)", async () => {
+    const result = await pullTailorConfig();
+    expect(result).toBeNull();
+  });
+
+  it("returns tailor config object when present", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({
+            data: { value: { preferredPalette: ["navy", "black"], avoidPatterns: ["plaid"] } },
+            error: null,
+          })),
+        })),
+      })),
+    }));
+    const result = await pullTailorConfig();
+    expect(result).not.toBeNull();
+    expect(result.preferredPalette).toContain("navy");
+    expect(result.avoidPatterns).toContain("plaid");
+  });
+
+  it("returns null when value is null (no data key)", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: { value: null }, error: null })),
+        })),
+      })),
+    }));
+    const result = await pullTailorConfig();
+    expect(result).toBeNull();
+  });
+
+  it("returns null on Supabase error", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: { message: "table not found" } })),
+        })),
+      })),
+    }));
+    const result = await pullTailorConfig();
+    expect(result).toBeNull();
+  });
+});
+
+// ── pushSettings exception handling ──────────────────────────────────────────
+
+describe("pushSettings — exception handling", () => {
+  it("handles unexpected exception from upsert gracefully", async () => {
+    const { supabase } = await import("../src/services/supabaseClient.js");
+    supabase.from.mockImplementationOnce(() => ({
+      upsert: vi.fn().mockRejectedValue(new Error("connection refused")),
+      select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn() })) })),
+    }));
+    await expect(pushSettings({ weekCtx: [] })).resolves.not.toThrow();
   });
 });
