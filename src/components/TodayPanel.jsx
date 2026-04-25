@@ -319,6 +319,10 @@ export default function TodayPanel() {
               strapLabel: activeStrapObj?.label ?? null,
               garmentIds: todayEntry?.garmentIds ?? [],
               quickLog: !(todayEntry?.garmentIds?.length > 0),
+              // Default to 7.0 when garments are present (mirrors WatchDashboard + Wear-this-outfit
+              // paths). Leaving score undefined produced null in Supabase — 65% of pre-1.12.36 history
+              // rows were unscored despite having garments. ScoreBackfill UI surfaces these for re-rate.
+              score: todayEntry?.score ?? (todayEntry?.garmentIds?.length > 0 ? 7.0 : null),
               context,
               notes: todayEntry?.notes ?? null,
               outfitPhoto: todayEntry?.outfitPhoto ?? null,
