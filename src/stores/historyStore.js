@@ -2,14 +2,25 @@ import { create } from "zustand";
 import { pushHistoryEntry, deleteHistoryEntry } from "../services/supabaseSync.js";
 import { toArray } from "../utils/toArray.js";
 
-/** Sanitise a history entry so garmentIds is always an array */
+/** Sanitise a history entry: garmentIds is always an array, and a non-quickLog
+ * non-legacy entry with garments must have a numeric score (default 7.0).
+ * Source of truth for finding #4 (65% null score in pre-1.12.36 rows). */
 function sanitiseEntry(e) {
   if (!e) return e;
-  const gids = e.garmentIds;
+  let next = e;
+  const gids = next.garmentIds;
   if (gids !== undefined && !Array.isArray(gids)) {
-    return { ...e, garmentIds: [] };
+    next = { ...next, garmentIds: [] };
   }
-  return e;
+  // Score normalization — only for entries that should have a score:
+  //   has garments, not quickLog, not legacy. Preserve null on quickLog by design.
+  const gidsArr = Array.isArray(next.garmentIds) ? next.garmentIds : [];
+  const isQuick = next.quickLog || next.payload?.quickLog;
+  const isLegacy = next.legacy || next.payload?.legacy;
+  if (gidsArr.length > 0 && !isQuick && !isLegacy && typeof next.score !== "number") {
+    next = { ...next, score: 7.0 };
+  }
+  return next;
 }
 
 // historyPersistence is NOT imported statically here.
@@ -36,9 +47,10 @@ export const useHistoryStore = create((set, get) => ({
 
   addEntry: entry => {
     // Stamp payload version for schema evolution
-    const stamped = entry.payload && !entry.payload.payload_version
+    const stampedRaw = entry.payload && !entry.payload.payload_version
       ? { ...entry, payload: { ...entry.payload, payload_version: "v1" } }
       : entry;
+    const stamped = sanitiseEntry(stampedRaw);
     // 1. Zustand — synchronous, UI sees it immediately
     set(state => ({ entries: [...state.entries, stamped] }));
     // 2. IDB — async, fire-and-forget
@@ -49,9 +61,10 @@ export const useHistoryStore = create((set, get) => ({
 
   upsertEntry: entry => {
     // Stamp payload version for schema evolution
-    const stamped = entry.payload && !entry.payload.payload_version
+    const stampedRaw = entry.payload && !entry.payload.payload_version
       ? { ...entry, payload: { ...entry.payload, payload_version: "v1" } }
       : entry;
+    const stamped = sanitiseEntry(stampedRaw);
     // 1. Zustand — synchronous
     set(state => {
       const idx = state.entries.findIndex(e => e.id === stamped.id);

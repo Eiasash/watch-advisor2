@@ -1,11 +1,11 @@
-﻿import { StrictMode, createElement, Component } from "react";
+import { StrictMode, createElement, Component } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app/AppShell.jsx";
 import { initDebugLogger } from "./services/debugLogger.js";
 
-// Build stamp â€” survives tree-shaking by writing to window (side-effect).
+// Build stamp — survives tree-shaking by writing to window (side-effect).
 // Bump to force Netlify to produce a new bundle hash.
-window.__WA2_BUILD = "20260315-5";
+window.__WA2_BUILD = "20260425-1";
 // Init debug logger before anything else so we capture startup errors
 initDebugLogger();
 
@@ -38,7 +38,7 @@ createRoot(document.getElementById("root")).render(
   )
 );
 
-// â”€â”€ Service Worker registration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Service Worker registration ───────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     // Reload-loop guard: if the page has reloaded more than 3 times
@@ -53,19 +53,19 @@ if ("serviceWorker" in navigator) {
       hist.push(now);
       sessionStorage.setItem(RL_KEY, JSON.stringify(hist));
       if (hist.length > RL_MAX) {
-        console.error("[SW] reload loop detected â€” skipping registration");
+        console.error("[SW] reload loop detected — skipping registration");
         // Unregister all SWs to break the loop
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map(r => r.unregister()));
         return;
       }
-    } catch { /* sessionStorage blocked â€” proceed normally */ }
+    } catch { /* sessionStorage blocked — proceed normally */ }
 
     try {
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       if (import.meta.env.DEV) console.log("[SW] registered, scope:", reg.scope);
 
-      // Detect when a new SW is waiting (app updated) â€” it already called skipWaiting()
+      // Detect when a new SW is waiting (app updated) — it already called skipWaiting()
       // in its install event, so controllerchange will fire automatically.
       // Keep this listener for logging/debugging only.
       reg.addEventListener("updatefound", () => {

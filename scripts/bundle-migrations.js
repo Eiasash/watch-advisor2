@@ -18,7 +18,7 @@ const files = readdirSync(MIGRATIONS_DIR)
 
 const migrations = files.map(f => ({
   name: basename(f, ".sql"),
-  sql: readFileSync(join(MIGRATIONS_DIR, f), "utf-8"),
+  sql: readFileSync(join(MIGRATIONS_DIR, f), "utf-8").replace(/\r\n/g, "\n"),
 }));
 
 writeFileSync(OUTPUT, JSON.stringify(migrations, null, 2));
