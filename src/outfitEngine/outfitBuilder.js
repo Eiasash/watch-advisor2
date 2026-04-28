@@ -228,7 +228,11 @@ function _pairHarmonyScore(shirt, pants, shoes) {
  * the same minified name (TDZ: "Cannot access 'k' before initialization").
  */
 function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights, pinnedSlots) {
-  const temp = weather?.tempC ?? 15;
+  // When weather is missing/unknown, default to 22°C — exactly at the no-extra-layer
+  // threshold so the engine does NOT auto-add a sweater on a silent fetch failure.
+  // Pre-2026-04-28 this was 15°C ("always cold"), which produced phantom sweater
+  // layers in warm weather whenever geolocation/weather fetch failed.
+  const temp = weather?.tempC ?? 22;
   if (temp >= 22) return;
 
   // 18-22°C = warm transition zone. Sweater is optional — only add if high-scoring.

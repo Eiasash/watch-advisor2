@@ -88,9 +88,12 @@ describe("buildOutfit — sweater temperature threshold", () => {
     expect(outfit.sweater).toBeTruthy();
   });
 
-  it("sweater with no weather → uses default 15°C (sweater added)", () => {
+  it("sweater with no weather → uses default 22°C (no sweater)", () => {
+    // Fallback changed 15→22 in 2026-04-28 to stop phantom sweater layers when
+    // the weather fetch fails silently. 22°C sits exactly at the no-extra-layer
+    // threshold, so the sweater path early-returns before adding anything.
     const outfit = buildOutfit(snowflake, fullWardrobe);
-    expect(outfit.sweater).not.toBeNull();
+    expect(outfit.sweater).toBeNull();
   });
 });
 

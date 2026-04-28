@@ -215,7 +215,7 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
                 color: "#ef4444", fontSize: 11, fontWeight: 600,
               }}
             >
-              ↩ Reset to engine pick
+              ↩ Reset slot
             </div>
           )}
           {candidates.map(c => {
@@ -288,6 +288,17 @@ export default function WatchDashboard() {
   const strapActiveMap  = useStrapStore(s => s.activeStrap) ?? {};
 
   const [weather, setWeather] = useState(null);
+  // Tracks whether the weather fetch ran AND failed (returned null).
+  // Used to surface a tiny "no weather" indicator instead of silently using a fallback temp.
+  const [weatherFetchFailed, setWeatherFetchFailed] = useState(false);
+  // Manual temperature override — when set, overrides whatever the weather service returns.
+  // Persists in sessionStorage so it survives reloads within a session but not across days.
+  const [manualTempC, setManualTempC] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.sessionStorage?.getItem("wa2-manual-temp");
+    const n = raw == null ? null : Number(raw);
+    return Number.isFinite(n) ? n : null;
+  });
   const [outfitLogged, setOutfitLogged] = useState(false);
   const [lastCheckinRef, setLastCheckinRef] = useState(null); // for undo
   const [shuffleSeed, setShuffleSeed] = useState(0);
@@ -309,7 +320,10 @@ export default function WatchDashboard() {
     // Delay weather fetch 2s after mount — avoids geolocation-on-page-load
     // Lighthouse flag and gives the main bundle time to hydrate first.
     const t = setTimeout(() => {
-      fetchWeather().then(setWeather);
+      fetchWeather().then(w => {
+        setWeather(w);
+        setWeatherFetchFailed(w == null);
+      }).catch(() => setWeatherFetchFailed(true));
     }, 2000);
     return () => clearTimeout(t);
   }, []);
@@ -339,7 +353,16 @@ export default function WatchDashboard() {
     return { ...selectedWatch, strap: strapStr, _activeStrapLabel: activeStrapObj.label };
   }, [selectedWatch, strapActiveMap, strapStraps]);
 
-  const weatherObj = useMemo(() => ({ tempC: weather?.tempC ?? 15 }), [weather]);
+  // Effective temperature feeding the engine:
+  //   1. Manual override if user set one (Today's temp knob)
+  //   2. Fetched weather if available
+  //   3. 22°C neutral-warm fallback (sweater + jacket layers skipped) — was 15°C,
+  //      which caused phantom sweater layers whenever the weather fetch failed
+  //      silently. The user can still force a sweater by typing a lower temp into
+  //      the manual override knob.
+  const weatherObj = useMemo(() => ({
+    tempC: manualTempC ?? weather?.tempC ?? 22,
+  }), [weather, manualTempC]);
 
   // Determine today's context from weekCtx / onCallDates
   const todayContext = useMemo(() => {
@@ -462,20 +485,83 @@ export default function WatchDashboard() {
         </div>
       </div>
 
-      {weatherText && (
-        <div style={{
-          fontSize: 13, color: "#8b93a7", marginBottom: 14,
-          padding: "6px 12px", borderRadius: 8,
+      {/* Weather + manual override knob */}
+      <div style={{
+        marginBottom: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+      }}>
+        {weatherText && manualTempC == null && (
+          <div style={{
+            fontSize: 13, color: "#8b93a7",
+            padding: "6px 12px", borderRadius: 8,
+            background: isDark ? "#0f131a" : "#f3f4f6",
+            border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
+          }}>
+            Weather: {weatherText}
+            {layerRec && layerRec.layer !== "none" && (
+              <span style={{ marginLeft: 8, color: "#f97316" }}>&middot; {layerRec.label}</span>
+            )}
+          </div>
+        )}
+        {weatherFetchFailed && manualTempC == null && (
+          <div title="Weather fetch failed — outfit defaults assume 22°C. Set Today's temp manually if needed."
+               style={{
+            fontSize: 12, color: "#f59e0b",
+            padding: "6px 10px", borderRadius: 8,
+            background: isDark ? "#1c1500" : "#fffbeb",
+            border: "1px solid #f59e0b44",
+          }}>
+            ⚠ no weather (using 22°C)
+          </div>
+        )}
+        {/* Today's temp manual override — overrides fetched value */}
+        <label style={{
+          fontSize: 12, color: isDark ? "#8b93a7" : "#6b7280",
+          padding: "4px 10px", borderRadius: 8,
           background: isDark ? "#0f131a" : "#f3f4f6",
-          border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
-          display: "inline-block",
+          border: `1px solid ${manualTempC != null ? "#3b82f6" : (isDark ? "#2b3140" : "#d1d5db")}`,
+          display: "inline-flex", alignItems: "center", gap: 6,
         }}>
-          Weather: {weatherText}
-          {layerRec && layerRec.layer !== "none" && (
-            <span style={{ marginLeft: 8, color: "#f97316" }}>&middot; {layerRec.label}</span>
+          Today&apos;s temp:
+          <input
+            type="number"
+            min="-20" max="50" step="1"
+            value={manualTempC == null ? "" : manualTempC}
+            onChange={e => {
+              const v = e.target.value;
+              if (v === "") {
+                setManualTempC(null);
+                try { window.sessionStorage?.removeItem("wa2-manual-temp"); } catch {}
+                return;
+              }
+              const n = Number(v);
+              if (!Number.isFinite(n)) return;
+              setManualTempC(n);
+              try { window.sessionStorage?.setItem("wa2-manual-temp", String(n)); } catch {}
+            }}
+            placeholder={weather?.tempC != null ? String(Math.round(weather.tempC)) : "22"}
+            aria-label="Today's temperature override in Celsius"
+            style={{
+              width: 56, padding: "2px 6px", borderRadius: 5, fontSize: 12,
+              border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
+              background: isDark ? "#171a21" : "#fff",
+              color: isDark ? "#e2e8f0" : "#1f2937",
+              outline: "none",
+            }}
+          />
+          °C
+          {manualTempC != null && (
+            <button onClick={() => {
+              setManualTempC(null);
+              try { window.sessionStorage?.removeItem("wa2-manual-temp"); } catch {}
+            }}
+              title="Clear manual temp — use fetched weather"
+              style={{
+                background: "none", border: "none", color: "#3b82f6",
+                cursor: "pointer", fontSize: 11, fontWeight: 600, padding: 0, marginLeft: 2,
+              }}>auto</button>
           )}
-        </div>
-      )}
+        </label>
+      </div>
 
       {!selectedWatch && (
         <div style={{ color: "#6b7280", fontSize: 14 }}>No watches available.</div>
@@ -610,13 +696,14 @@ export default function WatchDashboard() {
               {(Object.keys(slotOverrides).length > 0 || shuffleSeed > 0) && (
                 <button
                   onClick={() => { setSlotOverrides({}); setShuffleSeed(0); setRemovedSlots(new Set()); }}
+                  title="Reset all slot overrides + shuffle for today's outfit"
                   style={{
                     fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
                     border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
                     background: "transparent", color: "#ef4444", fontWeight: 600,
                   }}
                 >
-                  Reset
+                  Reset outfit
                 </button>
               )}
             </div>
