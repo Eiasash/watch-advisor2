@@ -14,6 +14,7 @@ import { useHistoryStore }  from "../stores/historyStore.js";
 import { useStrapStore }         from "../stores/strapStore.js";
 import { useRejectStore, hydrateRejectStore } from "../stores/rejectStore.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
+import { useTravelStore }     from "../stores/travelStore.js";
 import { pushDebugEntry } from "../stores/debugStore.js";
 import { toArray } from "../utils/toArray.js";
 
@@ -66,6 +67,7 @@ export function useBootstrap() {
       if (Array.isArray(cached.onCallDates)) setOnCallDates(cached.onCallDates);
       if (cached._outfitOverrides) useWardrobeStore.setState({ _outfitOverrides: cached._outfitOverrides });
       if (cached.strapStore) hydrateStraps(cached.strapStore);
+      if (cached.travelStore) useTravelStore.getState().hydrate(cached.travelStore);
       await hydrateRejectStore();
       hydrateStyle(cached.styleLearning ?? {});
 

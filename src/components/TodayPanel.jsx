@@ -16,6 +16,7 @@ import { useRecommendationEngine } from "../hooks/useRecommendationEngine.js";
 import { useTodayFormState }       from "../hooks/useTodayFormState.js";
 
 import WatchPicker, { daysSinceWorn } from "./today/WatchPicker.jsx";
+import EditorialDailyCard from "./today/EditorialDailyCard.jsx";
 import GarmentPicker    from "./today/GarmentPicker.jsx";
 import RotationNudges   from "./today/RotationNudges.jsx";
 import LoggedSummary    from "./today/LoggedSummary.jsx";
@@ -243,10 +244,28 @@ export default function TodayPanel() {
   }
 
   // ── Pre-log form ─────────────────────────────────────────────────────────────
+  // Editorial card watch — top recommendation if no watch picked yet, else the picked one
+  const editorialWatch = useMemo(() => {
+    if (watchId) return watches.find(w => w.id === watchId) ?? null;
+    const recs = getWatchRecommendations(active, entries, context);
+    return recs[0]?.watch ?? null;
+  }, [watchId, watches, active, entries, context]);
+
   return (
     <div style={{ padding: "0 0 100px" }}>
       <div style={{ fontSize: 20, fontWeight: 800, color: text, marginBottom: 4 }}>Today</div>
       <div style={{ fontSize: 13, color: muted, marginBottom: 20 }}>{TODAY_ISO} — What are you wearing?</div>
+
+      {/* Editorial daily card — magazine hero for the recommended watch */}
+      {editorialWatch && (
+        <EditorialDailyCard
+          watch={editorialWatch}
+          weather={weather}
+          context={context}
+          isDark={isDark}
+          onSelect={(w) => setWatchId(w.id)}
+        />
+      )}
 
       {/* Context */}
       <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
