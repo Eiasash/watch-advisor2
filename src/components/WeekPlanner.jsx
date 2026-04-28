@@ -329,7 +329,7 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
   // Build outfit with shuffle + pin support — same pattern as WatchDashboard
   const dayWeather = useMemo(() => {
     const dayForecast = forecast?.find(f => f.date === day?.date);
-    return dayForecast ? { tempC: dayForecast.tempC } : { tempC: 15 };
+    return dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
   }, [forecast, day?.date]);
 
   useEffect(() => {
@@ -479,12 +479,13 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
                 {hasCustomizations && (
                   <button
                     onClick={() => { setSlotOverrides({}); setShuffleSeed(0); }}
+                    title="Reset slot overrides + shuffle for this outfit"
                     style={{
                       padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600,
                       cursor: "pointer", border: `1px solid ${border}`,
                       background: "transparent", color: muted,
                     }}>
-                    ↺ Reset
+                    ↺ Reset outfit
                   </button>
                 )}
                 <button
@@ -858,6 +859,9 @@ export default function WeekPlanner() {
   const [pendingAddOutfit, setPendingAddOutfit] = useState(null);
   const [pickingDay, setPickingDay]         = useState(null);
   const [aiLoadingDay, setAiLoadingDay]     = useState(null); // date string of day being AI-picked
+  // Days where Claude AI was explicitly applied — surfaces an "AI" badge on those
+  // outfits only. Cleared when the user resets the day's outfit overrides.
+  const [aiAppliedDays, setAiAppliedDays]   = useState(new Set());
   // Per-day dual-dial side override: { [YYYY-MM-DD]: "A" | "B" | null }
   const [dialSideOverrides, setDialSideOverrides] = useState({});
   // Per-day per-slot garment overrides: { [YYYY-MM-DD]: { shirt: garmentId, ... } }
@@ -954,7 +958,9 @@ export default function WeekPlanner() {
     return rotation.map(day => {
       if (!day.watch) return {};
       const dayForecast = forecast.find(f => f.date === day.date);
-      const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 15 };
+      // Missing forecast → 22°C (neutral-warm threshold — no extra layer added) so
+      // weather-fetch failures don't auto-stack sweater + jacket. Pre-2026-04-28: 15°C.
+      const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
 
       // For today: if already logged, use logged garments directly.
       // But still allow manual overrides (user can swap slots on a logged outfit).
@@ -1122,6 +1128,7 @@ export default function WeekPlanner() {
       delete next[date];
       return next;
     });
+    setAiAppliedDays(prev => { if (!prev.has(date)) return prev; const n = new Set(prev); n.delete(date); return n; });
   }, []);
 
   // Ask Claude for AI outfit recommendation for a specific day
@@ -1160,6 +1167,7 @@ export default function WeekPlanner() {
 
       setOutfitOverrides(prev => ({ ...prev, [date]: overrides }));
       setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
+      setAiAppliedDays(prev => { const n = new Set(prev); n.add(date); return n; });
     } catch (e) {
       console.warn("[WeekPlanner] AI pick failed:", e.message);
     } finally {
@@ -1298,9 +1306,10 @@ export default function WeekPlanner() {
                 </button>
                 {day.isOverridden && (
                   <button onClick={() => setWatchOverrides(o => { const n = {...o}; delete n[day.date]; return n; })}
+                    title="Revert watch override — use rotation pick"
                     style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, cursor: "pointer",
                               border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
-                    Reset
+                    Reset watch
                   </button>
                 )}
               </div>
@@ -1425,18 +1434,16 @@ export default function WeekPlanner() {
                           ✓ Logged
                         </div>
                       )}
+                      {aiAppliedDays.has(day.date) && !dayOutfit._isLogged && (
+                        <div title="Claude AI override applied — tap Reset outfit to revert"
+                             style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                                      background: "#8b5cf622", color: "#8b5cf6", border: "1px solid #8b5cf644" }}>
+                          ✦ AI
+                        </div>
+                      )}
                     </div>
                     {!dayOutfit._isLogged && (
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => handleAskClaude(day.date, dayForecast)}
-                        disabled={aiLoadingDay === day.date}
-                        title="Ask Claude for outfit recommendation"
-                        style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                                  border: "1px solid #8b5cf6",
-                                  background: aiLoadingDay === day.date ? "#8b5cf622" : "transparent",
-                                  color: "#8b5cf6", fontWeight: 600, opacity: aiLoadingDay === day.date ? 0.6 : 1 }}>
-                        {aiLoadingDay === day.date ? "..." : "\u{1F916}"}
-                      </button>
                       <button onClick={() => handleShuffle(day.date)}
                         title="Shuffle for alternative outfit"
                         style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
@@ -1445,11 +1452,22 @@ export default function WeekPlanner() {
                                   color: isDark ? "#818cf8" : "#6366f1", fontWeight: 600 }}>
                         {"\u{1F500}"} Shuffle{shuffleSeeds[day.date] ? ` (${shuffleSeeds[day.date]})` : ""}
                       </button>
+                      <button onClick={() => handleAskClaude(day.date, dayForecast)}
+                        disabled={aiLoadingDay === day.date}
+                        title="Ask Claude — single AI outfit override"
+                        style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                                  border: "1px solid #8b5cf6",
+                                  background: aiLoadingDay === day.date ? "#8b5cf622" : "transparent",
+                                  color: "#8b5cf6", fontWeight: 700, opacity: aiLoadingDay === day.date ? 0.6 : 1,
+                                  display: "flex", alignItems: "center", gap: 3 }}>
+                        {aiLoadingDay === day.date ? "..." : <>{"✨"} Ask Claude</>}
+                      </button>
                       {(hasOverrides || shuffleSeeds[day.date]) && (
                         <button onClick={() => handleResetOutfit(day.date)}
+                          title="Reset outfit to engine pick"
                           style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
                                     border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
-                          Reset
+                          Reset outfit
                         </button>
                       )}
                     </div>

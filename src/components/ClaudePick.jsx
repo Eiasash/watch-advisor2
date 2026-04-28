@@ -8,7 +8,25 @@ import { useStrapStore } from "../stores/strapStore.js";
 const SLOT_ICONS = { watch: "⌚", shirt: "👔", sweater: "🧶", layer: "🧥", pants: "👖", shoes: "👞", jacket: "🧥", belt: "🪢" };
 const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
 
-export default function ClaudePick() {
+/**
+ * ClaudePick — opt-in AI outfit recommendation.
+ *
+ * Behaviour (post 2026-04-28):
+ *   - Does NOT auto-fetch on mount. Most users don't want every daily pick
+ *     branded as AI when the deterministic engine is doing the work.
+ *   - Renders a single "✦ Ask Claude" CTA. AI badge + "Claude's Pick"
+ *     header only appear AFTER the user explicitly clicks the button.
+ *
+ * Pre-2026-04-28 the component fetched on mount and showed a permanent
+ * "🤖 Claude's Pick" panel on the Today/Logged view. The user reported this
+ * as confusing because the daily pick they were seeing was actually the
+ * deterministic engine's output, not an AI generation.
+ *
+ * Props:
+ *   autoFetch   - back-compat opt-in. Default false. Set to true to restore
+ *                 the legacy auto-fetch-on-mount behaviour.
+ */
+export default function ClaudePick({ autoFetch = false } = {}) {
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
   const [pick, setPick] = useState(null);
@@ -17,6 +35,8 @@ export default function ClaudePick() {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState(null);
   const [wornToday, setWornToday] = useState(false);
+  // requested → user clicked Ask Claude. Only after this do we surface the AI badge.
+  const [requested, setRequested] = useState(false);
   const garments = useWardrobeStore(s => s.garments) ?? [];
   const watches = useWatchStore(s => s.watches) ?? [];
   const upsertEntry = useHistoryStore(s => s.upsertEntry);
@@ -51,6 +71,7 @@ export default function ClaudePick() {
   const fetchPick = async (force = false) => {
     setLoading(true);
     setError(null);
+    setRequested(true); // user-initiated → safe to brand this as an AI override
     try {
       const url = "/.netlify/functions/daily-pick";
       const res = force
@@ -67,7 +88,28 @@ export default function ClaudePick() {
     }
   };
 
-  useEffect(() => { fetchPick(); }, []);
+  // Auto-fetch only when explicitly opted in (back-compat).
+  useEffect(() => { if (autoFetch) fetchPick(); }, [autoFetch]);
+
+  // Default state: show a single CTA. The "🤖 Claude's Pick" badge does NOT
+  // appear until the user clicks — keeps the daily view from looking AI-branded
+  // when most picks are deterministic engine output.
+  if (!requested && !pick && !loading) {
+    return (
+      <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 12, marginBottom: 14 }}>
+        <button
+          onClick={() => fetchPick(true)}
+          style={{
+            width: "100%", padding: "10px 0", borderRadius: 10,
+            border: `1px solid ${accent}`, background: "transparent",
+            color: accent, fontSize: 12, fontWeight: 700, cursor: "pointer",
+          }}
+        >
+          ✦ Ask Claude for an outfit
+        </button>
+      </div>
+    );
+  }
 
   if (loading && !pick) {
     return (

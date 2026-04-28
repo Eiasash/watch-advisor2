@@ -51,10 +51,23 @@ describe("sweater warm transition", () => {
     }
   });
 
-  it("default temp fallback is 15, not 22", () => {
-    // When weather is undefined, temp defaults to 15 → sweater should be included
+  it("default temp fallback is 22°C — no sweater on missing weather", () => {
+    // Pre-2026-04-28 the fallback was 15°C ("always cold"), which produced phantom
+    // sweater layers in warm climates whenever the geolocation/weather fetch failed.
+    // The fallback is now 22°C (exactly at the no-extra-layer threshold) so the
+    // sweater path early-returns before adding anything.
     const result = buildOutfit(watch, wardrobe, undefined, [], 5, "smart-casual");
-    expect(result.sweater).not.toBeNull();
+    expect(result.sweater).toBeNull();
+  });
+
+  it("explicit weather=null yields no sweater (warm-default fallback)", () => {
+    const result = buildOutfit(watch, wardrobe, null, [], 5, "smart-casual");
+    expect(result.sweater).toBeNull();
+  });
+
+  it("explicit weather={tempC:25} yields no sweater (>=22)", () => {
+    const result = buildOutfit(watch, wardrobe, { tempC: 25 }, [], 5, "smart-casual");
+    expect(result.sweater).toBeNull();
   });
 
   it("layer slot added below 8°C with 2+ sweaters", () => {

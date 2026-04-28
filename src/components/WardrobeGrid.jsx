@@ -53,7 +53,7 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
   const item  = data.items[index];
   if (!item) return <div style={style} />;
 
-  const { isDark, selectMode, selectedIds, onSelect, onLongPress, onEdit, selectedGarmentId, history } = data;
+  const { isDark, selectMode, selectedIds, onSelect, onLongPress, onEdit, onDelete, selectedGarmentId, history } = data;
   const isSelected   = selectedIds.has(item.id) || selectedGarmentId === item.id;
   const isLinked     = selectedGarmentId === item.id;
   const swatch       = COLOR_SWATCHES[item.color] ?? "#333";
@@ -120,10 +120,34 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
         {/* Angle badge */}
         {hasAngles && !selectMode && (
           <div style={{
-            position:"absolute", top:6, right:6, zIndex:10,
+            position:"absolute", top:6, right:34, zIndex:10,
             background:"rgba(0,0,0,0.55)", borderRadius:5,
             fontSize:10, fontWeight:700, color:"#fff", padding:"1px 5px",
           }}>+{item.photoAngles.length}</div>
+        )}
+
+        {/* Per-card delete (always visible — touch-first device) */}
+        {!selectMode && (
+          <button
+            type="button"
+            aria-label={`Delete ${item.name ?? "garment"}`}
+            title="Delete this garment"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.(item);
+            }}
+            style={{
+              position:"absolute", top:6, right:6, zIndex:11,
+              width:24, height:24, borderRadius:"50%",
+              background:"rgba(0,0,0,0.55)", color:"#fff",
+              border:"none", cursor:"pointer",
+              fontSize:13, fontWeight:700, lineHeight:1,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              boxShadow:"0 1px 4px rgba(0,0,0,0.4)",
+            }}
+          >
+            ✕
+          </button>
         )}
 
         {/* Photo */}
@@ -395,7 +419,22 @@ export default function WardrobeGrid() {
   }, [enterSelectMode, toggleSelect]);
 
   const handleEdit = useCallback(item => { if (!selectMode) setEditing(item); }, [selectMode]);
-  
+
+  // Per-card delete (single garment, no selection mode required).
+  // Confirms via a tiny native prompt — sufficient for this app's scale.
+  // Mirrors the bulk-delete flow: removeGarment (Zustand) + deleteGarment + deleteStoragePhoto.
+  const handleSingleDelete = useCallback((item) => {
+    if (!item) return;
+    const label = item.name ?? (`${item.color ?? ""} ${item.type ?? "garment"}`.trim() || "garment");
+    if (typeof window !== "undefined" && !window.confirm?.(`Delete "${label}"? This cannot be undone.`)) return;
+    try {
+      useWardrobeStore.getState().removeGarment(item.id);
+    } catch (_) {}
+    const updated = (useWardrobeStore.getState().garments) ?? [];
+    setCachedState({ watches, garments: updated, history }).catch(() => {});
+    deleteGarment(item.id).catch(() => {});
+    deleteStoragePhoto(item.id).catch(() => {});
+  }, [watches, history]);
 
   function handleBatchDelete() {
     const deletedIds = Array.from(selectedIds);
@@ -438,10 +477,10 @@ export default function WardrobeGrid() {
     items: filtered, columns: COLUMN_COUNT, isDark,
     selectMode, selectedIds, selectedGarmentId,
     onSelect: toggleSelect, onLongPress: handleLongPress,
-    onEdit: handleEdit,
+    onEdit: handleEdit, onDelete: handleSingleDelete,
     selectedRef, history,
   }), [filtered, COLUMN_COUNT, isDark, selectMode, selectedIds, selectedGarmentId,
-      toggleSelect, handleLongPress, handleEdit, history]);
+      toggleSelect, handleLongPress, handleEdit, handleSingleDelete, history]);
 
   const tabStyle = active => ({
     padding:"5px 10px", borderRadius:7, fontSize:11, fontWeight:600, cursor:"pointer",
