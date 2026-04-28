@@ -12,9 +12,9 @@ Stack: React 18 (createElement, no JSX except .jsx files) + Vite 7 + Zustand 4 +
 ## Architecture — strict, do not violate
 
 ```
-src/                          146 files, ~23,000 LOC
+src/                          150 files, ~23,000 LOC
   app/            bootstrap.js (boot sequence), AppShell.jsx (layout + tabs)
-  components/     UI only — no business logic (23 JSX files)
+  components/     UI only — no business logic (63 JSX files)
   engine/         scoring, rotation, day profiles — pure functions
   outfitEngine/   outfitBuilder.js, scoring.js, watchStyles.js — pure
   features/       wardrobe/ watch/ outfits/ weather/
@@ -24,7 +24,7 @@ src/                          146 files, ~23,000 LOC
   data/           watchSeed.js — NEVER REPLACE. Sacred.
   aiStylist/      claudeStylist.js
   workers/        photoWorker.js (USE_WORKER=false currently)
-netlify/functions/           24 serverless functions + 3 helpers, ~3,900 LOC
+netlify/functions/           25 serverless functions + 3 helpers, ~3,900 LOC
 supabase/                    schema.sql
 ```
 
@@ -55,7 +55,7 @@ supabase/                    schema.sql
 - Accessories via Claude Vision fallback or filename only
 
 ### Tests — auto-expansion mandatory
-- **3013 tests across 175 files** — run `npm test` to see current count
+- **~3175 tests across 175 files** (3,052 after PR #104 + 123 added in PR #111) — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - Test files in `tests/` — pattern: `tests/<module>.test.js`
@@ -101,13 +101,13 @@ supabase/                    schema.sql
 
 | Metric | Value |
 |--------|-------|
-| Source files | 146 |
+| Source files | 150 |
 | Source LOC | ~23,000 |
 | Test files | 175 |
 | Test LOC | ~29,500 |
-| Tests | 3013 |
+| Tests | ~3175 |
 | Test pass rate | 100% |
-| Netlify functions | 24 (+3 helpers) |
+| Netlify functions | 25 (+3 helpers) |
 | Components | 63 JSX |
 | Zustand stores | 9 |
 | Build output | ~570 kB (167 kB gzip) |
@@ -136,7 +136,7 @@ supabase/                    schema.sql
 | Watch rotation (calendar, pressure, week) | ~150+ | Strong |
 | Classifier (pixel, dHash, color, pipeline) | ~100+ | Strong |
 | Stores (all 9) | ~150+ | Strong |
-| Netlify functions (all 24) | ~300+ | Strong |
+| Netlify functions (all 25) | ~300+ | Strong |
 | Components | ~200+ | Good |
 | Integration tests | ~50+ | Good |
 | Domain logic (stats, styleDNA, trade) | ~80+ | Good |
@@ -164,7 +164,7 @@ Reach **3,500+ tests** with 60% lines, 50% branches coverage.
 ## TODO / Improvement Roadmap
 
 ### High Priority
-- [ ] **Fix 1 failing test** — 3012/3013 passing
+- [x] **Fix 1 failing test** — done in PR #104 (bulkTag test using removed "clinic" context replaced with "smart-casual")
 - [ ] **Enable OffscreenCanvas worker** — USE_WORKER=false in imagePipeline.js
 - [ ] **Raise coverage thresholds** — target 60% lines, 50% branches
 - [ ] **Service worker test suite** — all 3 cache layers + update flow
@@ -194,7 +194,7 @@ Reach **3,500+ tests** with 60% lines, 50% branches coverage.
 ## Environment
 
 - Node 22, npm
-- `npm test` -> vitest (3013 tests)
+- `npm test` -> vitest (~3175 tests)
 - `npm run build` -> vite build -> `dist/`
 - Netlify auto-deploys from `main`
 - Env vars: `CLAUDE_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GITHUB_PAT`, `OPEN_API_KEY`
