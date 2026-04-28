@@ -28,6 +28,8 @@ const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m 
 const SettingsPanel  = lazy(() => import("../components/SettingsPanel.jsx"));
 const OutfitHistory  = lazy(() => import("../components/OutfitHistory.jsx"));
 const WardrobeChat   = lazy(() => import("../components/WardrobeChat.jsx"));
+const TravelTab      = lazy(() => import("../components/TravelTab.jsx"));
+const StrapLibraryTab = lazy(() => import("../components/StrapLibraryTab.jsx"));
 
 /**
  * TabPane — mounts children on first activation, then stays mounted but hidden.
@@ -44,6 +46,8 @@ function TabPane({ active, children }) {
 const TABS = [
   { key:"today",    label:"Today",    icon:"👕" },
   { key:"wardrobe", label:"Wardrobe", icon:"👔" },
+  { key:"straps",   label:"Straps",   icon:"➰" },
+  { key:"travel",   label:"Travel",   icon:"✈️" },
   { key:"plan",     label:"Plan",     icon:"📅" },
   { key:"history",  label:"History",  icon:"📊" },
   { key:"audit",    label:"Audit",    icon:"🔍" },
@@ -213,6 +217,18 @@ function AppContent() {
               <Suspense fallback={null}><ImportPanel /></Suspense>
               <Suspense fallback={<div style={{ padding: 12, color: "#6b7280" }}>Loading wardrobe…</div>}><WardrobeGrid /></Suspense>
             </div>
+          </TabPane>
+
+          <TabPane active={tab === "straps"}>
+            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading straps…</div>}>
+              <StrapLibraryTab />
+            </Suspense>
+          </TabPane>
+
+          <TabPane active={tab === "travel"}>
+            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading travel…</div>}>
+              <TravelTab />
+            </Suspense>
           </TabPane>
 
           <TabPane active={tab === "plan"}>
