@@ -87,6 +87,90 @@ function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
   );
 }
 
+/**
+ * AiFlexRow — flexibility chips below an AI-applied outfit in the WeekPlanner.
+ * Verbs: regenerate, more casual, more formal, different watch, why this, reject + reason.
+ * Lives next to the day card so the user can refine the AI's pick without nuking it.
+ */
+function AiFlexRow({ date, dayForecast, border, isDark, loading, rationale, lastPick, onAsk, onWhy }) {
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const accent = "#8b5cf6";
+  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const bg = isDark ? "#0f131a" : "#f8fafc";
+  const text = isDark ? "#e2e8f0" : "#1f2937";
+
+  const chip = (testid, label, onClick) => (
+    <button
+      data-testid={testid}
+      onClick={onClick}
+      disabled={loading}
+      style={{
+        fontSize: 10, padding: "3px 9px", borderRadius: 999, cursor: loading ? "wait" : "pointer",
+        border: `1px solid ${border}`, background: "transparent", color: muted, fontWeight: 600,
+        opacity: loading ? 0.5 : 1,
+      }}
+    >{label}</button>
+  );
+
+  const submitReject = () => {
+    setRejectOpen(false);
+    const r = reason.trim();
+    setReason("");
+    if (lastPick) {
+      onAsk(date, dayForecast, { rejected: { outfit: lastPick, reason: r }, useExclude: true });
+    }
+  };
+
+  return (
+    <div data-testid={`ai-flex-row-${date}`} style={{ marginTop: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+        <span style={{ fontSize: 9, color: accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 4 }}>
+          ✦ Refine
+        </span>
+        {chip(`ai-regen-${date}`, loading ? "..." : "Different one →", () => onAsk(date, dayForecast, { useExclude: true }))}
+        {chip(`ai-steer-casual-${date}`, "↓ More casual", () => onAsk(date, dayForecast, { steer: "more_casual", useExclude: true }))}
+        {chip(`ai-steer-formal-${date}`, "↑ More formal", () => onAsk(date, dayForecast, { steer: "more_formal", useExclude: true }))}
+        {chip(`ai-steer-watch-${date}`, "⌚ Different watch", () => onAsk(date, dayForecast, { steer: "different_watch", useExclude: true }))}
+        {chip(`ai-why-${date}`, rationale?.loading ? "…" : (rationale?.text ? "Hide why" : "Why this?"), onWhy)}
+        {chip(`ai-reject-${date}`, "👎", () => setRejectOpen(v => !v))}
+      </div>
+      {rejectOpen && (
+        <div style={{ marginTop: 6, display: "flex", gap: 6 }}>
+          <input
+            data-testid={`ai-reject-reason-${date}`}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why doesn't this work? (optional)"
+            style={{
+              flex: 1, padding: "5px 8px", borderRadius: 5, fontSize: 11,
+              background: bg, color: text, border: `1px solid ${border}`,
+            }}
+          />
+          <button
+            data-testid={`ai-reject-submit-${date}`}
+            onClick={submitReject}
+            style={{
+              padding: "5px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700,
+              background: "#ef4444", color: "#fff", border: "none", cursor: "pointer",
+            }}
+          >Send + retry</button>
+        </div>
+      )}
+      {rationale?.text && (
+        <div style={{
+          marginTop: 6, padding: "6px 9px", borderRadius: 6,
+          background: isDark ? "#1a1040" : "#f5f3ff",
+          border: `1px solid ${accent}33`,
+          fontSize: 10, color: isDark ? "#c4b5fd" : "#7c3aed", lineHeight: 1.5,
+        }}>
+          <strong>Why:</strong> {rationale.text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Rotation insights: variety score + most/least worn */
 function RotationInsights({ rotation, history, isDark }) {
   if (!rotation.length) return null;
@@ -862,6 +946,12 @@ export default function WeekPlanner() {
   // Days where Claude AI was explicitly applied — surfaces an "AI" badge on those
   // outfits only. Cleared when the user resets the day's outfit overrides.
   const [aiAppliedDays, setAiAppliedDays]   = useState(new Set());
+  // Per-day rolling list of recent AI picks (for excludeRecent on regenerate/steer).
+  // { [date]: [{ watch, watchId, shirt, sweater, pants, shoes, jacket }, ...] }
+  const [recentAiPicks, setRecentAiPicks]   = useState({});
+  // Per-day "Why this?" rationale text shown in a popover.
+  // { [date]: { text, loading } }
+  const [aiRationale, setAiRationale]       = useState({});
   // Per-day dual-dial side override: { [YYYY-MM-DD]: "A" | "B" | null }
   const [dialSideOverrides, setDialSideOverrides] = useState({});
   // Per-day per-slot garment overrides: { [YYYY-MM-DD]: { shirt: garmentId, ... } }
@@ -1129,10 +1219,32 @@ export default function WeekPlanner() {
       return next;
     });
     setAiAppliedDays(prev => { if (!prev.has(date)) return prev; const n = new Set(prev); n.delete(date); return n; });
+    setRecentAiPicks(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
+    setAiRationale(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
   }, []);
 
-  // Ask Claude for AI outfit recommendation for a specific day
-  const handleAskClaude = useCallback(async (date, dayForecast) => {
+  // Compact pick projection used as excludeRecent payload (avoid echoing weather/etc.)
+  const compactPickForExclude = useCallback((pick) => ({
+    watch: pick.watch ?? null,
+    watchId: pick.watchId ?? null,
+    shirt: pick.shirt ?? null,
+    sweater: pick.sweater ?? null,
+    pants: pick.pants ?? null,
+    shoes: pick.shoes ?? null,
+    jacket: pick.jacket ?? null,
+  }), []);
+
+  /**
+   * Ask Claude for an AI outfit recommendation.
+   * Flexibility verbs:
+   *   - steer:    "more_casual" | "more_formal" | "different_watch"
+   *   - regen:    pass useExclude:true to send recentAiPicks[date] so the model
+   *               picks something genuinely different from prior tries.
+   *   - rejected: { outfit, reason } — fire-and-forget feedback. The endpoint
+   *               logs it and avoids the same direction in the regenerate.
+   */
+  const handleAskClaude = useCallback(async (date, dayForecast, opts = {}) => {
+    const { steer = null, useExclude = false, rejected = null } = opts;
     setAiLoadingDay(date);
     try {
       const weather = dayForecast ? {
@@ -1142,10 +1254,18 @@ export default function WeekPlanner() {
         tempEvening: dayForecast.tempEvening,
         description: dayForecast.description,
       } : undefined;
+      const recent = recentAiPicks[date] ?? [];
+      const body = {
+        forceRefresh: true,
+        weather,
+        ...(steer ? { steer } : {}),
+        ...(useExclude && recent.length ? { excludeRecent: recent } : {}),
+        ...(rejected ? { rejected } : {}),
+      };
       const res = await fetch("/.netlify/functions/daily-pick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forceRefresh: true, weather }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`${res.status}`);
       const pick = await res.json();
@@ -1163,17 +1283,51 @@ export default function WeekPlanner() {
       }
 
       // Do NOT apply watch override from AI — user already selected their watch.
-      // AI should only recommend garments around the user's current watch choice.
-
       setOutfitOverrides(prev => ({ ...prev, [date]: overrides }));
       setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
       setAiAppliedDays(prev => { const n = new Set(prev); n.add(date); return n; });
+      // Track rolling list of last 5 picks for this day so excludeRecent works.
+      setRecentAiPicks(prev => {
+        const compact = compactPickForExclude(pick);
+        const list = [compact, ...(prev[date] ?? [])].slice(0, 5);
+        return { ...prev, [date]: list };
+      });
+      // Surface reasoning if the model returned it (no extra round-trip).
+      if (pick.reasoning) {
+        setAiRationale(prev => ({ ...prev, [date]: { text: pick.reasoning, loading: false } }));
+      }
     } catch (e) {
       console.warn("[WeekPlanner] AI pick failed:", e.message);
     } finally {
       setAiLoadingDay(null);
     }
-  }, [garments, watches]);
+  }, [garments, watches, recentAiPicks, compactPickForExclude]);
+
+  // "Why this?" — surface stored reasoning, or call the endpoint with why:true
+  // for a fresh rationale on the current day's outfit.
+  const handleWhyAI = useCallback(async (date) => {
+    const existing = aiRationale[date]?.text;
+    if (existing) {
+      // Toggle off when already shown
+      setAiRationale(prev => { const n = { ...prev }; delete n[date]; return n; });
+      return;
+    }
+    const recent = recentAiPicks[date] ?? [];
+    const last = recent[0];
+    if (!last) return;
+    setAiRationale(prev => ({ ...prev, [date]: { text: null, loading: true } }));
+    try {
+      const res = await fetch("/.netlify/functions/daily-pick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ why: true, currentPick: last }),
+      });
+      const data = await res.json();
+      setAiRationale(prev => ({ ...prev, [date]: { text: data.rationale ?? "No rationale available.", loading: false } }));
+    } catch {
+      setAiRationale(prev => ({ ...prev, [date]: { text: "Could not fetch rationale.", loading: false } }));
+    }
+  }, [aiRationale, recentAiPicks]);
 
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
@@ -1473,6 +1627,20 @@ export default function WeekPlanner() {
                     </div>
                     )}
                   </div>
+                  {/* AI flexibility row — only shown after Claude has applied a pick */}
+                  {aiAppliedDays.has(day.date) && !dayOutfit._isLogged && (
+                    <AiFlexRow
+                      date={day.date}
+                      dayForecast={dayForecast}
+                      border={border}
+                      isDark={isDark}
+                      loading={aiLoadingDay === day.date}
+                      rationale={aiRationale[day.date]}
+                      lastPick={(recentAiPicks[day.date] ?? [])[0] ?? null}
+                      onAsk={handleAskClaude}
+                      onWhy={() => handleWhyAI(day.date)}
+                    />
+                  )}
                   <style>{`
                     .wa-week-outfit-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
                     @media (max-width:500px) { .wa-week-outfit-grid { grid-template-columns:1fr; } }

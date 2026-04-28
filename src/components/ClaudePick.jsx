@@ -8,6 +8,21 @@ import { useStrapStore } from "../stores/strapStore.js";
 const SLOT_ICONS = { watch: "⌚", shirt: "👔", sweater: "🧶", layer: "🧥", pants: "👖", shoes: "👞", jacket: "🧥", belt: "🪢" };
 const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
 
+// Trim a pick to the fields the model actually needs to "remember" so the
+// excludeRecent payload stays small (and doesn't echo weather/generatedAt back).
+function compactPick(p) {
+  if (!p) return null;
+  return {
+    watch: p.watch ?? null,
+    watchId: p.watchId ?? null,
+    shirt: p.shirt ?? null,
+    sweater: p.sweater ?? null,
+    pants: p.pants ?? null,
+    shoes: p.shoes ?? null,
+    jacket: p.jacket ?? null,
+  };
+}
+
 /**
  * ClaudePick — opt-in AI outfit recommendation.
  *
@@ -16,11 +31,9 @@ const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jac
  *     branded as AI when the deterministic engine is doing the work.
  *   - Renders a single "✦ Ask Claude" CTA. AI badge + "Claude's Pick"
  *     header only appear AFTER the user explicitly clicks the button.
- *
- * Pre-2026-04-28 the component fetched on mount and showed a permanent
- * "🤖 Claude's Pick" panel on the Today/Logged view. The user reported this
- * as confusing because the daily pick they were seeing was actually the
- * deterministic engine's output, not an AI generation.
+ *   - After a pick is shown, exposes flexibility verbs: regenerate, steer
+ *     more casual / more formal / different watch, reject + reason, why this,
+ *     and "show 2 more options" variants.
  *
  * Props:
  *   autoFetch   - back-compat opt-in. Default false. Set to true to restore
@@ -35,8 +48,15 @@ export default function ClaudePick({ autoFetch = false } = {}) {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSlot, setExpandedSlot] = useState(null);
   const [wornToday, setWornToday] = useState(false);
-  // requested → user clicked Ask Claude. Only after this do we surface the AI badge.
   const [requested, setRequested] = useState(false);
+  // Flexibility state
+  const [recentPicks, setRecentPicks] = useState([]); // last 5 distinct picks for excludeRecent
+  const [variants, setVariants] = useState(null); // array | null when only 1 pick
+  const [variantIndex, setVariantIndex] = useState(0);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rationale, setRationale] = useState(null); // "why this?" pop-over text
+  const [whyLoading, setWhyLoading] = useState(false);
   const garments = useWardrobeStore(s => s.garments) ?? [];
   const watches = useWatchStore(s => s.watches) ?? [];
   const upsertEntry = useHistoryStore(s => s.upsertEntry);
@@ -56,7 +76,6 @@ export default function ClaudePick({ autoFetch = false } = {}) {
     for (const slot of SLOT_ORDER) {
       if (slot === "watch" || !pick[slot] || pick[slot] === "null") continue;
       const pickName = pick[slot].toLowerCase().trim();
-      // Exact match first, then substring match
       const exact = garments.find(g => g.name?.toLowerCase().trim() === pickName);
       if (exact) { matched[slot] = exact; continue; }
       const partial = garments.find(g => {
@@ -68,19 +87,103 @@ export default function ClaudePick({ autoFetch = false } = {}) {
     return matched;
   }, [pick, garments]);
 
-  const fetchPick = async (force = false) => {
+  /**
+   * fetchPick — flexible call into /.netlify/functions/daily-pick.
+   * options:
+   *   force         — always true after first user interaction
+   *   steer         — "more_casual" | "more_formal" | "different_watch"
+   *   useExclude    — pass recentPicks[] to discourage repeats
+   *   variantsCount — request multiple options at once (max 3)
+   */
+  const fetchPick = async ({ force = false, steer = null, useExclude = false, variantsCount = 1 } = {}) => {
     setLoading(true);
     setError(null);
-    setRequested(true); // user-initiated → safe to brand this as an AI override
+    setRationale(null);
+    setRequested(true);
     try {
       const url = "/.netlify/functions/daily-pick";
-      const res = force
-        ? await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ forceRefresh: true }) })
+      const needsPost = force || steer || useExclude || variantsCount > 1;
+      const res = needsPost
+        ? await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              forceRefresh: true,
+              ...(steer ? { steer } : {}),
+              ...(useExclude && recentPicks.length ? { excludeRecent: recentPicks.map(compactPick).filter(Boolean) } : {}),
+              ...(variantsCount > 1 ? { variants: variantsCount } : {}),
+            }),
+          })
         : await fetch(url);
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+
+      if (Array.isArray(data.variants)) {
+        setVariants(data.variants);
+        setVariantIndex(0);
+        setPick(data.variants[0]);
+        setRecentPicks(prev => [data.variants[0], ...prev].slice(0, 5));
+      } else {
+        setVariants(null);
+        setVariantIndex(0);
+        setPick(data);
+        setRecentPicks(prev => [data, ...prev].slice(0, 5));
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // "Why this?" — surface existing reasoning instantly, only call API if we don't have it.
+  const handleWhy = async () => {
+    if (!pick) return;
+    if (pick.reasoning) {
+      setRationale(pick.reasoning);
+      return;
+    }
+    setWhyLoading(true);
+    try {
+      const res = await fetch("/.netlify/functions/daily-pick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ why: true, currentPick: compactPick(pick) }),
+      });
+      const data = await res.json();
+      setRationale(data.rationale ?? "No rationale available.");
+    } catch {
+      setRationale("Could not fetch rationale.");
+    } finally {
+      setWhyLoading(false);
+    }
+  };
+
+  // Reject + reason — fire-and-forget feedback, then regenerate avoiding the rejected outfit.
+  const handleSubmitReject = async () => {
+    if (!pick) return;
+    const reason = rejectReason.trim();
+    setRejectOpen(false);
+    setRejectReason("");
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/.netlify/functions/daily-pick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          forceRefresh: true,
+          rejected: { outfit: compactPick(pick), reason },
+          excludeRecent: recentPicks.map(compactPick).filter(Boolean),
+        }),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setPick(data);
+      setVariants(null);
+      setRecentPicks(prev => [data, ...prev].slice(0, 5));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -89,16 +192,13 @@ export default function ClaudePick({ autoFetch = false } = {}) {
   };
 
   // Auto-fetch only when explicitly opted in (back-compat).
-  useEffect(() => { if (autoFetch) fetchPick(); }, [autoFetch]);
+  useEffect(() => { if (autoFetch) fetchPick({ force: false }); }, [autoFetch]);
 
-  // Default state: show a single CTA. The "🤖 Claude's Pick" badge does NOT
-  // appear until the user clicks — keeps the daily view from looking AI-branded
-  // when most picks are deterministic engine output.
   if (!requested && !pick && !loading) {
     return (
       <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 12, marginBottom: 14 }}>
         <button
-          onClick={() => fetchPick(true)}
+          onClick={() => fetchPick({ force: true })}
           style={{
             width: "100%", padding: "10px 0", borderRadius: 10,
             border: `1px solid ${accent}`, background: "transparent",
@@ -129,7 +229,7 @@ export default function ClaudePick({ autoFetch = false } = {}) {
           🤖 Claude's Pick
         </div>
         <div style={{ fontSize: 11, color: "#ef4444", marginTop: 8 }}>{error}</div>
-        <button onClick={() => fetchPick(true)} style={{
+        <button onClick={() => fetchPick({ force: true })} style={{
           marginTop: 8, padding: "4px 12px", borderRadius: 6, border: `1px solid ${accent}`,
           background: "transparent", color: accent, fontSize: 11, cursor: "pointer",
         }}>Retry</button>
@@ -144,8 +244,14 @@ export default function ClaudePick({ autoFetch = false } = {}) {
     return pick[s] && pick[s] !== "null";
   });
 
+  const chipStyle = (active = false) => ({
+    padding: "4px 10px", borderRadius: 999, border: `1px solid ${active ? accent : border}`,
+    background: active ? `${accent}22` : "transparent",
+    color: active ? accent : muted, fontSize: 10, fontWeight: 600, cursor: "pointer",
+  });
+
   return (
-    <div style={{ background: card, borderRadius: 14, border: `1px solid ${accent}44`, padding: 16, marginBottom: 14 }}>
+    <div data-testid="claude-pick-panel" style={{ background: card, borderRadius: 14, border: `1px solid ${accent}44`, padding: 16, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: collapsed ? 0 : 12 }}>
         <div onClick={() => setCollapsed(!collapsed)} style={{ cursor: "pointer", flex: 1 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -156,12 +262,25 @@ export default function ClaudePick({ autoFetch = false } = {}) {
               {pick.score}/10
             </span>
           )}
+          {variants && variants.length > 1 && (
+            <span style={{ marginLeft: 8, fontSize: 10, color: muted }}>
+              · option {variantIndex + 1}/{variants.length}
+            </span>
+          )}
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={(e) => { e.stopPropagation(); fetchPick(true); }} style={{
-            padding: "3px 8px", borderRadius: 6, border: `1px solid ${border}`,
-            background: "transparent", color: muted, fontSize: 10, cursor: "pointer",
-          }}>{loading ? "..." : "🔄"}</button>
+          <button
+            data-testid="claude-pick-why"
+            onClick={(e) => { e.stopPropagation(); handleWhy(); }}
+            title="Why this?"
+            style={{ padding: "3px 8px", borderRadius: 6, border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 10, cursor: "pointer" }}
+          >{whyLoading ? "…" : "?"}</button>
+          <button
+            data-testid="claude-pick-regen"
+            onClick={(e) => { e.stopPropagation(); fetchPick({ force: true, useExclude: true }); }}
+            title="Try again — different outfit"
+            style={{ padding: "3px 8px", borderRadius: 6, border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 10, cursor: "pointer" }}
+          >{loading ? "..." : "🔄"}</button>
           <span onClick={() => setCollapsed(!collapsed)} style={{ cursor: "pointer", color: muted, fontSize: 10 }}>
             {collapsed ? "▼" : "▲"}
           </span>
@@ -185,7 +304,7 @@ export default function ClaudePick({ autoFetch = false } = {}) {
             </div>
           )}
 
-          {/* Garment slots — tappable to expand details */}
+          {/* Garment slots */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {slots.filter(s => s !== "watch").map(slot => {
               const name = pick[slot];
@@ -247,6 +366,18 @@ export default function ClaudePick({ autoFetch = false } = {}) {
             </div>
           )}
 
+          {/* "Why this?" rationale popover (only when explicitly asked & no reasoning shown above) */}
+          {rationale && !pick.reasoning && (
+            <div style={{
+              marginTop: 10, padding: "8px 10px", borderRadius: 8,
+              background: isDark ? "#1a1040" : "#f5f3ff",
+              border: `1px solid ${accent}22`,
+              fontSize: 11, color: isDark ? "#c4b5fd" : "#7c3aed", lineHeight: 1.5,
+            }}>
+              <strong>Why:</strong> {rationale}
+            </div>
+          )}
+
           {/* Layer tip */}
           {pick.layerTip && (
             <div style={{
@@ -255,6 +386,70 @@ export default function ClaudePick({ autoFetch = false } = {}) {
               fontSize: 10, color: "#f97316", fontWeight: 600,
             }}>
               💡 {pick.layerTip}
+            </div>
+          )}
+
+          {/* Flexibility chips — steer + reject + variants */}
+          <div data-testid="claude-pick-flex-row" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            <button data-testid="steer-more-casual"
+              onClick={() => fetchPick({ force: true, steer: "more_casual", useExclude: true })}
+              style={chipStyle()}>
+              ↓ More casual
+            </button>
+            <button data-testid="steer-more-formal"
+              onClick={() => fetchPick({ force: true, steer: "more_formal", useExclude: true })}
+              style={chipStyle()}>
+              ↑ More formal
+            </button>
+            <button data-testid="steer-different-watch"
+              onClick={() => fetchPick({ force: true, steer: "different_watch", useExclude: true })}
+              style={chipStyle()}>
+              ⌚ Different watch
+            </button>
+            <button data-testid="claude-pick-regen-chip"
+              onClick={() => fetchPick({ force: true, useExclude: true })}
+              style={chipStyle()}>
+              {loading ? "..." : "Different one →"}
+            </button>
+            <button data-testid="claude-pick-reject"
+              onClick={() => setRejectOpen(v => !v)}
+              style={chipStyle(rejectOpen)}>
+              👎
+            </button>
+            {variants && variants.length > 1 && (
+              <>
+                <button onClick={() => { const i = (variantIndex - 1 + variants.length) % variants.length; setVariantIndex(i); setPick(variants[i]); }}
+                  style={chipStyle()}>‹ prev</button>
+                <button onClick={() => { const i = (variantIndex + 1) % variants.length; setVariantIndex(i); setPick(variants[i]); }}
+                  style={chipStyle()}>next ›</button>
+              </>
+            )}
+            {!variants && (
+              <button data-testid="claude-pick-show-more"
+                onClick={() => fetchPick({ force: true, variantsCount: 3, useExclude: true })}
+                style={chipStyle()}>
+                Show 2 more options
+              </button>
+            )}
+          </div>
+
+          {/* Reject reason — collapsible inline input */}
+          {rejectOpen && (
+            <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+              <input
+                data-testid="reject-reason-input"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Why doesn't this work? (optional)"
+                style={{
+                  flex: 1, padding: "6px 10px", borderRadius: 6, fontSize: 11,
+                  background: bg, color: text, border: `1px solid ${border}`,
+                }}
+              />
+              <button data-testid="reject-reason-submit" onClick={handleSubmitReject} style={{
+                padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                background: "#ef4444", color: "#fff", border: "none", cursor: "pointer",
+              }}>Send + retry</button>
             </div>
           )}
 

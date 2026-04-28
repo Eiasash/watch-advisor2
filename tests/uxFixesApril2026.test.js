@@ -64,8 +64,10 @@ describe("UX fixes Apr 2026 — ClaudePick opt-in", () => {
       fs.promises.readFile("src/components/ClaudePick.jsx", "utf-8")
     );
     expect(src).toMatch(/autoFetch\s*=\s*false/);
-    // The fetchPick call is gated behind `if (autoFetch) fetchPick();`
-    expect(src).toMatch(/if\s*\(\s*autoFetch\s*\)\s*fetchPick\(\)/);
+    // The fetchPick call is gated behind `if (autoFetch) fetchPick(...)` — the
+    // call signature was extended in v1.12.39 to accept flexibility options
+    // (steer / variants / excludeRecent) so we accept any argument list here.
+    expect(src).toMatch(/if\s*\(\s*autoFetch\s*\)\s*fetchPick\([^)]*\)/);
   });
 
   it("file contains the explicit Ask-Claude CTA wording", async () => {
@@ -78,12 +80,17 @@ describe("UX fixes Apr 2026 — ClaudePick opt-in", () => {
 
 // ── Issue 3 — single AI hook in WeekPlanner ─────────────────────────────────
 describe("UX fixes Apr 2026 — WeekPlanner single AI entry point", () => {
-  it("WeekPlanner has exactly one /.netlify/functions/daily-pick fetch (handleAskClaude)", async () => {
+  it("WeekPlanner uses /.netlify/functions/daily-pick for AI pick + flexibility (v1.12.39: handleAskClaude + handleWhyAI)", async () => {
     const src = await import("node:fs").then(fs =>
       fs.promises.readFile("src/components/WeekPlanner.jsx", "utf-8")
     );
     const matches = src.match(/\/\.netlify\/functions\/daily-pick/g) ?? [];
-    expect(matches.length).toBe(1);
+    // v1.12.39 added a second endpoint call for the "Why this?" rationale
+    // request. The contract is still ONE function (daily-pick), but two
+    // entry points: handleAskClaude (regen/steer/reject) and handleWhyAI.
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+    expect(matches.length).toBeLessThanOrEqual(2);
+    expect(src).toMatch(/handleAskClaude/);
   });
 
   it("AI badge only renders when aiAppliedDays contains the day's date", async () => {

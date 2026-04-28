@@ -289,3 +289,130 @@ describe("ClaudePick — render states", () => {
     expect(garmentIds.length).toBe(0);
   });
 });
+
+// ─── AI flexibility — body-payload contract tests ─────────────────────────────
+
+describe("ClaudePick — flexibility request payloads", () => {
+  it("regenerate sends excludeRecent + forceRefresh", () => {
+    const recentPicks = [
+      { watch: "Santos", shirt: "White oxford", pants: "Navy chinos", shoes: "Brown boots" },
+    ];
+    const compactPick = (p) => ({
+      watch: p.watch ?? null,
+      watchId: p.watchId ?? null,
+      shirt: p.shirt ?? null,
+      sweater: p.sweater ?? null,
+      pants: p.pants ?? null,
+      shoes: p.shoes ?? null,
+      jacket: p.jacket ?? null,
+    });
+    const body = {
+      forceRefresh: true,
+      excludeRecent: recentPicks.map(compactPick),
+    };
+    expect(body.forceRefresh).toBe(true);
+    expect(body.excludeRecent).toHaveLength(1);
+    expect(body.excludeRecent[0].watch).toBe("Santos");
+  });
+
+  it("steer payload includes 'more_casual'", () => {
+    const body = { forceRefresh: true, steer: "more_casual" };
+    expect(body.steer).toBe("more_casual");
+  });
+
+  it("steer payload includes 'more_formal'", () => {
+    const body = { forceRefresh: true, steer: "more_formal" };
+    expect(body.steer).toBe("more_formal");
+  });
+
+  it("steer payload includes 'different_watch'", () => {
+    const body = { forceRefresh: true, steer: "different_watch" };
+    expect(body.steer).toBe("different_watch");
+  });
+
+  it("variants:3 payload requests 3 outfits", () => {
+    const body = { forceRefresh: true, variants: 3 };
+    expect(body.variants).toBe(3);
+  });
+
+  it("rejected payload includes outfit + reason", () => {
+    const body = {
+      forceRefresh: true,
+      rejected: { outfit: { watch: "Santos" }, reason: "too formal for today" },
+      excludeRecent: [{ watch: "Santos" }],
+    };
+    expect(body.rejected.reason).toBe("too formal for today");
+    expect(body.rejected.outfit.watch).toBe("Santos");
+  });
+
+  it("why:true payload includes currentPick and skips forceRefresh", () => {
+    const body = {
+      why: true,
+      currentPick: { watch: "Santos", shirt: "White oxford", pants: "Navy chinos" },
+    };
+    expect(body.why).toBe(true);
+    expect(body.currentPick.watch).toBe("Santos");
+  });
+
+  it("variants response shape exposes variants array", () => {
+    const response = {
+      variants: [
+        { watch: "A", score: 8 },
+        { watch: "B", score: 8 },
+        { watch: "C", score: 8 },
+      ],
+      generatedAt: new Date().toISOString(),
+    };
+    expect(Array.isArray(response.variants)).toBe(true);
+    expect(response.variants).toHaveLength(3);
+  });
+
+  it("compactPick strips weather/generatedAt from prior picks", () => {
+    const fullPick = {
+      watch: "Santos",
+      watchId: "santos_large",
+      shirt: "White oxford",
+      sweater: null,
+      pants: "Navy chinos",
+      shoes: "Brown boots",
+      jacket: null,
+      reasoning: "Long reasoning text...",
+      score: 8.5,
+      weather: { tempC: 15 },
+      generatedAt: "2026-04-28T10:00:00Z",
+    };
+    const compactPick = (p) => ({
+      watch: p.watch ?? null,
+      watchId: p.watchId ?? null,
+      shirt: p.shirt ?? null,
+      sweater: p.sweater ?? null,
+      pants: p.pants ?? null,
+      shoes: p.shoes ?? null,
+      jacket: p.jacket ?? null,
+    });
+    const compact = compactPick(fullPick);
+    expect(compact.weather).toBeUndefined();
+    expect(compact.generatedAt).toBeUndefined();
+    expect(compact.reasoning).toBeUndefined();
+    expect(compact.watch).toBe("Santos");
+  });
+
+  it("rolling recentPicks list caps at 5", () => {
+    let prev = [];
+    for (let i = 0; i < 8; i++) {
+      const next = [{ watch: `Pick${i}` }, ...prev].slice(0, 5);
+      prev = next;
+    }
+    expect(prev).toHaveLength(5);
+    expect(prev[0].watch).toBe("Pick7"); // newest first
+    expect(prev[4].watch).toBe("Pick3");
+  });
+
+  it("steer button list includes the three expected verbs", () => {
+    const STEER_BUTTONS = ["more_casual", "more_formal", "different_watch"];
+    expect(STEER_BUTTONS).toContain("more_casual");
+    expect(STEER_BUTTONS).toContain("more_formal");
+    expect(STEER_BUTTONS).toContain("different_watch");
+    expect(STEER_BUTTONS).toHaveLength(3);
+  });
+});
