@@ -7,7 +7,7 @@
  *   - Push notifications: same as before
  */
 
-const SHELL_CACHE  = "wa2-shell-v10";
+const SHELL_CACHE  = "wa2-shell-v11";
 const IMAGE_CACHE  = "wa2-images-v4";
 const API_CACHE    = "wa2-api-v4";
 const MAX_IMAGES   = 200;
@@ -32,6 +32,8 @@ const SHELL_URLS = [
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
+  "/install-promo.js",
+  "/install-promo-config.js",
 ];
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
