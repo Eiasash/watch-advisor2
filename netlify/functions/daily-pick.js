@@ -14,9 +14,117 @@ import { cors } from "./_cors.js";
  * - Time-of-day layer transitions
  *
  * GET — returns today's pick (cached for 4 hours in app_config)
- * POST body: { weather, forceRefresh } — regenerate with specific weather
+ * POST body (all optional except where noted):
+ *   weather        — { tempC, tempMorning, ... } overrides auto-fetched weather
+ *   forceRefresh   — boolean. Bypass cache (always true for steer/regen/variants)
+ *   steer          — "more_casual" | "more_formal" | "different_watch" — flexibility nudge
+ *   excludeRecent  — array of pick objects (or names) to avoid repeating
+ *   rejected       — { outfit, reason } — fire-and-forget feedback. Logged to
+ *                    app_config.value.history (and skipped from cache).
+ *   variants       — integer 1..3. When >1, returns { variants: [pick, pick, ...] }
+ *                    instead of a single pick. Used for "show 2 more options".
+ *   why            — boolean. If the previous pick already has a reasoning string
+ *                    we surface it client-side; this flag asks the model for a
+ *                    deeper rationale on a specific outfit.
+ *   currentPick    — pick object passed alongside `why` so the model knows which
+ *                    outfit to explain.
  */
 
+const STEER_INSTRUCTIONS = {
+  more_casual: "Make this MORE CASUAL than your usual default — relax formality, prefer t-shirts/sneakers/casual watches.",
+  more_formal: "Make this MORE FORMAL than your usual default — push toward dress shirts/leather shoes/dressier watches.",
+  different_watch: "Suggest a DIFFERENT WATCH FACE for this outfit — the user already saw your prior pick and wants an alternative timepiece.",
+};
+
+function buildPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, variants }) {
+  const variantClause = variants > 1
+    ? `Return a JSON ARRAY of ${variants} DISTINCT outfit objects (each must use a different watch). Do NOT wrap in markdown.`
+    : "Respond ONLY with a single JSON object, no markdown.";
+
+  const steerLine = steer && STEER_INSTRUCTIONS[steer]
+    ? `\nFLEXIBILITY DIRECTIVE: ${STEER_INSTRUCTIONS[steer]}\n`
+    : "";
+
+  let excludeBlock = "";
+  if (Array.isArray(excludeRecent) && excludeRecent.length) {
+    const lines = excludeRecent.slice(0, 6).map((p, i) => {
+      if (typeof p === "string") return `  ${i + 1}. ${p}`;
+      const w = p.watch ?? p.watchId ?? "?";
+      const top = p.shirt ?? p.sweater ?? "?";
+      return `  ${i + 1}. ${w} + ${top} + ${p.pants ?? "?"} + ${p.shoes ?? "?"}`;
+    }).join("\n");
+    excludeBlock = `\nDO NOT REPEAT these recent suggestions — pick something genuinely different:\n${lines}\n`;
+  }
+
+  let rejectedBlock = "";
+  if (rejected && (rejected.outfit || rejected.reason)) {
+    const o = rejected.outfit ?? {};
+    const w = o.watch ?? o.watchId ?? "(unknown watch)";
+    rejectedBlock = `\nUSER REJECTED a prior suggestion (${w} + ${o.shirt ?? o.sweater ?? "?"} + ${o.pants ?? "?"} + ${o.shoes ?? "?"}). Reason: "${rejected.reason ?? "no reason given"}". Avoid the same direction.\n`;
+  }
+
+  return `You are Eias's personal watch & outfit stylist. Generate today's outfit recommendation.
+
+DATE: ${todayStr}
+WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
+${steerLine}${excludeBlock}${rejectedBlock}
+STYLING RULES (non-negotiable):
+- Strap-shoe color matching is NOT a rule — do not enforce strap-shoe coordination.
+- No loafers ever.
+- Pasha 41 = dress-sport, excluded from on-call/shift pool.
+- Laco = field/casual only.
+- Shift watches only: Speedmaster, Tudor BB41, Hanhart.
+- Bold colorful dial replicas for casual flex; genuine for clinic/formal credibility.
+- Layer logic: <10°C coat, <16°C sweater/quarter-zip, <22°C light layer, ≥22°C no layer.
+- If morning is cold but midday warms up, recommend a removable layer with a note to shed it.
+- Reverso Duoface: white dial for dark outfits (contrast), navy dial for light outfits (depth).
+- Cable knit crewneck (black or ecru Kiral) = one level more formal than quarter-zip.
+- Camel coat + ecru cable knit = tonal formal. Camel coat + black cable knit = contrast formal.
+
+WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
+Genuine: GS Snowflake (silver-white, Spring Drive), GS Rikka (green, Hi-Beat), Pasha 41 (grey), GP Laureato (blue, integrated bracelet), JLC Reverso (navy, moon phase), Santos Large (white/gold, QuickSwitch), Santos Octagon (white, vintage YG), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
+Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
+
+RECENT WATCHES WORN (avoid repeats):
+${recentWatches || "No recent data"}
+
+RECENT GARMENTS WORN (avoid repeats):
+${recentGarments || "No recent data"}
+
+WARDROBE (${garments.length} items):
+${garmentList}
+
+${variantClause}
+Schema for each outfit:
+{
+  "watch": "exact watch name",
+  "watchId": "watch_id from: snowflake|rikka|pasha|gp_laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt_master|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35_rep|chopard_alpine|ap_royal_oak|gmt_meteorite|daydate_turq|rolex_op_grape|breguet_tradition",
+  "strap": "specific strap recommendation",
+  "shirt": "exact garment name or null",
+  "sweater": "exact garment name or null",
+  "layer": "exact garment name or null",
+  "pants": "exact garment name",
+  "shoes": "exact garment name",
+  "jacket": "exact garment name or null",
+  "belt": "exact garment name or null",
+  "reasoning": "2-3 sentences explaining the outfit logic — color harmony, watch dial pairing, weather transition advice",
+  "score": 8.5,
+  "layerTip": "e.g. 'Shed the quarter-zip after noon — 17°C midday' or null"
+}`;
+}
+
+function buildWhyPrompt({ currentPick, todayStr, weather }) {
+  const o = currentPick ?? {};
+  return `You are Eias's personal watch & outfit stylist. The user has the following outfit selected for ${todayStr} (${weather?.tempC ?? "?"}°C):
+
+WATCH: ${o.watch ?? "?"} on ${o.strap ?? "?"} strap
+TOP: ${o.shirt ?? o.sweater ?? "?"}
+LAYER: ${o.jacket ?? o.layer ?? "none"}
+PANTS: ${o.pants ?? "?"}
+SHOES: ${o.shoes ?? "?"}
+
+Explain in 2-3 sentences why this combination works — focus on color harmony with the dial, formality match, and weather suitability. Reply with plain text only, no JSON, no markdown.`;
+}
 
 export async function handler(event) {
   const CORS = cors(event);
@@ -35,9 +143,42 @@ export async function handler(event) {
     if (!url || !key) throw new Error("Missing Supabase credentials");
     const supabase = createClient(url, key);
 
-    // Check cache (regenerate every 4 hours or on force)
     const body = event.httpMethod === "POST" ? JSON.parse(event.body ?? "{}") : {};
-    const forceRefresh = body.forceRefresh === true;
+    const steer = typeof body.steer === "string" ? body.steer : null;
+    const excludeRecent = Array.isArray(body.excludeRecent) ? body.excludeRecent : [];
+    const rejected = body.rejected && typeof body.rejected === "object" ? body.rejected : null;
+    const why = body.why === true;
+    const currentPick = body.currentPick && typeof body.currentPick === "object" ? body.currentPick : null;
+    const variants = Math.max(1, Math.min(3, parseInt(body.variants, 10) || 1));
+
+    // Any flexibility verb implies forceRefresh — never serve cache for these
+    const forceRefresh = body.forceRefresh === true || !!steer || excludeRecent.length > 0 || !!rejected || why || variants > 1;
+
+    // Fire-and-forget: log rejection feedback for future preference-learning.
+    // Stored under app_config key "ai_feedback_log" as a rolling list (tail 50).
+    if (rejected) {
+      (async () => {
+        try {
+          const { data: rows } = await supabase.from("app_config").select("value").eq("key", "ai_feedback_log").limit(1);
+          const prev = Array.isArray(rows?.[0]?.value?.entries) ? rows[0].value.entries : [];
+          const next = [{ at: new Date().toISOString(), outfit: rejected.outfit ?? null, reason: rejected.reason ?? null }, ...prev].slice(0, 50);
+          await supabase.from("app_config").upsert({ key: "ai_feedback_log", value: { entries: next } }, { onConflict: "key" });
+        } catch { /* logging failure is non-fatal */ }
+      })();
+    }
+
+    // "Why this?" — short rationale request, no garment context fetch needed
+    if (why && currentPick) {
+      const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Jerusalem" });
+      const model = await getConfiguredModel();
+      const result = await callClaude(apiKey, {
+        model,
+        max_tokens: 250,
+        messages: [{ role: "user", content: buildWhyPrompt({ currentPick, todayStr, weather: body.weather ?? currentPick.weather }) }],
+      }, { maxAttempts: 1 });
+      const text = extractText(result, "").trim();
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ rationale: text, generatedAt: new Date().toISOString() }) };
+    }
 
     if (!forceRefresh) {
       try {
@@ -101,97 +242,82 @@ export async function handler(event) {
     }
 
     // Build garment summary
-    const garmentList = garments.map(g => {
+    const garmentList = (garments ?? []).map(g => {
       const t = g.type ?? g.category;
       return `${g.name} (${t}, ${g.color}, ${g.brand ?? "unbranded"}, formality:${g.formality ?? 5})`;
     }).join("\n");
 
-    // Recent watches worn
     const recentWatches = (history ?? []).map(h =>
       `${h.date}: ${h.watch_id} — ${h.payload?.strapLabel ?? "unknown strap"}`
     ).join("\n");
 
-    // Recent garments worn
     const recentGarments = (history ?? []).flatMap(h =>
       (h.payload?.garmentIds ?? []).map(id => {
-        const g = garments.find(x => x.id === id);
+        const g = (garments ?? []).find(x => x.id === id);
         return g ? `${h.date}: ${g.name}` : null;
       }).filter(Boolean)
     ).join("\n");
 
     const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Jerusalem" });
 
-    const prompt = `You are Eias's personal watch & outfit stylist. Generate today's outfit recommendation.
-
-DATE: ${todayStr}
-WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
-
-STYLING RULES (non-negotiable):
-- Strap-shoe color matching is NOT a rule — do not enforce strap-shoe coordination.
-- No loafers ever.
-- Pasha 41 = dress-sport, excluded from on-call/shift pool.
-- Laco = field/casual only.
-- Shift watches only: Speedmaster, Tudor BB41, Hanhart.
-- Bold colorful dial replicas for casual flex; genuine for clinic/formal credibility.
-- Layer logic: <10°C coat, <16°C sweater/quarter-zip, <22°C light layer, ≥22°C no layer.
-- If morning is cold but midday warms up, recommend a removable layer with a note to shed it.
-- Reverso Duoface: white dial for dark outfits (contrast), navy dial for light outfits (depth).
-- Cable knit crewneck (black or ecru Kiral) = one level more formal than quarter-zip.
-- Camel coat + ecru cable knit = tonal formal. Camel coat + black cable knit = contrast formal.
-
-WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
-Genuine: GS Snowflake (silver-white, Spring Drive), GS Rikka (green, Hi-Beat), Pasha 41 (grey), GP Laureato (blue, integrated bracelet), JLC Reverso (navy, moon phase), Santos Large (white/gold, QuickSwitch), Santos Octagon (white, vintage YG), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
-Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
-
-RECENT WATCHES WORN (avoid repeats):
-${recentWatches || "No recent data"}
-
-RECENT GARMENTS WORN (avoid repeats):
-${recentGarments || "No recent data"}
-
-WARDROBE (${garments.length} items):
-${garmentList}
-
-Respond ONLY with this JSON structure, no markdown:
-{
-  "watch": "exact watch name",
-  "watchId": "watch_id from: snowflake|rikka|pasha|gp_laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt_master|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35_rep|chopard_alpine|ap_royal_oak|gmt_meteorite|daydate_turq|rolex_op_grape|breguet_tradition",
-  "strap": "specific strap recommendation",
-  "shirt": "exact garment name or null",
-  "sweater": "exact garment name or null",
-  "layer": "exact garment name or null",
-  "pants": "exact garment name",
-  "shoes": "exact garment name",
-  "jacket": "exact garment name or null",
-  "belt": "exact garment name or null",
-  "reasoning": "2-3 sentences explaining the outfit logic — color harmony, watch dial pairing, weather transition advice",
-  "score": 8.5,
-  "layerTip": "e.g. 'Shed the quarter-zip after noon — 17°C midday' or null"
-}`;
+    const prompt = buildPrompt({
+      todayStr,
+      weather,
+      garmentList,
+      garments: garments ?? [],
+      recentWatches,
+      recentGarments,
+      steer,
+      excludeRecent,
+      rejected,
+      variants,
+    });
 
     const model = await getConfiguredModel();
+    // Variants need more output budget; single pick stays at 800 to keep cost predictable.
+    const maxTokens = variants > 1 ? 800 + (variants - 1) * 600 : 800;
     const result = await callClaude(apiKey, {
       model,
-      max_tokens: 800,
+      max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     }, { maxAttempts: 1 });
 
-    // Parse response
     const text = extractText(result);
-    let pick;
+    let parsed;
     try {
-      pick = JSON.parse(text.replace(/```json|```/g, "").trim());
+      parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
     } catch {
       return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "Failed to parse AI response", raw: text.slice(0, 500) }) };
     }
 
-    pick.generatedAt = new Date().toISOString();
-    pick.weather = weather;
+    const generatedAt = new Date().toISOString();
 
-    // Cache in app_config
-    try {
-      await supabase.from("app_config").upsert({ key: "daily_pick", value: pick }, { onConflict: "key" });
-    } catch {}
+    if (variants > 1) {
+      // Accept either a top-level array or { variants: [...] }
+      const arr = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.variants) ? parsed.variants : null);
+      if (!arr || arr.length === 0) {
+        return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "Variants response was not an array", raw: text.slice(0, 500) }) };
+      }
+      const enriched = arr.slice(0, variants).map(p => ({ ...p, generatedAt, weather }));
+      // Cache only the first variant under daily_pick for GET continuity
+      try {
+        await supabase.from("app_config").upsert({ key: "daily_pick", value: enriched[0] }, { onConflict: "key" });
+      } catch {}
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ variants: enriched, generatedAt, weather }) };
+    }
+
+    const pick = parsed;
+    pick.generatedAt = generatedAt;
+    pick.weather = weather;
+    if (steer) pick.steer = steer; // surface for debugging / UI affordance
+
+    // Cache in app_config — but only when this is a "natural" pick (no steer / exclude / rejected)
+    // so steered/regenerated picks don't poison the daily cache for other clients.
+    if (!steer && excludeRecent.length === 0 && !rejected) {
+      try {
+        await supabase.from("app_config").upsert({ key: "daily_pick", value: pick }, { onConflict: "key" });
+      } catch {}
+    }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify(pick) };
   } catch (err) {

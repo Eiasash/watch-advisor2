@@ -195,4 +195,168 @@ describe("daily-pick", () => {
       expect.objectContaining({ maxAttempts: 1 }),
     );
   });
+
+  // ─── AI flexibility params (regen / steer / variants / why / reject) ──────
+
+  it("steer:'more_casual' injects MORE CASUAL directive into the prompt", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [{ id: "s1", name: "Shirt", type: "shirt", category: "shirt", color: "white" }] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({ httpMethod: "POST", body: JSON.stringify({ steer: "more_casual" }) });
+
+    const callArg = claudeMod.callClaude.mock.calls[0][1];
+    const promptText = callArg.messages[0].content;
+    expect(promptText).toMatch(/MORE CASUAL/);
+  });
+
+  it("steer:'more_formal' injects MORE FORMAL directive", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({ httpMethod: "POST", body: JSON.stringify({ steer: "more_formal" }) });
+
+    const promptText = claudeMod.callClaude.mock.calls[0][1].messages[0].content;
+    expect(promptText).toMatch(/MORE FORMAL/);
+  });
+
+  it("steer:'different_watch' injects DIFFERENT WATCH directive", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({ httpMethod: "POST", body: JSON.stringify({ steer: "different_watch" }) });
+
+    const promptText = claudeMod.callClaude.mock.calls[0][1].messages[0].content;
+    expect(promptText).toMatch(/DIFFERENT WATCH/);
+  });
+
+  it("steer bypasses cache even without forceRefresh", async () => {
+    // Stale-free fresh cache
+    const fresh = { watch: "Cached", score: 8, generatedAt: new Date().toISOString() };
+    supabaseMock.limit = vi.fn().mockResolvedValue({ data: [{ value: fresh }] });
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"Steered","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    const result = await handler({ httpMethod: "POST", body: JSON.stringify({ steer: "more_casual" }) });
+    const body = JSON.parse(result.body);
+    expect(body.watch).toBe("Steered");
+  });
+
+  it("excludeRecent serializes prior picks into the prompt", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        excludeRecent: [{ watch: "Santos Large", shirt: "White oxford", pants: "Navy chinos", shoes: "Brown boots" }],
+      }),
+    });
+
+    const promptText = claudeMod.callClaude.mock.calls[0][1].messages[0].content;
+    expect(promptText).toMatch(/DO NOT REPEAT/);
+    expect(promptText).toMatch(/Santos Large/);
+  });
+
+  it("rejected outfit is logged to ai_feedback_log and influences the prompt", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        rejected: { outfit: { watch: "Speedmaster", shirt: "Black tee" }, reason: "too dark" },
+      }),
+    });
+
+    const promptText = claudeMod.callClaude.mock.calls[0][1].messages[0].content;
+    expect(promptText).toMatch(/USER REJECTED/);
+    expect(promptText).toMatch(/too dark/);
+  });
+
+  it("variants:3 returns an array of 3 picks, not a single pick", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    const arr = [
+      { watch: "A", watchId: "a", strap: "x", shirt: null, sweater: null, layer: null, pants: "p", shoes: "s", jacket: null, belt: null, reasoning: "r", score: 8, layerTip: null },
+      { watch: "B", watchId: "b", strap: "x", shirt: null, sweater: null, layer: null, pants: "p", shoes: "s", jacket: null, belt: null, reasoning: "r", score: 8, layerTip: null },
+      { watch: "C", watchId: "c", strap: "x", shirt: null, sweater: null, layer: null, pants: "p", shoes: "s", jacket: null, belt: null, reasoning: "r", score: 8, layerTip: null },
+    ];
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: JSON.stringify(arr) }] });
+
+    const result = await handler({ httpMethod: "POST", body: JSON.stringify({ variants: 3 }) });
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body);
+    expect(Array.isArray(body.variants)).toBe(true);
+    expect(body.variants).toHaveLength(3);
+    expect(body.variants[0].watch).toBe("A");
+    expect(body.variants[2].watch).toBe("C");
+  });
+
+  it("variants:3 increases the max_tokens budget proportionally", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: JSON.stringify([{ watch: "A", watchId: "a", strap: "x", shirt: null, sweater: null, layer: null, pants: "p", shoes: "s", jacket: null, belt: null, reasoning: "r", score: 8, layerTip: null }]) }] });
+
+    await handler({ httpMethod: "POST", body: JSON.stringify({ variants: 3 }) });
+
+    const callArg = claudeMod.callClaude.mock.calls[0][1];
+    expect(callArg.max_tokens).toBeGreaterThan(800);
+  });
+
+  it("variants param clamps to 1..3", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: JSON.stringify([{ watch: "A", watchId: "a", strap: "x", shirt: null, sweater: null, layer: null, pants: "p", shoes: "s", jacket: null, belt: null, reasoning: "r", score: 8, layerTip: null }, { watch: "B", watchId: "b", strap: "x", shirt: null, sweater: null, layer: null, pants: "p", shoes: "s", jacket: null, belt: null, reasoning: "r", score: 8, layerTip: null }, { watch: "C", watchId: "c", strap: "x", shirt: null, sweater: null, layer: null, pants: "p", shoes: "s", jacket: null, belt: null, reasoning: "r", score: 8, layerTip: null }]) }] });
+
+    // 99 should clamp to 3
+    const result = await handler({ httpMethod: "POST", body: JSON.stringify({ variants: 99 }) });
+    const body = JSON.parse(result.body);
+    expect(body.variants.length).toBeLessThanOrEqual(3);
+  });
+
+  it("why:true with currentPick returns rationale text", async () => {
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: "Navy chinos pair with the white dial because the contrast frames the case." }] });
+
+    const result = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ why: true, currentPick: { watch: "Santos Large", shirt: "White oxford", pants: "Navy chinos" } }),
+    });
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body);
+    expect(body.rationale).toMatch(/Navy chinos/);
+    expect(body.generatedAt).toBeTruthy();
+  });
+
+  it("why:true does NOT call Supabase garments fetch", async () => {
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: "rationale text" }] });
+
+    await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ why: true, currentPick: { watch: "X" } }),
+    });
+
+    // garments fetch is supabase.from("garments")...not("category", "in", ...)
+    // so checking that .not was never invoked confirms we skipped the fetch
+    expect(supabaseMock.not).not.toHaveBeenCalled();
+  });
+
+  it("steer/exclude/rejected do NOT poison the daily_pick cache", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"Steered","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({ httpMethod: "POST", body: JSON.stringify({ steer: "more_casual" }) });
+
+    // upsert called for ai_feedback_log? no — but should NOT be called for daily_pick
+    const upsertCalls = supabaseMock.upsert.mock.calls;
+    const dailyPickUpserts = upsertCalls.filter(args => args[0]?.key === "daily_pick");
+    expect(dailyPickUpserts).toHaveLength(0);
+  });
 });
