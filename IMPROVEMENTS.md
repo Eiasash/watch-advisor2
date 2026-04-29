@@ -2,7 +2,7 @@
 Generated: 2026-04-23 (cumulative)
 
 ## Current State
-- **Version**: 1.12.40
+- **Version**: 1.12.41
 - **Engine integrity**: All checks PASS
 - **Supabase**: 101 active garments (skill-snapshot), 0 dupes, 0 orphans
 - **Watches**: 23 active + 2 pending (Atelier Wen Perception SG → IL; Fears Brunswick 38 Champagne SG → IL, invoice INV-3936 issued 22 Apr, £2,500 GBP)
@@ -128,6 +128,11 @@ Generated: 2026-04-23 (cumulative)
     - `santos_large-blue-alligator` (royal blue; engine color `navy` for outfit pool, label "Royal blue alligator (aftermarket)", dressy / navy outfits)
 51. **Engine integration** — both straps inherit standard scoring (no `pending:true` flag, immediately rotation-eligible). 205 targeted tests pass (strapRecommender, strapStore, strapPanel, strapLifecycle, strapLibrary, strapRulesConfig, watchValue, dailyPick, claudePick, sweaterWarmTransition).
 52. **Total active straps:** 40 → 42. Watch_Collection_v11-5.md updated (Santos row, total row, header, corrections log).
+
+### v1.12.41 — Santos blue strap reclassified cobalt (April 29 2026)
+53. **Color reclassification** — `santos_large-blue-alligator` color changed `navy` → `blue` per Eias correction ("it's clearly cobalt blue"). Label updated `"Royal blue alligator (aftermarket)"` → `"Cobalt blue alligator (aftermarket)"`. UseCase updated from `"Dressy / navy outfits"` → `"Statement / dressy"`.
+54. **Engine impact** — strap now pools into `blue` outfit bucket (pairs with grey, white, beige, stone, black, charcoal, blue, khaki, tan, brick, light-blue, camel, yellow, denim) rather than `navy` bucket. Distinct from Reverso/Pasha/Snowflake navy alligators. Avoids tonal mush when paired with navy bottoms.
+55. **Lesson logged** — when classifying aftermarket straps, defer to user's eye on saturation. Don't bucket bright cobalt/royal as `navy` for engine convenience.
 
 ---
 

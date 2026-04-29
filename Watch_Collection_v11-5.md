@@ -2,7 +2,7 @@
 
 **Total Pieces:** 24 (13 genuine active + 10 replica + 1 genuine pending)  
 **Active:** 23 | **Pending Delivery:** 1 (Atelier Wen Perception) | **Incoming:** 1 (Fears Brunswick Champagne — order in motion)  
-**App Version:** v1.12.40  
+**App Version:** v1.12.41  
 **Last Updated:** 29 April 2026
 
 ---
@@ -77,7 +77,7 @@
 | Steel/gold bracelet | Cartier OEM | QuickSwitch | Default |
 | Brown calfskin leather | Cartier OEM | QuickSwitch deployant | Smart casual |
 | Brown alligator-pattern leather | AliExpress aftermarket | Steel + gold deployant (Santos-aesthetic) | Smart casual / brown Eccos |
-| Royal blue alligator-pattern leather | AliExpress aftermarket | Steel + gold deployant (Santos-aesthetic) | Dressy / navy outfits |
+| Royal blue cobalt alligator-pattern leather | AliExpress aftermarket | Steel + gold deployant (Santos-aesthetic) | Statement / dressy outfits |
 
 ### Tudor Black Bay 41 — M7941A1A0RU-0003 (21mm)
 
@@ -346,7 +346,8 @@ Do NOT flag mismatches unless explicitly asked.
 
 | Date | Field | Was | Now |
 |------|-------|-----|-----|
-| 29 Apr 2026 | Santos Large straps | 2 | **4** (+ brown alligator AliExpress, + royal blue alligator AliExpress; both with steel+gold deployant) |
+| 29 Apr 2026 | Santos blue strap classification | "navy" (initial) | **"blue" (cobalt)** — corrected by Eias. Engine bucket = `blue`, not `navy`. |
+| 29 Apr 2026 | Santos Large straps | 2 | **4** (+ brown alligator AliExpress, + cobalt blue alligator AliExpress; both with steel+gold deployant) |
 | 29 Apr 2026 | Total strap count | 40 | **42** |
 | 29 Apr 2026 | App version | v1.12.33 | **v1.12.40** |
 | 18 Apr 2026 | Acquisition target | GP Laureato Infinite Grey | **Fears Brunswick 38 Champagne (primary, in motion); anOrdain Model 2 Brown Fumé (passive, steal-price only)** |
