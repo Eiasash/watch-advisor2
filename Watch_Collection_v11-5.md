@@ -2,8 +2,8 @@
 
 **Total Pieces:** 24 (13 genuine active + 10 replica + 1 genuine pending)  
 **Active:** 23 | **Pending Delivery:** 1 (Atelier Wen Perception) | **Incoming:** 1 (Fears Brunswick Champagne — order in motion)  
-**App Version:** v1.12.33  
-**Last Updated:** 18 April 2026
+**App Version:** v1.12.40  
+**Last Updated:** 29 April 2026
 
 ---
 
@@ -18,7 +18,7 @@
 | 3 | Cartier Pasha de Cartier | WSPA0026 | 41mm | Cal 1847MC automatic | Grey | 3 (bracelet + black alligator + navy alligator pending) | Active |
 | 4 | Girard-Perregaux Laureato | 81010 | 42mm | GP03300 | Blue | Integrated bracelet | Active |
 | 5 | Jaeger-LeCoultre Reverso Duoface Moon Phase | 216.8.D3 | 42mm | Cal 986 | Navy | 1 | Active |
-| 6 | Cartier Santos de Cartier Large | W2SA0009 | 39.8mm | 1847MC | White/Gold | 2 (QuickSwitch) | Active |
+| 6 | Cartier Santos de Cartier Large | W2SA0009 | 39.8mm | 1847MC | White/Gold | 4 (QuickSwitch) | Active |
 | 7 | Cartier Santos Octagon YG | Vintage 1980s | 29mm | Quartz | White | 1 | Active |
 | 8 | Tudor Black Bay 41 | M7941A1A0RU-0003 | 41mm (21mm lug) | MT5400 METAS | Black/Red | 7 (steel + 3 leather + 1 NATO + 2 canvas pending) | Active |
 | 9 | TAG Heuer Monaco | CW2111 | 39mm | ETA 2894-2 | Black | 2 | Active |
@@ -76,6 +76,8 @@
 |-------|--------|--------|----------|
 | Steel/gold bracelet | Cartier OEM | QuickSwitch | Default |
 | Brown calfskin leather | Cartier OEM | QuickSwitch deployant | Smart casual |
+| Brown alligator-pattern leather | AliExpress aftermarket | Steel + gold deployant (Santos-aesthetic) | Smart casual / brown Eccos |
+| Royal blue alligator-pattern leather | AliExpress aftermarket | Steel + gold deployant (Santos-aesthetic) | Dressy / navy outfits |
 
 ### Tudor Black Bay 41 — M7941A1A0RU-0003 (21mm)
 
@@ -152,13 +154,13 @@
 | GS Snowflake | 1 | 2 | 0 | **3** |
 | GS Rikka | 1 | 2 | 0 | **3** |
 | Pasha 41 | 1 | 2 | 0 | **3** |
-| Santos Large | 1 | 1 | 0 | **2** |
+| Santos Large | 1 | 3 | 0 | **4** |
 | Monaco | 0 | 2 | 0 | **2** |
 | GMT-Master II | 1 | 0 | 0 | **1** |
 | Laco Flieger | 0 | 1 | 0 | **1** |
 | Reverso | 0 | 1 | 0 | **1** |
 | Santos Octagon | 0 | 1 | 0 | **1** |
-| **Total** | **7** | **25** | **8** | **40** |
+| **Total** | **7** | **27** | **8** | **42** |
 
 **Note:** Tudor BB41 navy + olive canvas and Pasha navy alligator are pending delivery (DayDayWatchband). Counted above.
 
@@ -344,6 +346,9 @@ Do NOT flag mismatches unless explicitly asked.
 
 | Date | Field | Was | Now |
 |------|-------|-----|-----|
+| 29 Apr 2026 | Santos Large straps | 2 | **4** (+ brown alligator AliExpress, + royal blue alligator AliExpress; both with steel+gold deployant) |
+| 29 Apr 2026 | Total strap count | 40 | **42** |
+| 29 Apr 2026 | App version | v1.12.33 | **v1.12.40** |
 | 18 Apr 2026 | Acquisition target | GP Laureato Infinite Grey | **Fears Brunswick 38 Champagne (primary, in motion); anOrdain Model 2 Brown Fumé (passive, steal-price only)** |
 | 18 Apr 2026 | Budget ceiling | ₪65K (Laureato era) | **₪18K total (Fears + bracelets + shipping)** |
 | 18 Apr 2026 | Dial-craft rule | Implicit | **Explicit — no retrograde/multi-subdial/busy PR arcs** |

@@ -2,10 +2,11 @@
 Generated: 2026-04-23 (cumulative)
 
 ## Current State
-- **Version**: 1.12.35
+- **Version**: 1.12.40
 - **Engine integrity**: All checks PASS
-- **Supabase**: 104 active garments, 0 dupes, 0 orphans (Pavarotti trousers recovered + 2 orphans excluded Apr 18)
+- **Supabase**: 101 active garments (skill-snapshot), 0 dupes, 0 orphans
 - **Watches**: 23 active + 2 pending (Atelier Wen Perception SG → IL; Fears Brunswick 38 Champagne SG → IL, invoice INV-3936 issued 22 Apr, £2,500 GBP)
+- **Straps**: 42 total active (Santos Large +2 aftermarket alligator, Apr 29)
 - **Tests**: 2477+ passing (144 files, +2 new autoHeal trap-guard tests) — critical paths verified green
 - **Snapshot**: All health "ok", autoHeal healthy (9 checks now, was 8)
 - **Build**: Auto-deploy on push to main
@@ -120,6 +121,13 @@ Generated: 2026-04-23 (cumulative)
 47. **Test updates** — `tests/watchSeed.test.js` length assertion bumped 27 → 28; description updated `1 pending → 2 pending`. All 12 watchSeed tests pass.
 48. **Seed header comment** — `src/data/watchSeed.js` v11.1 → v11.2, `1 pending → 2 pending`, date Apr 18 → Apr 23.
 49. **Aftermarket bracelet order deferred** — Forstner Klip + Beads-of-Rice ($205 total) NOT ordered. Factory 5-link bracelet + complimentary Barenia cover day-one needs. Revisit after 6 months of wear.
+
+### v1.12.40 — Santos Large aftermarket straps (April 29 2026)
+50. **Santos Large strap inventory expanded 2 → 4** — added two AliExpress aftermarket alligator-pattern leather straps with steel + gold deployant clasp (Santos-aesthetic, brushed steel exterior + polished gold center plate with two screws):
+    - `santos_large-brown-alligator` (color: `brown`, type: `leather`, useCase: smart casual / brown Eccos)
+    - `santos_large-blue-alligator` (royal blue; engine color `navy` for outfit pool, label "Royal blue alligator (aftermarket)", dressy / navy outfits)
+51. **Engine integration** — both straps inherit standard scoring (no `pending:true` flag, immediately rotation-eligible). 205 targeted tests pass (strapRecommender, strapStore, strapPanel, strapLifecycle, strapLibrary, strapRulesConfig, watchValue, dailyPick, claudePick, sweaterWarmTransition).
+52. **Total active straps:** 40 → 42. Watch_Collection_v11-5.md updated (Santos row, total row, header, corrections log).
 
 ---
 
