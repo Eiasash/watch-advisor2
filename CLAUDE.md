@@ -1,5 +1,16 @@
 # Watch Advisor 2 — Claude Code Context
 
+<!-- working-rules-v1:start -->
+## Working Rules (user-mandated, non-negotiable)
+
+These four rules are the floor. They override any conflicting guidance later in this file. If a rule conflicts with what you're about to do, stop and surface it before proceeding.
+
+1. **Don't assume. Don't hide confusion. Surface tradeoffs.**
+2. **Minimum code that solves the problem. Nothing speculative.**
+3. **Touch only what you must. Clean up only your own mess.**
+4. **Define success criteria. Loop until verified.**
+<!-- working-rules-v1:end -->
+
 ## What this app is
 Watch-first outfit planner PWA. The watch is chosen first; everything else (outfit, strap, garment pairing) derives from it. Personal daily-use tool for a physician with a 23-watch collection (13 genuine, 10 replica).
 
