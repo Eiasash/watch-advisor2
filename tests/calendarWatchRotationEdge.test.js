@@ -214,11 +214,11 @@ describe("scoreWatchForDay — edge cases", () => {
     const watch = { id: "w1", style: "sport", replica: false };
     // smart-casual target = 6, diff = 1 → formalityScore = 0.75
     // sport in smart-casual suitability → styleScore = 1.0
-    // never-worn → recencyScore = 0.50, cooldown = 1.15
-    // (0.4*0.75 + 0.35*1 + 0.25*0.50) * 1.15 ≈ 0.935 + jitter + empty-history boost
+    // never-worn → recencyScore = 0.50 (lowered Apr 2026 from 0.75), cooldown = 1.15
+    // (0.4*0.75 + 0.35*1 + 0.25*0.50) * 1.15 ≈ 0.891 + jitter
     const score = scoreWatchForDay(watch, "smart-casual", []);
-    expect(score).toBeGreaterThan(0.90);
-    expect(score).toBeLessThan(1.10);
+    expect(score).toBeGreaterThan(0.85);
+    expect(score).toBeLessThan(1.05);
   });
 
   it("unknown day profile uses default formality 6", () => {

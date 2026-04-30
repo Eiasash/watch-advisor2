@@ -607,7 +607,6 @@ export default function StatsPanel() {
           {/* Pending Strap Deliveries */}
           <Section title="📦 Pending Straps" isDark={isDark}>
             {[
-              { watch: "Pasha 41", strap: "Navy alligator YG-02", src: "DayDayWatchband", val: "$173" },
               { watch: "Tudor BB41", strap: "Navy canvas #18", src: "DayDayWatchband", val: "~$80" },
               { watch: "Tudor BB41", strap: "Olive canvas #21", src: "DayDayWatchband", val: "~$80" },
             ].map((s, i) => (
