@@ -108,7 +108,7 @@ Focus on: outermost top layer, mid-layer (sweater/knit), base shirt, pants, shoe
         role: "user",
         content: contentBlocks,
       }],
-    });
+    }, { maxAttempts: 1 });
 
     const raw = extractText(resp, "[]");
     let detected;

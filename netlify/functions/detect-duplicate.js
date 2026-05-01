@@ -77,7 +77,7 @@ Both false = different garments.`,
           ],
         },
       ],
-    });
+    }, { maxAttempts: 1 });
 
     const text = extractText(data, "");
     const jsonMatch = text.match(/\{[\s\S]*\}/);
