@@ -4,9 +4,13 @@ import seasonContextFactor, { currentSeason } from "../src/outfitEngine/scoringF
 function makeCandidate(seasons = [], contexts = [], baseScore = 0.5) {
   return { garment: { id: "g1", seasons, contexts }, baseScore };
 }
-// _season injection bypasses Date.getMonth() — no fragile Date mocking
-function makeCtx(outfitContext = null, season = "spring") {
-  return { outfitContext, _season: season };
+// _season + _transitionSeason injection bypasses Date.getMonth() — no fragile Date mocking.
+// Default transitionSeason to a sentinel string ("__none__") rather than null/undefined
+// because the source uses `context._transitionSeason ?? transitionSeason()` — a nullish
+// coalesce, so null/undefined falls through to the real Date-based call. A sentinel
+// ensures `seasons.includes(transition)` never matches and the test stays deterministic.
+function makeCtx(outfitContext = null, season = "spring", transitionSeason = "__none__") {
+  return { outfitContext, _season: season, _transitionSeason: transitionSeason };
 }
 
 describe("currentSeason", () => {
