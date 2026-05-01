@@ -105,8 +105,9 @@ describe("buildOutfit — multilayer support", () => {
     expect(outfit).toHaveProperty("layer");
   });
 
-  it("layer is null when temp >= 12°C", () => {
-    const outfit = buildOutfit(snowflake, layerWardrobe, { tempC: 15 });
+  it("layer is null when sweater present but temp >= layerDouble (8°C)", () => {
+    // 12°C: sweater added (12 < 14 threshold), layer null (12 >= 8 layerDouble)
+    const outfit = buildOutfit(snowflake, layerWardrobe, { tempC: 12 });
     expect(outfit.sweater).toBeTruthy();
     expect(outfit.layer).toBeNull();
   });

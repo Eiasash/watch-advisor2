@@ -81,7 +81,8 @@ describe("buildOutfit — sweater layer", () => {
       { id: "p1",  type: "pants",   name: "Grey Trousers", color: "grey", formality: 7 },
       { id: "sh1", type: "shoes",   name: "Tan Eccos",     color: "tan",  formality: 6 },
     ];
-    const outfit = buildOutfit(snowflake, sweaterOnly, { tempC: 15 });
+    // tempC: 10 — below the 14°C threshold (Mediterranean calibration)
+    const outfit = buildOutfit(snowflake, sweaterOnly, { tempC: 10 });
     expect(outfit.sweater).toBeTruthy();
     expect(outfit.sweater.id).toBe("sw1");
   });

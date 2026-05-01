@@ -31,7 +31,7 @@ export const STYLE_LEARN = {
 // Not scoring weights per se, but kept here so all engine magic numbers
 // are in one place.
 export const OUTFIT_TEMP_THRESHOLDS = {
-  warmTransition: 18, // ≥18°C and <22°C → sweater needs high score to be included
+  warmTransition: 10, // ≥10°C and <14°C → sweater needs high score to be included (was 18°C/22°C; lowered 2026-05-02 for Mediterranean climate)
   layerDouble:     8, // <8°C → add second sweater/layer piece
 };
 
