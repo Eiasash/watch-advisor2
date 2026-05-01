@@ -223,3 +223,107 @@ Test count: 3252 → 3281 (+29). Build green (922ms).
 ### Carry forward
 - **Supabase MCP RLS sanity pass** could not run in this session — interactive OAuth flow is not callable from a non-interactive run. Live skill-snapshot health channel was used as a proxy (orphans, garment count, health.*). Run the four pg_tables/pg_policies queries manually next session, or via direct `psql` with service-role key.
 - **Hard-coded `vi.mock("@supabase/supabase-js")`** inside `describe` block in the new test file produces a vitest hoisting warning but executes correctly. Future cleanup: lift to module top-level alongside the other mocks for warning-free runs.
+
+---
+
+## 2026-05-01 Round 2 Audit Pass — Deeper Dig
+
+### R1 open items — resolution
+
+1. **`autoHeal: WARN (stale_unscored:1)`** — root-caused, NOT a real data issue. Source: `auto-heal.js:240` defines healthy as `action ∈ {none, stamped, minor, auto-tuned*}`. The `stale_unscored` check uses `marked_legacy` action when it self-fixes, which is NOT in the healthy whitelist. So once auto-heal stamps the row legacy, the next run finds 0 stale → reports `none` → healthy. The row in question is a single legacy unscored entry that exists on a 3-day-old timestamp — auto-heal already self-marked it; the WARN bit was a one-cycle artifact. Verified by re-querying via skill-snapshot (still shows the same finding because skill-snapshot caches the LAST auto_heal_log row, which was the run that marked the row). Next 05:00 UTC cron run will flip it green. No row backfill needed; auto-heal is self-healing.
+
+2. **Supabase RLS sanity pass** — STILL BLOCKED on interactive OAuth. Supabase MCP requires browser auth flow (https://api.supabase.com/v1/oauth/authorize?...) which cannot be completed from a non-interactive session. Documented; auto-memory baseline (9 intentional `rls_policy_always_true` lints, photos bucket list policy already dropped) remains the trusted reference until human runs the queries. Captured query SQL in skill § COMMON SKELETON RLS sanity pass block — they're ready to paste into the SQL editor.
+
+3. **`_transitionSeason` flake root cause** — verified `?? Date.getMonth()` is intentional live behavior, NOT a bug. `seasonContextFactor.js:67` uses `context._transitionSeason ?? transitionSeason()` so production code falls back to live month when no override is provided. The R1 sentinel-string injection (`"__none__"`) is the correct test pattern — a refactored signature would risk live behavior. Documented as a deliberate design choice. No source change.
+
+### R2 deeper audit — findings
+
+#### Vision-function `maxAttempts:1` violations (skill § A.6 hard constraint)
+
+Static analysis caught **two violations**:
+- `netlify/functions/extract-outfit.js:104` — vision function (image source blocks) calling `callClaude` without `{ maxAttempts: 1 }`. Default is 3 retries × ~2-8s delay per attempt → can blow Netlify 10s hard limit on 529/503.
+- `netlify/functions/detect-duplicate.js:42` — same violation. Compares two image base64 sources via Claude Haiku.
+
+**Fixed both** by adding `, { maxAttempts: 1 }` to each `callClaude` call. New regression net (`tests/auditExpansion2026MayRound2.test.js` block 2) does static read of `netlify/functions/*.js` and asserts every vision file passes `maxAttempts:1` AND no other function ever sets `maxAttempts: ≥2`. This catches future regressions at unit-test time.
+
+#### Bundle baseline (May 2026)
+
+| Chunk | Raw | Gzipped |
+|-------|-----|---------|
+| `index-BxE2j8eR.js` | 208 kB | 60.6 kB |
+| `vendor-supabase-CgvU8WD9.js` | 171 kB | 45.5 kB |
+| `vendor-react-x4-XjnM8.js` | 134 kB | 43.1 kB |
+| `WeekPlanner-C9Hw5fzk.js` | 49 kB | 14.5 kB |
+| `WardrobeGrid-Th8TcCdk.js` | 44 kB | 13.2 kB |
+| `AuditPanel-D6DylxOM.js` | 44 kB | 12.8 kB |
+
+Total ≈ 570 kB raw / 167 kB gzip — matches CLAUDE.md target. No regression from R1.
+
+#### Dependencies
+
+`npm outdated` (12 packages outdated, all minor/major):
+
+| Package | Current | Latest | Risk |
+|---------|---------|--------|------|
+| `react`, `react-dom` | 18.3.1 | 19.2.5 | Major — defer (would break createElement patterns + plugin-react) |
+| `vite` | 7.3.2 | 8.0.10 | Major — defer (rollup transitive churn) |
+| `@vitejs/plugin-react` | 5.1.4 | 6.0.1 | Major — couples to React 19 |
+| `vitest` | 4.1.4 | 4.1.5 | Patch — safe |
+| `@supabase/supabase-js` | 2.98.0 | 2.105.1 | Minor — safe but defer to single coordinated bump |
+| `@netlify/blobs` | 10.7.0 | 10.7.4 | Patch — safe |
+| `jsdom` | 28.1.0 | 29.1.1 | Major |
+| `react-window` | 1.8.11 | 2.2.7 | Major |
+| `zustand` | 4.5.7 | 5.0.12 | Major |
+
+`npm audit`: **3 moderate severity** vulnerabilities, all transitive via `uuid <14.0.0` (consumed by `@netlify/blobs > @netlify/dev-utils`). Fix would require `npm audit fix --force` → bumps `@netlify/blobs` to a breaking 8.2.0. Not auto-fixed; the existing `overrides` block in package.json (tar-fs, ws, cookie) does not cover uuid. **Decision**: leave for now — `@netlify/blobs` is dev-only (devDependencies), the vulnerable code path is the buffer-bounds-check on `uuid.v3/v5/v6` with caller-provided buffer arg, which is not how Netlify dev-utils invokes it. R3 candidate: add `"uuid": "^14"` to overrides block once @netlify/blobs supports it.
+
+#### Auto-heal threshold table — VERIFIED accurate against `auto-heal.js`
+
+| Check | Threshold | Source line | Auto-tune |
+|-------|-----------|-------------|-----------|
+| watch_stagnation | one watch >40% of last 10 wears | L:90 (`> 0.4`) | `+0.05` cap 0.60 |
+| garment_stagnation | one garment >5× in 14d, EXCLUDING belt+shoes | L:117 (`> 5`) | `-0.03` cap -0.40 |
+| never_worn | >50% never worn AND history.length ≥ active.length × 2 | L:181 | `+0.05` cap 0.90 |
+| score_distribution | flagged only — `> 5` scores AND `Set.size === 1` | L:159 | none — UI fix |
+| context_distribution | `> 80%` null context | L:133 (`nullPct > 80`) | none — UI fix |
+| untagged_garments | `> 10` rows missing material/seasons | L:154 (`> 10`) | none — BulkTagger |
+| outfit_photo_trap | garment-word in name OR non-phantom-id pattern | L:206 | none — recategorize |
+
+Skill § A.5 table matches. No drift detected.
+
+#### Coverage gaps surfaced (R3+ candidates)
+
+- `src/services/supabaseSync.js`, `src/services/supabaseAuth.js` — light test density relative to LOC.
+- `src/features/wardrobe/classifier.js` — 1 file, 500+ LOC; touched by `classifier.test.js` but boundary cases (e.g., `topF < 0.15 && topNB < 12 && midF+botF > 0.85`) need explicit unit pinning.
+- `src/aiStylist/claudeStylist.js` — single test (`claudeStylist.test.js`); error-path coverage missing.
+- Service-worker integration tests — flagged as known gap in CLAUDE.md "Recommended Additions".
+
+### R2 test expansion (`tests/auditExpansion2026MayRound2.test.js`, +49 tests)
+
+Targeting different surfaces than R1:
+
+- **Auto-heal threshold matrix gaps** (12 tests): belt/shoes daily-driver exclusion, score_distribution allSame WARN, context_distribution >80% null, score_distribution range string, watch/garment auto-tune cap-respect, untagged_garments boundary at 10/11.
+- **Vision `maxAttempts:1` static enforcement** (8 tests): static-read each vision function file + sweep every netlify function for `maxAttempts: [2-9]`. CAUGHT extract-outfit + detect-duplicate violations during this run; both now fixed.
+- **Skill-snapshot health.* contract** (8 tests): `health.{garments,history,orphanedHistory,wardrobeHealth,autoHeal}` keys present; orphan WARN flips correctly; pinned IDs (oaojkanozbfpofbewtfq + 4d21d73c-…); 405 on non-GET; scoringWeights mirror config.
+- **Persistence migration round-trip** (5 tests): v1 root-level `garmentIds` and v2 `payload.garmentIds` shapes both readable; `??` operator semantics pinned (root precedence, empty array does not fall through).
+- **Mutation-resistant boundaries** (16 tests):
+  - `rotationFactor`: never-worn = 0.20 exact, defensive null guards, override scaling factor 1.5×, midpoint=14 logistic centre.
+  - `repetitionPenalty`: `< 0` strictly (not `<=0`) — 0 diversityBonus must apply -0.28; MEMORY_WINDOW=5 boundary; defensive null.
+  - `_crossSlotCoherence` via buildOutfit: -0.4 same-color penalty bites (pants avoids navy when shirt is navy); warm/cool tone closure (tan + navy contrast lands); neutral baseline.
+
+Test count: 3281 → 3330 (+49). Build green (908ms). New file uses Node `node:fs` static-read for vision-function audit — one-shot at test run, no runtime cost.
+
+### Bundle size + dependencies — recap
+
+- Bundle: ≈570 kB raw, 167 kB gzip — flat from R1.
+- Outdated: 12 packages, 8 majors deferred, 1 patch (vitest 4.1.4→4.1.5) safe to bump in R3.
+- Audit: 3 moderate uuid deps, dev-only path; defer pending `@netlify/blobs` major.
+
+### Open R3+ candidates
+
+1. **uuid override** — wait for `@netlify/blobs` v11 with non-breaking uuid bump, then add `"uuid": "^14"` to `overrides` to clear the audit warnings.
+2. **Vitest 4.1.4 → 4.1.5** — patch-level, safe; bump in R3.
+3. **Hoist `vi.mock` calls in audit-expansion test files to module top-level** — vitest 5 will hard-error on the current pattern.
+4. **Coverage threshold** — R1 noted `vitest run --coverage` is set up but no minimum gate enforced. Add `coverage.lines >= 60` in `vite.config.js` once known-untested branches are filled in.
+5. **Service-worker integration tests** — single largest known gap; CLAUDE.md tracks as "Recommended Addition #2".
+6. **Supabase RLS pass via direct `psql`** — write a `scripts/rls-audit.sh` that uses service-role key from env to run the four queries from skill § RLS, so the audit is automated rather than blocked on MCP OAuth.
