@@ -29,14 +29,23 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 3024 tests, 175 files (Vitest) |
-| Version | **1.12.35** |
+| Tests | 3281 tests, 183 files (Vitest) |
+| Version | **1.12.40** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-04-22 (garmentCount=99, historyCount=59, all autoHeal checks healthy; photos-bucket list policy dropped) |
+| Last audited | 2026-05-01 (garmentCount=101, historyCount=65, orphanedHistoryCount=0, all health "ok"; autoHeal WARN benign — only `stale_unscored:1` already self-marked legacy. New: tests/auditExpansion2026May.test.js +29 tests targeting utilizationScore, _crossSlotCoherence boundaries, override propagation, garmentDaysIdle degenerate shapes, auto-heal never_worn history-depth guard + ringbuffer trim. Fixed pre-existing date-dependent test failure in tests/seasonContextFactor.test.js — `_transitionSeason` injection used `null` which falls through `??` to live `Date.getMonth()`; switched to sentinel string. Supabase MCP RLS pass deferred — interactive OAuth not available in non-interactive run; relied on live skill-snapshot health checks instead. Carry forward: run RLS sanity pass next session.) |
 | Active model | `claude-sonnet-4-6` |
-| April token cost | $11.47 (2.6M input / 249K output — Apr 13 snapshot, ~$26/mo projected) |
+| April token cost | $12.63 (2.85M input / 272K output — Apr 30 snapshot) |
+| Current scoring weights (live, from skill-snapshot) | rotationFactor=0.40, repetitionPenalty=-0.28, neverWornRotationPressure=0.50, neverWornRecencyScore=0.50, colorMatch=2.5, formalityMatch=3, watchCompatibility=3, weatherLayer=1, contextFormality=0.5, diversityFactor=-0.12, seasonMatch=0.3, contextMatch=0.1 — auto-heal has not yet written any tunes (`tuned: []`) |
 | Wardrobe skill | SKILL_wardrobe_v10.md |
+
+### Gotcha — date-dependent tests must inject `_transitionSeason`
+
+`seasonContextFactor` reads `context._transitionSeason ?? transitionSeason()` — the
+nullish coalesce only fires on `null`/`undefined`. A test passing `_transitionSeason: null`
+still falls through to the real `Date.getMonth()`, making "adjacent season" assertions
+flaky around month boundaries (April→May, July→August, etc.). Always pass a non-matching
+sentinel like `"__none__"` to suppress the live transition lookup.
 
 ---
 

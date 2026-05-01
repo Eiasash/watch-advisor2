@@ -173,3 +173,53 @@ Generated: 2026-04-23 (cumulative)
 ### Low Priority
 7. **Scoring weight review** — if shirt stagnation persists after BulkTagger, consider rotationFactor 0.40→0.45 via scoringOverrides.
 8. **GP Laureato Infinite Grey** — primary acquisition target (~₪65,000). Preserve resources.
+
+---
+
+## 2026-05-01 Audit Pass — Findings
+
+Run mode: deep audit-fix-deploy cycle (this skill is documentation; auto-heal owns weight tunes).
+
+### Audit clean (no action)
+- Madge circular: 1 cycle (`historyPersistence ↔ historyStore`) — deliberate, runtime-broken via dynamic `import()`. Acceptable per § A.1.
+- `generateOutfit` source grep: clean (only `generateOutfitCard` for image generation, fine).
+- `console.log` in `src/`: all 11 occurrences gated behind `import.meta.env.DEV`.
+- `console.log` in `netlify/functions/`: 6 occurrences, all server-side (Netlify logs), not client leak.
+- `maxAttempts` in vision functions: all 7 are `maxAttempts: 1` (Netlify 10s hard limit respected).
+- `DIAL_COLOR_MAP`: only sourced from `src/data/dialColorMap.js`.
+- `SCORE_WEIGHTS`: only sourced from `src/config/scoringWeights.js`.
+- Engine invariants verified:
+  - `rotationPressure(Infinity) === 0.50` ✓ (`src/domain/rotationStats.js:137` via getOverride default)
+  - never-worn `recencyScore === 0.50` ✓ (`src/engine/dayProfile.js:154`, April 2026 lowering present)
+  - `rotationFactor` weight `=== 0.40` ✓ (`scoringFactors/rotationFactor.js:8`)
+  - `repetitionPenalty === -0.28` ✓ (`domain/contextMemory.js:48`)
+  - `_crossSlotCoherence` warm/cool `=== +0.20` ✓ (`outfitBuilder.js:110`)
+  - `applyFactors()` actually called in scoring pipeline ✓ (`outfitBuilder.js:156`)
+  - `buildOutfit()` pre-filters wearable garments ✓ (`outfitBuilder.js:360-365`)
+- Live skill-snapshot: garmentCount=101 (≥75 ✓), orphanedHistoryCount=0 ✓, all `health.*` ok except `autoHeal: WARN` (only signal: `stale_unscored:1` — already self-marked legacy by today's run, transient).
+
+### Fixed
+1. **Date-dependent flake in `tests/seasonContextFactor.test.js`** — pre-existing failure on `main` (1 of 3253 tests red). The "summer in spring" adjacent-season assertion expected `-0.15` but got `+0.10` because the source uses `context._transitionSeason ?? transitionSeason()` — a nullish coalesce that lets `null`/`undefined` fall through to live `Date.getMonth()`. In month 4 (May) the transition target is `"summer"`, so the test gained the +0.10 transition bonus instead of the -0.15 adjacent penalty. Switched the helper default from implicit `null` to a sentinel string `"__none__"` so the assertion is calendar-month independent.
+
+### Test expansion (`tests/auditExpansion2026May.test.js`, +29 tests)
+Targeting under-tested high-risk surfaces:
+- `utilizationScore` — zero direct unit coverage prior; 9 tests for empty/null collections, 100%/0%/rounded buckets, ghost ids, dedupe, falsy watchId.
+- `_crossSlotCoherence` boundaries via `buildOutfit` — 4 tests covering -0.4 same-color penalty, +0.20 warm/cool contrast, +0.10 neutral, single-slot degenerate.
+- `rotationPressure` × override propagation — 4 tests for never-worn override, finite-idle isolation, non-numeric rejection, legitimate-zero floor.
+- `garmentDaysIdle` on degenerate post-migration history shapes — 7 tests for mixed root/payload shapes, malformed dates, empty arrays, root-precedence, watch-vs-garment key isolation.
+- Auto-heal `never_worn` history-depth guard — 3 tests for sparse-data suppression, sufficient-data tune, 0.90 cap.
+- Auto-heal `_history` ringbuffer trim — 1 test verifying 20-event window maintained on tune.
+
+Test count: 3252 → 3281 (+29). Build green (922ms).
+
+### Non-auto items (per § A.5 — surface only, do not tune)
+- `autoHeal.findings.score_distribution` = "6.5–10": healthy spread, no action.
+- `autoHeal.findings.context_distribution` = healthy.
+- `autoHeal.findings.untagged_garments` = 0: BulkTagger already run.
+- `autoHeal.findings.outfit_photo_trap` = healthy.
+- `autoHeal.findings.never_worn` = "26% (65 entries / sparse data)": below 50% threshold AND sparse-depth guard would suppress anyway. Fine.
+- `scoring_overrides`: empty `{}` after months of history. Reading `auto_heal_log.tuned: []` confirms no tune has fired in this lookback window — consistent with healthy `tuned: []` in last 9-check run. Not a persistence bug.
+
+### Carry forward
+- **Supabase MCP RLS sanity pass** could not run in this session — interactive OAuth flow is not callable from a non-interactive run. Live skill-snapshot health channel was used as a proxy (orphans, garment count, health.*). Run the four pg_tables/pg_policies queries manually next session, or via direct `psql` with service-role key.
+- **Hard-coded `vi.mock("@supabase/supabase-js")`** inside `describe` block in the new test file produces a vitest hoisting warning but executes correctly. Future cleanup: lift to module top-level alongside the other mocks for warning-free runs.
