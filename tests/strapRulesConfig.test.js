@@ -184,8 +184,8 @@ describe("scoringWeights — OUTFIT_TEMP_THRESHOLDS", () => {
     expect(OUTFIT_TEMP_THRESHOLDS).toHaveProperty("layerDouble");
   });
 
-  it("warmTransition (18) > layerDouble (8)", () => {
-    expect(OUTFIT_TEMP_THRESHOLDS.warmTransition).toBe(18);
+  it("warmTransition (10) > layerDouble (8)", () => {
+    expect(OUTFIT_TEMP_THRESHOLDS.warmTransition).toBe(10);
     expect(OUTFIT_TEMP_THRESHOLDS.layerDouble).toBe(8);
     expect(OUTFIT_TEMP_THRESHOLDS.warmTransition).toBeGreaterThan(OUTFIT_TEMP_THRESHOLDS.layerDouble);
   });

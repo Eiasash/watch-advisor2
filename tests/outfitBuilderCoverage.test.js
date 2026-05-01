@@ -67,7 +67,8 @@ describe("buildOutfit — pinnedSlots", () => {
 
   it("pinned sweater used when cold", () => {
     const pinned = { id: "sw2", type: "sweater", name: "Grey Sweater", color: "grey", formality: 5 };
-    const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 15 }, [], [], { sweater: pinned });
+    // tempC: 10 — below the 14°C threshold (Mediterranean calibration)
+    const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 10 }, [], [], { sweater: pinned });
     expect(outfit.sweater.id).toBe("sw2");
   });
 

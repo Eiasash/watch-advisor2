@@ -117,14 +117,14 @@ describe("BUG D — generateOutfit should include layer slot at very cold temps"
     expect(outfit.sweater?.id).not.toBe(outfit.layer?.id);
   });
 
-  it("at 15°C, outfit has sweater but no layer", () => {
+  it("at 12°C, outfit has sweater but no layer (12 < 14 threshold; 12 >= 8 layerDouble)", () => {
     const watch = mkWatch();
     const wardrobe = [
       mkGarment({ id: "s1", type: "shirt" }),
       mkGarment({ id: "sw1", type: "sweater" }),
       mkGarment({ id: "sw2", type: "sweater" }),
     ];
-    const outfit = generateOutfit(watch, wardrobe, { tempC: 15 });
+    const outfit = generateOutfit(watch, wardrobe, { tempC: 12 });
     expect(outfit.sweater).not.toBeNull();
     expect(outfit.layer).toBeNull();
   });

@@ -1162,12 +1162,20 @@ export default function WeekPlanner() {
         }
       }
 
-      // Apply manual overrides
+      // Apply manual overrides. `null` values mean "user explicitly removed
+      // this slot" (via the OutfitSlotChip "None — remove" option) — distinct
+      // from `undefined` (no override). Match the logged-outfit path at line
+      // ~1062 which handles this correctly with `slot in dayOverrides`.
       const overrides = outfitOverrides[day.date] ?? {};
       for (const slot of OUTFIT_SLOTS) {
-        if (overrides[slot]) {
-          const g = garments.find(x => x.id === overrides[slot]);
-          if (g) outfit[slot] = g;
+        if (slot in overrides) {
+          const overrideId = overrides[slot];
+          if (overrideId === null) {
+            outfit[slot] = null; // user explicitly removed this slot
+          } else {
+            const g = garments.find(x => x.id === overrideId);
+            if (g) outfit[slot] = g;
+          }
         }
       }
 

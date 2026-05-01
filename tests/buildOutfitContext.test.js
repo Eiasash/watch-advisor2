@@ -105,19 +105,23 @@ describe("buildOutfit — replica context penalty", () => {
 // ── No sweater/layer in warm weather ─────────────────────────────────────────
 
 describe("buildOutfit — warm weather suppression", () => {
-  it("no sweater when tempC >= 22", () => {
+  it("no sweater when tempC >= 14 (warm 25°C)", () => {
     const outfit = buildOutfit(snowflake, wardrobe, warmWeather, [], [], {}, {}, "casual");
     expect(outfit.sweater).toBeNull();
   });
 
-  it("no layer when tempC >= 22", () => {
+  it("no sweater at mild 17°C — above the 14°C threshold (Mediterranean calibration)", () => {
+    const outfit = buildOutfit(snowflake, wardrobe, mildWeather, [], [], {}, {}, "casual");
+    expect(outfit.sweater).toBeNull();
+  });
+
+  it("no layer when tempC >= 14", () => {
     const outfit = buildOutfit(snowflake, wardrobe, warmWeather, [], [], {}, {}, "casual");
     expect(outfit.layer).toBeNull();
   });
 
-  it("sweater fills when tempC < 22", () => {
-    const outfit = buildOutfit(snowflake, wardrobe, mildWeather, [], [], {}, {}, "casual");
-    // At 17°C, sweater should be offered
+  it("sweater fills when tempC < 14 (cold 8°C)", () => {
+    const outfit = buildOutfit(snowflake, wardrobe, coldWeather, [], [], {}, {}, "casual");
     expect(outfit.sweater).toBeTruthy();
   });
 });
