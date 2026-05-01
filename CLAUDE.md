@@ -31,7 +31,7 @@ src/                          150 files, ~23,000 LOC
   features/       wardrobe/ watch/ outfits/ weather/
   classifier/     pipeline.js, normalizeType.js, duplicateDetection.js, personFilter.js
   services/       localCache.js, supabaseSync.js, imagePipeline.js, backgroundQueue.js
-  stores/         9 Zustand stores (wardrobe, watch, history, strap, pref, reject, styleLearn, theme, debug)
+  stores/         10 Zustand stores (wardrobe, watch, history, strap, pref, reject, styleLearn, theme, debug, travel)
   data/           watchSeed.js — NEVER REPLACE. Sacred.
   aiStylist/      claudeStylist.js
   workers/        photoWorker.js (USE_WORKER=false currently)
@@ -66,7 +66,7 @@ supabase/                    schema.sql
 - Accessories via Claude Vision fallback or filename only
 
 ### Tests — auto-expansion mandatory
-- **~3175 tests across 175 files** (3,052 after PR #104 + 123 added in PR #111) — run `npm test` to see current count
+- **~3175 tests across 183 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - Test files in `tests/` — pattern: `tests/<module>.test.js`
@@ -95,7 +95,7 @@ supabase/                    schema.sql
 ### Service Worker
 - Reload-loop guard (3 reloads in 10s = bail)
 - No self.skipWaiting() on install — main thread sends SKIP_WAITING; 30s auto-activate safety net
-- Three caches: shell (wa2-shell-v10), images (wa2-images-v4), API (wa2-api-v4)
+- Three caches: shell (wa2-shell-v13), images (wa2-images-v4), API (wa2-api-v4)
 - `NO_CACHE_FUNCTIONS` list in sw.js: Claude + admin + push-subscribe endpoints pass through uncached (per-user / non-deterministic responses)
 
 ### Performance
@@ -114,13 +114,13 @@ supabase/                    schema.sql
 |--------|-------|
 | Source files | 150 |
 | Source LOC | ~23,000 |
-| Test files | 175 |
+| Test files | 183 |
 | Test LOC | ~29,500 |
 | Tests | ~3175 |
 | Test pass rate | 100% |
 | Netlify functions | 25 (+3 helpers) |
 | Components | 63 JSX |
-| Zustand stores | 9 |
+| Zustand stores | 10 |
 | Build output | ~570 kB (167 kB gzip) |
 
 ---
