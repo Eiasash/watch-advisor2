@@ -1263,12 +1263,42 @@ export default function WeekPlanner() {
         description: dayForecast.description,
       } : undefined;
       const recent = recentAiPicks[date] ?? [];
+
+      // Phase 2 retroactive feedback (2026-05-02): synthesize the user's actual
+      // override behavior from `aiAppliedDays` × `recentAiPicks` × `outfitOverrides`
+      // and pass it to the model as preference signal. Works retroactively because
+      // the source state is already populated from prior sessions — no schema
+      // change, no migration. Diff: AI-suggested name vs. user's overridden
+      // garment name. Removed slots become `toUser: null` (which the prompt
+      // surfaces as "slot removed entirely" — strong negative signal).
+      const pastCorrections = (() => {
+        const out = [];
+        for (const day of aiAppliedDays) {
+          const aiPick = (recentAiPicks[day] ?? [])[0];
+          if (!aiPick) continue;
+          const overrides = outfitOverrides[day] ?? {};
+          for (const slot of OUTFIT_SLOTS) {
+            if (!(slot in overrides)) continue;
+            const aiName = aiPick[slot] ?? null;
+            const userId = overrides[slot];
+            const userName = userId ? (garments.find(g => g.id === userId)?.name ?? null) : null;
+            if (aiName !== userName) {
+              out.push({ slot, fromAI: aiName, toUser: userName, date: day });
+            }
+          }
+        }
+        // Newest first — backend caps at 12 anyway, but pass sorted for consistency.
+        out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+        return out.slice(0, 12);
+      })();
+
       const body = {
         forceRefresh: true,
         weather,
         ...(steer ? { steer } : {}),
         ...(useExclude && recent.length ? { excludeRecent: recent } : {}),
         ...(rejected ? { rejected } : {}),
+        ...(pastCorrections.length ? { pastCorrections } : {}),
       };
       const res = await fetch("/.netlify/functions/daily-pick", {
         method: "POST",
@@ -1309,7 +1339,7 @@ export default function WeekPlanner() {
     } finally {
       setAiLoadingDay(null);
     }
-  }, [garments, watches, recentAiPicks, compactPickForExclude]);
+  }, [garments, watches, recentAiPicks, compactPickForExclude, aiAppliedDays, outfitOverrides]);
 
   // "Why this?" — surface stored reasoning, or call the endpoint with why:true
   // for a fresh rationale on the current day's outfit.

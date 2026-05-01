@@ -29,7 +29,15 @@ export function genWeekRotation(watches, history = [], weekCtx = [], onCallDates
   for (let offset = 0; offset < 7; offset++) {
     const d = new Date(today);
     d.setDate(today.getDate() + offset);
-    const dayIdx = d.getDay(); // 0=Sun
+    // Both dayIdx and dateKey use UTC so they're consistent with each other.
+    // Was `d.getDay()` (local TZ) which paired with `toISOString().slice(0,10)`
+    // (UTC) — fine for daytime runs but mismatches at late-evening runs in TZ
+    // ahead of UTC, producing entry.dayName='Sat' next to entry.date='2026-05-01'
+    // (a Friday-UTC date string). The on-call/history side of the codebase
+    // already uses UTC date strings — staying UTC throughout is the consistent
+    // direction. See tests/weekRotationEdge.test.js > "dayName matches the day
+    // of week" — passed in CI (UTC runners), failed at 01:30 IST locally.
+    const dayIdx = d.getUTCDay(); // 0=Sun (UTC day-of-week)
     const dateKey = d.toISOString().slice(0, 10);
     const ctx = weekCtx[dayIdx] ?? "smart-casual";
     const isOnCall = onCallDates.includes(dateKey);

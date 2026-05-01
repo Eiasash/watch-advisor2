@@ -9,7 +9,11 @@ let _cachedModel = null;
  */
 export async function getConfiguredModel() {
   if (_cachedModel) return _cachedModel;
-  const DEFAULT_MODEL = "claude-sonnet-4-6";
+  // 2026-05-02: default raised from claude-sonnet-4-6 → claude-opus-4-7.
+  // Opus 4.7 has materially better nuanced-styling judgment for the watch+
+  // outfit pairing problem, and the per-call cost (~$0.05-0.10) is small for
+  // a personal-use app. Override via `app_config.claude_model` in Supabase.
+  const DEFAULT_MODEL = "claude-opus-4-7";
   try {
     const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
