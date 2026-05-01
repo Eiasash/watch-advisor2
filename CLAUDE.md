@@ -135,6 +135,13 @@ supabase/                    schema.sql
 | `/wa-test` | Test and summarise failures |
 | `/wardrobe-update` | Add garments, log wears, DB audit |
 
+## Release Invariants (run before declaring "shipped")
+1. **Local checks** — `npm test` + `npm run build`. All must be green.
+2. **Push** — `git push` triggers Netlify auto-deploy.
+3. **Live witness** — after Netlify publishes (~60–120s), `bash scripts/verify-deploy.sh` does a two-step check: fetches `https://watch-advisor2.netlify.app/`, extracts the hashed `assets/index-*.js` bundle path, then greps the bundle for the literal version string from `package.json` (injected as `__BUILD_NUMBER__` via Vite `define:` and rendered by `Header.jsx`). **Don't claim "deployed" until this passes.**
+4. **Fragility note** — the live witness depends on `Header.jsx` (or `SettingsPanel.jsx`) referencing `__BUILD_NUMBER__`. If those refs are removed, esbuild may tree-shake the literal and `verify-deploy.sh` will silently fail on every deploy. If you see a sudden run of FAILs after a refactor, suspect tree-shake before suspecting Netlify. A more durable alternative: add `__DEPLOY_WITNESS__: JSON.stringify(\`wa2-v${buildNumber}\`)` to `vite.config.js` `define:` and reference it once in `src/main.js`.
+5. **SW cache key is decoupled** — `wa2-shell-v13` in `public/sw.js` is a hardcoded shell-cache key, NOT a per-release marker. Don't rely on it for deploy verification.
+
 ---
 
 ## Test Coverage Recommendations
