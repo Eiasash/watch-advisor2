@@ -34,6 +34,49 @@ import {
 } from "../src/domain/rotationStats.js";
 import { setScoringOverrides, getOverride } from "../src/config/scoringOverrides.js";
 
+// ── Hoisted mocks ─────────────────────────────────────────────────────────────
+// vi.mock() calls must live at the top level (Vitest auto-hoists them; nested
+// placement is a future-error). Factory uses globalThis state set per-test, so
+// no closure capture is needed.
+vi.mock("@supabase/supabase-js", () => {
+  const mockUpdateEq = () => ({ data: null, error: null });
+  const mockUpdate = () => ({ eq: mockUpdateEq });
+  const mockUpsert = (...args) => {
+    globalThis.__test_upsertCalls?.push(args);
+    return { data: null, error: null };
+  };
+  const mockFrom = (table) => {
+    if (table === "history") {
+      return {
+        select: () => ({
+          order: () => ({ data: globalThis.__test_history ?? [], error: null }),
+        }),
+        update: mockUpdate,
+      };
+    }
+    if (table === "garments") {
+      return { select: () => ({ data: globalThis.__test_garments ?? [], error: null }) };
+    }
+    if (table === "app_config") {
+      return {
+        upsert: mockUpsert,
+        select: () => ({
+          eq: () => ({
+            limit: () => ({
+              data: globalThis.__test_overrides !== null
+                ? [{ value: globalThis.__test_overrides }]
+                : [],
+              error: null,
+            }),
+          }),
+        }),
+      };
+    }
+    return { select: () => ({ data: null, error: null }) };
+  };
+  return { createClient: () => ({ from: mockFrom }) };
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function daysAgo(n) {
   const d = new Date();
@@ -296,52 +339,12 @@ describe("garmentDaysIdle — degenerate history shapes (production post-migrati
 // 5. auto-heal never_worn history-depth guard + ringbuffer
 // ─────────────────────────────────────────────────────────────────────────────
 describe("auto-heal — never_worn history-depth guard (mocked supabase)", () => {
-  // Mocks must be hoisted via vi.mock() — we use module-level state captured
-  // by the factory closure, mutated in beforeEach via re-import.
+  // Supabase mock is hoisted to file top level; factory reads globalThis state
+  // populated in beforeEach.
   let mockHistoryData = [];
   let mockGarmentsData = [];
   let mockScoringOverrides = null;
   const upsertCalls = [];
-
-  vi.mock("@supabase/supabase-js", () => {
-    const mockUpdateEq = () => ({ data: null, error: null });
-    const mockUpdate = () => ({ eq: mockUpdateEq });
-    const mockUpsert = (...args) => {
-      // refer to outer ringbuffer recorder via global
-      globalThis.__test_upsertCalls?.push(args);
-      return { data: null, error: null };
-    };
-    const mockFrom = (table) => {
-      if (table === "history") {
-        return {
-          select: () => ({
-            order: () => ({ data: globalThis.__test_history ?? [], error: null }),
-          }),
-          update: mockUpdate,
-        };
-      }
-      if (table === "garments") {
-        return { select: () => ({ data: globalThis.__test_garments ?? [], error: null }) };
-      }
-      if (table === "app_config") {
-        return {
-          upsert: mockUpsert,
-          select: () => ({
-            eq: () => ({
-              limit: () => ({
-                data: globalThis.__test_overrides !== null
-                  ? [{ value: globalThis.__test_overrides }]
-                  : [],
-                error: null,
-              }),
-            }),
-          }),
-        };
-      }
-      return { select: () => ({ data: null, error: null }) };
-    };
-    return { createClient: () => ({ from: mockFrom }) };
-  });
 
   let handler;
 
