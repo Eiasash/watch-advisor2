@@ -42,6 +42,58 @@ import rotationFactor from "../src/outfitEngine/scoringFactors/rotationFactor.js
 import repetitionFactorFn from "../src/outfitEngine/scoringFactors/repetitionFactor.js";
 import { setScoringOverrides } from "../src/config/scoringOverrides.js";
 
+// ── Hoisted mocks ─────────────────────────────────────────────────────────────
+// vi.mock() calls must live at the top level (Vitest auto-hoists them; nested
+// placement is a future-error). Factories read globalThis state set per-test.
+// The skill-snapshot describe block (block 3) uses vi.doMock() in its own
+// beforeEach to override the supabase-js module on a per-test basis, which is
+// the explicit opt-out path for vi.mock and is intentionally non-hoisted.
+vi.mock("@supabase/supabase-js", () => {
+  const mockUpdateEq = () => ({ data: null, error: null });
+  const mockUpdate = () => ({ eq: mockUpdateEq });
+  const mockUpsert = (...args) => {
+    globalThis.__r2_upsertCalls?.push(args);
+    return { data: null, error: null };
+  };
+  const mockFrom = (table) => {
+    if (table === "history") {
+      return {
+        select: () => ({
+          order: () => ({ data: globalThis.__r2_history ?? [], error: null }),
+        }),
+        update: mockUpdate,
+      };
+    }
+    if (table === "garments") {
+      return { select: () => ({ data: globalThis.__r2_garments ?? [], error: null }) };
+    }
+    if (table === "app_config") {
+      return {
+        upsert: mockUpsert,
+        select: () => ({
+          eq: () => ({
+            limit: () => ({
+              data: globalThis.__r2_overrides !== null
+                ? [{ value: globalThis.__r2_overrides }]
+                : [],
+              error: null,
+            }),
+          }),
+        }),
+      };
+    }
+    return { select: () => ({ data: null, error: null }) };
+  };
+  return { createClient: () => ({ from: mockFrom }) };
+});
+
+vi.mock("../netlify/functions/_cors.js", () => ({
+  cors: () => ({
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json",
+  }),
+}), { virtual: true });
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
 
@@ -60,49 +112,12 @@ afterEach(() => {
 // 1. auto-heal threshold matrix — gap coverage
 // ─────────────────────────────────────────────────────────────────────────────
 describe("auto-heal threshold matrix — gaps not covered by R1", () => {
+  // Supabase mock is hoisted to file top level; factory reads globalThis state
+  // populated in beforeEach.
   let mockHistoryData = [];
   let mockGarmentsData = [];
   let mockScoringOverrides = null;
   const upsertCalls = [];
-
-  vi.mock("@supabase/supabase-js", () => {
-    const mockUpdateEq = () => ({ data: null, error: null });
-    const mockUpdate = () => ({ eq: mockUpdateEq });
-    const mockUpsert = (...args) => {
-      globalThis.__r2_upsertCalls?.push(args);
-      return { data: null, error: null };
-    };
-    const mockFrom = (table) => {
-      if (table === "history") {
-        return {
-          select: () => ({
-            order: () => ({ data: globalThis.__r2_history ?? [], error: null }),
-          }),
-          update: mockUpdate,
-        };
-      }
-      if (table === "garments") {
-        return { select: () => ({ data: globalThis.__r2_garments ?? [], error: null }) };
-      }
-      if (table === "app_config") {
-        return {
-          upsert: mockUpsert,
-          select: () => ({
-            eq: () => ({
-              limit: () => ({
-                data: globalThis.__r2_overrides !== null
-                  ? [{ value: globalThis.__r2_overrides }]
-                  : [],
-                error: null,
-              }),
-            }),
-          }),
-        };
-      }
-      return { select: () => ({ data: null, error: null }) };
-    };
-    return { createClient: () => ({ from: mockFrom }) };
-  });
 
   let handler;
   beforeEach(async () => {
@@ -346,13 +361,7 @@ describe("skill-snapshot — health.* contract assertions", () => {
   let mockScoreTrend = [];
   let mockWardrobeHealth = [];
 
-  vi.mock("../netlify/functions/_cors.js", () => ({
-    cors: () => ({
-      "Access-Control-Allow-Origin": "*",
-      "Content-Type": "application/json",
-    }),
-  }), { virtual: true });
-
+  // _cors.js mock is hoisted to file top level.
   // Reuse the @supabase/supabase-js mock from block 1 — it's hoisted file-wide.
   // Override the module reference with a snapshot-specific mock by adjusting
   // the global state shape per-test.
