@@ -36,7 +36,56 @@ const STEER_INSTRUCTIONS = {
   different_watch: "Suggest a DIFFERENT WATCH FACE for this outfit — the user already saw your prior pick and wants an alternative timepiece.",
 };
 
-function buildPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, variants }) {
+/**
+ * STABLE persona + non-negotiable rules + watch collection + output schema.
+ * Goes into the `system` field — Anthropic's prompt-cache will key on this,
+ * giving us cache reads on repeat calls within the 5-minute TTL.
+ */
+function buildSystemPrompt() {
+  return `You are Eias's personal watch & outfit stylist. Generate outfit recommendations based on the data provided in the user message.
+
+STYLING RULES (non-negotiable):
+- Strap-shoe color matching is NOT a rule — do not enforce strap-shoe coordination.
+- No loafers ever.
+- Pasha 41 = dress-sport, excluded from on-call/shift pool.
+- Laco = field/casual only.
+- Shift watches only: Speedmaster, Tudor BB41, Hanhart.
+- Bold colorful dial replicas for casual flex; genuine for clinic/formal credibility.
+- Layer logic (Mediterranean climate, morning-temp basis): <10°C coat strongly recommended, <14°C sweater/quarter-zip, <22°C light jacket, ≥22°C no jacket. **NO sweater at ≥14°C even if "feels chilly" — Eias is on the Mediterranean coast and explicitly does not want sweaters in that range.**
+- If morning is cold but midday warms up, recommend a removable layer with a note to shed it.
+- Reverso Duoface: white dial for dark outfits (contrast), navy dial for light outfits (depth).
+- Cable knit crewneck (black or ecru Kiral) = one level more formal than quarter-zip.
+- Camel coat + ecru cable knit = tonal formal. Camel coat + black cable knit = contrast formal.
+
+WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
+Genuine: GS Snowflake (silver-white, Spring Drive), GS Rikka (green, Hi-Beat), Pasha 41 (grey), GP Laureato (blue, integrated bracelet), JLC Reverso (navy, moon phase), Santos Large (white/gold, QuickSwitch), Santos Octagon (white, vintage YG), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
+Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
+
+OUTPUT SCHEMA — return ONLY valid JSON matching this shape:
+{
+  "watch": "exact watch name",
+  "watchId": "watch_id from: snowflake|rikka|pasha|gp_laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt_master|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35_rep|chopard_alpine|ap_royal_oak|gmt_meteorite|daydate_turq|rolex_op_grape|breguet_tradition",
+  "strap": "specific strap recommendation",
+  "shirt": "exact garment name or null",
+  "sweater": "exact garment name or null",
+  "layer": "exact garment name or null",
+  "pants": "exact garment name",
+  "shoes": "exact garment name",
+  "jacket": "exact garment name or null",
+  "belt": "exact garment name or null",
+  "reasoning": "2-3 sentences explaining the outfit logic — color harmony, watch dial pairing, weather transition advice",
+  "score": 8.5,
+  "layerTip": "e.g. 'Shed the quarter-zip after noon — 17°C midday' or null"
+}
+
+Pay close attention to the PAST CORRECTIONS section in the user message if present — those are direct signals about Eias's actual preferences that should override your defaults.`;
+}
+
+/**
+ * VOLATILE per-call data: today's date, weather, recent history, wardrobe,
+ * steer/exclude/rejected/pastCorrections feedback. Goes in the user message.
+ */
+function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants }) {
   const variantClause = variants > 1
     ? `Return a JSON ARRAY of ${variants} DISTINCT outfit objects (each must use a different watch). Do NOT wrap in markdown.`
     : "Respond ONLY with a single JSON object, no markdown.";
@@ -63,28 +112,21 @@ function buildPrompt({ todayStr, weather, garmentList, garments, recentWatches, 
     rejectedBlock = `\nUSER REJECTED a prior suggestion (${w} + ${o.shirt ?? o.sweater ?? "?"} + ${o.pants ?? "?"} + ${o.shoes ?? "?"}). Reason: "${rejected.reason ?? "no reason given"}". Avoid the same direction.\n`;
   }
 
-  return `You are Eias's personal watch & outfit stylist. Generate today's outfit recommendation.
+  let correctionsBlock = "";
+  if (Array.isArray(pastCorrections) && pastCorrections.length) {
+    const lines = pastCorrections.slice(0, 12).map((c, i) => {
+      const date = c.date ?? "?";
+      const slot = c.slot ?? "?";
+      const fromAI = c.fromAI ?? "(no AI value)";
+      const toUser = c.toUser ?? "(slot removed entirely)";
+      return `  ${i + 1}. [${date}] ${slot}: AI suggested "${fromAI}" → user changed to "${toUser}"`;
+    }).join("\n");
+    correctionsBlock = `\nPAST USER CORRECTIONS — these are real preference signals from Eias's actual override behavior. Learn from them: pieces the user removes are NOT preferred even if they score well; pieces the user swaps TO are preferred for that slot/context.\n${lines}\n`;
+  }
 
-DATE: ${todayStr}
+  return `DATE: ${todayStr}
 WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
-${steerLine}${excludeBlock}${rejectedBlock}
-STYLING RULES (non-negotiable):
-- Strap-shoe color matching is NOT a rule — do not enforce strap-shoe coordination.
-- No loafers ever.
-- Pasha 41 = dress-sport, excluded from on-call/shift pool.
-- Laco = field/casual only.
-- Shift watches only: Speedmaster, Tudor BB41, Hanhart.
-- Bold colorful dial replicas for casual flex; genuine for clinic/formal credibility.
-- Layer logic: <10°C coat, <16°C sweater/quarter-zip, <22°C light layer, ≥22°C no layer.
-- If morning is cold but midday warms up, recommend a removable layer with a note to shed it.
-- Reverso Duoface: white dial for dark outfits (contrast), navy dial for light outfits (depth).
-- Cable knit crewneck (black or ecru Kiral) = one level more formal than quarter-zip.
-- Camel coat + ecru cable knit = tonal formal. Camel coat + black cable knit = contrast formal.
-
-WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
-Genuine: GS Snowflake (silver-white, Spring Drive), GS Rikka (green, Hi-Beat), Pasha 41 (grey), GP Laureato (blue, integrated bracelet), JLC Reverso (navy, moon phase), Santos Large (white/gold, QuickSwitch), Santos Octagon (white, vintage YG), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
-Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
-
+${steerLine}${excludeBlock}${rejectedBlock}${correctionsBlock}
 RECENT WATCHES WORN (avoid repeats):
 ${recentWatches || "No recent data"}
 
@@ -147,12 +189,18 @@ export async function handler(event) {
     const steer = typeof body.steer === "string" ? body.steer : null;
     const excludeRecent = Array.isArray(body.excludeRecent) ? body.excludeRecent : [];
     const rejected = body.rejected && typeof body.rejected === "object" ? body.rejected : null;
+    // pastCorrections: array of { slot, fromAI, toUser, date } from user's
+    // override history. Cap at 20 to bound prompt size; client typically sends
+    // its synthesized list (most recent first) — we further trim in the prompt.
+    const pastCorrections = Array.isArray(body.pastCorrections)
+      ? body.pastCorrections.slice(0, 20).filter(c => c && typeof c === "object")
+      : [];
     const why = body.why === true;
     const currentPick = body.currentPick && typeof body.currentPick === "object" ? body.currentPick : null;
     const variants = Math.max(1, Math.min(3, parseInt(body.variants, 10) || 1));
 
     // Any flexibility verb implies forceRefresh — never serve cache for these
-    const forceRefresh = body.forceRefresh === true || !!steer || excludeRecent.length > 0 || !!rejected || why || variants > 1;
+    const forceRefresh = body.forceRefresh === true || !!steer || excludeRecent.length > 0 || !!rejected || pastCorrections.length > 0 || why || variants > 1;
 
     // Fire-and-forget: log rejection feedback for future preference-learning.
     // Stored under app_config key "ai_feedback_log" as a rolling list (tail 50).
@@ -260,7 +308,8 @@ export async function handler(event) {
 
     const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Jerusalem" });
 
-    const prompt = buildPrompt({
+    const systemPrompt = buildSystemPrompt();
+    const userPrompt = buildUserPrompt({
       todayStr,
       weather,
       garmentList,
@@ -270,16 +319,22 @@ export async function handler(event) {
       steer,
       excludeRecent,
       rejected,
+      pastCorrections,
       variants,
     });
 
     const model = await getConfiguredModel();
-    // Variants need more output budget; single pick stays at 800 to keep cost predictable.
-    const maxTokens = variants > 1 ? 800 + (variants - 1) * 600 : 800;
+    // Bumped from 800 → 2200 (4400 for variants) to give Opus 4.7 + adaptive
+    // thinking room. If Netlify free-tier 10s timeout becomes an issue, dial
+    // `effort` from "high" → "medium" or remove `thinking` entirely.
+    const maxTokens = variants > 1 ? 2200 + (variants - 1) * 1500 : 2200;
     const result = await callClaude(apiKey, {
       model,
       max_tokens: maxTokens,
-      messages: [{ role: "user", content: prompt }],
+      system: systemPrompt,
+      thinking: { type: "adaptive" },
+      output_config: { effort: "high" },
+      messages: [{ role: "user", content: userPrompt }],
     }, { maxAttempts: 1 });
 
     const text = extractText(result);

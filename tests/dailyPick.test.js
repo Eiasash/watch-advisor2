@@ -191,7 +191,7 @@ describe("daily-pick", () => {
 
     expect(claudeMod.callClaude).toHaveBeenCalledWith(
       "test-key",
-      expect.objectContaining({ max_tokens: 800 }),
+      expect.objectContaining({ max_tokens: 2200 }), // bumped from 800 to give Opus 4.7 + adaptive thinking room
       expect.objectContaining({ maxAttempts: 1 }),
     );
   });

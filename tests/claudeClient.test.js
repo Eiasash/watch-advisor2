@@ -36,7 +36,7 @@ describe("getConfiguredModel", () => {
 
   it("returns DEFAULT_MODEL when env vars are missing", async () => {
     const model = await getConfiguredModel();
-    expect(model).toBe("claude-sonnet-4-6");
+    expect(model).toBe("claude-opus-4-7");
     // Supabase should never be called when credentials absent
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -49,7 +49,7 @@ describe("getConfiguredModel", () => {
     const mod2 = await import("../netlify/functions/_claudeClient.js");
     fetch.mockRejectedValue(new Error("Network error"));
     const model = await mod2.getConfiguredModel();
-    expect(model).toBe("claude-sonnet-4-6");
+    expect(model).toBe("claude-opus-4-7");
   });
 
   it("returns DEFAULT_MODEL when DB returns no matching row (null body)", async () => {
@@ -67,7 +67,7 @@ describe("getConfiguredModel", () => {
       headers: { get: () => null },
     });
     const model = await mod2.getConfiguredModel();
-    expect(model).toBe("claude-sonnet-4-6");
+    expect(model).toBe("claude-opus-4-7");
   });
 
   it("returns model from DB when app_config has claude_model row", async () => {
