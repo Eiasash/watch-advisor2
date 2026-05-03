@@ -198,7 +198,7 @@ describe("getConfiguredModel", () => {
     const mod = await import("../netlify/functions/_claudeClient.js");
     mod._resetModelCache();
     const model = await mod.getConfiguredModel();
-    expect(model).toBe("claude-opus-4-7");
+    expect(model).toBe("claude-sonnet-4-6");
     process.env = origEnv;
   });
 

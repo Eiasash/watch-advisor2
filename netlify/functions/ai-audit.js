@@ -1,4 +1,4 @@
-import { callClaude, extractText } from "./_claudeClient.js";
+import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
 /**
  * Netlify function — AI Wardrobe Audit
@@ -23,8 +23,9 @@ export async function handler(event) {
     const apiKey = process.env.CLAUDE_API_KEY;
     if (!apiKey) return { statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({ error: "CLAUDE_API_KEY not set" }) };
 
+    const model = await getConfiguredModel();
     const res = await callClaude(apiKey, {
-        model:      "claude-sonnet-4-6",
+        model,
         max_tokens: 2000,
         messages:   [{ role: "user", content: prompt }],
       });
