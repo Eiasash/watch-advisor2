@@ -12,6 +12,7 @@
 import { cacheGet, cacheSet } from "./_blobCache.js";
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 // Kept in sync with classify-image.js — any change here must be mirrored there
 const VALID_TYPES  = ["shirt","pants","shoes","jacket","sweater","belt","sunglasses","hat","scarf","bag","accessory","watch","outfit-photo"];
@@ -35,6 +36,9 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: "Method not allowed" }) };
   }
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: JSON_HEADERS, body: JSON.stringify({ error: auth.error }) };
 
   try {
     const { imageUrl, imageBase64, currentType, currentColor, currentName, garmentId, hash, neighbors: rawNeighbors, allAngles = [] } = JSON.parse(event.body ?? "{}");

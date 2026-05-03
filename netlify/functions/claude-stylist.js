@@ -1,5 +1,6 @@
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 /**
  * Netlify serverless function — Claude AI Stylist.
  * Validates/improves the engine's outfit pick around the selected watch.
@@ -14,6 +15,9 @@ export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS };
   }
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: { ...CORS, "Content-Type": "application/json" }, body: JSON.stringify({ error: auth.error }) };
 
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: { ...CORS, "Content-Type": "application/json" }, body: JSON.stringify({ error: "Method not allowed" }) };

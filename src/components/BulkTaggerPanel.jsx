@@ -4,6 +4,7 @@ import { useWatchStore }    from "../stores/watchStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
 import { setCachedState }   from "../services/localCache.js";
 import { pushGarment }      from "../services/supabaseSync.js";
+import { authedFetch }      from "../services/authedFetch.js";
 
 const BATCH = 6; // garments per Claude call — keeps response under 1500 tokens
 
@@ -52,7 +53,7 @@ export default function BulkTaggerPanel({ isDark }) {
       }));
 
       try {
-        const res = await fetch("/.netlify/functions/bulk-tag", {
+        const res = await authedFetch("/.netlify/functions/bulk-tag", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ garments: batch }),

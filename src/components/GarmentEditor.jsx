@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
+import { authedFetch } from "../services/authedFetch.js";
 import { pushGarment, deleteGarment, deleteStoragePhoto, uploadAngle, uploadPhoto } from "../services/supabaseSync.js";
 import { saveImage } from "../services/localCache.js";
 import { useWatchStore } from "../stores/watchStore.js";
@@ -250,7 +251,7 @@ export default function GarmentEditor({ garment, onClose }) {
     if (!photo) return;
     setAiChecking(true); setAiResult(null); setAiColorAlts([]);
     try {
-      const res = await fetch("/.netlify/functions/relabel-garment", {
+      const res = await authedFetch("/.netlify/functions/relabel-garment", {
         method:"POST", headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({
           image: photo,

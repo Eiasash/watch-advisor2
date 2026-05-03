@@ -10,11 +10,14 @@
  *   independently. This wrapper centralizes it.
  *
  * Behavior on no session:
- *   Returns a synthetic 401 Response with a JSON body so existing callers'
- *   `res.ok` checks fire naturally — no need to retrofit "if signed in"
- *   guards at every fetch site. The 401 body matches what the server
- *   would have sent (`{ error: "Unauthorized: ..." }`), so error UIs
- *   render consistently.
+ *   Calls fetch with NO Authorization header. The server-side _auth.js gate
+ *   is the security boundary — it returns 401 to unauthenticated requests,
+ *   and the existing `if (!res.ok)` logic in callers handles that uniformly.
+ *
+ *   Earlier draft synthesized a client-side 401, but that broke vitest tests
+ *   that mock `fetch` directly (the synthesized 401 short-circuited before
+ *   the mock was reached) without adding any real security — the server
+ *   gate is what decides, not the client wrapper.
  *
  * Drop-in replacement: `await fetch(url, opts)` → `await authedFetch(url, opts)`.
  */
@@ -22,20 +25,20 @@
 import { supabase } from "./supabaseClient.js";
 
 export async function authedFetch(input, init = {}) {
-  const { data } = await supabase.auth.getSession();
-  const token = data?.session?.access_token;
-
-  if (!token) {
-    // Synthesize a 401 so callers can keep using `if (!res.ok) ...` logic.
-    // The body shape matches what _auth.js sends so error rendering is uniform.
-    return new Response(
-      JSON.stringify({ error: "Unauthorized: please sign in with GitHub" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
+  let token = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    token = data?.session?.access_token ?? null;
+  } catch {
+    // Supabase client unavailable (e.g. test env without mock) — proceed
+    // unauthenticated; server gate will reject with 401 if needed.
   }
 
-  const headers = new Headers(init.headers ?? {});
-  headers.set("Authorization", `Bearer ${token}`);
+  // Preserve plain-object headers (some callers + tests rely on bracket
+  // access like headers["Content-Type"]). Only attach Authorization when a
+  // token exists so unauthenticated test paths don't get a stray header.
+  const headers = { ...(init.headers ?? {}) };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   return fetch(input, { ...init, headers });
 }

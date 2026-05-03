@@ -12,6 +12,7 @@ import StrapHeatmap from "./stats/StrapHeatmap.jsx";
 import StyleDNA from "./stats/StyleDNA.jsx";
 import StrapHealth from "./stats/StrapHealth.jsx";
 import { isActiveWatch } from "../utils/watchFilters.js";
+import { authedFetch } from "../services/authedFetch.js";
 
 const COLOR_SWATCH = {
   black:"#1f2937", white:"#f3f4f6", navy:"#1e3a5f", blue:"#2563eb", grey:"#9ca3af",
@@ -669,7 +670,7 @@ function SeasonalAuditSection({ isDark, border, text, muted }) {
         <button onClick={async () => {
           setAuditLoading(true);
           try {
-            const res = await fetch("/.netlify/functions/seasonal-audit", {
+            const res = await authedFetch("/.netlify/functions/seasonal-audit", {
               method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({}),
             });

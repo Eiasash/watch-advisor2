@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCachedState, setCachedState } from "../services/localCache.js";
+import { authedFetch } from "../services/authedFetch.js";
 import { loadAll as loadHistoryEntries } from "../services/persistence/historyPersistence.js";
 import { safeGet } from "../services/dbSafeLoad.js";
 import { pullCloudState, subscribeSyncState, pushGarment as pushGarmentSync, uploadPhoto as uploadPhotoSync, uploadAngle as uploadAngleSync, pullSettings, pushSettings, pullThumbnails, pullScoringOverrides, pullTailorConfig } from "../services/supabaseSync.js";
@@ -146,7 +147,7 @@ export function useBootstrap() {
         }
       });
       registerHandler("verify-photo", async (p) => {
-        const res = await fetch("/.netlify/functions/verify-garment-photo", {
+        const res = await authedFetch("/.netlify/functions/verify-garment-photo", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(p),
         });

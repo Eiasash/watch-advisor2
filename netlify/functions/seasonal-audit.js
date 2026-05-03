@@ -10,6 +10,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 
 function getCurrentSeason() {
@@ -31,6 +32,9 @@ export async function handler(event) {
   const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "POST only" }) };
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
 
   try {
     const body = JSON.parse(event.body ?? "{}");

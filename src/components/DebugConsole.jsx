@@ -6,6 +6,7 @@
  */
 import { useState, useCallback, useEffect } from "react";
 import { useDebugStore } from "../stores/debugStore.js";
+import { authedFetch } from "../services/authedFetch.js";
 
 // ── App Health panel — fetches skill-snapshot endpoint ────────────────────────
 
@@ -26,7 +27,7 @@ function AppHealthPanel({ isDark }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/.netlify/functions/skill-snapshot");
+      const res = await authedFetch("/.netlify/functions/skill-snapshot");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setSnapshot(await res.json());
     } catch (e) {

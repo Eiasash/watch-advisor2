@@ -9,6 +9,7 @@
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cacheGet, cacheSet } from "./_blobCache.js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 
 const SEASONS  = ["spring","summer","autumn","winter","all-season"];
@@ -22,6 +23,9 @@ export async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST")
     return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
 
   try {
     const { garments = [] } = JSON.parse(event.body ?? "{}");

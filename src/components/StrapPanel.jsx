@@ -4,6 +4,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { uploadPhoto } from "../services/supabaseSync.js";
 import { PENDING_STRAPS } from "../data/watchSeed.js";
+import { authedFetch } from "../services/authedFetch.js";
 
 const TYPE_COLOR  = { bracelet:"#3b82f6", leather:"#92400e", canvas:"#65a30d", nato:"#0891b2", rubber:"#7c3aed", integrated:"#6b7280" };
 const TYPE_LABELS = ["bracelet","integrated","leather","canvas","nato","rubber"];
@@ -274,7 +275,7 @@ Return ONLY valid JSON:
   "shoe_required": null
 }`;
 
-      const res = await fetch("/.netlify/functions/ai-audit", {
+      const res = await authedFetch("/.netlify/functions/ai-audit", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
