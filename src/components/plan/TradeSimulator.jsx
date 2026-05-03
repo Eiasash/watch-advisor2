@@ -8,6 +8,7 @@ import { useWatchStore } from "../../stores/watchStore.js";
 import { useHistoryStore } from "../../stores/historyStore.js";
 import { useThemeStore } from "../../stores/themeStore.js";
 import { simulateTrade } from "../../domain/tradeSimulator.js";
+import { isActiveWatch } from "../../utils/watchFilters.js";
 
 export default function TradeSimulator() {
   const watches = useWatchStore(s => s.watches) ?? [];
@@ -27,7 +28,7 @@ export default function TradeSimulator() {
   const muted = isDark ? "#6b7280" : "#9ca3af";
   const accent = "#f59e0b";
 
-  const active = watches.filter(w => !w.retired && !w.pending && !w.replica);
+  const active = watches.filter(w => isActiveWatch(w) && !w.replica);
 
   const result = useMemo(() => {
     if (!tradeOut.length) return null;

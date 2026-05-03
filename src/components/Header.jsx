@@ -2,6 +2,7 @@ import React from "react";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { isActiveWatch } from "../utils/watchFilters.js";
 
 export default function Header({ onOpenSettings, onOpenSearch }) {
   const watches = useWatchStore(s => s.watches) ?? [];
@@ -27,7 +28,7 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
           watch-advisor
         </h1>
         <div style={{ color: isDark ? "#9ca3af" : "#6b7280", fontSize: 13, marginTop: 2 }}>
-          Watch-first outfit planner &middot; {watches.filter(w => !w.retired && !w.pending).length} watches &middot; {garments.filter(g => !g.excludeFromWardrobe).length} garments &middot; <span style={{ color: isDark ? "#6b7280" : "#9ca3af" }}>v{__BUILD_NUMBER__}</span>
+          Watch-first outfit planner &middot; {watches.filter(isActiveWatch).length} watches &middot; {garments.filter(g => !g.excludeFromWardrobe).length} garments &middot; <span style={{ color: isDark ? "#6b7280" : "#9ca3af" }}>v{__BUILD_NUMBER__}</span>
         </div>
       </div>
       <div className="wa-header-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>

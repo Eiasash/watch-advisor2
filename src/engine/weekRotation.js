@@ -1,5 +1,6 @@
 import { scoreWatchForDay } from "./dayProfile.js";
 import { recentWatchIds } from "../domain/historyWindow.js";
+import { isActiveWatch } from "../utils/watchFilters.js";
 
 const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -15,7 +16,7 @@ const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 export function genWeekRotation(watches, history = [], weekCtx = [], onCallDates = []) {
   if (!watches.length) return [];
 
-  const activeWatches = watches.filter(w => !w.retired && !w.pending);
+  const activeWatches = watches.filter(isActiveWatch);
   const active = activeWatches.filter(w => w.status === "active" || !w.status);
   if (!active.length) return [];
 

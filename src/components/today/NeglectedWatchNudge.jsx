@@ -5,6 +5,7 @@
  */
 import React, { useState } from "react";
 import { daysIdle } from "../../domain/rotationStats.js";
+import { isActiveWatch } from "../../utils/watchFilters.js";
 
 const IDLE_THRESHOLD = 14; // days
 
@@ -12,7 +13,7 @@ export default function NeglectedWatchNudge({ watches, history, currentWatchId, 
   const [dismissed, setDismissed] = useState(null); // dismissed watchId
   if (!watches?.length || !history?.length) return null;
 
-  const genuine = watches.filter(w => !w.replica && !w.retired && !w.pending);
+  const genuine = watches.filter(w => isActiveWatch(w) && !w.replica);
   if (!genuine.length) return null;
 
   // Find the most idle genuine watch that isn't already selected
