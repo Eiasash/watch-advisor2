@@ -46,9 +46,11 @@ describe("genWeekRotation", () => {
   it("uses weekCtx context when provided", () => {
     const weekCtx = ["casual", "formal", "hospital-smart-casual", "smart-casual", "travel", "casual", "casual"];
     const result = genWeekRotation(WATCH_COLLECTION, [], weekCtx, []);
-    // The context should be applied based on day of week
+    // genWeekRotation uses getUTCDay() for dayIdx (see weekRotation.js line 41 —
+    // explicitly UTC for consistency with the UTC dateKey). Test must use the
+    // same to avoid TZ-edge flakes when local day differs from UTC day.
     const today = new Date();
-    const dayIdx = today.getDay();
+    const dayIdx = today.getUTCDay();
     expect(result[0].ctx).toBe(weekCtx[dayIdx]);
   });
 

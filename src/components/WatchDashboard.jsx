@@ -12,6 +12,7 @@ import { useStrapStore } from "../stores/strapStore.js";
 import { useRejectStore } from "../stores/rejectStore.js";
 import { normalizeType } from "../classifier/normalizeType.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
+import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 const DIAL_SWATCH = {
   "silver-white": "#e8e8e0",
@@ -828,9 +829,7 @@ export default function WatchDashboard() {
               // Feed style learning — record worn garments so preference weights evolve
               const wornGarments = slots.map(s => mergedOutfit[s]).filter(Boolean);
               if (wornGarments.length > 0) {
-                import("../stores/styleLearnStore.js").then(({ useStyleLearnStore }) => {
-                  useStyleLearnStore.getState().recordWear(wornGarments);
-                }).catch(() => {});
+                try { useStyleLearnStore.getState().recordWear(wornGarments); } catch { /* non-fatal */ }
               }
               setOutfitLogged(true);
               setTimeout(() => setOutfitLogged(false), 3000);
