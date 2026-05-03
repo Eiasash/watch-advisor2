@@ -117,7 +117,7 @@ export function sampleOutfitsForStrap(strap, watch) {
   } else if (isBrownish) {
     recs.push({ context: "Smart casual", shoes: "Brown Eccos / cognac leather", note: "Warm leather harmony" });
   } else if (isCool) {
-    recs.push({ context: "Smart casual", shoes: "White sneakers or navy loafer", note: "Cool palette anchors" });
+    recs.push({ context: "Smart casual", shoes: "White sneakers or navy canvas sneakers", note: "Cool palette anchors" });
   } else if (isWarm) {
     recs.push({ context: "Date night", shoes: "Brown leather", note: "Warm tones echo" });
   } else {
@@ -128,7 +128,7 @@ export function sampleOutfitsForStrap(strap, watch) {
   if (type === "leather" || type === "alligator") {
     recs.push({ context: "Cool weather", shoes: "Lower the cuff to expose the strap", note: "Leather earns its presence in autumn" });
   } else if (type === "rubber" || type === "nato" || type === "canvas") {
-    recs.push({ context: "Hot weather", shoes: "Loafers or sneakers", note: "Sweat-resistant strap, summer-friendly" });
+    recs.push({ context: "Hot weather", shoes: "Canvas or minimal leather sneakers", note: "Sweat-resistant strap, summer-friendly" });
   }
 
   // Watch context anchor
