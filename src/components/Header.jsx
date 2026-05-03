@@ -3,6 +3,7 @@ import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
+import { GitHubLoginButton } from "./GitHubLoginButton.jsx";
 
 export default function Header({ onOpenSettings, onOpenSearch }) {
   const watches = useWatchStore(s => s.watches) ?? [];
@@ -32,6 +33,9 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
         </div>
       </div>
       <div className="wa-header-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* GitHub auth — required when AUTH_GATE_ENABLED=true on the server.
+            Visible by default so the user always knows their sign-in state. */}
+        <GitHubLoginButton />
         {/* Search / Command Palette */}
         <button
           onClick={onOpenSearch}
