@@ -525,6 +525,12 @@ export async function handler(event) {
   } catch (err) {
     console.error("[daily-pick] Error:", err.message);
     const isBilling = err.message?.includes("BILLING");
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: isBilling ? err.message : "Daily pick generation failed" }) };
+    // Diagnostic mode: surface the first ~250 chars of the underlying error so
+    // we can see whether it's an Anthropic 4xx (model name, bad param), a
+    // Supabase issue, or something else. Safe to expose — no creds in messages.
+    // Strip back to "Daily pick generation failed" once the failure mode is
+    // characterized and fixed.
+    const detail = err.message ? String(err.message).slice(0, 250) : "Daily pick generation failed";
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: isBilling ? err.message : detail }) };
   }
 }
