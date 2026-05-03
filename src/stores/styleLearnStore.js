@@ -5,7 +5,7 @@
  * Persisted to localCache under "styleLearning".
  */
 import { create } from "zustand";
-// localCache loaded lazily to stay test-safe (no IndexedDB in vitest)
+import { getCachedState, setCachedState } from "../services/localCache.js";
 
 function nudge(map, key, delta) {
   if (!key) return;
@@ -28,10 +28,8 @@ export const useStyleLearnStore = create((set, get) => ({
     decayAll(profile.types);
     set({ profile });
     // Persist decayed state
-    import("../services/localCache.js").then(({ getCachedState, setCachedState }) =>
-      getCachedState().then(cached =>
-        setCachedState({ ...cached, styleLearning: profile })
-      )
+    getCachedState().then(cached =>
+      setCachedState({ ...cached, styleLearning: profile })
     ).catch(() => {});
   },
 
@@ -43,10 +41,8 @@ export const useStyleLearnStore = create((set, get) => ({
         nudge(p.colors, g.color, +0.02);
         nudge(p.types, g.type || g.garmentType, +0.02);
       });
-      import("../services/localCache.js").then(({ getCachedState, setCachedState }) =>
-        getCachedState().then(cached =>
-          setCachedState({ ...cached, styleLearning: p })
-        )
+      getCachedState().then(cached =>
+        setCachedState({ ...cached, styleLearning: p })
       ).catch(() => {});
       return { profile: p };
     });

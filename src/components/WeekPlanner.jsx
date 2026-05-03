@@ -8,8 +8,9 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
 import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
+import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
-import { setCachedState } from "../services/localCache.js";
+import { setCachedState, getCachedState } from "../services/localCache.js";
 import { fetchWeatherForecast, getLayerRecommendation, getLayerTransition } from "../weather/weatherService.js";
 import WeekPlanLock from "./plan/WeekPlanLock.jsx";
 
@@ -984,8 +985,7 @@ export default function WeekPlanner() {
   useEffect(() => {
     (async () => {
       try {
-        const { getCachedState: getCache } = await import("../services/localCache.js");
-        const cached = await getCache();
+        const cached = await getCachedState();
         const now = Date.now();
         if (cached._forecast && cached._forecastTs && (now - cached._forecastTs) < 3600000) {
           setForecast(cached._forecast);
@@ -1909,9 +1909,7 @@ export default function WeekPlanner() {
             // Feed style learning — resolve garment objects from IDs
             const wornG = garmentIds.map(id => garments.find(g => g.id === id)).filter(Boolean);
             if (wornG.length > 0) {
-              import("../stores/styleLearnStore.js").then(({ useStyleLearnStore }) => {
-                useStyleLearnStore.getState().recordWear(wornG);
-              }).catch(() => {});
+              try { useStyleLearnStore.getState().recordWear(wornG); } catch { /* non-fatal */ }
             }
             setPendingLog(null);
           }}

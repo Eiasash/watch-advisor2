@@ -14,6 +14,7 @@ import { fetchWeather }     from "../weather/weatherService.js";
 import { neglectedGenuine, wearStreak } from "../domain/rotationStats.js";
 import { useRecommendationEngine } from "../hooks/useRecommendationEngine.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
+import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 import { useTodayFormState }       from "../hooks/useTodayFormState.js";
 
 import WatchPicker, { daysSinceWorn } from "./today/WatchPicker.jsx";
@@ -199,7 +200,6 @@ export default function TodayPanel() {
 
     // Style learning — writes to the store that scoreGarment reads from.
     try {
-      const { useStyleLearnStore } = await import("../stores/styleLearnStore.js");
       const wornG = garments.filter(g => selected.has(g.id));
       useStyleLearnStore.getState().recordWear(wornG);
     } catch(_) {}

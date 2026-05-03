@@ -14,6 +14,7 @@
 
 import { db } from "../db.js";
 import { safeLoad } from "../dbSafeLoad.js";
+import { getCachedState } from "../localCache.js";
 
 // useHistoryStore imported lazily inside functions to break the circular dependency:
 // historyPersistence → historyStore → historyPersistence
@@ -38,7 +39,6 @@ export async function loadAll() {
   // One-time migration: if indexed store is empty, pull from legacy blob
   if (entries.length === 0) {
     try {
-      const { getCachedState } = await import("../localCache.js");
       const cached = await getCachedState();
       if (Array.isArray(cached?.history) && cached.history.length > 0) {
         await db.putAll(STORE, cached.history);

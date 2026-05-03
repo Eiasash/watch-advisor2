@@ -4,6 +4,7 @@
 
 import { supabase } from "./supabaseClient.js";
 import { IS_PLACEHOLDER } from "./supabaseSyncState.js";
+import { useWardrobeStore } from "../stores/wardrobeStore.js";
 
 /**
  * Upload a photo file (or base64 data URL) to Supabase Storage.
@@ -115,8 +116,7 @@ async function _doPullThumbs() {
       }
     }
 
-    // Patch wardrobeStore — dynamic import to avoid circular deps
-    const { useWardrobeStore } = await import("../stores/wardrobeStore.js");
+    // Patch wardrobeStore (no circular: wardrobeStore doesn't import this file)
     const store = useWardrobeStore.getState();
     const patched = store.garments.map(g => {
       const th = thumbMap[g.id];

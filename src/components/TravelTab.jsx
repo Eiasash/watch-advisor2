@@ -13,6 +13,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useTravelStore } from "../stores/travelStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
+import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import {
@@ -25,12 +26,9 @@ const ACCESSORY_TYPES = new Set([
   "outfit-photo", "outfit-shot", "belt", "sunglasses", "hat", "scarf", "bag", "accessory",
 ]);
 
-// Lazy-load buildOutfit so the engine chunk doesn't bloat the Travel tab
-let _enginePromise = null;
-function loadEngine() {
-  if (!_enginePromise) _enginePromise = import("../outfitEngine/outfitBuilder.js");
-  return _enginePromise;
-}
+// outfitBuilder is statically imported elsewhere (OnCallPlanner, WatchDashboard,
+// WeekPlanner) so the dynamic-load wrapper here saved nothing — the module is
+// always already in the main bundle. Static import + Vite warning cleared.
 
 function TripForm({ onSave, isDark }) {
   const [destination, setDestination] = useState("");
@@ -137,20 +135,17 @@ function TripDetail({ trip, onRemove, isDark }) {
     const wearable = garments.filter(g => !ACCESSORY_TYPES.has(g.type) && !g.excludeFromWardrobe);
     if (!wearable.length) return;
 
-    loadEngine().then(({ buildOutfit }) => {
-      if (cancelled) return;
-      const result = {};
-      for (const day of assigned) {
-        try {
-          const ctx = (day.tempC != null && day.tempC > 22) ? "casual" : "smart-casual";
-          const o = buildOutfit(day.watch, wearable, { tempC: day.tempC ?? 18 }, entries, [], {}, {}, ctx);
-          result[day.date] = o ?? null;
-        } catch (_) {
-          result[day.date] = null;
-        }
+    const result = {};
+    for (const day of assigned) {
+      try {
+        const ctx = (day.tempC != null && day.tempC > 22) ? "casual" : "smart-casual";
+        const o = buildOutfit(day.watch, wearable, { tempC: day.tempC ?? 18 }, entries, [], {}, {}, ctx);
+        result[day.date] = o ?? null;
+      } catch (_) {
+        result[day.date] = null;
       }
-      if (!cancelled) setOutfits(result);
-    });
+    }
+    if (!cancelled) setOutfits(result);
     return () => { cancelled = true; };
   }, [assigned, garments, entries]);
 
