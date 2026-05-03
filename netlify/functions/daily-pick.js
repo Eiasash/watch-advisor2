@@ -454,16 +454,19 @@ export async function handler(event) {
     });
 
     const model = await getConfiguredModel();
-    // Bumped from 800 → 2200 (4400 for variants) to give Opus 4.7 + adaptive
-    // thinking room. If Netlify free-tier 10s timeout becomes an issue, dial
-    // `effort` from "high" → "medium" or remove `thinking` entirely.
+    // Effort "medium" (was "high") to fit Netlify free-tier 10s ceiling now that
+    // PR #128 added ~400 tokens of personalization context. With high effort + the
+    // larger prompt, calls were returning the gateway timeout HTML instead of JSON.
+    // Adaptive thinking + 2200 tokens preserved — the rec quality bottleneck is
+    // prompt-grounding, not raw thinking budget. If quality regresses on complex
+    // contexts, upgrade to Netlify Pro (26s ceiling) and bump back to "high".
     const maxTokens = variants > 1 ? 2200 + (variants - 1) * 1500 : 2200;
     const result = await callClaude(apiKey, {
       model,
       max_tokens: maxTokens,
       system: systemPrompt,
       thinking: { type: "adaptive" },
-      output_config: { effort: "high" },
+      output_config: { effort: "medium" },
       messages: [{ role: "user", content: userPrompt }],
     }, { maxAttempts: 1 });
 
