@@ -454,18 +454,22 @@ export async function handler(event) {
     });
 
     const model = await getConfiguredModel();
-    // Effort "medium" (was "high") to fit Netlify free-tier 10s ceiling now that
-    // PR #128 added ~400 tokens of personalization context. With high effort + the
-    // larger prompt, calls were returning the gateway timeout HTML instead of JSON.
-    // Adaptive thinking + 2200 tokens preserved — the rec quality bottleneck is
-    // prompt-grounding, not raw thinking budget. If quality regresses on complex
-    // contexts, upgrade to Netlify Pro (26s ceiling) and bump back to "high".
+    // Inference settings tuned for Netlify free-tier 10s function ceiling.
+    // Evolution:
+    //   PR #122: opus-4-7 + adaptive thinking + high effort + 2200 tokens
+    //   ce2fa47: rolled back to sonnet-4-6 (opus-4-7 ID didn't exist yet)
+    //   PR #128: added ~400 tokens of personalization context (NEWLY ADDED, etc)
+    //   PR #129: effort high → medium  (wasn't enough — calls still 504'd at 30s)
+    //   THIS PR: dropped `thinking: adaptive` because the personalization signals
+    //            already do most of the reasoning work upfront — the model doesn't
+    //            need additional thinking tokens to figure out which garments to
+    //            prefer when we've explicitly labeled them NEW/UNDER/OVER for it.
+    // If quality regresses, upgrade to Netlify Pro (26s) and re-add thinking.
     const maxTokens = variants > 1 ? 2200 + (variants - 1) * 1500 : 2200;
     const result = await callClaude(apiKey, {
       model,
       max_tokens: maxTokens,
       system: systemPrompt,
-      thinking: { type: "adaptive" },
       output_config: { effort: "medium" },
       messages: [{ role: "user", content: userPrompt }],
     }, { maxAttempts: 1 });
