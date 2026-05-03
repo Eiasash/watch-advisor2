@@ -5,6 +5,7 @@
  */
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 
 export async function handler(event) {
@@ -12,6 +13,10 @@ export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS };
   }
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
+
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: "Method not allowed" }) };
   }

@@ -5,6 +5,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useThemeStore } from "../stores/themeStore.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
+import { authedFetch } from "../services/authedFetch.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
 
@@ -119,7 +120,7 @@ export default function WardrobeChat({ weather, todayContext }) {
     setLoading(true);
 
     try {
-      const res = await fetch("/.netlify/functions/wardrobe-chat", {
+      const res = await authedFetch("/.netlify/functions/wardrobe-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

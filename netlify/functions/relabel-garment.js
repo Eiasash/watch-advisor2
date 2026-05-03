@@ -1,5 +1,6 @@
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 /**
  * AI relabel — Claude Vision checks a garment photo + optional extra angles.
  * Returns { confirmed, corrections: { type?, color?, color_alternatives?, material?, name?, formality? }, confidence, reason }
@@ -8,6 +9,9 @@ import { cors } from "./_cors.js";
 export async function handler(event) {
   const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
 
   try {
     const { image, current, allAngles = [] } = JSON.parse(event.body ?? "{}");

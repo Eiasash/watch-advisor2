@@ -11,6 +11,7 @@ import { isActiveWatch } from "../utils/watchFilters.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
+import { authedFetch } from "../services/authedFetch.js";
 import { fetchWeatherForecast, getLayerRecommendation, getLayerTransition } from "../weather/weatherService.js";
 import WeekPlanLock from "./plan/WeekPlanLock.jsx";
 
@@ -1301,7 +1302,7 @@ export default function WeekPlanner() {
         ...(rejected ? { rejected } : {}),
         ...(pastCorrections.length ? { pastCorrections } : {}),
       };
-      const res = await fetch("/.netlify/functions/daily-pick", {
+      const res = await authedFetch("/.netlify/functions/daily-pick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -1400,7 +1401,7 @@ export default function WeekPlanner() {
     if (!last) return;
     setAiRationale(prev => ({ ...prev, [date]: { text: null, loading: true } }));
     try {
-      const res = await fetch("/.netlify/functions/daily-pick", {
+      const res = await authedFetch("/.netlify/functions/daily-pick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ why: true, currentPick: last }),

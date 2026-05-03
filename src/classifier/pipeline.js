@@ -10,6 +10,7 @@
  */
 
 import { classify, analyzeImageContent } from "../features/wardrobe/classifier.js";
+import { authedFetch } from "../services/authedFetch.js";
 import { processImage } from "../services/imagePipeline.js";
 import { enqueueOriginalCache } from "../services/photoQueue.js";
 import { normalizeType } from "./normalizeType.js";
@@ -63,7 +64,7 @@ export function normalizeAIColor(aiColor) {
  */
 async function claudeVisionFallback(imageBase64, hash, onLog = null) {
   try {
-    const res = await fetch("/.netlify/functions/classify-image", {
+    const res = await authedFetch("/.netlify/functions/classify-image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: imageBase64, hash }),

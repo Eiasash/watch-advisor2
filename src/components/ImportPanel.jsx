@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { runClassifierPipeline } from "../classifier/pipeline.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { setCachedState } from "../services/localCache.js";
+import { authedFetch } from "../services/authedFetch.js";
 import { pushGarment, uploadPhoto, uploadAngle } from "../services/supabaseSync.js";
 import { enqueueTask } from "../services/backgroundQueue.js";
 import { useWatchStore } from "../stores/watchStore.js";
@@ -29,7 +30,7 @@ function hammingDist(a, b) {
 async function aiDuplicateCheck(thumbA, thumbB) {
   try {
     const stripPrefix = s => s.replace(/^data:image\/[^;]+;base64,/, "");
-    const res = await fetch("/.netlify/functions/detect-duplicate", {
+    const res = await authedFetch("/.netlify/functions/detect-duplicate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageA: stripPrefix(thumbA), imageB: stripPrefix(thumbB) }),

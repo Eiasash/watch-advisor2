@@ -3,6 +3,7 @@
  */
 
 import { supabase } from "./supabaseClient.js";
+import { authedFetch } from "./authedFetch.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
 import { toArray } from "../utils/toArray.js";
 import { IS_PLACEHOLDER, setSyncState, getSyncState } from "./supabaseSyncState.js";
@@ -201,7 +202,7 @@ async function _embedGarment(garment) {
 
     const text = [garment.name, garment.subtype, garment.type, garment.color, garment.brand, garment.notes]
       .filter(Boolean).join(" ");
-    const res = await fetch("/.netlify/functions/generate-embedding", {
+    const res = await authedFetch("/.netlify/functions/generate-embedding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ garmentId: garment.id, text }),

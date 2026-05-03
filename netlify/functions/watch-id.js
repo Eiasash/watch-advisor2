@@ -7,11 +7,16 @@
 import { cacheGet, cacheSet, hashText } from "./_blobCache.js";
 import { callClaude, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 export async function handler(event) {
   const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode:204, headers:CORS };
   if (event.httpMethod !== "POST") return { statusCode:405, headers:CORS, body:JSON.stringify({ error:"Method not allowed" }) };
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
+
   try {
     const { image, collection } = JSON.parse(event.body ?? "{}");
     const apiKey = process.env.CLAUDE_API_KEY;

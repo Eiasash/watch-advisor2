@@ -6,6 +6,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { pushGarment, deleteGarment as deleteGarmentCloud, uploadAngle } from "../services/supabaseSync.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
 import { enqueueTask, getPendingTasks, subscribeQueue } from "../services/backgroundQueue.js";
+import { authedFetch } from "../services/authedFetch.js";
 
 const DebugConsole = lazy(() => import("./DebugConsole.jsx"));
 import WardrobeGapAnalysis from "./audit/WardrobeGapAnalysis.jsx";
@@ -107,7 +108,7 @@ Provide a precise, critical wardrobe audit. Reference specific items. Return ONL
   const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s client timeout
   let res;
   try {
-    res = await fetch("/.netlify/functions/ai-audit", {
+    res = await authedFetch("/.netlify/functions/ai-audit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
@@ -402,7 +403,7 @@ async function verifyPhoto(garment, allGarments) {
   if (photo.startsWith("data:")) body.imageBase64 = photo;
   else body.imageUrl = photo;
 
-  const res = await fetch("/.netlify/functions/verify-garment-photo", {
+  const res = await authedFetch("/.netlify/functions/verify-garment-photo", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -969,7 +970,7 @@ function CollectionValuePanel({ isDark }) {
   const fetchValue = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/.netlify/functions/watch-value", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const res = await authedFetch("/.netlify/functions/watch-value", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       setData(await res.json());
     } catch (_) {} finally { setLoading(false); }
   };
@@ -1289,7 +1290,7 @@ function OrphanedHistoryPatch({ isDark }) {
         reader.readAsDataURL(file);
       });
 
-      const resp = await fetch("/.netlify/functions/classify-image", {
+      const resp = await authedFetch("/.netlify/functions/classify-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: base64 }),

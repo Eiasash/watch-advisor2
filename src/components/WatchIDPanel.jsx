@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { useThemeStore } from "../stores/themeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
+import { authedFetch } from "../services/authedFetch.js";
 
 function resizeImage(file, maxPx = 1200) {
   return new Promise(resolve => {
@@ -56,7 +57,7 @@ export default function WatchIDPanel({ onIdentified }) {
     setResult(null);
     setLoading(true);
     try {
-      const res = await fetch("/.netlify/functions/watch-id", {
+      const res = await authedFetch("/.netlify/functions/watch-id", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

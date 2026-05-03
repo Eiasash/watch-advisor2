@@ -8,6 +8,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 
 // Known market values (ILS) — manually maintained, updated periodically
@@ -38,6 +39,9 @@ function sb() {
 export async function handler(event) {
   const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
 
   try {
     const supabase = sb();

@@ -1,5 +1,6 @@
 import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 /**
  * Netlify function — AI Wardrobe Audit
  * POST body: { prompt: string }
@@ -12,6 +13,9 @@ export async function handler(event) {
 
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: "Method not allowed" }) };
+
+  const auth = await requireUser(event);
+  if (auth.error) return { statusCode: auth.statusCode, headers: JSON_HEADERS, body: JSON.stringify({ error: auth.error }) };
 
   const secret = event.headers?.["x-api-secret"];
   if (!process.env.OPEN_API_KEY || !secret || secret !== process.env.OPEN_API_KEY) {

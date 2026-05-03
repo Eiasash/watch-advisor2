@@ -3,9 +3,11 @@
  * Sends engine's current outfit to the Netlify function for validation/improvement.
  */
 
+import { authedFetch } from "../services/authedFetch.js";
+
 export async function getAISuggestion(garments, watch, weather, engineOutfit = {}, dayProfile = "smart-casual", pinnedSlots = {}) {
   try {
-    const res = await fetch("/.netlify/functions/claude-stylist", {
+    const res = await authedFetch("/.netlify/functions/claude-stylist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
