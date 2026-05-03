@@ -163,7 +163,7 @@ function categorizeGarments(garments, history, opts = {}) {
  * VOLATILE per-call data: today's date, weather, recent history, wardrobe,
  * steer/exclude/rejected/pastCorrections feedback. Goes in the user message.
  */
-function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants, personalization, recentRejections }) {
+function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants, personalization, recentRejections, pinnedWatch }) {
   const variantClause = variants > 1
     ? `Return a JSON ARRAY of ${variants} DISTINCT outfit objects (each must use a different watch). Do NOT wrap in markdown.`
     : "Respond ONLY with a single JSON object, no markdown.";
@@ -188,6 +188,26 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
     const o = rejected.outfit ?? {};
     const w = o.watch ?? o.watchId ?? "(unknown watch)";
     rejectedBlock = `\nUSER REJECTED a prior suggestion (${w} + ${o.shirt ?? o.sweater ?? "?"} + ${o.pants ?? "?"} + ${o.shoes ?? "?"}). Reason: "${rejected.reason ?? "no reason given"}". Avoid the same direction.\n`;
+  }
+
+  // Watch pinning: when WeekPlanner pre-selects a watch via deterministic
+  // rotation (e.g. most-idle), the model MUST use that exact watch. Without
+  // this, the model picks its own watch and the planner UI ends up displaying
+  // the planner's watch alongside reasoning text about a different one — the
+  // 2026-05-04 BB41/Rikka mismatch incident.
+  let pinnedWatchBlock = "";
+  if (pinnedWatch && typeof pinnedWatch === "object" && pinnedWatch.id) {
+    const w = pinnedWatch;
+    const strapsTxt = Array.isArray(w.straps) && w.straps.length
+      ? w.straps.map(s => `${s.label} (${s.color}, ${s.type})`).join("; ")
+      : "default";
+    pinnedWatchBlock = `\nPINNED WATCH (use EXACTLY this — do NOT pick a different watch):
+  watch: ${w.brand} ${w.model}
+  watchId: ${w.id}
+  dial: ${w.dial ?? "?"}
+  style: ${w.style ?? "?"} · formality ${w.formality ?? 5}/10
+  straps available: ${strapsTxt}
+Your job is to pick the OUTFIT (clothes + strap choice from the available straps), NOT the watch. The "watch" and "watchId" fields in your response MUST match the pinned values above.\n`;
   }
 
   let correctionsBlock = "";
@@ -242,7 +262,7 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
 
   return `DATE: ${todayStr}
 WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
-${steerLine}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
+${steerLine}${pinnedWatchBlock}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
 RECENT WATCHES WORN (avoid repeats):
 ${recentWatches || "No recent data"}
 
@@ -320,6 +340,13 @@ export async function handler(event) {
     const pastCorrections = Array.isArray(body.pastCorrections)
       ? body.pastCorrections.slice(0, 20).filter(c => c && typeof c === "object")
       : [];
+    // Pinned watch: WeekPlanner sends day.watch so the AI generates outfit FOR
+    // that watch instead of picking its own. Accepts either a full watch object
+    // or just an id (in which case we resolve from the wardrobe later — but
+    // WeekPlanner currently sends the whole object, which is preferred).
+    const pinnedWatch = body.pinnedWatch && typeof body.pinnedWatch === "object" && body.pinnedWatch.id
+      ? body.pinnedWatch
+      : null;
     const why = body.why === true;
     const currentPick = body.currentPick && typeof body.currentPick === "object" ? body.currentPick : null;
     const variants = Math.max(1, Math.min(3, parseInt(body.variants, 10) || 1));
@@ -470,6 +497,7 @@ export async function handler(event) {
       variants,
       personalization,
       recentRejections,
+      pinnedWatch,
     });
 
     // Inference settings tuned for Netlify free-tier 10s function ceiling.

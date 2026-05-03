@@ -1294,9 +1294,25 @@ export default function WeekPlanner() {
         return out.slice(0, 12);
       })();
 
+      // Find this day's planner-selected watch — pin it so the AI generates
+      // outfit FOR this exact watch instead of picking its own (which caused
+      // the 2026-05-04 reasoning/UI mismatch where text mentioned GS Rikka
+      // but the planner showed Tudor BB41).
+      const dayObj = rotation.find(d => d.date === date);
+      const pinnedWatch = dayObj?.watch ? {
+        id: dayObj.watch.id,
+        brand: dayObj.watch.brand,
+        model: dayObj.watch.model,
+        dial: dayObj.watch.dial,
+        style: dayObj.watch.style,
+        formality: dayObj.watch.formality,
+        straps: dayObj.watch.straps,
+      } : null;
+
       const body = {
         forceRefresh: true,
         weather,
+        ...(pinnedWatch ? { pinnedWatch } : {}),
         ...(steer ? { steer } : {}),
         ...(useExclude && recent.length ? { excludeRecent: recent } : {}),
         ...(rejected ? { rejected } : {}),
