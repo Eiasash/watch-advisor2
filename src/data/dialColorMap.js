@@ -16,14 +16,14 @@ export const GARMENT_COLOR_FAMILIES = {
   white:    ["white", "cream", "ivory", "ecru", "off-white"],
   grey:     ["grey", "gray", "slate", "ash"],
   navy:     ["navy", "indigo", "dark navy"],
-  blue:     ["blue", "cobalt", "denim"],
+  blue:     ["blue", "cobalt", "cobalt-blue", "denim", "light-blue", "slate-blue"],
   green:    ["green", "olive", "sage", "khaki", "military"],
   earth:    ["brown", "tan", "camel", "cognac", "sand", "stone", "beige"],
   burgundy: ["burgundy", "wine", "maroon", "brick", "rust"],
   teal:     ["teal", "turquoise"],
-  warm:     ["red", "coral", "orange"],
+  warm:     ["red", "coral", "orange", "salmon"],
   purple:   ["purple", "lavender", "violet"],
-  yellow:   ["yellow", "mustard"],
+  yellow:   ["yellow", "mustard", "amber"],
 };
 
 /**
@@ -56,5 +56,5 @@ export const DIAL_COLOR_MAP = {
   "turquoise":    ["white", "beige", "stone", "navy", "cream", "charcoal", "khaki", "tan", "denim"],
   "red":          ["black", "grey", "white", "navy", "charcoal", "cream", "denim"],
   "meteorite":    ["black", "grey", "navy", "white", "brown", "charcoal", "olive", "khaki", "tan", "denim", "camel"],
-  "champagne":    ["cream", "ecru", "beige", "tan", "camel", "brown", "cognac", "stone", "sand", "navy", "black", "charcoal", "grey", "gray", "white", "olive", "khaki", "denim", "burgundy", "brick"],
+  "champagne":    ["cream", "ecru", "beige", "tan", "camel", "brown", "cognac", "stone", "sand", "navy", "black", "charcoal", "grey", "gray", "white", "olive", "khaki", "denim", "burgundy", "brick", "mustard", "amber"],
 };
