@@ -8,11 +8,13 @@ inside a single code change.
 
 ### 1. `OPEN_API_KEY` is exposed in git history
 
-The value
-`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`
-was hardcoded in `.claude/settings.json` in commit `a69c7ea` and remains in
-`git log --all` even after redaction of the live file. Anyone who pulls this
-repo (public) can read it.
+A previous `OPEN_API_KEY` value was hardcoded in `.claude/settings.json` at
+commit `a69c7ea` and remains in `git log --all` even after redaction of the
+live file. The literal value is intentionally NOT repeated here — quoting it
+in tracked docs only widens exposure. Retrieve it once via
+`git show a69c7ea:.claude/settings.json` if you need to confirm it for
+revocation, then close the terminal scrollback. Anyone who has ever pulled
+this public repo can read it.
 
 **This secret grants**: permission to call `/.netlify/functions/github-pat`,
 which in turn returns a GitHub PAT with push access to `Eiasash/watch-advisor2`.
