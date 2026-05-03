@@ -1,6 +1,7 @@
 import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js";
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 // Exported for unit testing — see tests/dailyPickPersonalization.test.js
 export { categorizeGarments };
@@ -287,6 +288,15 @@ export async function handler(event) {
   const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS };
+  }
+
+  // Auth gate (rollout-flagged via AUTH_GATE_ENABLED env var; see _auth.js).
+  // When the flag is unset/false the gate returns success without checking,
+  // preserving pre-rollout behavior. Flip the env var on Netlify dashboard
+  // to activate the gate after confirming GitHub sign-in works.
+  const auth = await requireUser(event);
+  if (auth.error) {
+    return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
   }
 
   const apiKey = process.env.CLAUDE_API_KEY;

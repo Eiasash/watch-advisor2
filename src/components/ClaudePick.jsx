@@ -4,6 +4,7 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
+import { authedFetch } from "../services/authedFetch.js";
 
 const SLOT_ICONS = { watch: "⌚", shirt: "👔", sweater: "🧶", layer: "🧥", pants: "👖", shoes: "👞", jacket: "🧥", belt: "🪢" };
 const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
@@ -104,7 +105,7 @@ export default function ClaudePick({ autoFetch = false } = {}) {
       const url = "/.netlify/functions/daily-pick";
       const needsPost = force || steer || useExclude || variantsCount > 1;
       const res = needsPost
-        ? await fetch(url, {
+        ? await authedFetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -114,7 +115,7 @@ export default function ClaudePick({ autoFetch = false } = {}) {
               ...(variantsCount > 1 ? { variants: variantsCount } : {}),
             }),
           })
-        : await fetch(url);
+        : await authedFetch(url);
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -146,7 +147,7 @@ export default function ClaudePick({ autoFetch = false } = {}) {
     }
     setWhyLoading(true);
     try {
-      const res = await fetch("/.netlify/functions/daily-pick", {
+      const res = await authedFetch("/.netlify/functions/daily-pick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ why: true, currentPick: compactPick(pick) }),
@@ -169,7 +170,7 @@ export default function ClaudePick({ autoFetch = false } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/.netlify/functions/daily-pick", {
+      const res = await authedFetch("/.netlify/functions/daily-pick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
