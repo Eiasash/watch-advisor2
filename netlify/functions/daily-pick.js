@@ -453,21 +453,28 @@ export async function handler(event) {
       recentRejections,
     });
 
-    const model = await getConfiguredModel();
     // Inference settings tuned for Netlify free-tier 10s function ceiling.
-    // Evolution:
-    //   PR #122: opus-4-7 + adaptive thinking + high effort + 2200 tokens
-    //   ce2fa47: rolled back to sonnet-4-6 (opus-4-7 ID didn't exist yet)
-    //   PR #128: added ~400 tokens of personalization context (NEWLY ADDED, etc)
-    //   PR #129: effort high → medium  (wasn't enough — calls still 504'd at 30s)
-    //   THIS PR: dropped `thinking: adaptive` because the personalization signals
-    //            already do most of the reasoning work upfront — the model doesn't
-    //            need additional thinking tokens to figure out which garments to
-    //            prefer when we've explicitly labeled them NEW/UNDER/OVER for it.
-    // If quality regresses, upgrade to Netlify Pro (26s) and re-add thinking.
-    const maxTokens = variants > 1 ? 2200 + (variants - 1) * 1500 : 2200;
+    // Live measurement (2026-05-04): Sonnet 4.6 in this Netlify region runs ~40
+    // tokens/sec. With 2200 max_tokens that's ~55s of generation alone — well
+    // past the 10s ceiling regardless of effort/thinking knobs.
+    //
+    // Solution: hardcode Haiku 4.5 (not getConfiguredModel) for daily-pick only.
+    // - Haiku is ~2.5-3x faster than Sonnet
+    // - The structured JSON output with pre-labeled personalization signals is
+    //   exactly Haiku's sweet spot — taste application, not deep reasoning
+    // - getConfiguredModel() stays Sonnet for other callers (wardrobe-chat etc)
+    //   that need its nuance
+    //
+    // max_tokens dropped 2200 → 800 (single) / 2000 (variants ×3): the actual
+    // JSON payload is ~250 tokens; 2200 was an oversized budget the model
+    // treated as license to ramble. Tighter cap = faster + cleaner output.
+    //
+    // If you want Sonnet quality back: upgrade Netlify Pro ($19/mo, 26s ceiling)
+    // and revert the model line + max_tokens to use getConfiguredModel + 2200.
+    const FAST_MODEL = "claude-haiku-4-5-20251001";
+    const maxTokens = variants > 1 ? 800 + (variants - 1) * 600 : 800;
     const result = await callClaude(apiKey, {
-      model,
+      model: FAST_MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
       output_config: { effort: "medium" },
