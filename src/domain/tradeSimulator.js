@@ -43,8 +43,10 @@ function getDialFamily(dial) {
  * @param {number} [opts.cashDelta] - cash paid (negative) or received (positive)
  * @returns {object} impact analysis
  */
+import { isActiveWatch } from "../utils/watchFilters.js";
+
 export function simulateTrade({ collection, history, tradeOut = [], tradeIn, cashDelta = 0 }) {
-  const active = collection.filter(w => !w.retired && !w.pending);
+  const active = collection.filter(isActiveWatch);
   const incoming = Array.isArray(tradeIn) ? tradeIn : tradeIn ? [tradeIn] : [];
 
   // Current state
