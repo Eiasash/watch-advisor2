@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
@@ -1341,6 +1341,50 @@ export default function WeekPlanner() {
       setAiLoadingDay(null);
     }
   }, [garments, watches, recentAiPicks, compactPickForExclude, aiAppliedDays, outfitOverrides]);
+
+  // Auto-load AI rec for today (idx 0) + tomorrow (idx 1) on first render
+  // when watches + forecast are ready.
+  //
+  // Rationale: user explicitly cares most about today + tomorrow. Auto-loading
+  // means the picks are visible immediately when the planner opens — no per-day
+  // tap required for the days they actually act on. Days 2-6 stay opt-in.
+  //
+  // Bounded with two guards so we don't burn Claude credits on tab refreshes:
+  //  1. autoLoadedRef — once-per-component-mount lock
+  //  2. sessionStorage — once-per-browser-session lock per date
+  //     (refresh within session does not re-fire; new tab/session does)
+  //
+  // Existing aiAppliedDays guard means we never auto-fire for a day the user
+  // has already explicitly triggered (their click takes priority).
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (autoLoadedRef.current) return;
+    if (!rotation.length || !forecast?.length || !watches.length) return;
+    autoLoadedRef.current = true;
+
+    const SESSION_KEY = "wa2-weekplanner-autoload-dates";
+    let alreadyAutoLoaded;
+    try {
+      alreadyAutoLoaded = new Set(JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? "[]"));
+    } catch { alreadyAutoLoaded = new Set(); }
+
+    const fired = [];
+    for (const idx of [0, 1]) {
+      const day = rotation[idx];
+      if (!day?.date || !day.watch) continue;
+      if (aiAppliedDays.has(day.date)) continue;
+      if (alreadyAutoLoaded.has(day.date)) continue;
+      const dayForecast = forecast.find(f => f.date === day.date);
+      if (!dayForecast) continue;
+      handleAskClaude(day.date, dayForecast);
+      alreadyAutoLoaded.add(day.date);
+      fired.push(day.date);
+    }
+    if (fired.length) {
+      try { sessionStorage.setItem(SESSION_KEY, JSON.stringify([...alreadyAutoLoaded])); }
+      catch { /* sessionStorage may be disabled — non-fatal */ }
+    }
+  }, [rotation, forecast, watches.length, aiAppliedDays, handleAskClaude]);
 
   // "Why this?" — surface stored reasoning, or call the endpoint with why:true
   // for a fresh rationale on the current day's outfit.
