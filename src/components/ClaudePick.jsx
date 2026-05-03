@@ -275,12 +275,9 @@ export default function ClaudePick({ autoFetch = false } = {}) {
             title="Why this?"
             style={{ padding: "3px 8px", borderRadius: 6, border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 10, cursor: "pointer" }}
           >{whyLoading ? "…" : "?"}</button>
-          <button
-            data-testid="claude-pick-regen"
-            onClick={(e) => { e.stopPropagation(); fetchPick({ force: true, useExclude: true }); }}
-            title="Try again — different outfit"
-            style={{ padding: "3px 8px", borderRadius: 6, border: `1px solid ${border}`, background: "transparent", color: muted, fontSize: 10, cursor: "pointer" }}
-          >{loading ? "..." : "🔄"}</button>
+          {/* Regen lives in the flexibility chip row below ("Different one →") to
+              avoid the duplicate-affordance UX confusion of having two buttons
+              that call fetchPick({force,useExclude}) with identical args. */}
           <span onClick={() => setCollapsed(!collapsed)} style={{ cursor: "pointer", color: muted, fontSize: 10 }}>
             {collapsed ? "▼" : "▲"}
           </span>
