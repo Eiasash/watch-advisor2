@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { useStrapStore } from "../../stores/strapStore.js";
 import { useWatchStore } from "../../stores/watchStore.js";
 import { useThemeStore } from "../../stores/themeStore.js";
+import { isActiveWatch } from "../../utils/watchFilters.js";
 
 export default function StrapHealth() {
   const straps = useStrapStore(s => s.straps) ?? {};
@@ -25,7 +26,7 @@ export default function StrapHealth() {
 
   // Group straps by watch (only non-bracelet straps — bracelets don't wear out)
   const watchGroups = watches
-    .filter(w => !w.retired && !w.pending)
+    .filter(isActiveWatch)
     .map(w => {
       const watchStraps = Object.values(straps)
         .filter(s => s.watchId === w.id && s.type !== "bracelet")

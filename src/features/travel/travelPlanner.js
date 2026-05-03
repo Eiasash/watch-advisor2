@@ -13,6 +13,7 @@
  */
 
 import { scoreWatchForDay } from "../../engine/dayProfile.js";
+import { isActiveWatch } from "../../utils/watchFilters.js";
 
 // Temp distributions (°C) by climate bucket — used when forecast unavailable.
 // Mean ± half-range; produces a per-day temp via deterministic jitter on date.
@@ -88,7 +89,7 @@ export function buildTripDays(trip, forecast = null) {
  */
 export function curateWatchesForTrip(watches, tripDays, history = [], count = 3) {
   if (!Array.isArray(watches) || watches.length === 0) return [];
-  const active = watches.filter(w => !w.retired && !w.pending);
+  const active = watches.filter(isActiveWatch);
 
   // Per-day target profile based on temp:
   //   < 12°C → smart-casual (cooler, layered, formal-ish)

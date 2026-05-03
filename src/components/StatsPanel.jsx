@@ -11,6 +11,7 @@ import { utilizationScore } from "../domain/rotationStats.js";
 import StrapHeatmap from "./stats/StrapHeatmap.jsx";
 import StyleDNA from "./stats/StyleDNA.jsx";
 import StrapHealth from "./stats/StrapHealth.jsx";
+import { isActiveWatch } from "../utils/watchFilters.js";
 
 const COLOR_SWATCH = {
   black:"#1f2937", white:"#f3f4f6", navy:"#1e3a5f", blue:"#2563eb", grey:"#9ca3af",
@@ -304,7 +305,7 @@ export default function StatsPanel() {
           {/* Watch cost per wear */}
           {(() => {
             const watchCpw = watches
-              .filter(w => w.priceILS > 0 && !w.retired && !w.pending)
+              .filter(w => w.priceILS > 0 && isActiveWatch(w))
               .map(w => {
                 const wears = entries.filter(e => e.watchId === w.id).length;
                 return { w, wears, cpw: wears > 0 ? Math.round(w.priceILS / wears) : null };

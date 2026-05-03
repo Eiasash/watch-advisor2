@@ -13,6 +13,7 @@ import { scoreWatchForDay } from "../engine/dayProfile.js";
 import { fetchWeather }     from "../weather/weatherService.js";
 import { neglectedGenuine, wearStreak } from "../domain/rotationStats.js";
 import { useRecommendationEngine } from "../hooks/useRecommendationEngine.js";
+import { isActiveWatch } from "../utils/watchFilters.js";
 import { useTodayFormState }       from "../hooks/useTodayFormState.js";
 
 import WatchPicker, { daysSinceWorn } from "./today/WatchPicker.jsx";
@@ -71,7 +72,7 @@ const CONTEXT_OPTIONS = [
 /** Get top AI-recommended watches for today's context with scores */
 function getWatchRecommendations(watches, history, context) {
   if (!watches.length) return [];
-  const active = watches.filter(w => !w.retired && !w.pending);
+  const active = watches.filter(isActiveWatch);
   const scored = active.map(w => ({
     watch: w,
     score: scoreWatchForDay(w, context, history),
@@ -127,7 +128,7 @@ export default function TodayPanel() {
   const defaultWatchId = useMemo(() => {
     if (todayEntry?.watchId) return todayEntry.watchId;
     const recs = getWatchRecommendations(watches, entries, null);
-    return recs[0]?.watch?.id ?? watches.find(w => !w.retired && !w.pending)?.id ?? null;
+    return recs[0]?.watch?.id ?? watches.find(isActiveWatch)?.id ?? null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
@@ -157,7 +158,7 @@ export default function TodayPanel() {
   const text   = isDark ? "#e2e8f0" : "#1f2937";
   const muted  = isDark ? "#8b93a7" : "#9ca3af";
 
-  const active         = watches.filter(w => !w.retired && !w.pending);
+  const active         = watches.filter(isActiveWatch);
   const selectedWatch  = watches.find(w => w.id === watchId);
   const watchStraps    = Object.values(straps).filter(s => s.watchId === watchId);
   const activeStrapId  = activeStrap[watchId];

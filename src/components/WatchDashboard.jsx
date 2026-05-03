@@ -11,6 +11,7 @@ import WatchSelector from "../features/watch/WatchSelector.jsx";
 import { useStrapStore } from "../stores/strapStore.js";
 import { useRejectStore } from "../stores/rejectStore.js";
 import { normalizeType } from "../classifier/normalizeType.js";
+import { isActiveWatch } from "../utils/watchFilters.js";
 
 const DIAL_SWATCH = {
   "silver-white": "#e8e8e0",
@@ -328,7 +329,7 @@ export default function WatchDashboard() {
     return () => clearTimeout(t);
   }, []);
 
-  const selectedWatch = activeWatch ?? watches.find(w => !w.retired && !w.pending) ?? null;
+  const selectedWatch = activeWatch ?? watches.find(isActiveWatch) ?? null;
   const _activeStrapId  = selectedWatch ? strapActiveMap[selectedWatch.id] : null;
   const activeStrapObj  = _activeStrapId ? strapStraps[_activeStrapId] : null;
 

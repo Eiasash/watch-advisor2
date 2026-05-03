@@ -13,6 +13,7 @@ import { useWatchStore }    from "../stores/watchStore.js";
 import { useStrapStore }    from "../stores/strapStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
+import { isActiveWatch }    from "../utils/watchFilters.js";
 import { buildOutfit }      from "../outfitEngine/outfitBuilder.js";
 import { fetchWeatherForecast } from "../weather/weatherService.js";
 import { normalizeType }    from "../classifier/normalizeType.js";
@@ -175,8 +176,8 @@ export default function OnCallPlanner({ isDark: propDark }) {
   // Only shift-flagged watches are candidates — Speedmaster, BB41, Hanhart.
   // shiftWatch flag in watchSeed.js is the single source of truth.
   const shiftWatch = useMemo(() => {
-    const candidates = watches.filter(w => !w.retired && !w.pending && w.shiftWatch);
-    if (!candidates.length) return watches.find(w => w.genuine !== false && !w.retired && !w.pending) ?? watches.find(w => !w.retired && !w.pending) ?? null;
+    const candidates = watches.filter(w => isActiveWatch(w) && w.shiftWatch);
+    if (!candidates.length) return watches.find(w => isActiveWatch(w) && w.genuine !== false) ?? watches.find(isActiveWatch) ?? null;
     const scored = candidates.map(w => ({
       watch: w,
       score: scoreWatchForDay(w, "shift", history),

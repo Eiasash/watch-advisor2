@@ -4,7 +4,10 @@ import { execSync } from "child_process";
 import { readFileSync } from "fs";
 
 const commitHash = (() => {
-  try { return execSync("git rev-parse --short HEAD").toString().trim(); }
+  try {
+    return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString().trim();
+  }
   catch { return "unknown"; }
 })();
 const buildDate = new Date().toISOString().slice(0, 10);
