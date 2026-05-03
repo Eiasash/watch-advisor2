@@ -327,3 +327,47 @@ Test count: 3281 → 3330 (+49). Build green (908ms). New file uses Node `node:f
 4. **Coverage threshold** — R1 noted `vitest run --coverage` is set up but no minimum gate enforced. Add `coverage.lines >= 60` in `vite.config.js` once known-untested branches are filled in.
 5. **Service-worker integration tests** — single largest known gap; CLAUDE.md tracks as "Recommended Addition #2".
 6. **Supabase RLS pass via direct `psql`** — write a `scripts/rls-audit.sh` that uses service-role key from env to run the four queries from skill § RLS, so the audit is automated rather than blocked on MCP OAuth.
+
+---
+
+## Session: May 3 2026 — Summer Wardrobe Audit + Photo Upload
+
+### Current State (v1.12.42)
+- **Garments**: 114 active (101 existing + 13 new summer pieces added 2026-05-03)
+- **Tests**: 55 files, all passing — zero failures
+- **Engine integrity**: All invariants confirmed PASS:
+  - `generateOutfit()` legacy: CLEAN (generateOutfitCard ≠ legacy engine) ✅
+  - Vision functions: all `maxAttempts: 1` ✅
+  - Warm/cool coherence: +0.20 ✅
+  - repetitionPenalty: −0.28 ✅
+  - neverWornRotationPressure: 0.50 (April 2026 update) ✅
+  - contextFormality: 0.5 (reduced from 1.5 — rigid context buckets fix) ✅
+- **autoHeal**: Ran 5am UTC, found/fixed 1 stale unscored entry (today's wear before score set). Will be clean on next cron. Not a code bug.
+- **AI audit**: ai-audit endpoint responding correctly ✅
+- **Photos**: 13 new garments had null photo_url — all uploaded to Supabase Storage via service key ✅
+
+### New Garments Added (2026-05-03)
+Summer SS poloshirts and tees confirmed fit and added to DB with photos:
+1. Blend BHELWOOD Navy Polo Cream Tipping
+2. Pierre Cardin Cobalt Blue Polo (loose fit flagged)
+3. Tommy Hilfiger Cobalt Blue Tee
+4. Blend Mustard Polo Cream Tipping
+5. Nautica Salmon Performance Polo
+6. Max White Linen Shirt
+7. Timberland Ecru Polo
+8. Greg Norman Light Blue Polo
+9. Tommy Hilfiger Olive Tee
+10. Tommy Hilfiger White Polo Navy/Red Tipping
+11. Lee Cooper Plain Navy Tee
+12. Fox Black Polo
+13. Lee Cooper Epic Stillness Navy Graphic Tee
+
+### Documentation Drift Notes (no code fix needed — values are CORRECT in code)
+- SKILL.md §1 "Last audited": stale (was 2026-03-21, skill version 1.5.4 vs app v1.12.42)
+- SKILL.md §6 garmentCount: stale (was 75, now 114)
+- SKILL.md scoringWeights table: contextFormality listed as 1.5 in formula — correct value is 0.5 (intentional reduction, documented in scoringWeights.js comment)
+- neverWornRotationPressure: SKILL.md says 0.70 in watch rotation table, actual is 0.50 (April 2026 update — matches memory)
+
+### RLS Pass: CLEAN
+No schema changes this session — upload used service role key directly. No new migrations.
+
