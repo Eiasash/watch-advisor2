@@ -390,11 +390,20 @@ export async function handler(event) {
     if (!weather) {
       try {
         const wRes = await fetch(
-          "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current_weather=true&hourly=temperature_2m&timezone=Asia/Jerusalem&forecast_days=1"
+          "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current_weather=true&hourly=temperature_2m&timezone=Asia/Jerusalem&forecast_days=2"
         );
         const wData = await wRes.json();
         const hourly = wData.hourly;
-        const today = new Date().toISOString().slice(0, 10);
+        // BUG FIX (2026-05-04): Open-Meteo returns hourly timestamps in
+        // Asia/Jerusalem local time (because timezone=Asia/Jerusalem in the
+        // query), but `new Date().toISOString().slice(0, 10)` returns UTC date.
+        // After ~9pm UTC the dates diverge and the filter matches zero entries,
+        // leaving tempMorning/Midday/Evening as null. The model then falls back
+        // to current_weather.temperature (often a cold night reading) and gets
+        // the day's outfit completely wrong. Use Jerusalem-local date instead.
+        // Also bumped forecast_days 1 → 2 so we always have a full day of
+        // forecast even when called late local-day.
+        const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jerusalem" }).format(new Date());
         const dayHours = (hourly?.time ?? []).reduce((acc, t, i) => {
           if (t.startsWith(today)) acc.push({ hour: parseInt(t.slice(11, 13), 10), temp: hourly.temperature_2m[i] });
           return acc;
@@ -525,12 +534,6 @@ export async function handler(event) {
   } catch (err) {
     console.error("[daily-pick] Error:", err.message);
     const isBilling = err.message?.includes("BILLING");
-    // Diagnostic mode: surface the first ~250 chars of the underlying error so
-    // we can see whether it's an Anthropic 4xx (model name, bad param), a
-    // Supabase issue, or something else. Safe to expose — no creds in messages.
-    // Strip back to "Daily pick generation failed" once the failure mode is
-    // characterized and fixed.
-    const detail = err.message ? String(err.message).slice(0, 250) : "Daily pick generation failed";
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: isBilling ? err.message : detail }) };
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: isBilling ? err.message : "Daily pick generation failed" }) };
   }
 }
