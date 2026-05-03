@@ -473,11 +473,14 @@ export async function handler(event) {
     // and revert the model line + max_tokens to use getConfiguredModel + 2200.
     const FAST_MODEL = "claude-haiku-4-5-20251001";
     const maxTokens = variants > 1 ? 800 + (variants - 1) * 600 : 800;
+    // NOTE: output_config.effort is an Opus/Sonnet extended-thinking knob and
+    // is rejected by Haiku 4.5 (live test 2026-05-04: 3 consecutive 500s in
+    // ~1.2s = fast-fail at API level). Haiku doesn't need effort tuning anyway
+    // — it's already fast and works well on structured-JSON output.
     const result = await callClaude(apiKey, {
       model: FAST_MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
-      output_config: { effort: "medium" },
       messages: [{ role: "user", content: userPrompt }],
     }, { maxAttempts: 1 });
 
