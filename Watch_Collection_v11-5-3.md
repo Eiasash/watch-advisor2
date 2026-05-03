@@ -1,9 +1,9 @@
 # Eias Watch Collection
 
 **Total Pieces:** 24 (13 genuine active + 10 replica + 1 genuine pending)  
-**Active:** 23 | **Pending Delivery:** 1 (Atelier Wen Perception) | **Incoming:** 1 (Fears Brunswick Champagne — order in motion)  
-**App Version:** v1.12.41  
-**Last Updated:** 29 April 2026
+**Active:** 23 | **Pending Delivery:** 1 (Atelier Wen Perception) | **Ordered:** 1 (Fears Brunswick Champagne — INV-3936, Apr 22 2026)  
+**App Version:** v1.12.42  
+**Last Updated:** 3 May 2026
 
 ---
 
@@ -14,11 +14,11 @@
 | # | Watch | Ref | Size | Movement | Dial | Straps | Status |
 |---|-------|-----|------|----------|------|--------|--------|
 | 1 | Grand Seiko Snowflake | SBGA211 | 41mm (19mm lug) | Spring Drive 9R65 | Silver-White | 3 | Active |
-| 2 | Grand Seiko Rikka | SBGH351 | 40mm (21mm lug) | Hi-Beat 36000 9S85 | Green | 3 | Active — bracelet unusable (missing collar), teal alligator default |
-| 3 | Cartier Pasha de Cartier | WSPA0026 | 41mm | Cal 1847MC automatic | Grey | 3 (bracelet + black alligator + navy alligator pending) | Active |
+| 2 | Grand Seiko Rikka | SBGH351 | 40mm (21mm lug) | Hi-Beat 36000 9S85 | Green | 3 | Active — SS bracelet REPAIRED Apr 13. Teal alligator default. |
+| 3 | Cartier Pasha de Cartier | WSPA0026 | 41mm | Cal 1847MC automatic | Grey | 3 (bracelet + black alligator OEM + navy alligator aftermarket) | Active |
 | 4 | Girard-Perregaux Laureato | 81010 | 42mm | GP03300 | Blue | Integrated bracelet | Active |
 | 5 | Jaeger-LeCoultre Reverso Duoface Moon Phase | 216.8.D3 | 42mm | Cal 986 | Navy | 1 | Active |
-| 6 | Cartier Santos de Cartier Large | W2SA0009 | 39.8mm | 1847MC | White/Gold | 4 (QuickSwitch) | Active |
+| 6 | Cartier Santos de Cartier Large | W2SA0009 | 39.8mm | 1847MC | White/Gold | 2 (QuickSwitch) | Active |
 | 7 | Cartier Santos Octagon YG | Vintage 1980s | 29mm | Quartz | White | 1 | Active |
 | 8 | Tudor Black Bay 41 | M7941A1A0RU-0003 | 41mm (21mm lug) | MT5400 METAS | Black/Red | 7 (steel + 3 leather + 1 NATO + 2 canvas pending) | Active |
 | 9 | TAG Heuer Monaco | CW2111 | 39mm | ETA 2894-2 | Black | 2 | Active |
@@ -58,38 +58,41 @@
 
 | Strap | Source | Buckle | Use Case |
 |-------|--------|--------|----------|
-| Teal alligator | Gentry Tao | Seiko script | **DEFAULT** — complements green dial. Bracelet unusable. |
+| Teal alligator | Gentry Tao | Seiko script | **DEFAULT** — complements green dial |
 | Brown leather | — | — | Smart casual |
-| Titanium bracelet | OEM | — | ⚠️ UNUSABLE — missing end link collar/bushing. Sent to watchmaker Apr 6. |
+| Stainless steel bracelet | OEM | — | ✅ REPAIRED Apr 13 2026 (collar/bushing fixed). Available. |
+
+**Note:** Rikka bracelet is STAINLESS STEEL, not titanium. Titanium bracelet = Snowflake SBGA211 only.
 
 ### Cartier Pasha de Cartier WSPA0026
 
 | Strap | Source | Buckle | Use Case |
 |-------|--------|--------|----------|
-| Steel bracelet | Cartier OEM | Folding clasp | Default |
+| Steel bracelet | Cartier OEM | Folding clasp | Default (poor fit — ~3mm half-link gap on 16.3cm wrist) |
 | Black alligator leather | Cartier OEM | Deployant | Clinic/dressy |
-| Navy alligator YG-02 (21/16mm taper) | DayDayWatchband | — | Dressy navy outfits — **PENDING DELIVERY** |
+| Navy alligator (cobalt, 21/16mm taper) | AliExpress | Cartier-style C buckle | ✅ RECEIVED Apr 30 2026. Dressy navy outfits. |
 
 ### Cartier Santos Large W2SA0009 (QuickSwitch)
 
 | Strap | Source | Buckle | Use Case |
 |-------|--------|--------|----------|
 | Steel/gold bracelet | Cartier OEM | QuickSwitch | Default |
+| Cobalt blue alligator | Aftermarket | QuickSwitch deployant | Statement — first deployed Apr 30 2026. Color = blue not navy. |
 | Brown calfskin leather | Cartier OEM | QuickSwitch deployant | Smart casual |
-| Brown alligator-pattern leather | AliExpress aftermarket | Steel + gold deployant (Santos-aesthetic) | Smart casual / brown Eccos |
-| Royal blue cobalt alligator-pattern leather | AliExpress aftermarket | Steel + gold deployant (Santos-aesthetic) | Statement / dressy outfits |
 
 ### Tudor Black Bay 41 — M7941A1A0RU-0003 (21mm)
 
 | Strap | Source | Buckle | Use Case |
 |-------|--------|--------|----------|
 | Five-link steel bracelet | Tudor OEM | Tudor deployant | Default sporty/casual |
-| Distressed brown leather (rough-out, ecru stitch) | Tudor OEM | Tudor engraved deployant | Smart casual. Received Feb 2025 via Speedmaster trade (~₪800 value) |
+| Distressed brown leather (rough-out, ecru stitch) | Tudor OEM | Tudor engraved deployant | Smart casual |
 | Black leather, white contrast stitch | — | Silver pin | Dressy/clinic. Red bezel + black strap = classic contrast |
-| Laco distressed brown leather (cross-strap) | Laco | — | 20mm in 21mm lugs — slight gap acceptable. Rugged/vintage-military vibe. Weekend/casual. |
-| TAG Heuer black/tan NATO | TAG Heuer | TAG buckle | Casual/weekend — black canvas, tan edge stitch |
+| Laco distressed brown leather (cross-strap) | Laco | — | 20mm in 21mm lugs — gap acceptable. Rugged/vintage-military. Weekend/casual. |
+| TAG Heuer black/tan NATO | TAG Heuer | TAG buckle | Casual/weekend |
 | Navy canvas #18 (21mm→18mm) | DayDayWatchband | Tudor deployant (18mm) | Smart casual, navy outfits — **PENDING DELIVERY** |
 | Olive canvas #21 (21mm→18mm) | DayDayWatchband | Tudor deployant (18mm) | Field/casual, olive outfits — **PENDING DELIVERY** |
+
+**Note:** BB41 lug width = 21mm. Deployant clasp confirmed compatible with 18mm buckle end.
 
 ### TAG Heuer Monaco CW2111 (22mm)
 
@@ -102,8 +105,8 @@
 
 | Strap | Source | Buckle | Use Case |
 |-------|--------|--------|----------|
-| Teal leather, yellow lining | Hanhart OEM | — | Primary statement |
-| Black leather | — | — | Versatile |
+| Black leather bund-style (white contrast stitch) | Hanhart OEM | — | Primary — this is the OEM strap |
+| Teal leather, yellow lining | Aftermarket | — | Statement aftermarket |
 | Light brown leather | — | — | Smart casual |
 | Dark green suede/rough-out, tan lining | — | Silver pin | Field casual |
 | Sage/olive chunky leather, cream stitch | — | Brushed steel pin | Military vibe |
@@ -154,34 +157,23 @@
 | GS Snowflake | 1 | 2 | 0 | **3** |
 | GS Rikka | 1 | 2 | 0 | **3** |
 | Pasha 41 | 1 | 2 | 0 | **3** |
-| Santos Large | 1 | 3 | 0 | **4** |
+| Santos Large | 1 | 2 | 0 | **3** |
 | Monaco | 0 | 2 | 0 | **2** |
 | GMT-Master II | 1 | 0 | 0 | **1** |
 | Laco Flieger | 0 | 1 | 0 | **1** |
 | Reverso | 0 | 1 | 0 | **1** |
 | Santos Octagon | 0 | 1 | 0 | **1** |
-| **Total** | **7** | **27** | **8** | **42** |
+| **Total active** | **7** | **26** | **8** | **41** |
 
-**Note:** Tudor BB41 navy + olive canvas and Pasha navy alligator are pending delivery (DayDayWatchband). Counted above.
+**Pending delivery (not in active count):** Tudor BB41 navy canvas #18 + olive canvas #21 (DayDayWatchband). Total with pending = **43**.
 
 ---
 
 ## Pending Strap Deliveries
 
-| Watch | Strap | Source | Order Value | Status |
-|-------|-------|--------|-------------|--------|
-| Pasha WSPA0026 | Navy alligator YG-02, 21/16mm taper, 14mm notch, 65/105mm | DayDayWatchband | $173.46 | Pending delivery |
-| Tudor BB41 | Navy canvas #18 + Olive canvas #21, 21mm→18mm, 65/105mm, no buckle | DayDayWatchband | ~$159.90 | Pending delivery |
-
-Tudor deployant clasp (butterfly, engraved TUDOR, 18mm) confirmed compatible with 18mm buckle end.
-
----
-
-## Pending Repairs
-
-| Watch | Issue | Status |
-|-------|-------|--------|
-| GS Rikka SBGH351 | Missing end link collar/bushing — spring bar won't seat. Bracelet unusable. | Sent to local watchmaker Apr 6. Also contacted Seiya Japan / GS service. |
+| Watch | Strap | Source | Status |
+|-------|-------|--------|--------|
+| Tudor BB41 | Navy canvas #18 + Olive canvas #21, 21mm→18mm, no buckle | DayDayWatchband | Pending delivery |
 
 ---
 
@@ -213,7 +205,6 @@ Tudor deployant clasp (butterfly, engraved TUDOR, 18mm) confirmed compatible wit
 ### Strap-Shoe Coordination
 **NOT A RULE.** Eliminated from the engine in v1.12.12.
 Strap color vs shoe color is a stylistic consideration, not a constraint.
-Bracelet watches have always been exempt. Now all watches are exempt.
 Do NOT flag mismatches unless explicitly asked.
 
 **No loafers ever.**
@@ -265,80 +256,64 @@ Do NOT flag mismatches unless explicitly asked.
 | Turquoise | Day-Date Turq |
 | Meteorite | GMT Meteorite rep |
 | Gold tones | Santos Large (two-tone), Santos Octagon (yellow gold) |
+| Champagne | Fears Brunswick 38 (pending arrival) |
 
 ---
 
-## Next Acquisition Target
+## Acquisition Status
 
-### PRIMARY (in motion): Fears Brunswick 38 Champagne
+### ORDERED: Fears Brunswick 38 Champagne ✅
 
+- **Invoice:** INV-3936, placed Apr 22 2026, £2,500 GBP
+- **Serial:** 1919 | **Ref:** BS23800B | **Movement:** LJP D100
 - 38mm cushion case, 11.8mm thick, 20mm lug, 100m WR
-- 18ct yellow gold galvanic dial, glass bead frosted finish
-- Hand-applied "Edwin" Arabic numerals, diamond polished and Black Gold coated
+- 18ct yellow gold galvanic champagne dial, glass bead frosted finish
 - Thermally blued, hand-polished skeletonised Fears hands
-- ETA 7001 top-grade manual wind, 40hr PR, Côtes de Genève, blued screws
-- Strap: Pewter Grey Barenia leather (standard), open caseback
-- Inquiry sent to Fears direct UK — shipping to Singapore friend, forward to IL as gift
-- **Target landed: ~₪16,500** (watch) + ₪800 (bracelets) + ₪300 (forward) = ~₪17,600 all-in
-- **Ceiling: ₪18,000 total**
-- Fills warm-dial craft gap without wardrobe redundancy
-- Clean dial discipline (time + small-seconds only — no retrograde/PR clutter)
+- Open caseback, 5-link SS bracelet pre-sized 160mm + free Barenia Pewter strap
+- **Shipping:** Fears UK → Fish Jaafar (15 Harper Rd #01-01C, SG 367678) → forwarded to Israel
+- Forstner bracelet options DEFERRED (factory bracelet + strap included)
+- Fills warm-dial craft gap (champagne = only warm metallic dial in collection)
 
-### PASSIVE WATCH: anOrdain Model 2 Brown Fumé — distressed-price only
+### PASSIVE: anOrdain Model 2 Brown Fumé — distressed-price only
 
 - 30-piece 2021 run-out edition, discontinued
 - 36mm case, grand feu vitreous enamel mahogany fumé dial, Sellita SW-210
 - Market reality 2026: $3,500–4,500 USD typical
 - **Distressed-floor ceiling: $2,500 USD / ₪9,500 only**
 - Above $2,500, walk — Fears fills the slot
-- If a genuine steal appears, stretch total budget to ~₪25K to grab both
-- Daily 20:00 calendar alert covers Chrono24, WatchCharts, eBay, r/watchexchange, WatchUSeek
+- Daily 20:00 calendar alert active until 16 Jun 2026
 - WTB posts live on r/watchexchange and WUS
-- Inquiries sent to: WatchVault AU, James Porter Glasgow, Roldorf & Co Vancouver, The Armoury Tribeca + HK
 
-### Bracelets for Fears (pending Fears shipment confirmation)
+### Pending in Collection
 
-- **Forstner Klip bonklip 18mm/18mm** — $95 from forstnerbands.com
-  - Primary daily — utility-meets-craft, British military heritage matches Fears
-- **Forstner 9-row Beads of Rice 18mm/20mm ends** — $110 from forstnerbands.com
-  - Dressy second option, vintage Seiko/GS register
-- Order both to same SG address in one shipment once Fears ships
-- Staib Milanese rejected — too formal, fights cushion-case DNA
+| Watch | Status | Notes |
+|-------|--------|-------|
+| Atelier Wen Perception N°25/50 | In transit SG→IL | `pending:true` in watchSeed. Silver-white guilloché 39mm integrated. |
+| Fears Brunswick 38 Champagne | Ordered Apr 22, shipping to SG | `pending:true` in watchSeed. LJP D100. |
 
-### Acquisition rules confirmed (18 Apr 2026)
+### Acquisition Rules (codified Apr 18 2026)
 
-- **Clean dial discipline**: 3-hand dials preferred. Sub-seconds at 6 acceptable. No retrograde, no multi-subdial dress complications, no busy power-reserve arcs
-- **Wardrobe fit**: earth-tone rotation (camel, chestnut, brown Eccos, cognac belts) = warm dials preferred, salmon/pink dials rejected (fight brown register)
-- **Zero redundancy**: no second Tudor, no second integrated bracelet, no GS overlap
-- **Brand tier floor**: GS / Cartier / JLC / Tudor / Omega / TAG / Hanhart / GP / independent micro (anOrdain, Fears). Baltic and below = below standard
-- **Dial craft required**: grand feu enamel, Urushi, guilloché, hand-worked dial techniques. Printed/sunburst metallics (Tudor Royal, Baltic) don't extend collection DNA
+1. **Clean dial discipline** — 3-hand + optional sub-seconds at 6. No retrograde, no multi-subdial, no busy PR arcs
+2. **Wardrobe fit** — earth-tone rotation favors warm dials. Salmon/pink rejected (fight brown wardrobe)
+3. **Zero redundancy** — no second Tudor, no second integrated bracelet, no GS overlap
+4. **Brand tier floor** — GS / Cartier / JLC / Tudor / Omega / TAG / Hanhart / GP / premium micro
+5. **Dial-craft required** — grand feu enamel, Urushi, guilloché, hand-worked finishes
 
-### Rejected alternatives (for future reference)
+### Future Watchlist
 
-- Tudor Monarch 2026 — over budget, 2nd Tudor + 2nd integrated + wrong craft register
-- Tudor Royal 40mm Brown — same redundancy, weakest Tudor line
-- Seiko Presage SPB395 Urushi — dial design busy (retrograde day/date + PR) despite great craft
-- Kurono Toki Salmon — salmon fights wardrobe, saturated secondary market
-- anOrdain Grey Haar — partial redundancy with Pasha/Snowflake
-- anOrdain Plum Fumé — purple fights earth-tone wardrobe
-- Baltic MR Roulette Salmon — brand tier, salmon dial
-- Paulin Neo — entry tier, below standard
+- Grey dial Alpine Eagle 41 — Timor asked to flag when available (passed on blue Apr 2026 due to color mismatch + Fears opportunity cost)
+- Monaco CW2111 — trade-in candidate via Timor, dealer value ₪8–12K
 
----
+### Rejected Alternatives (for memory)
 
-## Acquisition Action Log — 18 Apr 2026
-
-| Action | Status |
-|--------|--------|
-| Fears direct UK inquiry email drafted | ✅ Ready, awaiting send with SG address |
-| WatchVault Australia inquiry | ✅ Drafted |
-| James Porter / Roldorf / Armoury outreach | ✅ Template drafted |
-| r/watchexchange + WUS WTB post | ✅ Drafted |
-| Singapore friend confirmed as receiver | ✅ |
-| Daily 20:00 calendar alert | ✅ Active until 16 Jun 2026 |
-| 72-hour email follow-up reminder | ✅ 21 Apr |
-| 2-week strategy review | ✅ 2 May |
-| Forstner Klip + BoR order | ⏸️ Pending Fears shipment confirmation |
+- Tudor Monarch 2026 ($5,875, 2nd Tudor + 2nd integrated + over budget)
+- Tudor Royal 40mm Brown (redundancy + weakest Tudor line)
+- Seiko Presage SPB395 Urushi (dial too busy — retrograde day/date + PR)
+- Kurono Toki Salmon (wardrobe fight, saturated secondary)
+- anOrdain Grey Haar (Pasha/Snowflake partial overlap)
+- anOrdain Plum Fumé (purple fights earth-tones)
+- Baltic MR Roulette Salmon (tier + salmon)
+- Paulin Neo (entry tier)
 
 ---
 
@@ -346,22 +321,16 @@ Do NOT flag mismatches unless explicitly asked.
 
 | Date | Field | Was | Now |
 |------|-------|-----|-----|
-| 29 Apr 2026 | Santos blue strap classification | "navy" (initial) | **"blue" (cobalt)** — corrected by Eias. Engine bucket = `blue`, not `navy`. |
-| 29 Apr 2026 | Santos Large straps | 2 | **4** (+ brown alligator AliExpress, + cobalt blue alligator AliExpress; both with steel+gold deployant) |
-| 29 Apr 2026 | Total strap count | 40 | **42** |
-| 29 Apr 2026 | App version | v1.12.33 | **v1.12.40** |
-| 18 Apr 2026 | Acquisition target | GP Laureato Infinite Grey | **Fears Brunswick 38 Champagne (primary, in motion); anOrdain Model 2 Brown Fumé (passive, steal-price only)** |
-| 18 Apr 2026 | Budget ceiling | ₪65K (Laureato era) | **₪18K total (Fears + bracelets + shipping)** |
-| 18 Apr 2026 | Dial-craft rule | Implicit | **Explicit — no retrograde/multi-subdial/busy PR arcs** |
-| 18 Apr 2026 | Brand exclusions | Not codified | **Second Tudor and second integrated bracelet = blocked** |
-| 18 Apr 2026 | Singapore forward route | Ad-hoc | **Standard for future international acquisitions** |
+| 3 May 2026 | App version | v1.12.33 | **v1.12.42** |
+| 3 May 2026 | Garment count | 101 | **114** (13 summer pieces added) |
+| 3 May 2026 | GS Rikka bracelet | "UNUSABLE" | **REPAIRED Apr 13 — SS bracelet, not titanium** |
+| 3 May 2026 | Pasha navy alligator | "PENDING DELIVERY" | **RECEIVED Apr 30 (AliExpress, Cartier C buckle)** |
+| 3 May 2026 | Santos Large straps | 2 | **3** (+ cobalt blue alligator, deployed Apr 30) |
+| 3 May 2026 | Total active straps | 40 | **41** (+ Pasha navy alligator) |
+| 3 May 2026 | Fears Brunswick | "in motion" | **ORDERED — INV-3936, Apr 22, £2,500** |
+| 3 May 2026 | Hanhart OEM strap | "teal/yellow" | **BLACK leather bund-style with white contrast stitch** |
+| 3 May 2026 | Color engine | mustard/salmon/cobalt-blue/light-blue | **Added to warm/cool tone sets in outfitBuilder.js** |
+| 18 Apr 2026 | Acquisition target | GP Laureato Infinite Grey | **Fears Brunswick 38 Champagne (primary); anOrdain Brown Fumé (passive)** |
 | 11 Apr 2026 | Strap-Shoe Rules | "Mandatory" | **NOT A RULE — eliminated v1.12.12** |
-| 11 Apr 2026 | Tudor BB41 straps | 6 | **7** (+ Laco distressed brown cross-strap) |
-| 11 Apr 2026 | Total strap count | 39 | **40** |
-| 11 Apr 2026 | GS Rikka status | Active | **Active — bracelet unusable, teal alligator default** |
-| 11 Apr 2026 | App version | v1.5.2 | **v1.12.19** |
-| 21 Mar 2026 | Monaco straps | 1 (black only) | **2** (+ brown rally leather) |
-| 21 Mar 2026 | Speedmaster straps | 9 | **10** (+ TAG Heuer black/tan NATO) |
-| 21 Mar 2026 | Tudor BB41 straps | 5 | **6** (+ TAG Heuer black/tan NATO) |
-| 19 Mar 2026 | Tudor BB41 lug width | 22mm | **21mm** (confirmed Tudor official site) |
-| 19 Mar 2026 | Tudor BB41 ref | 7941A1A0RU | **M7941A1A0RU-0003** |
+| 11 Apr 2026 | Tudor BB41 straps | 6 | **7** (+ Laco cross-strap) |
+| 19 Mar 2026 | Tudor BB41 lug width | 22mm | **21mm** |
