@@ -2,6 +2,9 @@ import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js"
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
 
+// Exported for unit testing — see tests/dailyPickPersonalization.test.js
+export { categorizeGarments };
+
 /**
  * daily-pick.js — "Claude's Pick" outfit recommendation.
  * Uses the same styling logic as the human-facing Claude conversation:
@@ -57,6 +60,12 @@ STYLING RULES (non-negotiable):
 - Cable knit crewneck (black or ecru Kiral) = one level more formal than quarter-zip.
 - Camel coat + ecru cable knit = tonal formal. Camel coat + black cable knit = contrast formal.
 
+PERSONALIZATION PRIORITY (when these sections appear in the user message):
+- NEWLY ADDED — recently uploaded garments Eias hasn't worn yet. Strongly prefer one of these when context allows; he forgets new pieces if the AI doesn't surface them.
+- NEVER WORN — owned but no history record. Treat as silent debt; rotate one in when weather + context fit.
+- UNDER-WORN — 0–2 wears in the last 14 days. Default-prefer over OVER-ROTATED (5+ wears) for the same slot.
+- PAST REJECTIONS — recent outfits Eias rejected with reasons. These are directional: avoid the underlying pattern (color clash, formality miss, watch+strap combo), not only the literal pieces.
+
 WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
 Genuine: GS Snowflake (silver-white, Spring Drive), GS Rikka (green, Hi-Beat), Pasha 41 (grey), GP Laureato (blue, integrated bracelet), JLC Reverso (navy, moon phase), Santos Large (white/gold, QuickSwitch), Santos Octagon (white, vintage YG), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
 Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
@@ -82,10 +91,78 @@ Pay close attention to the PAST CORRECTIONS section in the user message if prese
 }
 
 /**
+ * Categorize garments by usage signal for personalization.
+ *
+ * Uses a 14-day wear window from history payload.garmentIds and a 30-day
+ * "newness" window from garments.created_at. Output is capped per category
+ * so the prompt stays bounded.
+ *
+ * @param {Array} garments        — current wardrobe rows (must include id, name, created_at)
+ * @param {Array} history         — last 14 days of history (already filtered)
+ * @param {object} [opts]
+ * @param {number} [opts.newDays=30]      — created within N days = "new"
+ * @param {number} [opts.underUsedMax=2]  — N wears or fewer in window = "under-worn"
+ * @param {number} [opts.overUsedMin=5]   — N wears or more = "over-rotated"
+ * @param {number} [opts.cap=8]           — max items per category in the prompt
+ * @returns {{newlyAdded, neverWorn, underWorn, overRotated, wearCount}}
+ */
+function categorizeGarments(garments, history, opts = {}) {
+  const newDays = opts.newDays ?? 30;
+  const underUsedMax = opts.underUsedMax ?? 2;
+  const overUsedMin = opts.overUsedMin ?? 5;
+  const cap = opts.cap ?? 8;
+
+  const wearCount = new Map();
+  for (const h of history ?? []) {
+    const ids = h?.payload?.garmentIds ?? [];
+    for (const id of ids) wearCount.set(id, (wearCount.get(id) ?? 0) + 1);
+  }
+
+  const newCutoffMs = Date.now() - newDays * 86400000;
+  const newlyAdded = [];
+  const neverWorn = [];
+  const underWorn = [];
+  const overRotated = [];
+
+  for (const g of garments ?? []) {
+    if (!g?.id) continue;
+    const wc = wearCount.get(g.id) ?? 0;
+    const createdMs = g.created_at ? new Date(g.created_at).getTime() : NaN;
+    const isNew = Number.isFinite(createdMs) && createdMs >= newCutoffMs;
+
+    if (wc === 0 && isNew) {
+      newlyAdded.push(g);
+    } else if (wc === 0) {
+      neverWorn.push(g);
+    } else if (wc <= underUsedMax) {
+      underWorn.push({ ...g, _wc: wc });
+    } else if (wc >= overUsedMin) {
+      overRotated.push({ ...g, _wc: wc });
+    }
+  }
+
+  // Stable sorts: new = freshest first, neverWorn = oldest creation first
+  // (closest to "I bought this for a reason but never used it"), underWorn =
+  // fewest wears first, overRotated = most wears first.
+  newlyAdded.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  neverWorn.sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
+  underWorn.sort((a, b) => a._wc - b._wc);
+  overRotated.sort((a, b) => b._wc - a._wc);
+
+  return {
+    newlyAdded: newlyAdded.slice(0, cap),
+    neverWorn: neverWorn.slice(0, cap),
+    underWorn: underWorn.slice(0, cap),
+    overRotated: overRotated.slice(0, cap),
+    wearCount,
+  };
+}
+
+/**
  * VOLATILE per-call data: today's date, weather, recent history, wardrobe,
  * steer/exclude/rejected/pastCorrections feedback. Goes in the user message.
  */
-function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants }) {
+function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants, personalization, recentRejections }) {
   const variantClause = variants > 1
     ? `Return a JSON ARRAY of ${variants} DISTINCT outfit objects (each must use a different watch). Do NOT wrap in markdown.`
     : "Respond ONLY with a single JSON object, no markdown.";
@@ -124,9 +201,47 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
     correctionsBlock = `\nPAST USER CORRECTIONS — these are real preference signals from Eias's actual override behavior. Learn from them: pieces the user removes are NOT preferred even if they score well; pieces the user swaps TO are preferred for that slot/context.\n${lines}\n`;
   }
 
+  // Personalization sections — server-derived signals about wardrobe state.
+  // Compact one-liners so the prompt stays bounded even when all 4 lists fill.
+  const fmtItem = (g) => {
+    const t = g.type ?? g.category ?? "?";
+    const wc = g._wc != null ? `, worn ${g._wc}× last 14d` : "";
+    return `  - ${g.name} (${t}, ${g.color ?? "?"}, formality:${g.formality ?? 5}${wc})`;
+  };
+  let personalizationBlock = "";
+  if (personalization) {
+    const sections = [];
+    if (personalization.newlyAdded?.length) {
+      sections.push(`NEWLY ADDED (uploaded recently, NOT yet worn — strongly prefer one of these when context allows):\n${personalization.newlyAdded.map(fmtItem).join("\n")}`);
+    }
+    if (personalization.neverWorn?.length) {
+      sections.push(`NEVER WORN (owned, no history record — rotate one in when fit allows):\n${personalization.neverWorn.map(fmtItem).join("\n")}`);
+    }
+    if (personalization.underWorn?.length) {
+      sections.push(`UNDER-WORN (0–2 wears in last 14 days — prefer over over-rotated):\n${personalization.underWorn.map(fmtItem).join("\n")}`);
+    }
+    if (personalization.overRotated?.length) {
+      sections.push(`OVER-ROTATED (5+ wears in last 14 days — avoid unless explicitly the only fit):\n${personalization.overRotated.map(fmtItem).join("\n")}`);
+    }
+    if (sections.length) personalizationBlock = `\n${sections.join("\n\n")}\n`;
+  }
+
+  let recentRejectionsBlock = "";
+  if (Array.isArray(recentRejections) && recentRejections.length) {
+    const lines = recentRejections.slice(0, 5).map((e, i) => {
+      const o = e.outfit ?? {};
+      const w = o.watch ?? o.watchId ?? "?";
+      const top = o.shirt ?? o.sweater ?? "?";
+      const reason = (e.reason ?? "").slice(0, 100) || "(no reason)";
+      const when = e.at ? new Date(e.at).toISOString().slice(0, 10) : "?";
+      return `  ${i + 1}. [${when}] ${w} + ${top} + ${o.pants ?? "?"} + ${o.shoes ?? "?"} — "${reason}"`;
+    }).join("\n");
+    recentRejectionsBlock = `\nPAST REJECTIONS — Eias rejected these recently. Treat as directional signal (avoid the pattern, not just the literal pieces):\n${lines}\n`;
+  }
+
   return `DATE: ${todayStr}
 WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
-${steerLine}${excludeBlock}${rejectedBlock}${correctionsBlock}
+${steerLine}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
 RECENT WATCHES WORN (avoid repeats):
 ${recentWatches || "No recent data"}
 
@@ -246,20 +361,29 @@ export async function handler(event) {
       } catch { /* cache miss — regenerate */ }
     }
 
-    // Fetch garments
-    const { data: garments } = await supabase
-      .from("garments")
-      .select("id,name,type,category,color,brand,formality,material,weight,seasons,contexts")
-      .eq("exclude_from_wardrobe", false)
-      .not("category", "in", "(outfit-photo,watch,outfit-shot)");
-
-    // Fetch recent history (last 14 days)
+    // Fetch garments + recent history + AI feedback log in parallel.
+    // created_at is required for the "newly added" personalization signal.
     const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
-    const { data: history } = await supabase
-      .from("history")
-      .select("watch_id,date,payload")
-      .gte("date", twoWeeksAgo)
-      .order("date", { ascending: false });
+    const [garmentsRes, historyRes, feedbackRes] = await Promise.all([
+      supabase
+        .from("garments")
+        .select("id,name,type,category,color,brand,formality,material,weight,seasons,contexts,created_at")
+        .eq("exclude_from_wardrobe", false)
+        .not("category", "in", "(outfit-photo,watch,outfit-shot)"),
+      supabase
+        .from("history")
+        .select("watch_id,date,payload")
+        .gte("date", twoWeeksAgo)
+        .order("date", { ascending: false }),
+      // AI feedback log lives in app_config.value.entries — non-fatal if missing
+      supabase.from("app_config").select("value").eq("key", "ai_feedback_log").limit(1),
+    ]);
+    const garments = garmentsRes.data;
+    const history = historyRes.data;
+    // Cap to last 5 rejections — older ones drift out of relevance and we
+    // don't want to keep telling the model about a 3-month-old "too formal"
+    // when the wardrobe and context have moved on.
+    const recentRejections = (feedbackRes.data?.[0]?.value?.entries ?? []).slice(0, 5);
 
     // Weather from body or fetch
     let weather = body.weather ?? null;
@@ -308,6 +432,10 @@ export async function handler(event) {
 
     const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Jerusalem" });
 
+    // Personalization categorization — derived from the same garments + history
+    // already fetched. No extra DB roundtrip. Capped per category in the helper.
+    const personalization = categorizeGarments(garments ?? [], history ?? []);
+
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt({
       todayStr,
@@ -321,6 +449,8 @@ export async function handler(event) {
       rejected,
       pastCorrections,
       variants,
+      personalization,
+      recentRejections,
     });
 
     const model = await getConfiguredModel();
