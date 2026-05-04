@@ -5,6 +5,7 @@ import { useHistoryStore } from "../stores/historyStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useStrapStore } from "../stores/strapStore.js";
 import { authedFetch } from "../services/authedFetch.js";
+import { cardSourceLabel, cardSourceColor, formatHHMM } from "../utils/cardSourceLabel.js";
 
 const SLOT_ICONS = { watch: "⌚", shirt: "👔", sweater: "🧶", layer: "🧥", pants: "👖", shoes: "👞", jacket: "🧥", belt: "🪢" };
 const SLOT_ORDER = ["watch", "shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
@@ -255,9 +256,20 @@ export default function ClaudePick({ autoFetch = false } = {}) {
     <div data-testid="claude-pick-panel" style={{ background: card, borderRadius: 14, border: `1px solid ${accent}44`, padding: 16, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: collapsed ? 0 : 12 }}>
         <div onClick={() => setCollapsed(!collapsed)} style={{ cursor: "pointer", flex: 1 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            🤖 Claude's Pick
-          </span>
+          {/* Today-tab source/status parity with WeekPlanner (PR #149/#151).
+              Same resolver — distinguishes fresh "AI recommendation" from
+              cached "Cached AI recommendation" via cardSource on the response. */}
+          {(() => {
+            const src = pick.cardSource ?? "ai_rec";
+            const label = cardSourceLabel(src) ?? "Claude's Pick";
+            const color = cardSourceColor(src) ?? accent;
+            return (
+              <span title={src === "ai_rec_cached" ? "Cached recommendation — re-fetch via Different one" : null}
+                    style={{ fontSize: 12, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                ✦ {label}
+              </span>
+            );
+          })()}
           {pick.score && (
             <span style={{ marginLeft: 8, fontSize: 11, color: pick.score >= 8 ? "#22c55e" : pick.score >= 6 ? "#f59e0b" : muted }}>
               {pick.score}/10
@@ -501,7 +513,9 @@ export default function ClaudePick({ autoFetch = false } = {}) {
               {pick.weather.tempMorning != null && <span>🌅 {pick.weather.tempMorning}°</span>}
               {pick.weather.tempMidday != null && <span> · ☀️ {pick.weather.tempMidday}°</span>}
               {pick.weather.tempEvening != null && <span> · 🌙 {pick.weather.tempEvening}°</span>}
-              {pick.generatedAt && <span> · Generated {new Date(pick.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+              {pick.generatedAt && (
+                <span> · {pick.cardSource === "ai_rec_cached" ? "Cached from" : "Generated"} {formatHHMM(pick.generatedAt)}</span>
+              )}
             </div>
           )}
         </>
