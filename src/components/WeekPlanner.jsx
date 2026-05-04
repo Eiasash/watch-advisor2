@@ -1318,7 +1318,7 @@ export default function WeekPlanner() {
         ...(rejected ? { rejected } : {}),
         ...(pastCorrections.length ? { pastCorrections } : {}),
       };
-      const res = await authedFetch("/.netlify/functions/daily-pick", {
+      const res = await authedFetch("/.netlify/functions/style-fixed-watch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -1427,6 +1427,9 @@ export default function WeekPlanner() {
     if (!last) return;
     setAiRationale(prev => ({ ...prev, [date]: { text: null, loading: true } }));
     try {
+      // "Why this?" — uses daily-pick's why-mode (no pinnedWatch needed; the
+      // currentPick already encodes the watch identity). style-fixed-watch
+      // would 400 here because pinnedWatch isn't in the body.
       const res = await authedFetch("/.netlify/functions/daily-pick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
