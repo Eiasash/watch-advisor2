@@ -8,6 +8,48 @@ import { requireUser } from "./_auth.js";
 export { categorizeGarments, computeCacheKey, cacheTtlMs };
 
 /**
+ * Latency / observability helper (PR #147 — critique #10).
+ *
+ * Records a single metric entry to app_config["daily_pick_metrics"] as
+ * a rolling tail of the last 100. Same pattern as ai_feedback_log.
+ *
+ * Captured per call:
+ *   at:           ISO timestamp
+ *   path:         "daily-pick" | "style-fixed-watch" (from event)
+ *   date:         the date the pick is for (defaults to today Jerusalem)
+ *   model:        which Claude model was used
+ *   pinned:       boolean — was a pinnedWatch sent?
+ *   variants:     int — how many variants requested
+ *   cacheHit:     boolean — true if served from input-hash cache
+ *   totalMs:      total handler duration
+ *   claudeMs:     time spent waiting for Claude (0 on cache hit)
+ *   inputTokens:  Claude input token count (from response.usage)
+ *   outputTokens: Claude output token count
+ *   promptChars:  prompt size as a sanity check on bloat
+ *   status:       "ok" | "error" | "504" | "parse_fail"
+ *   errorMsg:     short error string when status != "ok"
+ *
+ * Fire-and-forget — never throws, never blocks the response. Failures to
+ * record are logged via console.warn (visible in Netlify function logs)
+ * but do not surface to the user.
+ */
+async function recordMetric(supabase, metric) {
+  if (!supabase) return;
+  try {
+    const { data: rows } = await supabase
+      .from("app_config").select("value").eq("key", "daily_pick_metrics").limit(1);
+    const prev = Array.isArray(rows?.[0]?.value?.entries) ? rows[0].value.entries : [];
+    const next = [metric, ...prev].slice(0, 100); // tail-100
+    await supabase
+      .from("app_config")
+      .upsert({ key: "daily_pick_metrics", value: { entries: next } }, { onConflict: "key" });
+  } catch (err) {
+    console.warn("[daily-pick] recordMetric failed:", err?.message);
+  }
+}
+export { recordMetric }; // exported for unit tests
+
+/**
  * daily-pick.js — "Claude's Pick" outfit recommendation.
  * Uses the same styling logic as the human-facing Claude conversation:
  * - Watch rotation pressure (what hasn't been worn)
@@ -368,11 +410,19 @@ export async function handler(event) {
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: "CLAUDE_API_KEY not configured" }) };
   }
 
+  // Latency observability — captured here so the recordMetric call at end
+  // can compute totalMs even when the handler errors out partway through.
+  const handlerStart = Date.now();
+  // event.path is "/.netlify/functions/daily-pick" or "/.netlify/functions/style-fixed-watch"
+  const endpointPath = (event?.path ?? "").includes("style-fixed-watch") ? "style-fixed-watch" : "daily-pick";
+  let supabaseForMetrics = null; // assigned in try so the catch block can record errors
+
   try {
     const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
     if (!url || !key) throw new Error("Missing Supabase credentials");
     const supabase = createClient(url, key);
+    supabaseForMetrics = supabase;
 
     const body = event.httpMethod === "POST" ? JSON.parse(event.body ?? "{}") : {};
     const steer = typeof body.steer === "string" ? body.steer : null;
@@ -545,6 +595,23 @@ export async function handler(event) {
           if (age < cacheTtlMs(cacheKeyDate)) {
             // Mark cache hit explicitly so client-side latency observability
             // can distinguish "model returned in 6s" from "cache returned in 100ms".
+            // Fire-and-forget metric for the cache-hit path.
+            recordMetric(supabase, {
+              at: new Date().toISOString(),
+              path: endpointPath,
+              date: cacheKeyDate,
+              model: "(cache)",
+              pinned: !!pinnedWatch,
+              variants,
+              cacheHit: true,
+              totalMs: Date.now() - handlerStart,
+              claudeMs: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              promptChars: 0,
+              status: "ok",
+              errorMsg: null,
+            });
             return { statusCode: 200, headers: CORS, body: JSON.stringify({ ...cached, cardSource: "ai_rec_cached", cacheKey: inputCacheKey }) };
           }
         }
@@ -595,12 +662,14 @@ export async function handler(event) {
     const FAST_MODEL = "claude-haiku-4-5-20251001";
     const maxTokens = variants > 1 ? 800 + (variants - 1) * 600 : 800;
     // output_config.effort is Opus/Sonnet-only; Haiku 4.5 rejects it (PR #132).
+    const claudeStart = Date.now();
     const result = await callClaude(apiKey, {
       model: FAST_MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
     }, { maxAttempts: 1 });
+    const claudeMs = Date.now() - claudeStart;
 
     const text = extractText(result);
     let parsed;
@@ -642,10 +711,46 @@ export async function handler(event) {
       } catch {}
     }
 
+    // Latency metric — fire-and-forget after response is queued.
+    recordMetric(supabase, {
+      at: new Date().toISOString(),
+      path: endpointPath,
+      date: cacheKeyDate,
+      model: FAST_MODEL,
+      pinned: !!pinnedWatch,
+      variants,
+      cacheHit: false,
+      totalMs: Date.now() - handlerStart,
+      claudeMs,
+      inputTokens: result?.usage?.input_tokens ?? 0,
+      outputTokens: result?.usage?.output_tokens ?? 0,
+      promptChars: userPrompt.length,
+      status: "ok",
+      errorMsg: null,
+    });
+
     return { statusCode: 200, headers: CORS, body: JSON.stringify(pick) };
   } catch (err) {
     console.error("[daily-pick] Error:", err.message);
     const isBilling = err.message?.includes("BILLING");
+    // Error metric — captures wall-clock + error class so we can spot
+    // patterns (504-shaped vs auth-shaped vs Claude-shaped).
+    recordMetric(supabaseForMetrics, {
+      at: new Date().toISOString(),
+      path: endpointPath,
+      date: null,
+      model: null,
+      pinned: false,
+      variants: 1,
+      cacheHit: false,
+      totalMs: Date.now() - handlerStart,
+      claudeMs: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      promptChars: 0,
+      status: isBilling ? "billing" : "error",
+      errorMsg: String(err?.message ?? "").slice(0, 250),
+    });
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: isBilling ? err.message : "Daily pick generation failed" }) };
   }
 }

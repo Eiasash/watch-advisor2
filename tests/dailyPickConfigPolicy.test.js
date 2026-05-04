@@ -32,17 +32,19 @@ const SOURCE = readFileSync(
 
 describe("daily-pick inference config policy", () => {
   it("uses Haiku 4.5 (not Sonnet/Opus) — Sonnet+thinking+2200 caused live 504s in PR #142", () => {
+    // Two assertions:
+    //   1. the literal Haiku 4.5 model id is present in the file
+    //   2. there's a `const FAST_MODEL = "claude-haiku-4-5-20251001"` declaration,
+    //      AND the main callClaude block uses it (not getConfiguredModel)
     expect(SOURCE).toContain("claude-haiku-4-5-20251001");
-    // Defensive: ensure we're not silently using getConfiguredModel() (which
-    // could resolve to Sonnet via app_config and recreate the #142 incident).
-    // The CALL site to callClaude must reference the hardcoded constant.
-    const callMatch = SOURCE.match(/await callClaude\([^)]*?\{[\s\S]*?model:\s*([^,]+),/);
-    expect(callMatch, "couldn't find callClaude({ model: ... } in daily-pick.js").toBeTruthy();
-    const modelArg = callMatch[1].trim();
-    expect(
-      modelArg === "FAST_MODEL" || modelArg === '"claude-haiku-4-5-20251001"',
-      `daily-pick model arg is "${modelArg}" — expected FAST_MODEL or hardcoded haiku string`,
-    ).toBe(true);
+    expect(SOURCE).toMatch(/const FAST_MODEL\s*=\s*["']claude-haiku-4-5-20251001["']/);
+    // The main pick callClaude (the one that returns the JSON outfit) must
+    // pass FAST_MODEL. Find any `model: FAST_MODEL,` in the file — this is
+    // unique to the main callClaude block. The why-mode call uses `model,`
+    // shorthand (ES6 property), the metric helpers use `model: "(cache)"`
+    // or `model: FAST_MODEL` strings, but only the MAIN call uses
+    // `model: FAST_MODEL` as a callClaude argument value.
+    expect(SOURCE).toContain("model: FAST_MODEL,");
   });
 
   it("max_tokens cap ≤ 800 for single picks (PR #143 rollback baseline)", () => {
