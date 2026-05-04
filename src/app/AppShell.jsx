@@ -45,12 +45,12 @@ function TabPane({ active, children }) {
 // ── Tab navigation ────────────────────────────────────────────────────────────
 const TABS = [
   { key:"today",    label:"Today",    icon:"👕" },
+  { key:"plan",     label:"Plan",     icon:"📅" },
   { key:"wardrobe", label:"Wardrobe", icon:"👔" },
   { key:"straps",   label:"Straps",   icon:"➰" },
-  { key:"travel",   label:"Travel",   icon:"✈️" },
-  { key:"plan",     label:"Plan",     icon:"📅" },
-  { key:"history",  label:"History",  icon:"📊" },
   { key:"audit",    label:"Audit",    icon:"🔍" },
+  { key:"history",  label:"History",  icon:"📊" },
+  { key:"travel",   label:"Travel",   icon:"✈️" },
 ];
 
 function AppContent() {
