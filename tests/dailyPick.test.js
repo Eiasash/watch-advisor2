@@ -191,9 +191,74 @@ describe("daily-pick", () => {
 
     expect(claudeMod.callClaude).toHaveBeenCalledWith(
       "test-key",
-      expect.objectContaining({ max_tokens: 2200 }), // restored after discovering Netlify Pro plan (26s ceiling, not 10s) — see daily-pick.js inference comment
+      expect.objectContaining({ max_tokens: 800 }), // back to Haiku/800 after PR #142 Sonnet revert produced live 504s (Pro ceiling ~30s real, not 26s)
       expect.objectContaining({ maxAttempts: 1 }),
     );
+  });
+
+  // ─── pinnedWatch (PR #141) — regression guard against the BB41/Rikka mismatch
+  it("pinnedWatch in body forces watch identity into the prompt", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [{ id: "s1", name: "Shirt", type: "shirt", category: "shirt", color: "white" }] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({
+      content: [{ text: '{"watch":"Tudor Black Bay 41","watchId":"blackbay","strap":"Five-link steel bracelet","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }],
+    });
+
+    const pinnedWatch = {
+      id: "blackbay",
+      brand: "Tudor",
+      model: "Black Bay 41",
+      dial: "black-red",
+      style: "sport",
+      formality: 6,
+      straps: [
+        { id: "blackbay-steel", label: "Five-link steel bracelet", color: "silver", type: "bracelet" },
+        { id: "blackbay-brown-distressed", label: "Distressed brown leather", color: "brown", type: "leather" },
+      ],
+    };
+
+    await handler({ httpMethod: "POST", body: JSON.stringify({ forceRefresh: true, pinnedWatch }) });
+
+    const callArg = claudeMod.callClaude.mock.calls[0][1];
+    const promptText = callArg.messages[0].content;
+
+    // Authority instruction MUST be present so the model can't substitute another watch.
+    expect(promptText).toContain("PINNED WATCH");
+    expect(promptText).toContain("use EXACTLY this");
+    expect(promptText).toContain("do NOT pick a different watch");
+    // Watch identity MUST be in the prompt for the model to render correct reasoning.
+    expect(promptText).toContain("Tudor Black Bay 41");
+    expect(promptText).toContain("blackbay");
+    expect(promptText).toContain("black-red");
+    // Available straps MUST be enumerated so the model picks from them.
+    expect(promptText).toContain("Five-link steel bracelet");
+    expect(promptText).toContain("Distressed brown leather");
+  });
+
+  it("absent pinnedWatch leaves prompt without the pinning block (open-watch behavior)", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [{ id: "s1", name: "Shirt", type: "shirt", category: "shirt", color: "white" }] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({ httpMethod: "POST", body: JSON.stringify({ forceRefresh: true }) });
+
+    const promptText = claudeMod.callClaude.mock.calls[0][1].messages[0].content;
+    expect(promptText).not.toContain("PINNED WATCH");
+    expect(promptText).not.toContain("do NOT pick a different watch");
+  });
+
+  it("malformed pinnedWatch (missing id) is ignored — open-watch behavior preserved", async () => {
+    supabaseMock.not = vi.fn().mockResolvedValue({ data: [{ id: "s1", name: "Shirt", type: "shirt", category: "shirt", color: "white" }] });
+    supabaseMock.order = vi.fn().mockResolvedValue({ data: [] });
+    claudeMod.callClaude.mockResolvedValue({ content: [{ text: '{"watch":"X","watchId":"x","strap":"x","shirt":null,"sweater":null,"layer":null,"pants":"p","shoes":"s","jacket":null,"belt":null,"reasoning":"r","score":7,"layerTip":null}' }] });
+
+    await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({ forceRefresh: true, pinnedWatch: { brand: "Tudor", model: "BB41" } }), // no id
+    });
+
+    const promptText = claudeMod.callClaude.mock.calls[0][1].messages[0].content;
+    expect(promptText).not.toContain("PINNED WATCH"); // silently ignored, no error
   });
 
   // ─── AI flexibility params (regen / steer / variants / why / reject) ──────
