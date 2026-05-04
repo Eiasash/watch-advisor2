@@ -500,34 +500,29 @@ export async function handler(event) {
       pinnedWatch,
     });
 
-    // Inference settings tuned for Netlify free-tier 10s function ceiling.
-    // Live measurement (2026-05-04): Sonnet 4.6 in this Netlify region runs ~40
-    // tokens/sec. With 2200 max_tokens that's ~55s of generation alone — well
-    // past the 10s ceiling regardless of effort/thinking knobs.
+    // Inference settings — restored to Sonnet 4.6 + 2200 tokens after
+    // discovering this site is on Netlify Pro (nf_team_pro, 26s function
+    // ceiling), not free tier (10s). The earlier Haiku/800-token downshift
+    // (PRs #131/#132) was based on the wrong budget assumption.
     //
-    // Solution: hardcode Haiku 4.5 (not getConfiguredModel) for daily-pick only.
-    // - Haiku is ~2.5-3x faster than Sonnet
-    // - The structured JSON output with pre-labeled personalization signals is
-    //   exactly Haiku's sweet spot — taste application, not deep reasoning
-    // - getConfiguredModel() stays Sonnet for other callers (wardrobe-chat etc)
-    //   that need its nuance
+    // Sonnet runs ~40 tok/s in this Netlify region; 2200 max_tokens worst-case
+    // = ~55s of generation IF the model maxes out, but typical JSON payload is
+    // ~250 tokens so real wall-clock lands around 6-12s. Comfortably under 26s.
     //
-    // max_tokens dropped 2200 → 800 (single) / 2000 (variants ×3): the actual
-    // JSON payload is ~250 tokens; 2200 was an oversized budget the model
-    // treated as license to ramble. Tighter cap = faster + cleaner output.
+    // Personalization signals (PR #128) + pinnedWatch (PR #141) still do most
+    // of the structural work; Sonnet adds the nuanced reasoning prose Haiku
+    // couldn't quite match in the BB41/Rikka-style multi-constraint picks.
     //
-    // If you want Sonnet quality back: upgrade Netlify Pro ($19/mo, 26s ceiling)
-    // and revert the model line + max_tokens to use getConfiguredModel + 2200.
-    const FAST_MODEL = "claude-haiku-4-5-20251001";
-    const maxTokens = variants > 1 ? 800 + (variants - 1) * 600 : 800;
-    // NOTE: output_config.effort is an Opus/Sonnet extended-thinking knob and
-    // is rejected by Haiku 4.5 (live test 2026-05-04: 3 consecutive 500s in
-    // ~1.2s = fast-fail at API level). Haiku doesn't need effort tuning anyway
-    // — it's already fast and works well on structured-JSON output.
+    // If latency ever bites: drop max_tokens 2200 → 1500 first (cheaper than
+    // dropping back to Haiku), then drop output_config.effort high → medium.
+    const model = await getConfiguredModel();
+    const maxTokens = variants > 1 ? 2200 + (variants - 1) * 1500 : 2200;
     const result = await callClaude(apiKey, {
-      model: FAST_MODEL,
+      model,
       max_tokens: maxTokens,
       system: systemPrompt,
+      thinking: { type: "adaptive" },
+      output_config: { effort: "high" },
       messages: [{ role: "user", content: userPrompt }],
     }, { maxAttempts: 1 });
 
