@@ -4,7 +4,8 @@ import { cors } from "./_cors.js";
 import { requireUser } from "./_auth.js";
 
 // Exported for unit testing — see tests/dailyPickPersonalization.test.js
-export { categorizeGarments };
+// and tests/dailyPickCache.test.js
+export { categorizeGarments, computeCacheKey, cacheTtlMs };
 
 /**
  * daily-pick.js — "Claude's Pick" outfit recommendation.
@@ -89,6 +90,49 @@ OUTPUT SCHEMA — return ONLY valid JSON matching this shape:
 }
 
 Pay close attention to the PAST CORRECTIONS section in the user message if present — those are direct signals about Eias's actual preferences that should override your defaults.`;
+}
+
+/**
+ * Build a stable cache key from the inputs that determine recommendation
+ * identity. Two requests with identical date + pinned watch + weather +
+ * wardrobe state + history state should produce equivalent picks; cache
+ * lets us skip the Claude call (~6s) when nothing meaningful changed.
+ *
+ * Why these specific inputs:
+ *   - date: a pick is for a specific day
+ *   - pinnedWatchId: WeekPlanner's day.watch — different watch = different pick
+ *   - weatherSig: rounded morning/midday/evening (to avoid micro-degree churn)
+ *   - garmentsSig: count + max created_at — proxies "wardrobe state version"
+ *   - historySig: count + most-recent date — proxies "wear history version"
+ *
+ * Anything not in this key (steer / rejected / excludeRecent) is handled by
+ * bypassing the cache entirely for those verbs — see callers.
+ */
+function computeCacheKey({ date, pinnedWatchId, weather, garments, history }) {
+  const wsig = weather
+    ? `${Math.round(weather.tempMorning ?? weather.tempC ?? 0)}-${Math.round(weather.tempMidday ?? 0)}-${Math.round(weather.tempEvening ?? 0)}`
+    : "nw";
+  const maxCreatedAt = (garments ?? []).reduce(
+    (m, g) => Math.max(m, g.created_at ? new Date(g.created_at).getTime() : 0),
+    0
+  );
+  const gsig = `${(garments ?? []).length}-${maxCreatedAt}`;
+  // history is sorted desc by date, so [0].date is the most recent
+  const hsig = `${(history ?? []).length}-${history?.[0]?.date ?? ""}`;
+  const watchPart = pinnedWatchId ?? "open";
+  // Keep key under Postgres's index limits — readable, not hashed (debuggable
+  // when something looks stale and you want to grep).
+  return `daily_pick_cache:${date}:${watchPart}:${wsig}:${gsig}:${hsig}`;
+}
+
+/**
+ * TTL for cached picks in milliseconds.
+ *   today (Jerusalem-local) = 4 hours (matches the legacy daily_pick cache)
+ *   future days             = 24 hours (forecast doesn't update minute-by-minute)
+ */
+function cacheTtlMs(dateStr) {
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jerusalem" }).format(new Date());
+  return dateStr === today ? 4 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
 }
 
 /**
@@ -478,6 +522,35 @@ export async function handler(event) {
 
     const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Jerusalem" });
 
+    // ── Input-hashed cache (PR #145) ───────────────────────────────────────
+    // Bypass cache when the user explicitly asked for something different.
+    // Auto-load calls (forceRefresh:true with no flexibility verbs) hit cache.
+    const skipCache = !!steer || excludeRecent.length > 0 || !!rejected || variants > 1;
+    const cacheKeyDate = body.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date)
+      ? body.date
+      : new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jerusalem" }).format(new Date());
+    const inputCacheKey = computeCacheKey({
+      date: cacheKeyDate,
+      pinnedWatchId: pinnedWatch?.id ?? null,
+      weather,
+      garments: garments ?? [],
+      history: history ?? [],
+    });
+    if (!skipCache) {
+      try {
+        const { data } = await supabase.from("app_config").select("value").eq("key", inputCacheKey).limit(1);
+        const cached = data?.[0]?.value;
+        if (cached?.generatedAt) {
+          const age = Date.now() - new Date(cached.generatedAt).getTime();
+          if (age < cacheTtlMs(cacheKeyDate)) {
+            // Mark cache hit explicitly so client-side latency observability
+            // can distinguish "model returned in 6s" from "cache returned in 100ms".
+            return { statusCode: 200, headers: CORS, body: JSON.stringify({ ...cached, cardSource: "ai_rec_cached", cacheKey: inputCacheKey }) };
+          }
+        }
+      } catch { /* cache miss — regenerate */ }
+    }
+
     // Personalization categorization — derived from the same garments + history
     // already fetched. No extra DB roundtrip. Capped per category in the helper.
     const personalization = categorizeGarments(garments ?? [], history ?? []);
@@ -556,13 +629,16 @@ export async function handler(event) {
     const pick = parsed;
     pick.generatedAt = generatedAt;
     pick.weather = weather;
+    pick.cardSource = "ai_rec"; // PR #145 — provenance field for UI labeling
     if (steer) pick.steer = steer; // surface for debugging / UI affordance
 
-    // Cache in app_config — but only when this is a "natural" pick (no steer / exclude / rejected)
-    // so steered/regenerated picks don't poison the daily cache for other clients.
-    if (!steer && excludeRecent.length === 0 && !rejected) {
+    // Cache writes — two parallel locations:
+    //   1. legacy "daily_pick" key — kept for back-compat with ClaudePick GET
+    //   2. new inputCacheKey — hash of (date, pinned watch, weather, wardrobe state)
+    if (!skipCache) {
       try {
         await supabase.from("app_config").upsert({ key: "daily_pick", value: pick }, { onConflict: "key" });
+        await supabase.from("app_config").upsert({ key: inputCacheKey, value: pick }, { onConflict: "key" });
       } catch {}
     }
 
