@@ -988,6 +988,13 @@ export default function WeekPlanner() {
   // leaving the user with an engine pick that LOOKS like an AI rec failed
   // halfway. Cleared on next successful AI call or on Reset.
   const [aiErrorByDay, setAiErrorByDay] = useState({});
+  // PR #156 — what watch the AI was actually styled around at the moment of
+  // the ask. Captured at request time (not render time) so a subsequent watch
+  // override doesn't make the dev-mode "Styled around: X" label lie about the
+  // historical request. The BB41/Rikka mismatch class (PR #141) is exactly
+  // why this label exists — it makes drift between rendered watch and AI
+  // intent obvious without needing to dig through network logs.
+  const [aiStyledAroundByDay, setAiStyledAroundByDay] = useState({});
   // Per-day rolling list of recent AI picks (for excludeRecent on regenerate/steer).
   // { [date]: [{ watch, watchId, shirt, sweater, pants, shoes, jacket }, ...] }
   const [recentAiPicks, setRecentAiPicks]   = useState({});
@@ -1272,6 +1279,7 @@ export default function WeekPlanner() {
     setAiGeneratedAtByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiDiffByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiErrorByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
+    setAiStyledAroundByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setRecentAiPicks(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiRationale(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
   }, []);
@@ -1402,6 +1410,12 @@ export default function WeekPlanner() {
       // the original timestamp across cache hits, so cached responses still
       // surface their ORIGINAL generation time ("Cached from 08:42").
       setAiGeneratedAtByDay(prev => ({ ...prev, [date]: pick.generatedAt ?? new Date().toISOString() }));
+      // PR #156 — record what watch we asked the AI to style around at THIS
+      // moment, so the dev-mode label can show the historical intent even if
+      // the user later overrides the watch (would otherwise mislead).
+      if (pinnedWatch) {
+        setAiStyledAroundByDay(prev => ({ ...prev, [date]: { brand: pinnedWatch.brand, model: pinnedWatch.model } }));
+      }
       // Track rolling list of last 5 picks for this day so excludeRecent works.
       // PR #154 — also compute diff against the prior AI pick so the banner can
       // show "Changed: shirt + watch. Kept: pants + shoes." after Different one.
@@ -1666,6 +1680,15 @@ export default function WeekPlanner() {
               {statusSubtitle && (
                 <div style={{ fontSize:11, color:sub, marginBottom:8, marginTop:-2, opacity:0.85 }}>
                   {statusSubtitle}
+                </div>
+              )}
+              {/* PR #156 — dev-only "Styled around: <watch>" label. Makes any
+                  drift between the rendered watch and the watch the AI was
+                  actually asked to style around obvious immediately, without
+                  needing to inspect network logs. Hidden in production. */}
+              {import.meta.env.DEV && aiStyledAroundByDay[day.date] && (
+                <div style={{ fontSize:10, color:muted, marginBottom:6, marginTop:-4, opacity:0.6, fontFamily:"monospace" }}>
+                  Styled around: {aiStyledAroundByDay[day.date].brand} {aiStyledAroundByDay[day.date].model}
                 </div>
               )}
 
