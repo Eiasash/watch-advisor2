@@ -1692,10 +1692,25 @@ export default function WeekPlanner() {
                 </div>
               )}
 
-              {/* Watch */}
-              <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall}
-                label={day.isLoggedToday ? "wearing now" : day.isOverridden ? "overridden" : null}
-                daysSince={day.watch ? daysSinceWorn(day.watch.id, history) : null} />
+              {/* Watch + strap — rendered as one visual unit (PR #157).
+                  Per critique: "watch and strap should always appear together
+                  in the same block. Not scattered." Previously the strap
+                  recommendation was buried inside the OUTFIT subsection,
+                  visually separated from its watch by the entire slot grid.
+                  Now they're a pair — change the watch, the strap suggestion
+                  for THAT watch is right next to it. */}
+              <div>
+                <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall}
+                  label={day.isLoggedToday ? "wearing now" : day.isOverridden ? "overridden" : null}
+                  daysSince={day.watch ? daysSinceWorn(day.watch.id, history) : null} />
+                {dayOutfit._strapRecommendation && !dayOutfit._isLogged && (
+                  <div style={{ marginTop: 4, fontSize: 10, color: "#f59e0b", padding: "3px 8px",
+                                borderRadius: 5, background: isDark ? "#78350f22" : "#fef3c722",
+                                display: "inline-block" }}>
+                    ⌚ Suggested strap: <strong>{dayOutfit._strapRecommendation.label}</strong>
+                  </div>
+                )}
+              </div>
 
               {/* Watch override picker */}
               <div style={{ marginTop: 8, display: "flex", gap: 6, alignItems: "center" }}>
@@ -1950,14 +1965,6 @@ export default function WeekPlanner() {
                       />
                     ))}
                   </div>
-
-                  {/* Strap recommendation */}
-                  {dayOutfit._strapRecommendation && !dayOutfit._isLogged && (
-                    <div style={{ marginTop: 6, fontSize: 10, color: "#f59e0b", padding: "3px 8px",
-                                  borderRadius: 5, background: isDark ? "#78350f22" : "#fef3c722" }}>
-                      ⌚ Suggested strap: <strong>{dayOutfit._strapRecommendation.label}</strong>
-                    </div>
-                  )}
 
                   {/* Explanation — collapsible */}
                   {dayOutfit._explanation?.length > 0 && !dayOutfit._isLogged && (
