@@ -1504,11 +1504,22 @@ export default function WeekPlanner() {
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {rotation.map((day, dayIdx) => {
           const isToday = day.date === today;
+          // PR #152 — recommendation vs logged visual split.
+          // When the day's outfit is logged, the card gets a green-tinted
+          // border + background so it visually reads as "settled" instead of
+          // "still being negotiated with". On-call still wins (safety signal),
+          // logged then beats today-blue (today + logged = transitions blue →
+          // green when the user commits to an outfit, which is good feedback).
+          const isLoggedCard = !!(weekOutfits[dayIdx]?._isLogged);
           const cardBg = day.isOnCall
             ? (isDark ? "#1a1400" : "#fff8f0")
+            : isLoggedCard ? (isDark ? "#0a1f0f" : "#f0fdf4")
             : isToday ? (isDark ? "#0d1929" : "#eff6ff")
             : (isDark ? "#0f131a" : "#f9fafb");
-          const cardBorder = day.isOnCall ? "#f97316" : isToday ? "#3b82f6" : border;
+          const cardBorder = day.isOnCall ? "#f97316"
+            : isLoggedCard ? (isDark ? "#16a34a" : "#22c55e")
+            : isToday ? "#3b82f6"
+            : border;
           const dayForecast = forecast.find(f => f.date === day.date);
           const dayOutfit = weekOutfits[dayIdx] ?? {};
           const hasOverrides = !!outfitOverrides[day.date];
