@@ -191,7 +191,7 @@ describe("daily-pick", () => {
 
     expect(claudeMod.callClaude).toHaveBeenCalledWith(
       "test-key",
-      expect.objectContaining({ max_tokens: 800 }), // PR #131: capped 2200→800 (actual JSON ~250 tokens; 2200 made model ramble + 504 on Netlify free tier)
+      expect.objectContaining({ max_tokens: 2200 }), // restored after discovering Netlify Pro plan (26s ceiling, not 10s) — see daily-pick.js inference comment
       expect.objectContaining({ maxAttempts: 1 }),
     );
   });
