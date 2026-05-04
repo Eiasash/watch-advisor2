@@ -983,6 +983,11 @@ export default function WeekPlanner() {
   // shown as a "Changed: X. Kept: Y." banner after "Different one" so users
   // can spot multi-slot changes without ocular guesswork.
   const [aiDiffByDay, setAiDiffByDay] = useState({});
+  // PR #155 — per-day AI error state. When set, render an explicit error
+  // banner with Retry / Use planner pick actions instead of silently
+  // leaving the user with an engine pick that LOOKS like an AI rec failed
+  // halfway. Cleared on next successful AI call or on Reset.
+  const [aiErrorByDay, setAiErrorByDay] = useState({});
   // Per-day rolling list of recent AI picks (for excludeRecent on regenerate/steer).
   // { [date]: [{ watch, watchId, shirt, sweater, pants, shoes, jacket }, ...] }
   const [recentAiPicks, setRecentAiPicks]   = useState({});
@@ -1266,6 +1271,7 @@ export default function WeekPlanner() {
     setAiSourceByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiGeneratedAtByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiDiffByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
+    setAiErrorByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setRecentAiPicks(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiRationale(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
   }, []);
@@ -1412,8 +1418,17 @@ export default function WeekPlanner() {
       if (pick.reasoning) {
         setAiRationale(prev => ({ ...prev, [date]: { text: pick.reasoning, loading: false } }));
       }
+      // PR #155 — successful response clears any prior error banner.
+      setAiErrorByDay(prev => {
+        if (!(date in prev)) return prev;
+        const n = { ...prev }; delete n[date]; return n;
+      });
     } catch (e) {
       console.warn("[WeekPlanner] AI pick failed:", e.message);
+      // PR #155 — surface the failure as an explicit error state with Retry
+      // and "Use planner pick" actions, instead of silently leaving the user
+      // staring at an engine pick that looks like a half-broken AI rec.
+      setAiErrorByDay(prev => ({ ...prev, [date]: e.message ?? "AI request failed" }));
     } finally {
       setAiLoadingDay(null);
     }
@@ -1840,6 +1855,42 @@ export default function WeekPlanner() {
                       onAsk={handleAskClaude}
                       onWhy={() => handleWhyAI(day.date)}
                     />
+                  )}
+                  {/* PR #155 — explicit AI error banner with Retry / Use
+                      planner pick actions. Without this the user sees an
+                      engine pick after a Claude failure and has no idea
+                      whether anything tried. */}
+                  {aiErrorByDay[day.date] && !dayOutfit._isLogged && (
+                    <div role="alert" style={{
+                      marginBottom: 6, padding: "6px 9px", borderRadius: 6,
+                      background: isDark ? "#2a0c0c" : "#fef2f2",
+                      border: `1px solid ${isDark ? "#7f1d1d" : "#fecaca"}`,
+                      fontSize: 11, color: isDark ? "#fca5a5" : "#991b1b", lineHeight: 1.5,
+                    }}>
+                      <div style={{ fontWeight: 700, marginBottom: 2 }}>
+                        AI recommendation unavailable
+                      </div>
+                      <div style={{ fontSize: 10, marginBottom: 5, opacity: 0.85 }}>
+                        Showing deterministic planner pick instead.
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => handleAskClaude(day.date, dayForecast)}
+                          disabled={aiLoadingDay === day.date}
+                          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                                   border: `1px solid ${isDark ? "#dc2626" : "#ef4444"}`,
+                                   background: "transparent",
+                                   color: isDark ? "#fca5a5" : "#dc2626", fontWeight: 700,
+                                   opacity: aiLoadingDay === day.date ? 0.6 : 1 }}>
+                          {aiLoadingDay === day.date ? "…" : "Retry AI"}
+                        </button>
+                        <button onClick={() => handleResetOutfit(day.date)}
+                          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                                   border: `1px solid ${border}`, background: "transparent",
+                                   color: muted, fontWeight: 600 }}>
+                          Use planner pick
+                        </button>
+                      </div>
+                    </div>
                   )}
                   {/* PR #154 — diff banner after "Different one". Shows what
                       slots changed vs the previous AI pick so multi-slot
