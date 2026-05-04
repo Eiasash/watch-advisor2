@@ -988,6 +988,14 @@ export default function WeekPlanner() {
   // leaving the user with an engine pick that LOOKS like an AI rec failed
   // halfway. Cleared on next successful AI call or on Reset.
   const [aiErrorByDay, setAiErrorByDay] = useState({});
+  // PR #161 — record the (watchId, strapId) the most recent AI rec was for, per day.
+  // The auto-refit useEffect compares current vs. recorded; if the user has changed
+  // the watch or strap since the AI rec, we debounce-fire handleAskClaude so the
+  // outfit re-coordinates without the user having to remember to tap Ask Claude.
+  // useRef (not state) because we don't want the effect to re-run when WE update it.
+  const aiContextRef = useRef({});  // { [date]: { watchId, strapId } }
+  const refitTimerRef = useRef({}); // { [date]: setTimeout-id }
+
   // PR #156 — what watch the AI was actually styled around at the moment of
   // the ask. Captured at request time (not render time) so a subsequent watch
   // override doesn't make the dev-mode "Styled around: X" label lie about the
@@ -1434,6 +1442,28 @@ export default function WeekPlanner() {
       if (pinnedWatch) {
         setAiStyledAroundByDay(prev => ({ ...prev, [date]: { brand: pinnedWatch.brand, model: pinnedWatch.model } }));
       }
+      // PR #161 — record (watchId, strapId) so the auto-refit effect can
+      // detect drift and re-fire when the user changes either one.
+      aiContextRef.current[date] = {
+        watchId: dayWatchIdForStrap ?? null,
+        strapId: dayStrapIdForAsk ?? null,
+      };
+      // PR #161 — apply Claude's strap suggestion to the UI when the user hasn't
+      // pinned one. Match by label against the watch's available straps. If no
+      // match, leave alone (Claude may have hallucinated a strap label or the
+      // store's strap entry differs slightly).
+      if (pick.strap && typeof pick.strap === "string" && dayWatchIdForStrap && !scopedStrapOverrideForAsk) {
+        const target = pick.strap.toLowerCase().trim();
+        const matchedStrapId = Object.entries(straps).find(([, s]) =>
+          s.watchId === dayWatchIdForStrap && (s.label?.toLowerCase().trim() === target)
+        )?.[0];
+        if (matchedStrapId && matchedStrapId !== dayStrapIdForAsk) {
+          setStrapOverrides(prev => ({ ...prev, [date]: matchedStrapId }));
+          // Update the recorded context so the next auto-refit doesn't re-fire on
+          // OUR own write (would create a self-trigger loop).
+          aiContextRef.current[date] = { ...aiContextRef.current[date], strapId: matchedStrapId };
+        }
+      }
       // Track rolling list of last 5 picks for this day so excludeRecent works.
       // PR #154 — also compute diff against the prior AI pick so the banner can
       // show "Changed: shirt + watch. Kept: pants + shoes." after Different one.
@@ -1465,6 +1495,45 @@ export default function WeekPlanner() {
       setAiLoadingDay(null);
     }
   }, [garments, watches, recentAiPicks, compactPickForExclude, aiAppliedDays, outfitOverrides]);
+
+  // PR #161 — Auto-refit on watch/strap change.
+  //
+  // When the user changes watch or strap on a day that already has an AI rec
+  // applied, schedule a debounced re-fire of handleAskClaude. This makes the
+  // AI a reactive partner: tap a different watch, the outfit re-coordinates;
+  // pick a different strap, the prose updates to mention it.
+  //
+  // Debounce (1500ms) coalesces rapid fiddling so we don't burn Claude credits
+  // when the user is comparing options. Self-writes from PR #161's apply-strap
+  // path are filtered by updating aiContextRef synchronously, so a Claude
+  // response that sets the strap doesn't trigger another Claude call.
+  //
+  // Watch overrides only fire if the user has already engaged AI for that day
+  // (aiAppliedDays.has) — we don't auto-fire on engine-pick-only days.
+  useEffect(() => {
+    for (const day of rotation) {
+      if (!day?.date || !aiAppliedDays.has(day.date)) continue;
+      const seen = aiContextRef.current[day.date];
+      if (!seen) continue;
+      const currentWatchId = watchOverrides[day.date] ?? day.watch?.id ?? null;
+      const rawSO = strapOverrides[day.date];
+      const scopedSO = (rawSO && straps[rawSO]?.watchId === currentWatchId) ? rawSO : null;
+      const currentStrapId = scopedSO ?? (currentWatchId && activeStrap[currentWatchId]) ?? null;
+      if (currentWatchId === seen.watchId && currentStrapId === seen.strapId) continue;
+      // Drift detected — schedule debounced refit.
+      if (refitTimerRef.current[day.date]) clearTimeout(refitTimerRef.current[day.date]);
+      const dayForecast = forecast.find(f => f.date === day.date);
+      if (!dayForecast) continue;
+      refitTimerRef.current[day.date] = setTimeout(() => {
+        handleAskClaude(day.date, dayForecast);
+        delete refitTimerRef.current[day.date];
+      }, 1500);
+    }
+    // Cleanup pending timers on unmount / dependency change.
+    return () => {
+      for (const id of Object.values(refitTimerRef.current)) clearTimeout(id);
+    };
+  }, [watchOverrides, strapOverrides, activeStrap, rotation, aiAppliedDays, straps, forecast, handleAskClaude]);
 
   // Auto-load AI rec for today (idx 0) + tomorrow (idx 1) on first render
   // when watches + forecast are ready.
