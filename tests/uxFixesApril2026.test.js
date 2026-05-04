@@ -98,7 +98,11 @@ describe("UX fixes Apr 2026 — WeekPlanner single AI entry point", () => {
       fs.promises.readFile("src/components/WeekPlanner.jsx", "utf-8")
     );
     expect(src).toMatch(/aiAppliedDays\.has\(day\.date\)/);
-    expect(src).toMatch(/✦\s*AI/);
+    // PR #149 — badge text is now resolved through cardSourceLabel(...) instead
+    // of an inline "✦ AI" string. The contract is still the same: an AI badge
+    // exists and is gated on aiAppliedDays. Verify the resolver is wired in.
+    expect(src).toMatch(/cardSourceLabel\(source\)/);
+    expect(src).toMatch(/aiSourceByDay\[day\.date\]/);
   });
 });
 
