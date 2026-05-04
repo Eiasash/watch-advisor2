@@ -8,7 +8,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
 import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
-import { cardSourceLabel, cardSourceColor } from "../utils/cardSourceLabel.js";
+import { resolveCardSource, cardStatusSubtitle } from "../utils/cardSourceLabel.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
@@ -954,6 +954,11 @@ export default function WeekPlanner() {
   // Claude call ("ai_rec") from a server-side cache hit ("ai_rec_cached") so
   // the badge can label them differently. PR #149 — see cardSourceLabel.js.
   const [aiSourceByDay, setAiSourceByDay]   = useState({});
+  // Per-day generatedAt timestamp from the daily-pick response. For cached
+  // responses this is the ORIGINAL generation time (server preserves it
+  // across cache hits), so the subtitle can say "Cached from 08:42" truthfully.
+  // PR #151 — used by cardStatusSubtitle().
+  const [aiGeneratedAtByDay, setAiGeneratedAtByDay] = useState({});
   // Per-day rolling list of recent AI picks (for excludeRecent on regenerate/steer).
   // { [date]: [{ watch, watchId, shirt, sweater, pants, shoes, jacket }, ...] }
   const [recentAiPicks, setRecentAiPicks]   = useState({});
@@ -1235,6 +1240,7 @@ export default function WeekPlanner() {
     });
     setAiAppliedDays(prev => { if (!prev.has(date)) return prev; const n = new Set(prev); n.delete(date); return n; });
     setAiSourceByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
+    setAiGeneratedAtByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setRecentAiPicks(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiRationale(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
   }, []);
@@ -1361,6 +1367,10 @@ export default function WeekPlanner() {
       // PR #149 — record cardSource so the badge can distinguish fresh vs cached.
       // Default to "ai_rec" if the server omits the field (older deploy / replayed response).
       setAiSourceByDay(prev => ({ ...prev, [date]: pick.cardSource ?? "ai_rec" }));
+      // PR #151 — record generatedAt for the status subtitle. Server preserves
+      // the original timestamp across cache hits, so cached responses still
+      // surface their ORIGINAL generation time ("Cached from 08:42").
+      setAiGeneratedAtByDay(prev => ({ ...prev, [date]: pick.generatedAt ?? new Date().toISOString() }));
       // Track rolling list of last 5 picks for this day so excludeRecent works.
       setRecentAiPicks(prev => {
         const compact = compactPickForExclude(pick);
@@ -1523,6 +1533,25 @@ export default function WeekPlanner() {
             return overlap >= 3;
           });
 
+          // PR #151 — resolve card-source + status subtitle once per card.
+          // Single source of truth for "what am I looking at" across the
+          // header badge and the subtitle line below it.
+          const loggedEntry = history.find(h => h.date === day.date);
+          const loggedAt = loggedEntry?.loggedAt ?? loggedEntry?.payload?.loggedAt ?? null;
+          const hasManualEdits = !!shuffleSeeds[day.date]
+            || (outfitOverrides[day.date] && Object.keys(outfitOverrides[day.date]).length > 0);
+          const cardSource = resolveCardSource({
+            isLogged: !!dayOutfit._isLogged,
+            aiApplied: aiAppliedDays.has(day.date),
+            aiSource: aiSourceByDay[day.date],
+            hasManualEdits,
+          });
+          const statusSubtitle = cardSource ? cardStatusSubtitle({
+            source: cardSource.source,
+            generatedAt: aiGeneratedAtByDay[day.date],
+            loggedAt,
+          }) : "";
+
           return (
             <div key={day.offset} style={{
               borderRadius:12, padding:"12px 14px",
@@ -1549,6 +1578,14 @@ export default function WeekPlanner() {
                       ⌚ {lastWornDays}d ago
                     </span>
                   )}
+                  {cardSource && (
+                    <span title={cardSource.source === "ai_rec_cached" ? "Cached recommendation — re-fetch by clicking Ask Claude" : null}
+                          style={{ fontSize:11, fontWeight:700, padding:"1px 6px", borderRadius:4,
+                                   background:`${cardSource.color}22`, color:cardSource.color,
+                                   border:`1px solid ${cardSource.color}44` }}>
+                      {cardSource.icon} {cardSource.label}
+                    </span>
+                  )}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <WeatherBadge forecast={dayForecast} isDark={isDark} />
@@ -1565,6 +1602,15 @@ export default function WeekPlanner() {
                   </select>
                 </div>
               </div>
+
+              {/* Status subtitle — PR #151. Tells you Generated/Cached/Logged time
+                  and logged-state at a glance, right under the day header. Hidden
+                  when there's nothing to say (engine pick, no edits, no AI). */}
+              {statusSubtitle && (
+                <div style={{ fontSize:11, color:sub, marginBottom:8, marginTop:-2, opacity:0.85 }}>
+                  {statusSubtitle}
+                </div>
+              )}
 
               {/* Watch */}
               <WatchMini watch={day.watch} isDark={isDark} isOnCall={day.isOnCall}
@@ -1704,26 +1750,9 @@ export default function WeekPlanner() {
                       <div style={{ fontSize: 10, color: sub, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         OUTFIT
                       </div>
-                      {(() => {
-                        // PR #149 — single resolver for the card-source badge so
-                        // the word "Logged" only appears when actually history-backed.
-                        // Priority: logged > AI (fresh / cached) > manual edits.
-                        let source = null;
-                        if (dayOutfit._isLogged) source = "logged";
-                        else if (aiAppliedDays.has(day.date)) source = aiSourceByDay[day.date] ?? "ai_rec";
-                        else if (shuffleSeeds[day.date] || (outfitOverrides[day.date] && Object.keys(outfitOverrides[day.date]).length > 0)) source = "manual";
-                        const label = cardSourceLabel(source);
-                        if (!label) return null;
-                        const color = cardSourceColor(source);
-                        const icon = source === "logged" ? "✓" : source === "manual" ? "✎" : "✦";
-                        return (
-                          <div title={source === "ai_rec_cached" ? "Cached recommendation — re-fetch by clicking Ask Claude" : null}
-                               style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                                        background: `${color}22`, color, border: `1px solid ${color}44` }}>
-                            {icon} {label}
-                          </div>
-                        );
-                      })()}
+                      {/* Source badge moved up to the day header in PR #151 — was
+                          buried behind the watch block here, now answers "what am
+                          I looking at" at a glance. */}
                     </div>
                     {!dayOutfit._isLogged && (
                     <div style={{ display: "flex", gap: 4 }}>
