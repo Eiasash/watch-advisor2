@@ -500,29 +500,32 @@ export async function handler(event) {
       pinnedWatch,
     });
 
-    // Inference settings — restored to Sonnet 4.6 + 2200 tokens after
-    // discovering this site is on Netlify Pro (nf_team_pro, 26s function
-    // ceiling), not free tier (10s). The earlier Haiku/800-token downshift
-    // (PRs #131/#132) was based on the wrong budget assumption.
+    // Inference settings — back on Haiku 4.5 + 800 tokens after PR #142's
+    // Sonnet revert produced live 504s (debug log 2026-05-04 04:45 UTC: two
+    // /daily-pick calls 31s apart, both 504 "Inactivity Timeout"). Even on
+    // Pro tier (nf_team_pro), Sonnet + adaptive thinking + effort:high + 2200
+    // tokens does NOT reliably fit under the actual edge-proxy ceiling (~30s
+    // observed, regardless of what Netlify docs claim about 26s).
     //
-    // Sonnet runs ~40 tok/s in this Netlify region; 2200 max_tokens worst-case
-    // = ~55s of generation IF the model maxes out, but typical JSON payload is
-    // ~250 tokens so real wall-clock lands around 6-12s. Comfortably under 26s.
+    // Sequence:
+    //   PR #131/#132: Haiku + 800 tokens (worked, ~6s)
+    //   PR #142: Sonnet + thinking + high + 2200 (broke — 504 in production)
+    //   THIS PR: back to Haiku + 800 tokens (rollback)
     //
-    // Personalization signals (PR #128) + pinnedWatch (PR #141) still do most
-    // of the structural work; Sonnet adds the nuanced reasoning prose Haiku
-    // couldn't quite match in the BB41/Rikka-style multi-constraint picks.
+    // Personalization signals (PR #128) + pinnedWatch (PR #141) carry the
+    // structural reasoning; Haiku handles taste application well enough on
+    // pre-labeled context. The reasoning-prose nuance gain from Sonnet wasn't
+    // worth the 504-rate.
     //
-    // If latency ever bites: drop max_tokens 2200 → 1500 first (cheaper than
-    // dropping back to Haiku), then drop output_config.effort high → medium.
-    const model = await getConfiguredModel();
-    const maxTokens = variants > 1 ? 2200 + (variants - 1) * 1500 : 2200;
+    // To re-attempt Sonnet later: try effort:medium + NO thinking + max_tokens
+    // 1500 first. Or wait for Anthropic priority routing on the prompt.
+    const FAST_MODEL = "claude-haiku-4-5-20251001";
+    const maxTokens = variants > 1 ? 800 + (variants - 1) * 600 : 800;
+    // output_config.effort is Opus/Sonnet-only; Haiku 4.5 rejects it (PR #132).
     const result = await callClaude(apiKey, {
-      model,
+      model: FAST_MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "high" },
       messages: [{ role: "user", content: userPrompt }],
     }, { maxAttempts: 1 });
 
