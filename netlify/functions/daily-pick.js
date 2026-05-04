@@ -149,6 +149,10 @@ Pay close attention to the PAST CORRECTIONS section in the user message if prese
  *
  * Anything not in this key (steer / rejected / excludeRecent) is handled by
  * bypassing the cache entirely for those verbs — see callers.
+ *
+ * Single-user app: cache key intentionally omits user identity. If multi-user
+ * support is ever added, include auth.uid / email in the key to prevent two
+ * users with similar wardrobe sizes from sharing entries.
  */
 function computeCacheKey({ date, pinnedWatchId, weather, garments, history }) {
   const wsig = weather
