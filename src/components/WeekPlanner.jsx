@@ -10,6 +10,7 @@ import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
 import { resolveCardSource, cardStatusSubtitle } from "../utils/cardSourceLabel.js";
 import { firstSentence, hasMoreThanSummary } from "../utils/firstSentence.js";
+import { computeOutfitDiff, hasDiff } from "../utils/outfitDiff.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
@@ -978,6 +979,10 @@ export default function WeekPlanner() {
   // across cache hits), so the subtitle can say "Cached from 08:42" truthfully.
   // PR #151 — used by cardStatusSubtitle().
   const [aiGeneratedAtByDay, setAiGeneratedAtByDay] = useState({});
+  // PR #154 — diff between the previous AI pick and the most recent one,
+  // shown as a "Changed: X. Kept: Y." banner after "Different one" so users
+  // can spot multi-slot changes without ocular guesswork.
+  const [aiDiffByDay, setAiDiffByDay] = useState({});
   // Per-day rolling list of recent AI picks (for excludeRecent on regenerate/steer).
   // { [date]: [{ watch, watchId, shirt, sweater, pants, shoes, jacket }, ...] }
   const [recentAiPicks, setRecentAiPicks]   = useState({});
@@ -1260,6 +1265,7 @@ export default function WeekPlanner() {
     setAiAppliedDays(prev => { if (!prev.has(date)) return prev; const n = new Set(prev); n.delete(date); return n; });
     setAiSourceByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiGeneratedAtByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
+    setAiDiffByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setRecentAiPicks(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiRationale(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
   }, []);
@@ -1391,11 +1397,17 @@ export default function WeekPlanner() {
       // surface their ORIGINAL generation time ("Cached from 08:42").
       setAiGeneratedAtByDay(prev => ({ ...prev, [date]: pick.generatedAt ?? new Date().toISOString() }));
       // Track rolling list of last 5 picks for this day so excludeRecent works.
+      // PR #154 — also compute diff against the prior AI pick so the banner can
+      // show "Changed: shirt + watch. Kept: pants + shoes." after Different one.
+      const prevPick = (recentAiPicks[date] ?? [])[0] ?? null;
+      const newCompact = compactPickForExclude(pick);
       setRecentAiPicks(prev => {
-        const compact = compactPickForExclude(pick);
-        const list = [compact, ...(prev[date] ?? [])].slice(0, 5);
+        const list = [newCompact, ...(prev[date] ?? [])].slice(0, 5);
         return { ...prev, [date]: list };
       });
+      if (prevPick) {
+        setAiDiffByDay(prev => ({ ...prev, [date]: computeOutfitDiff(prevPick, newCompact) }));
+      }
       // Surface reasoning if the model returned it (no extra round-trip).
       if (pick.reasoning) {
         setAiRationale(prev => ({ ...prev, [date]: { text: pick.reasoning, loading: false } }));
@@ -1828,6 +1840,24 @@ export default function WeekPlanner() {
                       onAsk={handleAskClaude}
                       onWhy={() => handleWhyAI(day.date)}
                     />
+                  )}
+                  {/* PR #154 — diff banner after "Different one". Shows what
+                      slots changed vs the previous AI pick so multi-slot
+                      changes are spotted at a glance, not by ocular guessing. */}
+                  {aiDiffByDay[day.date] && hasDiff(aiDiffByDay[day.date]) && !dayOutfit._isLogged && (
+                    <div style={{
+                      marginBottom: 6, padding: "5px 9px", borderRadius: 6,
+                      background: isDark ? "#0c2a1a" : "#ecfdf5",
+                      border: `1px solid ${isDark ? "#14532d" : "#a7f3d0"}`,
+                      fontSize: 10, color: isDark ? "#86efac" : "#047857", lineHeight: 1.5,
+                    }}>
+                      {aiDiffByDay[day.date].changed.length > 0 && (
+                        <div><strong>Changed:</strong> {aiDiffByDay[day.date].changed.join(" + ")}</div>
+                      )}
+                      {aiDiffByDay[day.date].kept.length > 0 && (
+                        <div><strong>Kept:</strong> {aiDiffByDay[day.date].kept.join(" + ")}</div>
+                      )}
+                    </div>
                   )}
                   <style>{`
                     .wa-week-outfit-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
