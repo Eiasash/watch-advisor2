@@ -291,12 +291,20 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
     const strapsTxt = Array.isArray(w.straps) && w.straps.length
       ? w.straps.map(s => `${s.label} (${s.color}, ${s.type})`).join("; ")
       : "default";
+    // PR #160 — when the client passes the user's currently-selected strap,
+    // tell Claude to USE that strap (not pick a different one) and to reference
+    // it explicitly in the reasoning. Otherwise Claude freelances and the prose
+    // ends up describing a strap the user didn't pick.
+    const cs = w.currentStrap;
+    const currentStrapBlock = cs && typeof cs === "object" && cs.label
+      ? `\n  CURRENTLY ON THE WATCH: ${cs.label}${cs.color ? ` (${cs.color}` : ""}${cs.type ? `${cs.color ? ", " : " ("}${cs.type}` : ""}${cs.color || cs.type ? ")" : ""}\n  → Use THIS strap. Set the "strap" field in your response to "${cs.label}". In the reasoning, mention this strap by name and explain how it coordinates with the outfit. Do NOT suggest a different strap.`
+      : `\n  → No strap selected by user — pick the best one from the available straps and set "strap" in your response.`;
     pinnedWatchBlock = `\nPINNED WATCH (use EXACTLY this — do NOT pick a different watch):
   watch: ${w.brand} ${w.model}
   watchId: ${w.id}
   dial: ${w.dial ?? "?"}
   style: ${w.style ?? "?"} · formality ${w.formality ?? 5}/10
-  straps available: ${strapsTxt}
+  straps available: ${strapsTxt}${currentStrapBlock}
 Your job is to pick the OUTFIT (clothes + strap choice from the available straps), NOT the watch. The "watch" and "watchId" fields in your response MUST match the pinned values above.\n`;
   }
 
