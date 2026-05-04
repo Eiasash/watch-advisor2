@@ -1386,10 +1386,26 @@ export default function WeekPlanner() {
         ...(currentStrap ? { currentStrap } : {}),
       } : null;
 
+      // PR #162 — when the user invokes "Different watch", relax the pin and
+      // send availableWatches so Claude can pick a different watch from the
+      // user's actual collection. The structural-validation throw below is
+      // also conditioned on whether we sent a pin, so an unpinned response
+      // doesn't get rejected as a "mismatch."
+      const isDifferentWatchMode = steer === "different_watch";
+      const candidateWatches = isDifferentWatchMode
+        ? watches
+            .filter(w => isActiveWatch(w) && w.id !== dayObj?.watch?.id)
+            .slice(0, 30)
+            .map(w => ({
+              id: w.id, brand: w.brand, model: w.model, dial: w.dial,
+              style: w.style, formality: w.formality, straps: w.straps,
+            }))
+        : null;
       const body = {
         forceRefresh: true,
         weather,
-        ...(pinnedWatch ? { pinnedWatch } : {}),
+        ...(pinnedWatch && !isDifferentWatchMode ? { pinnedWatch } : {}),
+        ...(candidateWatches?.length ? { availableWatches: candidateWatches } : {}),
         ...(steer ? { steer } : {}),
         ...(useExclude && recent.length ? { excludeRecent: recent } : {}),
         ...(rejected ? { rejected } : {}),
@@ -1409,8 +1425,10 @@ export default function WeekPlanner() {
       // If the response's watchId disagrees with the pinned id, the planner
       // would render the planner's watch alongside reasoning about a DIFFERENT
       // watch (the BB41/Rikka mismatch class — see PR #141). Reject + log so
-      // the bug is visible instead of silently rendered. Caller logs `[WeekPlanner] AI pick failed`.
-      if (pinnedWatch && pick.watchId && pick.watchId !== pinnedWatch.id) {
+      // the bug is visible instead of silently rendered.
+      // PR #162 — only enforce when we actually pinned. In Different-watch mode
+      // there's no pin, so the response's watchId is the legitimate new pick.
+      if (pinnedWatch && !isDifferentWatchMode && pick.watchId && pick.watchId !== pinnedWatch.id) {
         throw new Error(`pinnedWatch mismatch: server returned watchId="${pick.watchId}" but planner pinned "${pinnedWatch.id}"`);
       }
 
@@ -1425,7 +1443,17 @@ export default function WeekPlanner() {
         if (match) overrides[slot] = match.id;
       }
 
-      // Do NOT apply watch override from AI — user already selected their watch.
+      // PR #162 — in Different-watch mode, AI's chosen watch IS the new
+      // override. Apply it before clothing so the rotation re-resolves to the
+      // new watch when the next render reads watchOverrides.
+      if (isDifferentWatchMode && pick.watchId && pick.watchId !== dayObj?.watch?.id) {
+        const matchedWatch = watches.find(w => w.id === pick.watchId);
+        if (matchedWatch) {
+          setWatchOverrides(prev => ({ ...prev, [date]: pick.watchId }));
+        }
+      }
+      // Outside Different-watch mode: do NOT apply watch override from AI —
+      // user already selected their watch (planner pin is authoritative).
       setOutfitOverrides(prev => ({ ...prev, [date]: overrides }));
       setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
       setAiAppliedDays(prev => { const n = new Set(prev); n.add(date); return n; });

@@ -253,7 +253,7 @@ function categorizeGarments(garments, history, opts = {}) {
  * VOLATILE per-call data: today's date, weather, recent history, wardrobe,
  * steer/exclude/rejected/pastCorrections feedback. Goes in the user message.
  */
-function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants, personalization, recentRejections, pinnedWatch }) {
+function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants, personalization, recentRejections, pinnedWatch, availableWatches }) {
   const variantClause = variants > 1
     ? `Return a JSON ARRAY of ${variants} DISTINCT outfit objects (each must use a different watch). Do NOT wrap in markdown.`
     : "Respond ONLY with a single JSON object, no markdown.";
@@ -285,6 +285,20 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
   // this, the model picks its own watch and the planner UI ends up displaying
   // the planner's watch alongside reasoning text about a different one — the
   // 2026-05-04 BB41/Rikka mismatch incident.
+  // PR #162 — when client sends availableWatches (Different-watch mode),
+  // skip the PINNED block entirely and instead list candidates Claude may
+  // pick from. Mutually exclusive with pinnedWatch — client never sends both.
+  let availableWatchesBlock = "";
+  if (Array.isArray(availableWatches) && availableWatches.length > 0 && !pinnedWatch) {
+    const lines = availableWatches.slice(0, 30).map((w, i) => {
+      const strapsTxt = Array.isArray(w.straps) && w.straps.length
+        ? w.straps.map(s => s.label).join(" / ")
+        : "default";
+      return `  ${i + 1}. id="${w.id}" — ${w.brand} ${w.model} · ${w.dial ?? "?"} dial · ${w.style ?? "?"} · formality ${w.formality ?? 5}/10 · straps: ${strapsTxt}`;
+    }).join("\n");
+    availableWatchesBlock = `\nAVAILABLE WATCHES (the user wants a different watch — pick ONE from this list):\n${lines}\nSet "watchId" in your response to the chosen watch's id (exact string match), and "watch" to its display label. Set "strap" to one of the chosen watch's available straps. Reasoning must mention the chosen watch by name and explain why it suits the outfit.\n`;
+  }
+
   let pinnedWatchBlock = "";
   if (pinnedWatch && typeof pinnedWatch === "object" && pinnedWatch.id) {
     const w = pinnedWatch;
@@ -360,7 +374,7 @@ Your job is to pick the OUTFIT (clothes + strap choice from the available straps
 
   return `DATE: ${todayStr}
 WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
-${steerLine}${pinnedWatchBlock}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
+${steerLine}${pinnedWatchBlock}${availableWatchesBlock}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
 RECENT WATCHES WORN (avoid repeats):
 ${recentWatches || "No recent data"}
 
@@ -453,6 +467,12 @@ export async function handler(event) {
     const pinnedWatch = body.pinnedWatch && typeof body.pinnedWatch === "object" && body.pinnedWatch.id
       ? body.pinnedWatch
       : null;
+    // PR #162 — when steer="different_watch", client sends availableWatches
+    // and omits pinnedWatch. Server lists those in the prompt so Claude can
+    // pick a different watch entirely (the "Different watch" chip's intent).
+    const availableWatches = Array.isArray(body.availableWatches)
+      ? body.availableWatches.filter(w => w && typeof w === "object" && w.id).slice(0, 30)
+      : [];
     const why = body.why === true;
     const currentPick = body.currentPick && typeof body.currentPick === "object" ? body.currentPick : null;
     const variants = Math.max(1, Math.min(3, parseInt(body.variants, 10) || 1));
@@ -650,6 +670,7 @@ export async function handler(event) {
       personalization,
       recentRejections,
       pinnedWatch,
+      availableWatches,
     });
 
     // Inference settings — back on Haiku 4.5 + 800 tokens after PR #142's
