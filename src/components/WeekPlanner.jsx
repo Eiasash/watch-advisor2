@@ -9,6 +9,7 @@ import { genWeekRotation } from "../engine/weekRotation.js";
 import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
 import { resolveCardSource, cardStatusSubtitle } from "../utils/cardSourceLabel.js";
+import { firstSentence, hasMoreThanSummary } from "../utils/firstSentence.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
@@ -166,9 +167,27 @@ function AiFlexRow({ date, dayForecast, border, isDark, loading, rationale, last
           marginTop: 6, padding: "6px 9px", borderRadius: 6,
           background: isDark ? "#1a1040" : "#f5f3ff",
           border: `1px solid ${accent}33`,
-          fontSize: 10, color: isDark ? "#c4b5fd" : "#7c3aed", lineHeight: 1.5,
         }}>
-          <strong>Why:</strong> {rationale.text}
+          {hasMoreThanSummary(rationale.text, 100) ? (
+            <details>
+              <summary style={{
+                cursor: "pointer", fontSize: 10,
+                color: isDark ? "#c4b5fd" : "#7c3aed", lineHeight: 1.5,
+              }}>
+                <strong>Why:</strong> {firstSentence(rationale.text, 100)}
+              </summary>
+              <div style={{
+                marginTop: 4, fontSize: 10,
+                color: isDark ? "#c4b5fd" : "#7c3aed", lineHeight: 1.5,
+              }}>
+                {rationale.text}
+              </div>
+            </details>
+          ) : (
+            <div style={{ fontSize: 10, color: isDark ? "#c4b5fd" : "#7c3aed", lineHeight: 1.5 }}>
+              <strong>Why:</strong> {rationale.text}
+            </div>
+          )}
         </div>
       )}
     </div>
