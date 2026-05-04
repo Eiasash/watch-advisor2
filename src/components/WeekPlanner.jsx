@@ -8,6 +8,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { genWeekRotation } from "../engine/weekRotation.js";
 import { buildOutfit } from "../outfitEngine/outfitBuilder.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
+import { cardSourceLabel, cardSourceColor } from "../utils/cardSourceLabel.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
@@ -949,6 +950,10 @@ export default function WeekPlanner() {
   // Days where Claude AI was explicitly applied — surfaces an "AI" badge on those
   // outfits only. Cleared when the user resets the day's outfit overrides.
   const [aiAppliedDays, setAiAppliedDays]   = useState(new Set());
+  // Per-day cardSource from the daily-pick response — distinguishes a fresh
+  // Claude call ("ai_rec") from a server-side cache hit ("ai_rec_cached") so
+  // the badge can label them differently. PR #149 — see cardSourceLabel.js.
+  const [aiSourceByDay, setAiSourceByDay]   = useState({});
   // Per-day rolling list of recent AI picks (for excludeRecent on regenerate/steer).
   // { [date]: [{ watch, watchId, shirt, sweater, pants, shoes, jacket }, ...] }
   const [recentAiPicks, setRecentAiPicks]   = useState({});
@@ -1229,6 +1234,7 @@ export default function WeekPlanner() {
       return next;
     });
     setAiAppliedDays(prev => { if (!prev.has(date)) return prev; const n = new Set(prev); n.delete(date); return n; });
+    setAiSourceByDay(prev => { if (!(date in prev)) return prev; const n = { ...prev }; delete n[date]; return n; });
     setRecentAiPicks(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
     setAiRationale(prev => { if (!prev[date]) return prev; const n = { ...prev }; delete n[date]; return n; });
   }, []);
@@ -1352,6 +1358,9 @@ export default function WeekPlanner() {
       setOutfitOverrides(prev => ({ ...prev, [date]: overrides }));
       setShuffleSeeds(prev => { const n = { ...prev }; delete n[date]; return n; });
       setAiAppliedDays(prev => { const n = new Set(prev); n.add(date); return n; });
+      // PR #149 — record cardSource so the badge can distinguish fresh vs cached.
+      // Default to "ai_rec" if the server omits the field (older deploy / replayed response).
+      setAiSourceByDay(prev => ({ ...prev, [date]: pick.cardSource ?? "ai_rec" }));
       // Track rolling list of last 5 picks for this day so excludeRecent works.
       setRecentAiPicks(prev => {
         const compact = compactPickForExclude(pick);
@@ -1695,19 +1704,26 @@ export default function WeekPlanner() {
                       <div style={{ fontSize: 10, color: sub, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         OUTFIT
                       </div>
-                      {dayOutfit._isLogged && (
-                        <div style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                                      background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44" }}>
-                          ✓ Logged
-                        </div>
-                      )}
-                      {aiAppliedDays.has(day.date) && !dayOutfit._isLogged && (
-                        <div title="Claude AI override applied — tap Reset outfit to revert"
-                             style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                                      background: "#8b5cf622", color: "#8b5cf6", border: "1px solid #8b5cf644" }}>
-                          ✦ AI
-                        </div>
-                      )}
+                      {(() => {
+                        // PR #149 — single resolver for the card-source badge so
+                        // the word "Logged" only appears when actually history-backed.
+                        // Priority: logged > AI (fresh / cached) > manual edits.
+                        let source = null;
+                        if (dayOutfit._isLogged) source = "logged";
+                        else if (aiAppliedDays.has(day.date)) source = aiSourceByDay[day.date] ?? "ai_rec";
+                        else if (shuffleSeeds[day.date] || (outfitOverrides[day.date] && Object.keys(outfitOverrides[day.date]).length > 0)) source = "manual";
+                        const label = cardSourceLabel(source);
+                        if (!label) return null;
+                        const color = cardSourceColor(source);
+                        const icon = source === "logged" ? "✓" : source === "manual" ? "✎" : "✦";
+                        return (
+                          <div title={source === "ai_rec_cached" ? "Cached recommendation — re-fetch by clicking Ask Claude" : null}
+                               style={{ fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                                        background: `${color}22`, color, border: `1px solid ${color}44` }}>
+                            {icon} {label}
+                          </div>
+                        );
+                      })()}
                     </div>
                     {!dayOutfit._isLogged && (
                     <div style={{ display: "flex", gap: 4 }}>
