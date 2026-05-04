@@ -1350,6 +1350,23 @@ export default function WeekPlanner() {
       // the 2026-05-04 reasoning/UI mismatch where text mentioned GS Rikka
       // but the planner showed Tudor BB41).
       const dayObj = rotation.find(d => d.date === date);
+      // PR #160 — also resolve the user's currently-selected strap (override or
+      // active default) so the prompt can tell Claude "use THIS strap" instead
+      // of letting Claude freelance from the available list. Without this, the
+      // user changes strap to Brown alligator and Claude's reasoning still
+      // references Brown calfskin from a stale auto-pick.
+      const dayWatchIdForStrap = watchOverrides[date] ?? dayObj?.watch?.id;
+      const rawStrapOverrideForAsk = strapOverrides[date];
+      const scopedStrapOverrideForAsk = (rawStrapOverrideForAsk && straps[rawStrapOverrideForAsk]?.watchId === dayWatchIdForStrap)
+        ? rawStrapOverrideForAsk : null;
+      const dayStrapIdForAsk = scopedStrapOverrideForAsk
+        ?? (dayWatchIdForStrap && activeStrap[dayWatchIdForStrap]) ?? null;
+      const dayStrapObjForAsk = dayStrapIdForAsk ? straps[dayStrapIdForAsk] : null;
+      const currentStrap = dayStrapObjForAsk ? {
+        label: dayStrapObjForAsk.label,
+        color: dayStrapObjForAsk.color,
+        type: dayStrapObjForAsk.type,
+      } : null;
       const pinnedWatch = dayObj?.watch ? {
         id: dayObj.watch.id,
         brand: dayObj.watch.brand,
@@ -1358,6 +1375,7 @@ export default function WeekPlanner() {
         style: dayObj.watch.style,
         formality: dayObj.watch.formality,
         straps: dayObj.watch.straps,
+        ...(currentStrap ? { currentStrap } : {}),
       } : null;
 
       const body = {
