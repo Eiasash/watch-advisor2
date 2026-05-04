@@ -59,11 +59,28 @@ function getAdminClient() {
  * @returns {Promise<{user?, error?, statusCode?}>}
  */
 export async function requireUser(event) {
-  // Rollout flag: gate is opt-in. Without AUTH_GATE_ENABLED=true the function
-  // returns success without checking — same behavior as before this PR.
-  if (process.env.AUTH_GATE_ENABLED !== "true") {
-    return { user: null, gateDisabled: true };
-  }
+  // Rollout flag — three-state evaluation:
+  //   "true"  → gate enforced (production-ready state)
+  //   "false" → gate explicitly disabled (only honored OUTSIDE production)
+  //   unset   → defaults to ENFORCED in production, OFF outside
+  //
+  // The default-on-in-production behavior closes the "disable security
+  // forever" footgun the rollout flag would otherwise create. Local dev +
+  // staging can opt out explicitly via AUTH_GATE_ENABLED=false, but
+  // production needs ALLOW_INSECURE_PROD=true as a SECOND scary env var
+  // to allow disablement — single-flag misconfig can't expose the gate.
+  const flag = process.env.AUTH_GATE_ENABLED;
+  const isProd = (process.env.NODE_ENV ?? "").toLowerCase() === "production"
+    || (process.env.CONTEXT ?? "") === "production"; // Netlify sets CONTEXT=production
+  const insecureOk = (process.env.ALLOW_INSECURE_PROD ?? "").toLowerCase() === "true";
+
+  let gateOn;
+  if (flag === "true") gateOn = true;
+  else if (flag === "false" && (!isProd || insecureOk)) gateOn = false;
+  else if (isProd) gateOn = true;          // production default = on
+  else gateOn = false;                       // dev default = off
+
+  if (!gateOn) return { user: null, gateDisabled: true };
 
   const authHeader = event?.headers?.authorization || event?.headers?.Authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";

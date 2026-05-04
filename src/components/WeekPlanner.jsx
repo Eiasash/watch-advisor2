@@ -1327,6 +1327,16 @@ export default function WeekPlanner() {
       const pick = await res.json();
       if (pick.error) throw new Error(pick.error);
 
+      // Structural integrity check — server prompt asks the model to honor
+      // pinnedWatch ("use EXACTLY this") but prompt obedience is best-effort.
+      // If the response's watchId disagrees with the pinned id, the planner
+      // would render the planner's watch alongside reasoning about a DIFFERENT
+      // watch (the BB41/Rikka mismatch class — see PR #141). Reject + log so
+      // the bug is visible instead of silently rendered. Caller logs `[WeekPlanner] AI pick failed`.
+      if (pinnedWatch && pick.watchId && pick.watchId !== pinnedWatch.id) {
+        throw new Error(`pinnedWatch mismatch: server returned watchId="${pick.watchId}" but planner pinned "${pinnedWatch.id}"`);
+      }
+
       // Map AI garment names to IDs
       const overrides = {};
       for (const slot of OUTFIT_SLOTS) {
