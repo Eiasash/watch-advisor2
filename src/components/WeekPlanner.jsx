@@ -32,18 +32,6 @@ const CONTEXTS = [
 
 const OUTFIT_SLOTS = ["shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
 
-/**
- * Stable fingerprint of a per-day outfit-override map.
- * v1.13.5: used by the auto-refit useEffect to detect garment-slot drift —
- * when the user picks a different sweater/shoe/etc. the fingerprint changes,
- * which triggers Claude to re-coordinate the OTHER slots around the new pick.
- * Returns "" for empty/missing input so the comparison ("" === "") is stable.
- */
-function outfitFingerprintFor(overrides) {
-  if (!overrides || typeof overrides !== "object") return "";
-  return OUTFIT_SLOTS.map(slot => `${slot}:${overrides[slot]?.id ?? ""}`).join("|");
-}
-
 const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", layer:"\u{1F9E3}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}", belt:"\u{1FAA2}" };
 const ACCESSORY_TYPES = new Set(["sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
@@ -601,8 +589,16 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
         {garmentIds.length > 0 && (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Outfit
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Outfit
+                </div>
+                {/* v1.13.10 — explain the mental model. When you tap a slot
+                    chip below to override, the engine re-runs with that slot
+                    pinned and the OTHER slots re-coordinate automatically. */}
+                <div style={{ fontSize: 10, color: muted, marginTop: 2 }}>
+                  Tap a slot to swap · rest auto-refits around it
+                </div>
               </div>
               <div style={{ display: "flex", gap: 4 }}>
                 {hasCustomizations && (
@@ -1603,18 +1599,14 @@ export default function WeekPlanner() {
       }
       // PR #161 — record (watchId, strapId) so the auto-refit effect can
       // detect drift and re-fire when the user changes either one.
-      // v1.13.5 — also track an outfit-overrides fingerprint so that when the
-      // user picks a different sweater/shirt/etc. via "Different one →" or
-      // a manual swap, the auto-refit effect detects the change and asks
-      // Claude to re-coordinate the OTHER slots around it. Without this, the
-      // effect only watched watch+strap, so garment-overrides did nothing —
-      // matched the user complaint "choose different sweater etc, doesn't
-      // recalibrate the rest of outfit." Synchronous self-write below means
-      // the immediate setOutfitOverrides on line 1517 won't re-trigger us.
+      // v1.13.10 — outfitFingerprint drift was REMOVED (see auto-refit
+      // useEffect comment for full reason: AI refit replaces user's manual
+      // garment pick because Claude's prompt has no pinnedSlots support;
+      // the engine's silent re-fit via weekOutfits useMemo already handles
+      // garment changes correctly).
       aiContextRef.current[date] = {
         watchId: dayWatchIdForStrap ?? null,
         strapId: dayStrapIdForAsk ?? null,
-        outfitFingerprint: outfitFingerprintFor(overrides),
       };
       // PR #161 — apply Claude's strap suggestion to the UI when the user hasn't
       // pinned one. Match by label against the watch's available straps. If no
@@ -1708,13 +1700,18 @@ export default function WeekPlanner() {
       const rawSO = strapOverrides[day.date];
       const scopedSO = (rawSO && straps[rawSO]?.watchId === currentWatchId) ? rawSO : null;
       const currentStrapId = scopedSO ?? (currentWatchId && activeStrap[currentWatchId]) ?? null;
-      // v1.13.5 — drift detection now also covers garment-slot overrides.
-      // See aiContextRef self-write at the end of handleAskClaude for the
-      // matching write that prevents Claude's response from re-triggering us.
-      const currentOutfitFingerprint = outfitFingerprintFor(outfitOverrides[day.date]);
-      if (currentWatchId === seen.watchId
-          && currentStrapId === seen.strapId
-          && currentOutfitFingerprint === (seen.outfitFingerprint ?? "")) continue;
+      // v1.13.10 — auto-refit fires ONLY for watch + strap changes, NOT for
+      // garment-slot overrides. Reason: when the user picks a sweater the
+      // ENGINE path's weekOutfits useMemo re-runs buildOutfit with the
+      // sweater in pinnedSlotGarments (line ~1251) and re-coordinates the
+      // OTHER slots around it — exactly what the user wants. Firing the AI
+      // refit here would call handleAskClaude → Claude doesn't honor
+      // pinnedSlots → returns picks for ALL slots → user's manual sweater
+      // gets REPLACED with whatever Claude chose. v1.13.5's outfit
+      // fingerprint drift was actively counterproductive — reverted in
+      // v1.13.10. The engine's silent refit handles the user's mental
+      // model "I changed this, the rest adjusts" correctly.
+      if (currentWatchId === seen.watchId && currentStrapId === seen.strapId) continue;
       // Drift detected — schedule debounced refit.
       if (refitTimerRef.current[day.date]) clearTimeout(refitTimerRef.current[day.date]);
       const dayForecast = forecast.find(f => f.date === day.date);
@@ -1728,7 +1725,7 @@ export default function WeekPlanner() {
     return () => {
       for (const id of Object.values(refitTimerRef.current)) clearTimeout(id);
     };
-  }, [watchOverrides, strapOverrides, activeStrap, outfitOverrides, rotation, aiAppliedDays, straps, forecast, handleAskClaude]);
+  }, [watchOverrides, strapOverrides, activeStrap, rotation, aiAppliedDays, straps, forecast, handleAskClaude]);
 
   // Auto-load AI rec for today (idx 0) + tomorrow (idx 1) on first render
   // when watches + forecast are ready.
