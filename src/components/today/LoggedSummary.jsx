@@ -2,6 +2,7 @@ import React from "react";
 import WeeklyDigest from "./WeeklyDigest.jsx";
 import SelfiePanel  from "../SelfiePanel.jsx";
 import ClaudePick   from "../ClaudePick.jsx";
+import { useStrapStore } from "../../stores/strapStore.js";
 
 /**
  * The full "already logged" view shown after an outfit is saved for today.
@@ -311,6 +312,7 @@ export default function LoggedSummary({
             return (
               <button key={w.id}
                 onClick={() => {
+                  const strapIdForLog = activeStrap[w.id] ?? null;
                   upsertEntry({
                     id: `wear-${TODAY_ISO}-${w.id}`,
                     date: TODAY_ISO,
@@ -318,10 +320,18 @@ export default function LoggedSummary({
                     garmentIds: [],
                     quickLog: true,
                     context: context ?? null,
-                    strapId: activeStrap[w.id] ?? null,
+                    strapId: strapIdForLog,
                     strapLabel: strapObj?.label ?? null,
                     loggedAt: new Date().toISOString(),
                   });
+                  // v1.13.9 — bump strap wear counter so the Strap Library
+                  // wear/age/replacement signals stay accurate after a quick
+                  // "Log another watch" check-in. TodayPanel.jsx already does
+                  // this for primary logs (line 209); the quick-log path
+                  // here was missing it, leaving wearCount silently stuck.
+                  if (strapIdForLog) {
+                    try { useStrapStore.getState().incrementWearCount(strapIdForLog); } catch (_) {}
+                  }
                 }}
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
                          borderRadius: 8, border: `1px solid ${border}`, background: isDark ? "#0f131a" : "#f9fafb",
