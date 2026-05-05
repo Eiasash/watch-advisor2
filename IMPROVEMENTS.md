@@ -413,3 +413,77 @@ No schema changes this session — upload used service role key directly. No new
 - Skill-snapshot now requires Bearer — automation that scrapes it (incl. any local audit scripts) needs to wire the auth header. Cron path is unaffected (server-internal).
 - R3 candidates from May 1 round still open: vitest 4.1.5 patch, uuid override after `@netlify/blobs` v11, hoist `vi.mock`, coverage threshold gate, SW integration tests, `scripts/rls-audit.sh`.
 - Next physical drift to watch: when Atelier Wen Perception or Fears Brunswick land in Israel, flip `pending: true` → `pending: false` in `watchSeed.js` and bump version.
+
+---
+
+## Session: May 5 2026 R2 — Quality + Security Coverage Pass (v1.13.1)
+
+### Why a patch (not minor)
+Pure quality + security work. No new app features. No user-facing surface changes. Patch bump 1.13.0 → 1.13.1 is the right tier.
+
+### Real audit finding worth flagging
+The single biggest gap was not on the R3+ list — it was that **`netlify/functions/_auth.js` had zero direct test coverage** despite gating all 17 browser-callable functions (PRs #138–#140). The behaviour is non-trivial:
+- Three-state rollout flag (`true` / `false` / unset) with production-context auto-enforcement
+- "Two scary flags" requirement to disable in prod (`AUTH_GATE_ENABLED=false` AND `ALLOW_INSECURE_PROD=true`) — single-flag misconfig must NOT open the gate
+- Fail-closed when `ALLOWED_USER_EMAIL` is missing (returns 500, not "allow all")
+- Auth-validator throw → 500 (caller is innocent), not 401
+
+A "simplification" PR could easily collapse the three-state flag back into a boolean and silently re-open the gate. Now pinned by 27 regression tests.
+
+### Coverage added (+60 tests / +3 files)
+
+**`tests/auth.test.js` (27 tests)** — full `_auth.js` contract:
+- Rollout flag: `true` enforces; `false` in prod ignored without `ALLOW_INSECURE_PROD`; case-insensitive `TRUE` accepted; arbitrary values like `"1"` fall through to defaults; prod-default-on via `CONTEXT=production` and `NODE_ENV=production`
+- Bearer parsing: missing header, missing prefix, empty token, whitespace-only token, capitalized vs lowercase header key, missing headers object, null event
+- Supabase validation: error path, no-user path, validator throws, missing creds = 500
+- Allowlist: exact match, case-insensitive match, whitespace-trim, mismatch returns 403 (not 401), missing email field, fail-closed on missing `ALLOWED_USER_EMAIL`
+
+**`tests/serviceWorkerRuntime.test.js` (20 tests)** — closes R3 candidate #5 (SW integration gap):
+- Sandboxes `public/sw.js` via `new Function()` with mocked `self`/`caches`/`fetch`, captures the registered handlers, exercises them with synthetic FetchEvents
+- Install: precaches SHELL_URLS, tolerates precache failure
+- Activate: deletes outdated caches, keeps current 3, calls `clients.claim()`
+- Fetch routing: `daily-pick`/`claude-stylist`/`skill-snapshot` bypass cache (NO_CACHE_FUNCTIONS); offline returns 503 with `code: NO_CACHE_FUNCTION`; non-listed functions fall through to networkFirst; Supabase Storage uses cacheFirst with second-call cache hit; non-GET passes through; cross-origin non-storage passes through; same-origin app shell uses networkFirst with offline fallback to cached
+- Push: valid JSON triggers showNotification with morning-brief tag; invalid JSON silently returns; no data does nothing
+- Message: `SKIP_WAITING` calls skipWaiting; other types ignored; malformed event doesn't crash
+
+**`tests/claudeStylistEdge.test.js` (13 tests)** — closes the gap IMPROVEMENTS.md flagged for `aiStylist/claudeStylist.js`:
+- Response failures: 4xx, 5xx, non-JSON content-type, missing content-type, charset suffix accepted (`application/json; charset=utf-8`), sync-throw fetch, `res.json()` rejects on malformed body
+- pinnedSlots: transforms each slot to `{name, type, color}` only (drops formality/id/thumbnail), preserves `null` slots, defaults to `{}` when omitted
+- engineOutfit: sweater + jacket slot transformation (gap not covered by base test), all five slots default to null when missing
+
+### Dep upgrades
+- `uuid: ^14` added to `overrides` — clears moderate `GHSA-w5hq-g745-h8pq` (transitive via `@netlify/blobs` → `@netlify/dev-utils`; no direct uuid usage in our code, so override is safe)
+- `vitest`: `^4.0.18` → `^4.1.5`
+- `@vitest/coverage-v8`: `^4.1.4` → `^4.1.5`
+- `npm audit` reports 0 vulnerabilities (was 1 moderate)
+- `npm audit fix` no longer needed for routine maintenance
+
+### New tooling
+- `scripts/rls-audit.sh` — closes R3 candidate #6 (RLS audit unblocked from interactive MCP OAuth)
+  - Runs 6 policy checks against the live DB via `psql`
+  - Required env: `SUPABASE_DB_URL`, `ALLOWED_USER_EMAIL`
+  - Verifies: RLS enabled on garments/history/app_config, single-owner SELECT policies present, app_config grants `authenticated` role (PR #140 fix), no anon INSERT/UPDATE on garments+history
+  - Exits non-zero on any weakening — usable from CI later
+
+### R3 candidates — status
+1. ~~uuid override~~ ✅ shipped
+2. ~~vitest 4.1.4 → 4.1.5~~ ✅ shipped
+3. ~~Hoist `vi.mock` calls~~ ✅ already shipped in commit 39352e2 (verified clean)
+4. Coverage threshold gate — already in `vite.config.js` at `lines: 50, branches: 40` (was overlooked in earlier R3 list)
+5. ~~SW integration tests~~ ✅ shipped (`serviceWorkerRuntime.test.js`)
+6. ~~`scripts/rls-audit.sh`~~ ✅ shipped
+
+### Health snapshot at bump
+- `npm install` clean, `npm audit` 0 vulns
+- `vitest run` — 195 files / 3482 tests, all green
+- `vite build` — clean, ~600 kB raw / ~155 kB gzip (unchanged from 1.13.0)
+
+### Documentation drift fixed
+- `SKILL_watch_advisor2.md` § header: version 1.13.0 → 1.13.1, tests 3422 → 3482, files 192 → 195, last-audited block rewritten with R2 detail
+- `IMPROVEMENTS.md`: this entry
+- `package.json`: bumped + overrides updated
+
+### Open carry-forward
+- Coverage report at lines:50/branches:40 not actually enforced in CI yet — the threshold is in `vite.config.js` but no CI step runs `vitest run --coverage`. Wire that into `.github/workflows/weekly-audit.yml` next round.
+- Reuse `scripts/rls-audit.sh` from CI: needs `SUPABASE_DB_URL` as a GH Actions secret, then add a job step. Skipped this round to avoid a multi-PR setup.
+- React 18 → 19, vite 7 → 8, jsdom 28 → 29, zustand 4 → 5 majors all still deferred — none are blocking and each needs its own breaking-change review session.
