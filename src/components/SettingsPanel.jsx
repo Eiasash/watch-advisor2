@@ -84,13 +84,6 @@ export default function SettingsPanel({ onClose, scrollTo }) {
   const { mode, toggle } = useThemeStore();
   const isDark = mode === "dark";
 
-  const [supabaseUrl, setSupabaseUrl] = useState(
-    () => typeof localStorage !== "undefined" ? localStorage.getItem("wa-supabase-url") || "" : ""
-  );
-  const [supabaseKey, setSupabaseKey] = useState(
-    () => typeof localStorage !== "undefined" ? localStorage.getItem("wa-supabase-key") || "" : ""
-  );
-  const [saved, setSaved] = useState(false);
   const [backupSaved, setBackupSaved] = useState(false);
   const [pushStatus, setPushStatus] = useState("loading"); // loading|unsupported|unsubscribed|subscribed|denied
   const [pushLoading, setPushLoading] = useState(false);
@@ -117,17 +110,6 @@ export default function SettingsPanel({ onClose, scrollTo }) {
     }
     setPushLoading(false);
   }, [pushStatus]);
-
-  const handleSaveLogin = useCallback(() => {
-    try {
-      localStorage.setItem("wa-supabase-url", supabaseUrl);
-      localStorage.setItem("wa-supabase-key", supabaseKey);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (e) {
-      console.error("[settings] save failed:", e.message, e);
-    }
-  }, [supabaseUrl, supabaseKey]);
 
   const bg = isDark ? "#171a21" : "#ffffff";
   const border = isDark ? "#2b3140" : "#d1d5db";
@@ -198,35 +180,6 @@ export default function SettingsPanel({ onClose, scrollTo }) {
             }}>
               {isDark ? "\u263E Night" : "\u2600 Day"} &rarr; {isDark ? "\u2600 Day" : "\u263E Night"}
             </button>
-          </div>
-        </Section>
-
-        {/* Supabase Login */}
-        <Section title="Cloud Sync (Supabase)" isDark={isDark}>
-          <label style={labelStyle(mutedColor)}>Supabase URL</label>
-          <input
-            value={supabaseUrl}
-            onChange={e => setSupabaseUrl(e.target.value)}
-            placeholder="https://your-project.supabase.co"
-            style={inputStyle(isDark, border)}
-          />
-          <label style={labelStyle(mutedColor)}>Anon Key</label>
-          <input
-            value={supabaseKey}
-            onChange={e => setSupabaseKey(e.target.value)}
-            placeholder="your-anon-key"
-            type="password"
-            style={inputStyle(isDark, border)}
-          />
-          <button onClick={handleSaveLogin} style={{
-            marginTop: 8, padding: "8px 16px", borderRadius: 8, border: "none",
-            background: saved ? "#22c55e" : "#3b82f6", color: "#fff",
-            fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%",
-          }}>
-            {saved ? "Saved!" : "Save Credentials"}
-          </button>
-          <div style={{ fontSize: 11, color: mutedColor, marginTop: 6 }}>
-            Credentials are saved to localStorage. Reload the page after saving to connect.
           </div>
         </Section>
 

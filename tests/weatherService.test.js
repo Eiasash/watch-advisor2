@@ -3,44 +3,39 @@ import { getLayerRecommendation, getLayerTransition, formatWeatherText, fetchWea
 
 // ─── Pure function tests ─────────────────────────────────────────────────────
 
-describe("getLayerRecommendation", () => {
-  it("recommends coat below 10°C", () => {
+// v1.13.7 — thresholds realigned with engine reality (outfitBuilder.js).
+// Engine adds sweater+jacket below 22, second layer below 12. Display now
+// matches: <12 coat, 12–21 sweater, ≥22 none.
+describe("getLayerRecommendation (engine-aligned)", () => {
+  it("returns coat below 12°C", () => {
     expect(getLayerRecommendation(5).layer).toBe("coat");
-    expect(getLayerRecommendation(9).layer).toBe("coat");
+    expect(getLayerRecommendation(11).layer).toBe("coat");
     expect(getLayerRecommendation(-5).layer).toBe("coat");
   });
 
-  it("recommends sweater between 10-15°C", () => {
-    expect(getLayerRecommendation(10).layer).toBe("sweater");
+  it("returns sweater between 12 and 21°C inclusive", () => {
+    expect(getLayerRecommendation(12).layer).toBe("sweater");
     expect(getLayerRecommendation(15).layer).toBe("sweater");
+    expect(getLayerRecommendation(18).layer).toBe("sweater");
+    expect(getLayerRecommendation(21).layer).toBe("sweater");
   });
 
-  it("recommends light jacket between 16-21°C", () => {
-    expect(getLayerRecommendation(16).layer).toBe("light-jacket");
-    expect(getLayerRecommendation(21).layer).toBe("light-jacket");
-  });
-
-  it("recommends no layer at 22°C and above", () => {
+  it("returns none at 22°C and above", () => {
     expect(getLayerRecommendation(22).layer).toBe("none");
     expect(getLayerRecommendation(35).layer).toBe("none");
   });
 
-  it("includes a human-readable label", () => {
-    expect(getLayerRecommendation(5).label).toContain("coat");
-    expect(getLayerRecommendation(12).label).toContain("Sweater");
-    expect(getLayerRecommendation(18).label).toContain("Light layer");
+  it("label is engine-truthful", () => {
+    expect(getLayerRecommendation(5).label).toContain("Heavy coat");
+    expect(getLayerRecommendation(15).label).toContain("Sweater + jacket");
     expect(getLayerRecommendation(25).label).toContain("No extra");
   });
 
-  it("handles boundary value 10 as sweater not coat", () => {
-    expect(getLayerRecommendation(10).layer).toBe("sweater");
+  it("handles boundary 12 as sweater not coat", () => {
+    expect(getLayerRecommendation(12).layer).toBe("sweater");
   });
 
-  it("handles boundary value 16 as light-jacket not sweater", () => {
-    expect(getLayerRecommendation(16).layer).toBe("light-jacket");
-  });
-
-  it("handles boundary value 22 as none not light-jacket", () => {
+  it("handles boundary 22 as none not sweater", () => {
     expect(getLayerRecommendation(22).layer).toBe("none");
   });
 });
@@ -237,10 +232,10 @@ describe("getLayerTransition", () => {
   });
 
   it("includes evening transition when layer changes from midday", () => {
-    // 20°C midday (light-jacket) → 10°C evening (sweater)
+    // v1.13.7 3-tier — 20°C midday (sweater) → 10°C evening (coat)
     const result = getLayerTransition({ tempMorning: 20, tempMidday: 20, tempEvening: 10 });
     expect(result).toContain("10°C evening");
-    expect(result).toContain("sweater");
+    expect(result).toContain("coat");
   });
 
   it("uses midpoint separator between parts", () => {

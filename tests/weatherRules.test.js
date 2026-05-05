@@ -74,27 +74,24 @@ describe("weatherDisplayText", () => {
 
 // ─── getLayerRecommendation (weather/weatherService.js) ──────────────────────
 
-describe("getLayerRecommendation", () => {
-  it("temp < 10 → coat", () => {
+// v1.13.7 — thresholds realigned with engine reality (outfitBuilder.js).
+describe("getLayerRecommendation (engine-aligned)", () => {
+  it("temp < 12 → coat", () => {
     const result = getLayerRecommendation(5);
     expect(result.layer).toBe("coat");
     expect(result.label).toContain("Heavy coat");
   });
 
-  it("temp = 10 → sweater (boundary)", () => {
-    expect(getLayerRecommendation(10).layer).toBe("sweater");
+  it("temp = 12 → sweater (boundary)", () => {
+    expect(getLayerRecommendation(12).layer).toBe("sweater");
   });
 
-  it("temp = 15 → sweater", () => {
-    expect(getLayerRecommendation(15).layer).toBe("sweater");
+  it("temp = 18 → sweater", () => {
+    expect(getLayerRecommendation(18).layer).toBe("sweater");
   });
 
-  it("temp = 16 → light-jacket (boundary)", () => {
-    expect(getLayerRecommendation(16).layer).toBe("light-jacket");
-  });
-
-  it("temp = 21 → light-jacket", () => {
-    expect(getLayerRecommendation(21).layer).toBe("light-jacket");
+  it("temp = 21 → sweater", () => {
+    expect(getLayerRecommendation(21).layer).toBe("sweater");
   });
 
   it("temp = 22 → none (boundary)", () => {
@@ -109,9 +106,9 @@ describe("getLayerRecommendation", () => {
 // ─── formatWeatherText (weather/weatherService.js) ───────────────────────────
 
 describe("formatWeatherText", () => {
-  it("formats full weather object", () => {
+  it("formats full weather object (engine-aligned label)", () => {
     const result = formatWeatherText({ tempC: 12, description: "Partly cloudy" });
-    expect(result).toBe("12°C Partly cloudy — Sweater recommended");
+    expect(result).toBe("12°C Partly cloudy — Sweater + jacket recommended");
   });
 
   it("returns null for null", () => {

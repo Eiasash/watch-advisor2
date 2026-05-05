@@ -2,6 +2,18 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-05 — v1.13.5 audit-fix-deploy run
 
+## v1.13.7 — 2026-05-05 supabase embed + weather context
+
+User asked: "embed the supabase credentials to the user login and make the weather adjustment clothing real" + "it doesn't look factual or updated the weather in the app and I want context ie if I pickup outfit for work hours adjust for those if evening fir use evening weather".
+
+- **#8 Supabase creds embedded** — `src/services/supabaseClient.js` had `https://example.supabase.co` / `public-anon-key` as dummy fallbacks; if `VITE_SUPABASE_*` env vars were missing the app silently bound to a non-existent project. Replaced fallbacks with the real watch-advisor2 project URL `https://oaojkanozbfpofbewtfq.supabase.co` and the public anon JWT (already shipped in the live bundle, RLS enforces access). Pattern matches ward-helper's `src/storage/cloud.ts`. Forks override via `.env.production`.
+- **#9 Dead Settings UI removed** — `SettingsPanel.jsx` had a "Cloud Sync (Supabase)" section asking users to enter URL + Anon Key, stored to `localStorage` keys `wa-supabase-url` / `wa-supabase-key` — but `supabaseClient.js` ONLY reads `import.meta.env.VITE_*` and ignores localStorage entirely. The inputs went to the void. Removed the section, the unused state, and the now-dead `handleSaveLogin` callback.
+- **#10 Weather thresholds realigned with engine reality** (`src/weather/weatherService.js:120`) — old 4-tier `getLayerRecommendation` (10/16/22) drifted from the engine's actual behavior in `outfitBuilder.js` (`_fillSweaterLayer` <22, `_fillJacket` <22, second layer <12). At 18°C the user read "Light layer recommended" while the engine added a heavy sweater + jacket — display ≠ outfit. Realigned to 3 tiers matching engine: `<12` coat (sweater + jacket + extra), `<22` sweater + jacket, `≥22` none. Updated `getLayerTransition` to match. Two test files updated (10 assertions adjusted).
+- **#11 Context-driven weather (`pickContextualTemp`)** — new helper picks tempMorning vs tempMidday vs tempEvening based on day's context. Wired into BOTH the engine path (`weekOutfits` useMemo line ~1132) and the AI path (`handleAskClaude` line ~1363). `date-night`/`family-event`/`eid-celebration` now use evening temp; `casual` uses midday; default (`smart-casual`/`shift`/null) uses morning. So a Date Night plan with morning 22°C / evening 11°C gets a coat in the outfit, not a tee. Falls back through Morning → Midday → Evening → tempC for partial forecasts.
+- **#12 Forecast freshness UX** — `WeekPlanner` now tracks `forecastTs` in state and shows "Weather: 5m ago" + a `↻ Refresh` button next to the "7-Day Rotation" header. The button bypasses the 1-hour cache and hits Open-Meteo. Fixes "doesn't look factual or updated" — the user can see live data age and force-refresh.
+
+Tests: 3549 passing (+3 from `pickContextualTemp.test.js`). Build green, bundle 209.89 kB / 61.61 gz (negligible delta). Engine threshold drift is fixed forever.
+
 ## v1.13.6 — 2026-05-05 race fix (follow-up to v1.13.5)
 
 A fourth deep-audit subagent surfaced two more lost-update races in the same family that v1.13.4's `5eae24f` fixed for `localCache.js` + `settingsPersistence.js`. The pattern was already documented in `localCache.setCachedState()`'s comment, but two stores hadn't been migrated yet.
@@ -34,7 +46,7 @@ User report: "https://watch-advisor2.netlify.app/# find bugs deeeeeeeeeeeep audi
 - **Unstaged migrations**: `netlify/functions/_migrations.json` has two locally-drafted RLS migrations (`20260503222400_extend_rls_to_authenticated`, `20260504052807_rls_email_restricted`) that are NOT in any branch. They're cross-session work from a different effort and were intentionally NOT committed in this run. Must land in a dedicated PR with the corresponding `_auth.js` allowlist verification.
 
 ## Current State
-- **Version**: 1.13.6
+- **Version**: 1.13.7
 - **Engine integrity**: All checks PASS
 - **Supabase**: 101 active garments (skill-snapshot), 0 dupes, 0 orphans
 - **Watches**: 23 active + 2 pending (Atelier Wen Perception SG → IL; Fears Brunswick 38 Champagne SG → IL, invoice INV-3936 issued 22 Apr, £2,500 GBP)

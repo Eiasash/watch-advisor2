@@ -117,11 +117,42 @@ function weatherCodeToDesc(code) {
   return "Unknown";
 }
 
+/**
+ * Layer recommendation aligned with the actual outfit-engine thresholds
+ * (`outfitBuilder._fillSweaterLayer` / `_fillJacket`):
+ *  - temp ≥ 22°C  → engine adds no layer
+ *  - 12 ≤ temp < 22 → engine adds sweater + jacket
+ *  - temp < 12°C  → engine adds sweater + jacket + second layer (heavy)
+ *
+ * Earlier 4-tier labels (10/16/22) drifted from engine reality — at 18°C
+ * the user read "Light layer recommended" but the engine actually added
+ * a heavy sweater + jacket. v1.13.7 realigned to 3 tiers so the displayed
+ * advice matches the garments the engine ships.
+ */
 export function getLayerRecommendation(tempC) {
-  if (tempC < 10) return { layer: "coat", label: "Heavy coat recommended" };
-  if (tempC < 16) return { layer: "sweater", label: "Sweater recommended" };
-  if (tempC < 22) return { layer: "light-jacket", label: "Light layer recommended" };
+  if (tempC < 12) return { layer: "coat", label: "Heavy coat — sweater + jacket + extra layer" };
+  if (tempC < 22) return { layer: "sweater", label: "Sweater + jacket recommended" };
   return { layer: "none", label: "No extra layer needed" };
+}
+
+/**
+ * Pick the right hourly temp for a given day-context — "you dress for what
+ * you'll actually be doing." Morning shifts/work → tempMorning; evening
+ * occasions → tempEvening; midday social → tempMidday; default → tempMorning.
+ *
+ * Falls back through Morning → Midday → Evening → tempC so partial forecasts
+ * still produce a usable answer.
+ */
+export function pickContextualTemp(forecast, ctx) {
+  if (!forecast) return null;
+  const m = forecast.tempMorning, mid = forecast.tempMidday, ev = forecast.tempEvening;
+  const fb = forecast.tempC;
+  const eveningCtx = new Set(["date-night", "family-event", "eid-celebration"]);
+  const middayCtx  = new Set(["casual"]);
+  if (eveningCtx.has(ctx)) return ev ?? mid ?? m ?? fb ?? null;
+  if (middayCtx.has(ctx))  return mid ?? m ?? ev ?? fb ?? null;
+  // Default: work / shift / smart-casual / null → morning is when you dress
+  return m ?? mid ?? ev ?? fb ?? null;
 }
 
 /**
@@ -140,8 +171,10 @@ export function getLayerTransition(forecast) {
   const parts = [];
   parts.push(`${tempMorning}°C morning → ${morningLayer.label.toLowerCase()}`);
 
+  // 3-tier model (v1.13.7): coat / sweater / none. Transitions either
+  // shed (warmer) or grab (colder) one tier at a time.
   if (middayLayer && middayLayer.layer !== morningLayer.layer) {
-    if (middayLayer.layer === "none" || middayLayer.layer === "light-jacket" && morningLayer.layer === "coat") {
+    if (middayLayer.layer === "none") {
       parts.push(`${tempMidday}°C midday → shed the ${morningLayer.layer}`);
     } else {
       parts.push(`${tempMidday}°C midday → ${middayLayer.label.toLowerCase()}`);
@@ -151,6 +184,8 @@ export function getLayerTransition(forecast) {
   if (eveningLayer && eveningLayer.layer !== (middayLayer?.layer ?? morningLayer.layer)) {
     if (eveningLayer.layer === "coat" || eveningLayer.layer === "sweater") {
       parts.push(`${tempEvening}°C evening → grab a ${eveningLayer.layer}`);
+    } else {
+      parts.push(`${tempEvening}°C evening → ${eveningLayer.label.toLowerCase()}`);
     }
   }
 

@@ -16,7 +16,7 @@ import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
 import { authedFetch } from "../services/authedFetch.js";
-import { fetchWeatherForecast, getLayerRecommendation, getLayerTransition } from "../weather/weatherService.js";
+import { fetchWeatherForecast, getLayerRecommendation, getLayerTransition, pickContextualTemp } from "../weather/weatherService.js";
 import WeekPlanLock from "./plan/WeekPlanLock.jsx";
 
 const CONTEXTS = [
@@ -1060,25 +1060,39 @@ export default function WeekPlanner() {
 
   // 7-day weather forecast with IDB caching (1-hour TTL)
   const [forecast, setForecast] = useState([]);
-  useEffect(() => {
-    (async () => {
+  // v1.13.7 — track when the forecast was last fetched so the user can see
+  // it's actually live and not a stale read. The earlier 1-hour silent cache
+  // looked "frozen" — surface the timestamp + a manual refresh button below.
+  const [forecastTs, setForecastTs] = useState(null);
+  const [forecastRefreshing, setForecastRefreshing] = useState(false);
+
+  const refreshForecast = useCallback(async (force = false) => {
+    if (!force) {
       try {
         const cached = await getCachedState();
         const now = Date.now();
         if (cached._forecast && cached._forecastTs && (now - cached._forecastTs) < 3600000) {
           setForecast(cached._forecast);
+          setForecastTs(cached._forecastTs);
           return;
         }
       } catch {}
-      try {
-        const data = await fetchWeatherForecast();
-        setForecast(data);
-        setCachedState({ _forecast: data, _forecastTs: Date.now() }).catch(() => {});
-      } catch (err) {
-        console.warn("[weather] forecast failed:", err.message);
-      }
-    })();
+    }
+    setForecastRefreshing(true);
+    try {
+      const data = await fetchWeatherForecast();
+      const ts = Date.now();
+      setForecast(data);
+      setForecastTs(ts);
+      setCachedState({ _forecast: data, _forecastTs: ts }).catch(() => {});
+    } catch (err) {
+      console.warn("[weather] forecast failed:", err.message);
+    } finally {
+      setForecastRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => { refreshForecast(false); }, [refreshForecast]);
 
   const rawRotation = useMemo(
     () => genWeekRotation(watches, history, weekCtx, onCallDates),
@@ -1129,7 +1143,11 @@ export default function WeekPlanner() {
       const dayForecast = forecast.find(f => f.date === day.date);
       // Missing forecast → 22°C (neutral-warm threshold — no extra layer added) so
       // weather-fetch failures don't auto-stack sweater + jacket. Pre-2026-04-28: 15°C.
-      const weather = dayForecast ? { tempC: dayForecast.tempC } : { tempC: 22 };
+      // v1.13.7 — pickContextualTemp picks tempMorning vs tempMidday vs tempEvening
+      // based on day.ctx, so a "Date Night" context with cold evening (11°C) drives
+      // a coat even if morning was 22°C. Falls back to dayForecast.tempC otherwise.
+      const ctxTemp = pickContextualTemp(dayForecast, day.ctx);
+      const weather = ctxTemp != null ? { tempC: ctxTemp } : { tempC: 22 };
 
       // For today: if already logged, use logged garments directly.
       // But still allow manual overrides (user can swap slots on a logged outfit).
@@ -1356,8 +1374,16 @@ export default function WeekPlanner() {
     inflightAbortersRef.current[date] = aborter;
     setAiLoadingDay(date);
     try {
+      // v1.13.7 — derive a context-driven primary tempC. The AI prompt still
+      // gets the full hourly breakdown (tempMorning/Midday/Evening) so it can
+      // narrate transitions, but `tempC` is what most downstream summaries
+      // hash on — so it should reflect the time-of-day the user is dressing
+      // for. Date Night picks the evening; default picks the morning.
+      // dayObj is declared lower; resolve ctx inline to avoid the TDZ.
+      const dayCtxForAi = rotation.find(d => d.date === date)?.ctx ?? null;
+      const ctxTempForAi = pickContextualTemp(dayForecast, dayCtxForAi);
       const weather = dayForecast ? {
-        tempC: dayForecast.tempC,
+        tempC: ctxTempForAi ?? dayForecast.tempC,
         tempMorning: dayForecast.tempMorning,
         tempMidday: dayForecast.tempMidday,
         tempEvening: dayForecast.tempEvening,
@@ -1751,10 +1777,41 @@ export default function WeekPlanner() {
   const sub    = isDark ? "#6b7280" : "#9ca3af";
   const muted  = sub; // alias — used by history entry notes display
 
+  // v1.13.7 — "Updated Nm ago" weather indicator. Surfaces the cache age so
+  // the user can tell live weather from a stale read; the refresh button
+  // bypasses the 1-hour cache. Hidden until first fetch completes.
+  const forecastAgeStr = (() => {
+    if (!forecastTs) return null;
+    const sec = Math.max(0, Math.floor((Date.now() - forecastTs) / 1000));
+    if (sec < 60) return "just now";
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    return `${hr}h ago`;
+  })();
+
   return (
     <div style={{ padding:"18px 20px", borderRadius:16, background:bg, border:`1px solid ${border}`, marginBottom:16 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:8 }}>
         <h2 style={{ margin:0, fontSize:17, fontWeight:700, color:text }}>7-Day Rotation</h2>
+        {forecastAgeStr && (
+          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:sub }}>
+            <span>Weather: {forecastAgeStr}</span>
+            <button
+              onClick={() => refreshForecast(true)}
+              disabled={forecastRefreshing}
+              aria-label="Refresh weather"
+              style={{
+                padding:"3px 8px", borderRadius:6, border:`1px solid ${border}`,
+                background:"transparent", color:text, fontSize:11,
+                cursor: forecastRefreshing ? "wait" : "pointer",
+                opacity: forecastRefreshing ? 0.5 : 1,
+              }}
+            >
+              {forecastRefreshing ? "…" : "↻ Refresh"}
+            </button>
+          </div>
+        )}
         <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
           <button onClick={() => setShowOutfits(v => !v)} style={{
             background:showOutfits?"#3b82f622":"transparent", border:`1px solid ${showOutfits?"#3b82f6":border}`,
