@@ -31,6 +31,19 @@ const CONTEXTS = [
 ];
 
 const OUTFIT_SLOTS = ["shirt", "sweater", "layer", "pants", "shoes", "jacket", "belt"];
+
+/**
+ * Stable fingerprint of a per-day outfit-override map.
+ * v1.13.5: used by the auto-refit useEffect to detect garment-slot drift —
+ * when the user picks a different sweater/shoe/etc. the fingerprint changes,
+ * which triggers Claude to re-coordinate the OTHER slots around the new pick.
+ * Returns "" for empty/missing input so the comparison ("" === "") is stable.
+ */
+function outfitFingerprintFor(overrides) {
+  if (!overrides || typeof overrides !== "object") return "";
+  return OUTFIT_SLOTS.map(slot => `${slot}:${overrides[slot]?.id ?? ""}`).join("|");
+}
+
 const SLOT_ICONS = { shirt:"\u{1F454}", sweater:"\u{1FAA2}", layer:"\u{1F9E3}", pants:"\u{1F456}", shoes:"\u{1F45F}", jacket:"\u{1F9E5}", belt:"\u{1FAA2}" };
 const ACCESSORY_TYPES = new Set(["sunglasses","hat","scarf","bag","accessory","outfit-photo","outfit-shot"]);
 
@@ -1436,17 +1449,28 @@ export default function WeekPlanner() {
               style: w.style, formality: w.formality, straps: w.straps,
             }))
         : null;
+      // Endpoint routing — match endpoint to whether we're sending a pin.
+      // style-fixed-watch REQUIRES pinnedWatch.id and 400s without it; daily-pick
+      // is the open-watch endpoint. If we omit the pin (no day.watch, or
+      // Different-watch mode where the user wants the model to pick a different
+      // one from availableWatches), the URL must be daily-pick or every call
+      // returns "pinnedWatch.id required for style-fixed-watch — use /daily-pick
+      // for open-watch picks" and the WeekPlanner silently shows engine pick.
+      const sendingPin = !!pinnedWatch && !isDifferentWatchMode;
       const body = {
         forceRefresh: true,
         weather,
-        ...(pinnedWatch && !isDifferentWatchMode ? { pinnedWatch } : {}),
+        ...(sendingPin ? { pinnedWatch } : {}),
         ...(candidateWatches?.length ? { availableWatches: candidateWatches } : {}),
         ...(steer ? { steer } : {}),
         ...(useExclude && recent.length ? { excludeRecent: recent } : {}),
         ...(rejected ? { rejected } : {}),
         ...(pastCorrections.length ? { pastCorrections } : {}),
       };
-      const res = await authedFetch("/.netlify/functions/style-fixed-watch", {
+      const endpoint = sendingPin
+        ? "/.netlify/functions/style-fixed-watch"
+        : "/.netlify/functions/daily-pick";
+      const res = await authedFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -1472,7 +1496,7 @@ export default function WeekPlanner() {
       // the bug is visible instead of silently rendered.
       // PR #162 — only enforce when we actually pinned. In Different-watch mode
       // there's no pin, so the response's watchId is the legitimate new pick.
-      if (pinnedWatch && !isDifferentWatchMode && pick.watchId && pick.watchId !== pinnedWatch.id) {
+      if (sendingPin && pick.watchId && pick.watchId !== pinnedWatch.id) {
         throw new Error(`pinnedWatch mismatch: server returned watchId="${pick.watchId}" but planner pinned "${pinnedWatch.id}"`);
       }
 
@@ -1521,9 +1545,18 @@ export default function WeekPlanner() {
       }
       // PR #161 — record (watchId, strapId) so the auto-refit effect can
       // detect drift and re-fire when the user changes either one.
+      // v1.13.5 — also track an outfit-overrides fingerprint so that when the
+      // user picks a different sweater/shirt/etc. via "Different one →" or
+      // a manual swap, the auto-refit effect detects the change and asks
+      // Claude to re-coordinate the OTHER slots around it. Without this, the
+      // effect only watched watch+strap, so garment-overrides did nothing —
+      // matched the user complaint "choose different sweater etc, doesn't
+      // recalibrate the rest of outfit." Synchronous self-write below means
+      // the immediate setOutfitOverrides on line 1517 won't re-trigger us.
       aiContextRef.current[date] = {
         watchId: dayWatchIdForStrap ?? null,
         strapId: dayStrapIdForAsk ?? null,
+        outfitFingerprint: outfitFingerprintFor(overrides),
       };
       // PR #161 — apply Claude's strap suggestion to the UI when the user hasn't
       // pinned one. Match by label against the watch's available straps. If no
@@ -1617,7 +1650,13 @@ export default function WeekPlanner() {
       const rawSO = strapOverrides[day.date];
       const scopedSO = (rawSO && straps[rawSO]?.watchId === currentWatchId) ? rawSO : null;
       const currentStrapId = scopedSO ?? (currentWatchId && activeStrap[currentWatchId]) ?? null;
-      if (currentWatchId === seen.watchId && currentStrapId === seen.strapId) continue;
+      // v1.13.5 — drift detection now also covers garment-slot overrides.
+      // See aiContextRef self-write at the end of handleAskClaude for the
+      // matching write that prevents Claude's response from re-triggering us.
+      const currentOutfitFingerprint = outfitFingerprintFor(outfitOverrides[day.date]);
+      if (currentWatchId === seen.watchId
+          && currentStrapId === seen.strapId
+          && currentOutfitFingerprint === (seen.outfitFingerprint ?? "")) continue;
       // Drift detected — schedule debounced refit.
       if (refitTimerRef.current[day.date]) clearTimeout(refitTimerRef.current[day.date]);
       const dayForecast = forecast.find(f => f.date === day.date);
@@ -1631,7 +1670,7 @@ export default function WeekPlanner() {
     return () => {
       for (const id of Object.values(refitTimerRef.current)) clearTimeout(id);
     };
-  }, [watchOverrides, strapOverrides, activeStrap, rotation, aiAppliedDays, straps, forecast, handleAskClaude]);
+  }, [watchOverrides, strapOverrides, activeStrap, outfitOverrides, rotation, aiAppliedDays, straps, forecast, handleAskClaude]);
 
   // Auto-load AI rec for today (idx 0) + tomorrow (idx 1) on first render
   // when watches + forecast are ready.

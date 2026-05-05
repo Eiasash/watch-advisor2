@@ -290,7 +290,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
               background: isDark ? "#1c1917" : "#fef2f2", color: "#dc2626",
               fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%",
             }}>
-            \ud83d\uddd1 Clear Local Cache & Reload
+            🗑️ Clear Local Cache & Reload
           </button>
           <button
             onClick={async () => {
@@ -319,7 +319,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
               background: isDark ? "#0c1f3f" : "#dbeafe", color: "#2563eb",
               fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%", marginTop: 8,
             }}>
-            \ud83d\udd04 Force Update \u2014 Nuke Cache + SW
+            🔄 Force Update — Nuke Cache + SW
           </button>
         </Section>
 
@@ -357,7 +357,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
           </div>
         </Section>
         {/* Debug Console */}
-        <Section title="\ud83e\udeb2 Debug Console" isDark={isDark}>
+        <Section title="🪲 Debug Console" isDark={isDark}>
           <DebugConsole isDark={isDark} />
         </Section>
 

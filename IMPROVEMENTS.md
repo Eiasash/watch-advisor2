@@ -1,8 +1,30 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
+Last updated: 2026-05-05 — v1.13.5 audit-fix-deploy run
+
+## v1.13.5 — 2026-05-05 deep audit-fix-deploy
+
+User report: "https://watch-advisor2.netlify.app/# find bugs deeeeeeeeeeeep audit fix deploy main auto" + screenshots showing literal `🗑` text in Reset App Data buttons + DEBUG CONSOLE showing two `[style-fixed-watch] HTTP 400` errors with `[WeekPlanner] AI pick failed: 400` warnings. Followup: "AI ask claude not responsive when i ask for different watch or choose different sweater etc it doesnt recalibrate the rest of outfit vice versa and idk what to click ask claude or shuffle or reset confusing".
+
+### Bugs shipped in v1.13.5
+- **#1 Encoding** (`SettingsPanel.jsx:293,322,360`) — JSX text/attribute strings written as JS escape syntax (`🗑`, `—`) which JSX does NOT parse, so source-as-bytes "\\ud83d\\uddd1" rendered literally as text in the UI. Replaced with actual UTF-8 emoji codepoints (🗑️, 🔄, —, 🪲). One-shot helper `scripts/fix-jsx-emoji-escapes.mjs` left in repo for any future occurrences.
+- **#2 WeekPlanner endpoint routing** (`WeekPlanner.jsx:~1442–1454`) — body conditionally omitted `pinnedWatch` (when `isDifferentWatchMode === true` or `pinnedWatch === null`) but the URL was hardcoded to `/.netlify/functions/style-fixed-watch`, which 400s when `pinnedWatch.id` missing. Both branches now route to `/.netlify/functions/daily-pick` when not sending a pin. New `sendingPin` flag is the single source of truth gating both URL and body shape; structural mismatch guard at line 1475 now uses the same flag so they cannot drift again. Regression test: `tests/weekPlannerEndpointRouting.test.js`.
+- **#3 daily-pick.js cache mismatch** (`daily-pick.js:644`) — `skipCache = !!steer || excludeRecent.length>0 || !!rejected || variants>1` was a STRICT SUBSET of `forceRefresh = body.forceRefresh===true || ...|| pastCorrections.length>0 || why ||...`. Callers sending `forceRefresh:true` (every WeekPlanner Ask Claude) skipped the legacy 4h cache at line 543 but still HIT the input-hash cache — returning stale picks for up to 4h. Unified by setting `skipCache = forceRefresh`. This was the second half of "AI feels stale".
+- **#4 Auto-refit on garment override** (`WeekPlanner.jsx:~1611–1634`) — auto-refit useEffect drift-checked only `(watchId, strapId)` against `aiContextRef.current[date]`; user changing a sweater via "Different one" or manual swap did nothing because `outfitOverrides` wasn't in deps and there was no garment fingerprint. Added `outfitFingerprintFor()` helper, included `outfitOverrides` in deps, recorded `outfitFingerprint` in `aiContextRef` at end of `handleAskClaude` (sync write before any subsequent render so Claude's response doesn't re-trigger us). Caveat: this fixes "rest of outfit recalibrates when I pick a sweater" structurally, but Claude's prompt still does not honor a `pinnedSlots` shape — see Open Items below.
+- **#5 SW caches style-fixed-watch errors** (`public/sw.js:19`) — `style-fixed-watch` was missing from `NO_CACHE_FUNCTIONS`, so transient 400s/5xx responses cached for up to 4h and replayed. Without this fix, even after #2 ships, the SW would keep serving the old 400 response for the same date until cache expires. Added.
+
+### Open items — surface to follow-up sessions
+
+- **Bug #3c — UX confusion (button purposes)**: User reported "idk what to click ask claude or shuffle or reset confusing." UI audit produced an inventory of 13 buttons in the planner row; recommendation: consolidate AI refinement chips into a single "Ask Claude" primary with a dropdown for steers (different watch, more casual, more formal, why, 👎). Relabel "Shuffle" → "Next combo (this watch)". Add subtitle to "Reset" → "(your picks only)". This is a UX-design pass, not a bug fix — wants `brainstorming` skill to scope.
+- **Prompt gap — `pinnedSlots` mechanism**: The daily-pick prompt accepts `pinnedWatch` but has no analogous block for user-pinned garments. To make Bug #4 fully effective ("user picks sweater → other slots refit AROUND it, not refit the sweater too"), the prompt needs a `CURRENT-DAY USER PICKS (pinned — refit other slots around these)` block analogous to `PINNED WATCH`. Server-side change: extend `buildUserPrompt()` to accept `currentDayOverrides`, append a pin block, instruct model to honor it. Client-side change: WeekPlanner sends `outfitOverrides[date]` mapped to garment names. Estimated 30 LOC.
+- **Touch-target compliance**: ~40% of WeekPlanner buttons are below the CLAUDE.md-required 44px minimum (chips at 20px, context buttons 24–34px). Bump padding once, retest mobile.
+- **Accessibility**: Icon-only buttons (`×`, `‹`, `›`, `A`/`B` strap toggles) lack aria-labels — screen readers can't distinguish purpose.
+- **`auto-heal.js:13` VITE fallback**: Initially flagged by audit; verified intentional (Netlify exposes VITE_ vars to functions, fallback is belt-and-suspenders). Documented here so future audits don't re-flag.
+- **`outfitBuilder.js:181` magic 0.60 divisor**: Documented as the span of the coherence range (-0.40 to +0.20). Code-quality refactor opportunity (extract `COHERENCE_SPAN` const), not a bug.
+- **Unstaged migrations**: `netlify/functions/_migrations.json` has two locally-drafted RLS migrations (`20260503222400_extend_rls_to_authenticated`, `20260504052807_rls_email_restricted`) that are NOT in any branch. They're cross-session work from a different effort and were intentionally NOT committed in this run. Must land in a dedicated PR with the corresponding `_auth.js` allowlist verification.
 
 ## Current State
-- **Version**: 1.12.41
+- **Version**: 1.13.5
 - **Engine integrity**: All checks PASS
 - **Supabase**: 101 active garments (skill-snapshot), 0 dupes, 0 orphans
 - **Watches**: 23 active + 2 pending (Atelier Wen Perception SG → IL; Fears Brunswick 38 Champagne SG → IL, invoice INV-3936 issued 22 Apr, £2,500 GBP)

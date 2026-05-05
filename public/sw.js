@@ -20,8 +20,9 @@ const NO_CACHE_FUNCTIONS = new Set([
   "claude-stylist","wardrobe-chat","style-dna","bulk-tag","classify-image",
   "ai-audit","occasion-planner","selfie-check","detect-duplicate","extract-outfit",
   "relabel-garment","verify-garment-photo","watch-id","watch-value",
-  "generate-embedding","daily-pick","monthly-report","push-brief","seasonal-audit",
-  "skill-snapshot","github-pat","run-migrations","push-subscribe",
+  "generate-embedding","daily-pick","style-fixed-watch","monthly-report",
+  "push-brief","seasonal-audit","skill-snapshot","github-pat","run-migrations",
+  "push-subscribe",
 ]);
 function isUncachedFunction(pathname){
   const m = pathname.match(/^\/\.netlify\/functions\/([^/?]+)/);

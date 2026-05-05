@@ -640,8 +640,16 @@ export async function handler(event) {
 
     // ── Input-hashed cache (PR #145) ───────────────────────────────────────
     // Bypass cache when the user explicitly asked for something different.
-    // Auto-load calls (forceRefresh:true with no flexibility verbs) hit cache.
-    const skipCache = !!steer || excludeRecent.length > 0 || !!rejected || variants > 1;
+    // Bug fix v1.13.5 (audit-fix-deploy 2026-05-05): the previous skipCache
+    // condition was a strict subset of `forceRefresh` (line 515), so callers
+    // sending `forceRefresh:true` (e.g. WeekPlanner's "Ask Claude" action,
+    // see WeekPlanner.jsx handleAskClaude line 1440) would correctly skip the
+    // legacy 4-hour cache at line 543 but still HIT the input-hash cache —
+    // returning a stale pick from earlier in the day. `pastCorrections` had
+    // the same problem: legacy bypassed, input-hash served. Unify by reusing
+    // forceRefresh, which is the single source of truth for "client wants
+    // fresh model output regardless of equivalent inputs".
+    const skipCache = forceRefresh;
     const cacheKeyDate = body.date && /^\d{4}-\d{2}-\d{2}$/.test(body.date)
       ? body.date
       : new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jerusalem" }).format(new Date());
