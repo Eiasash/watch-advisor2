@@ -33,7 +33,13 @@ import StrapSuggestion  from "./today/StrapSuggestion.jsx";
 import QuickStrapSwap   from "./today/QuickStrapSwap.jsx";
 import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
 import TailorCountdown  from "./today/TailorCountdown.jsx";
-import WatchSuggestionFromOutfit from "./today/WatchSuggestionFromOutfit.jsx";
+// v1.13.13 — WatchSuggestionFromOutfit temporarily disabled. v1.13.12 shipped it
+// and the live ErrorBoundary caught a React #310 in the component tree (decoded:
+// "Rendered fewer hooks than during the previous render"). The hooks inside the
+// component are all unconditional before its early-return, so the cause is
+// likely a parent-side prop-identity / render race I couldn't repro from the
+// stack alone (`cs` minified leaf, no source map). Re-enable once the test
+// harness can reproduce the crash. Engine module + tests remain in tree.
 import { getTailorPickupDate } from "../config/tailorConfig.js";
 
 import SelfiePanel  from "./SelfiePanel.jsx";
@@ -294,16 +300,9 @@ export default function TodayPanel() {
       <SeasonalTransition garments={garments} isDark={isDark} />
       <TailorCountdown garments={garments} isDark={isDark} pickupDate={getTailorPickupDate()} />
 
-      {/* v1.13.12 — reverse engine. Hidden until ≥2 garments selected.
-          User picks clothes first → engine ranks watches by best match. */}
-      <WatchSuggestionFromOutfit
-        selected={selected}
-        garments={garments}
-        watches={watches}
-        currentWatchId={watchId}
-        onPickWatch={(id) => setWatchId(id)}
-        isDark={isDark}
-      />
+      {/* v1.13.12 — reverse engine: WatchSuggestionFromOutfit. Disabled in
+          v1.13.13 hotfix while the React #310 cause is investigated; the
+          underlying engine module remains importable. */}
 
       {/* OnCall Planner — shown when shift context selected */}
       {context === "shift" && (

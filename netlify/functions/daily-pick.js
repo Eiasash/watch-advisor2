@@ -287,7 +287,7 @@ function categorizeGarments(garments, history, opts = {}) {
  * VOLATILE per-call data: today's date, weather, recent history, wardrobe,
  * steer/exclude/rejected/pastCorrections feedback. Goes in the user message.
  */
-function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants, personalization, recentRejections, pinnedWatch, availableWatches }) {
+function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatches, recentGarments, steer, excludeRecent, rejected, pastCorrections, variants, personalization, recentRejections, pinnedWatch, availableWatches, pinnedSlots }) {
   const variantClause = variants > 1
     ? `Return a JSON ARRAY of ${variants} DISTINCT outfit objects (each must use a different watch). Do NOT wrap in markdown.`
     : "Respond ONLY with a single JSON object, no markdown.";
@@ -356,6 +356,24 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
 Your job is to pick the OUTFIT (clothes + strap choice from the available straps), NOT the watch. The "watch" and "watchId" fields in your response MUST match the pinned values above.\n`;
   }
 
+  // v1.13.13 — current-day user pins. The user manually picked one or more
+  // outfit slots (e.g. "I want this sweater today"); refit the OTHER slots
+  // around them. Without this, "Try another" replaced the user's manual
+  // pick because Claude had no signal that those slots were intentional.
+  // Companion to v1.13.10's revert of the AI auto-refit on garment change —
+  // the engine path already honors pinnedSlots, this brings the AI path
+  // into parity.
+  let pinnedSlotsBlock = "";
+  if (pinnedSlots && typeof pinnedSlots === "object") {
+    const lines = Object.entries(pinnedSlots)
+      .filter(([_slot, name]) => typeof name === "string" && name.trim().length > 0)
+      .slice(0, 7)
+      .map(([slot, name]) => `  ${slot}: "${name}"`);
+    if (lines.length > 0) {
+      pinnedSlotsBlock = `\nCURRENT-DAY USER PICKS (the user manually chose these — KEEP THEM EXACTLY, refit the other slots around them):\n${lines.join("\n")}\nIn your response, set the pinned slot fields to the EXACT names above. Pick the remaining slots + strap to harmonize with these fixed pieces. Do NOT suggest alternatives for the pinned slots.\n`;
+    }
+  }
+
   let correctionsBlock = "";
   if (Array.isArray(pastCorrections) && pastCorrections.length) {
     const lines = pastCorrections.slice(0, 12).map((c, i) => {
@@ -408,7 +426,7 @@ Your job is to pick the OUTFIT (clothes + strap choice from the available straps
 
   return `DATE: ${todayStr}
 WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
-${steerLine}${pinnedWatchBlock}${availableWatchesBlock}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
+${steerLine}${pinnedWatchBlock}${pinnedSlotsBlock}${availableWatchesBlock}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
 RECENT WATCHES WORN (avoid repeats):
 ${recentWatches || "No recent data"}
 
@@ -507,6 +525,19 @@ export async function handler(event) {
     const availableWatches = Array.isArray(body.availableWatches)
       ? body.availableWatches.filter(w => w && typeof w === "object" && w.id).slice(0, 30)
       : [];
+    // v1.13.13 — current-day user pins. Map of {slot: name} the user wants
+    // KEPT EXACTLY in the AI's response. Filtered to the 7 valid slot names
+    // + non-empty string values to bound prompt size and reject malformed
+    // input. Pairs with the engine path's pinnedSlotGarments behavior so the
+    // Plan tab's "Try another" finally honors user picks.
+    const VALID_PIN_SLOTS = new Set(["shirt","pants","shoes","jacket","sweater","layer","belt"]);
+    const pinnedSlots = body.pinnedSlots && typeof body.pinnedSlots === "object"
+      ? Object.fromEntries(
+          Object.entries(body.pinnedSlots)
+            .filter(([slot, name]) => VALID_PIN_SLOTS.has(slot) && typeof name === "string" && name.trim().length > 0)
+            .map(([slot, name]) => [slot, name.slice(0, 100)])
+        )
+      : null;
     const why = body.why === true;
     const currentPick = body.currentPick && typeof body.currentPick === "object" ? body.currentPick : null;
     const variants = Math.max(1, Math.min(3, parseInt(body.variants, 10) || 1));
@@ -719,6 +750,7 @@ export async function handler(event) {
       recentRejections,
       pinnedWatch,
       availableWatches,
+      pinnedSlots,
     });
 
     // Inference settings — back on Haiku 4.5 + 800 tokens after PR #142's

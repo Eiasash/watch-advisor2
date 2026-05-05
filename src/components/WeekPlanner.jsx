@@ -1511,11 +1511,27 @@ export default function WeekPlanner() {
       // returns "pinnedWatch.id required for style-fixed-watch — use /daily-pick
       // for open-watch picks" and the WeekPlanner silently shows engine pick.
       const sendingPin = !!pinnedWatch && !isDifferentWatchMode;
+      // v1.13.13 — current-day user pins. Send the user's manually overridden
+      // garment slots so daily-pick.js's CURRENT-DAY USER PICKS prompt block
+      // can tell Claude "keep these EXACT pieces, refit the others around
+      // them." Pairs with the engine path's pinnedSlotGarments (line ~1251)
+      // so manual pins are honored on BOTH paths.
+      const dayOverridesForPin = outfitOverrides[date] ?? {};
+      const pinnedSlots = (() => {
+        const out = {};
+        for (const [slot, gid] of Object.entries(dayOverridesForPin)) {
+          if (!gid) continue;
+          const g = garments.find(x => x.id === gid);
+          if (g) out[slot] = `${g.color ?? ""} ${g.type ?? slot}`.trim();
+        }
+        return Object.keys(out).length > 0 ? out : null;
+      })();
       const body = {
         forceRefresh: true,
         weather,
         ...(sendingPin ? { pinnedWatch } : {}),
         ...(candidateWatches?.length ? { availableWatches: candidateWatches } : {}),
+        ...(pinnedSlots ? { pinnedSlots } : {}),
         ...(steer ? { steer } : {}),
         ...(useExclude && recent.length ? { excludeRecent: recent } : {}),
         ...(rejected ? { rejected } : {}),
