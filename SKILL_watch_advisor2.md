@@ -29,11 +29,11 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 3281 tests, 183 files (Vitest) |
-| Version | **1.12.40** |
+| Tests | 3422 tests, 192 files (Vitest) |
+| Version | **1.13.0** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-05-01 (garmentCount=101, historyCount=65, orphanedHistoryCount=0, all health "ok"; autoHeal WARN benign — only `stale_unscored:1` already self-marked legacy. New: tests/auditExpansion2026May.test.js +29 tests targeting utilizationScore, _crossSlotCoherence boundaries, override propagation, garmentDaysIdle degenerate shapes, auto-heal never_worn history-depth guard + ringbuffer trim. Fixed pre-existing date-dependent test failure in tests/seasonContextFactor.test.js — `_transitionSeason` injection used `null` which falls through `??` to live `Date.getMonth()`; switched to sentinel string. Supabase MCP RLS pass deferred — interactive OAuth not available in non-interactive run; relied on live skill-snapshot health checks instead. Carry forward: run RLS sanity pass next session.) |
+| Last audited | 2026-05-05 (full pipeline: 192 files / 3422 tests pass; build 5.5s, ~600 kB raw / ~155 kB gzip; deployed bundle = code; bumped 1.12.42 → 1.13.0 to reflect 30 commits since last bump including: PR #138–#140 Supabase JWT auth gate across all 17 functions + 14 frontend callers, PR #144 fail-closed prod auth — skill-snapshot now requires Bearer, PR #145 server-side AI cache by inputs hash + cardSource provenance, PR #146 split style-fixed-watch endpoint with schema enforcement, PR #147 latency + token observability, PR #148 RLS single-owner restriction, PR #149–#159 plan/today UX parity + tab reorder Today\|Plan…Audit\|History\|Travel + cardSource header on every plan card + collapsible AI reasoning + Changed/Kept diff, PR #160–#162 AI flexibility — strap passed through to Claude, auto-refit on watch/strap change, "Different watch" steer chip wired to actually change watch. Health-endpoint auth: Bearer token now required — non-auth check responds 401 by design.) |
 | Active model | `claude-sonnet-4-6` |
 | April token cost | $12.63 (2.85M input / 272K output — Apr 30 snapshot) |
 | Current scoring weights (live, from skill-snapshot) | rotationFactor=0.40, repetitionPenalty=-0.28, neverWornRotationPressure=0.50, neverWornRecencyScore=0.50, colorMatch=2.5, formalityMatch=3, watchCompatibility=3, weatherLayer=1, contextFormality=0.5, diversityFactor=-0.12, seasonMatch=0.3, contextMatch=0.1 — auto-heal has not yet written any tunes (`tuned: []`) |

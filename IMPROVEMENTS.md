@@ -371,3 +371,45 @@ Summer SS poloshirts and tees confirmed fit and added to DB with photos:
 ### RLS Pass: CLEAN
 No schema changes this session — upload used service role key directly. No new migrations.
 
+
+---
+
+## Session: May 5 2026 — Version Resync + 30-Commit Catch-Up Bump (v1.13.0)
+
+### Why a minor bump
+30 commits accumulated on top of `v1.12.42` without a version bump. Substantive enough to warrant a minor — not a patch — release:
+
+1. **Security hard-gate (PR #138–#140, #148)** — Supabase JWT auth gate applied to all 17 Netlify functions + 14 frontend callers. RLS policies tightened to single owner email. Effectively breaking change for any anonymous caller.
+2. **Fail-closed prod auth (PR #144)** — `skill-snapshot` and friends now reject unauthenticated requests with 401. Was permissive before. Means the curl-based health check needs a Bearer token going forward.
+3. **AI pick infrastructure (PR #145–#147)** — server-side cache keyed by inputs hash, `cardSource` provenance flag (logged / AI / cached AI / manual), split `style-fixed-watch` endpoint with schema enforcement, latency + token metrics emitted on every call.
+4. **Plan/Today UX overhaul (PR #149–#159)** — every plan card now carries source/status header, collapsible AI reasoning with first-sentence summary, "Changed/Kept" diff after "Different one →", green-tint visual state for logged cards, watch + strap paired as one visual block, dev-mode "Styled around: <watch>" label, explicit AI error state with Retry / Use planner pick. Tab order reset to Today | Plan | Audit | History | Travel.
+5. **AI flexibility (PR #160–#162)** — Claude reasoning now receives the user's actually-selected strap so reasoning matches reality; auto-refit fires on watch or strap change; "Different watch" steer chip is wired through to actually change the watch (it was a no-op before).
+
+### Health snapshot at bump
+- `npm install` clean (PUPPETEER_SKIP_DOWNLOAD=true)
+- `vitest run` — 192 files / 3422 tests, all green, 192.9s wall
+- `vite build` — 5.5s, ~600 kB raw, ~155 kB gzip
+- Deployed bundle (pre-bump) = `index-DRcH4Rye.js` containing literal `"1.12.42"` — matches `package.json` pre-bump
+- Test files since v1.12.42 audit: 192 (up from 183); test count: 3422 (up from 3281); +9 files / +141 tests of net coverage growth without flakes
+
+### Engine invariants — re-verified PASS
+- `strapShoeScore()` returns 1.0 always ✅
+- `buildOutfit()` is the only scoring path; `generateOutfit()` legacy stays absent ✅
+- `extractText()` used by all Claude functions ✅
+- `Array.isArray()` guards on every IDB load ✅
+- SCORE_CEILING = 30 ✅
+- Coherence v2 warm/cool = +0.20 ✅
+- Never-worn 0.50/0.50 ✅
+- `FORMAL_CONTEXTS` includes "clinic" ✅
+- `isActiveWatch()` filters `!retired && !pending` — 19+ filter points intact ✅
+- contextFormality = 0.5 (not 1.5) ✅
+
+### Documentation drift fixed
+- `SKILL_watch_advisor2.md` § header: version `1.12.40` → `1.13.0`, tests `3281 tests, 183 files` → `3422 tests, 192 files`, last-audited block rewritten for 2026-05-05.
+- `IMPROVEMENTS.md`: this entry.
+- `package.json`: bumped.
+
+### Open carry-forward
+- Skill-snapshot now requires Bearer — automation that scrapes it (incl. any local audit scripts) needs to wire the auth header. Cron path is unaffected (server-internal).
+- R3 candidates from May 1 round still open: vitest 4.1.5 patch, uuid override after `@netlify/blobs` v11, hoist `vi.mock`, coverage threshold gate, SW integration tests, `scripts/rls-audit.sh`.
+- Next physical drift to watch: when Atelier Wen Perception or Fears Brunswick land in Israel, flip `pending: true` → `pending: false` in `watchSeed.js` and bump version.
