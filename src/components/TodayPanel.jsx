@@ -33,6 +33,7 @@ import StrapSuggestion  from "./today/StrapSuggestion.jsx";
 import QuickStrapSwap   from "./today/QuickStrapSwap.jsx";
 import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
 import TailorCountdown  from "./today/TailorCountdown.jsx";
+import WatchSuggestionFromOutfit from "./today/WatchSuggestionFromOutfit.jsx";
 import { getTailorPickupDate } from "../config/tailorConfig.js";
 
 import SelfiePanel  from "./SelfiePanel.jsx";
@@ -292,6 +293,17 @@ export default function TodayPanel() {
       />
       <SeasonalTransition garments={garments} isDark={isDark} />
       <TailorCountdown garments={garments} isDark={isDark} pickupDate={getTailorPickupDate()} />
+
+      {/* v1.13.12 — reverse engine. Hidden until ≥2 garments selected.
+          User picks clothes first → engine ranks watches by best match. */}
+      <WatchSuggestionFromOutfit
+        selected={selected}
+        garments={garments}
+        watches={watches}
+        currentWatchId={watchId}
+        onPickWatch={(id) => setWatchId(id)}
+        isDark={isDark}
+      />
 
       {/* OnCall Planner — shown when shift context selected */}
       {context === "shift" && (

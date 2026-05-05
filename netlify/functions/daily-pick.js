@@ -527,14 +527,20 @@ export async function handler(event) {
       })();
     }
 
-    // "Why this?" — short rationale request, no garment context fetch needed
+    // "Why this?" — short rationale request, no garment context fetch needed.
+    // v1.13.12 — `body.weather` only; do NOT fall back to currentPick.weather.
+    // Reason: currentPick.weather is the weather AT TIME OF PICK, often hours
+    // stale. If the user revisits "why" later in the day after the forecast
+    // has updated, the reasoning text would describe yesterday's morning
+    // ("wear a heavy sweater for the cold morning" while it's actually 24°C
+    // now). Trust the client's freshly-fetched body.weather; if missing, omit.
     if (why && currentPick) {
       const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Jerusalem" });
       const model = await getConfiguredModel();
       const result = await callClaude(apiKey, {
         model,
         max_tokens: 250,
-        messages: [{ role: "user", content: buildWhyPrompt({ currentPick, todayStr, weather: body.weather ?? currentPick.weather }) }],
+        messages: [{ role: "user", content: buildWhyPrompt({ currentPick, todayStr, weather: body.weather ?? null }) }],
       }, { maxAttempts: 1 });
       const text = extractText(result, "").trim();
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ rationale: text, generatedAt: new Date().toISOString() }) };

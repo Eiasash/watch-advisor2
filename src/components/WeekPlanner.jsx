@@ -2176,31 +2176,46 @@ export default function WeekPlanner() {
                           I looking at" at a glance. */}
                     </div>
                     {!dayOutfit._isLogged && (
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => handleShuffle(day.date)}
-                        title="Shuffle for alternative outfit"
-                        style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                                  border: `1px solid ${isDark ? "#4f46e5" : "#6366f1"}`,
-                                  background: shuffleSeeds[day.date] ? "#6366f122" : "transparent",
-                                  color: isDark ? "#818cf8" : "#6366f1", fontWeight: 600 }}>
-                        {"\u{1F500}"} Shuffle{shuffleSeeds[day.date] ? ` (${shuffleSeeds[day.date]})` : ""}
-                      </button>
-                      <button onClick={() => handleAskClaude(day.date, dayForecast)}
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      {/* v1.13.12 — overhauled hierarchy. User feedback (2026-05-05):
+                          "I hate the 3 shuffle reset ask Claude buttons idk what to
+                          do with them." Three equal-weight buttons forced the user
+                          to think about engine vs AI vs clear semantics. New layout:
+                          ONE primary purple "Ask Claude" / "Regenerate" pill (the
+                          most common intent) + two small icon-only secondary buttons
+                          (🔀 engine shuffle, ↺ clear) for power users. The AiFlexRow
+                          below provides fine-grained AI steering once Claude is
+                          active. Reset is collapsed into the icon button to remove
+                          the "what does this do" question. */}
+                      <button onClick={() => handleAskClaude(day.date, dayForecast, aiAppliedDays.has(day.date) ? { useExclude: true } : {})}
                         disabled={aiLoadingDay === day.date}
-                        title="Ask Claude — single AI outfit override"
-                        style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                                  border: "1px solid #8b5cf6",
-                                  background: aiLoadingDay === day.date ? "#8b5cf622" : "transparent",
-                                  color: "#8b5cf6", fontWeight: 700, opacity: aiLoadingDay === day.date ? 0.6 : 1,
-                                  display: "flex", alignItems: "center", gap: 3 }}>
-                        {aiLoadingDay === day.date ? "..." : <>{"✨"} Ask Claude</>}
+                        title={aiAppliedDays.has(day.date) ? "Regenerate AI outfit (excludes recent picks)" : "Ask Claude AI for an outfit"}
+                        aria-label={aiAppliedDays.has(day.date) ? "Regenerate AI outfit" : "Ask Claude for outfit"}
+                        style={{ fontSize: 11, padding: "5px 12px", borderRadius: 999, cursor: "pointer",
+                                  border: "none",
+                                  background: aiLoadingDay === day.date ? "#8b5cf688" : "#8b5cf6",
+                                  color: "#fff", fontWeight: 700, opacity: aiLoadingDay === day.date ? 0.7 : 1,
+                                  display: "flex", alignItems: "center", gap: 4, minHeight: 28 }}>
+                        {aiLoadingDay === day.date ? "…" : (aiAppliedDays.has(day.date) ? <>✨ Try another</> : <>✨ Ask Claude</>)}
                       </button>
-                      {(hasOverrides || shuffleSeeds[day.date]) && (
+                      <button onClick={() => handleShuffle(day.date)}
+                        title="Engine shuffle — next-best deterministic combo for this watch (no AI)"
+                        aria-label="Engine shuffle"
+                        style={{ fontSize: 12, padding: "4px 7px", borderRadius: 999, cursor: "pointer",
+                                  border: `1px solid ${border}`,
+                                  background: shuffleSeeds[day.date] ? "#6366f122" : "transparent",
+                                  color: shuffleSeeds[day.date] ? (isDark ? "#818cf8" : "#6366f1") : muted,
+                                  fontWeight: 700, minHeight: 28, lineHeight: 1, minWidth: 28 }}>
+                        🔀{shuffleSeeds[day.date] ? <span style={{ fontSize: 9, marginLeft: 2 }}>{shuffleSeeds[day.date]}</span> : ""}
+                      </button>
+                      {(hasOverrides || shuffleSeeds[day.date] || aiAppliedDays.has(day.date)) && (
                         <button onClick={() => handleResetOutfit(day.date)}
-                          title="Reset outfit to engine pick"
-                          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                                    border: `1px solid ${border}`, background: "transparent", color: "#ef4444", fontWeight: 600 }}>
-                          Reset outfit
+                          title="Reset outfit — clear AI pick + manual swaps + shuffle"
+                          aria-label="Reset outfit"
+                          style={{ fontSize: 12, padding: "4px 7px", borderRadius: 999, cursor: "pointer",
+                                    border: `1px solid ${border}`, background: "transparent",
+                                    color: muted, fontWeight: 700, minHeight: 28, lineHeight: 1, minWidth: 28 }}>
+                          ↺
                         </button>
                       )}
                     </div>
