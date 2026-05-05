@@ -1058,26 +1058,51 @@ export default function WeekPlanner() {
     setCachedState({ _outfitOverrides: outfitOverrides }).catch(() => {});
   }, [outfitOverrides]);
 
-  // 7-day weather forecast with IDB caching (1-hour TTL)
+  // 7-day weather forecast with IDB caching (1-hour TTL).
+  // v1.13.7 — track forecastTs so the planner header can show a freshness
+  // indicator + manual refresh button. Original IIFE pattern preserved to
+  // keep hook count stable; the v1.13.7 useCallback+extra-state version
+  // crashed live with React #310 (likely a fast-refresh / SW-cache hook
+  // mismatch during the bundle swap window) so v1.13.8 reverts to the
+  // single-useEffect shape and inlines the refresh logic.
   const [forecast, setForecast] = useState([]);
-  // v1.13.7 — track when the forecast was last fetched so the user can see
-  // it's actually live and not a stale read. The earlier 1-hour silent cache
-  // looked "frozen" — surface the timestamp + a manual refresh button below.
   const [forecastTs, setForecastTs] = useState(null);
   const [forecastRefreshing, setForecastRefreshing] = useState(false);
+  const forecastReqRef = useRef(0);
 
-  const refreshForecast = useCallback(async (force = false) => {
-    if (!force) {
+  useEffect(() => {
+    let cancelled = false;
+    const reqId = ++forecastReqRef.current;
+    (async () => {
       try {
         const cached = await getCachedState();
         const now = Date.now();
         if (cached._forecast && cached._forecastTs && (now - cached._forecastTs) < 3600000) {
-          setForecast(cached._forecast);
-          setForecastTs(cached._forecastTs);
+          if (!cancelled && reqId === forecastReqRef.current) {
+            setForecast(cached._forecast);
+            setForecastTs(cached._forecastTs);
+          }
           return;
         }
       } catch {}
-    }
+      try {
+        const data = await fetchWeatherForecast();
+        if (cancelled || reqId !== forecastReqRef.current) return;
+        const ts = Date.now();
+        setForecast(data);
+        setForecastTs(ts);
+        setCachedState({ _forecast: data, _forecastTs: ts }).catch(() => {});
+      } catch (err) {
+        console.warn("[weather] forecast failed:", err.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Force-refresh path — used by the ↻ Refresh button. Plain async function
+  // (NOT useCallback) so we don't add a new hook between renders.
+  async function refreshForecastNow() {
+    if (forecastRefreshing) return;
     setForecastRefreshing(true);
     try {
       const data = await fetchWeatherForecast();
@@ -1086,13 +1111,11 @@ export default function WeekPlanner() {
       setForecastTs(ts);
       setCachedState({ _forecast: data, _forecastTs: ts }).catch(() => {});
     } catch (err) {
-      console.warn("[weather] forecast failed:", err.message);
+      console.warn("[weather] refresh failed:", err.message);
     } finally {
       setForecastRefreshing(false);
     }
-  }, []);
-
-  useEffect(() => { refreshForecast(false); }, [refreshForecast]);
+  }
 
   const rawRotation = useMemo(
     () => genWeekRotation(watches, history, weekCtx, onCallDates),
@@ -1798,7 +1821,7 @@ export default function WeekPlanner() {
           <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:sub }}>
             <span>Weather: {forecastAgeStr}</span>
             <button
-              onClick={() => refreshForecast(true)}
+              onClick={refreshForecastNow}
               disabled={forecastRefreshing}
               aria-label="Refresh weather"
               style={{
