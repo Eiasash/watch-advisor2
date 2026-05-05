@@ -487,3 +487,76 @@ A "simplification" PR could easily collapse the three-state flag back into a boo
 - Coverage report at lines:50/branches:40 not actually enforced in CI yet — the threshold is in `vite.config.js` but no CI step runs `vitest run --coverage`. Wire that into `.github/workflows/weekly-audit.yml` next round.
 - Reuse `scripts/rls-audit.sh` from CI: needs `SUPABASE_DB_URL` as a GH Actions secret, then add a job step. Skipped this round to avoid a multi-PR setup.
 - React 18 → 19, vite 7 → 8, jsdom 28 → 29, zustand 4 → 5 majors all still deferred — none are blocking and each needs its own breaking-change review session.
+
+---
+
+## Session: May 5 2026 R3 — Real Bug Fix: AI Cache Stale-on-Edit (v1.13.2)
+
+### The bug
+
+`computeCacheKey` in `netlify/functions/daily-pick.js` was using
+
+```js
+gsig = `${garments.length}-${maxCreatedAt}`
+```
+
+as the wardrobe-state signature. This catches additions and removals (length changes; if a brand-new garment is added, maxCreatedAt also moves forward) but **not in-place edits**. An edit to a garment's color, formality, category, name, or brand via `GarmentEditor.jsx` leaves both `length` and `created_at` unchanged → cache key unchanged → cache hit → user gets a recommendation that didn't see the edit.
+
+TTL for today is 4 hours, so the staleness window is real and user-observable. Repro:
+
+1. Open WeekPlanner, ask Claude for today's outfit. Cached.
+2. In Wardrobe → tap a garment → change its color.
+3. Ask Claude again. Returns the pre-edit answer.
+
+Single-user app + 4h window means Eias would notice this in normal use.
+
+### The fix
+
+Replace the gsig with a content-hash dimension:
+
+```js
+gsig = `${length}-${maxCreatedAt}-${contentHex}`
+```
+
+`contentHex` is an 8-char hex render of a 32-bit XOR sum of per-garment FNV-1a hashes. Each garment contributes `H(id|name|color|formality|type|brand)`. XOR-sum is order-independent, which is correct here because the prompt re-derives ordering — two arrays with identical content in different order should hit the same cache.
+
+Why FNV-1a + XOR rather than a stronger hash:
+- Wardrobe is ~100 garments → collision probability across 32 bits is negligible
+- No crypto deps, no async, runs inline in the request path
+- 8 hex chars keeps the cache key under the 200-char test bound and grep-friendly when debugging "why is this stale"
+
+Why per-garment hash + XOR rather than hashing the whole serialized array:
+- Order independence comes for free (commutative)
+- Still busts on any single edit (any flip of any field changes that garment's hash, which changes the XOR)
+
+### Tests added (+8)
+
+In `tests/dailyPickCache.test.js`, pinning each editable field as a cache-busting signal:
+
+1. editing color → different key
+2. editing formality → different key
+3. editing category → different key
+4. editing name → different key
+5. editing brand → different key
+6. different array order, identical content → SAME key (order independence)
+7. garment with no `created_at` still contributes to content hash (defensive)
+8. falls back to `g.type` when `g.category` is absent (DB schema variance — both shapes exist in our garment rows)
+
+Existing tests still pass — adding/removing a garment still produces a different key, weather rounding still buckets, history additions still bust.
+
+### Test totals
+192 files / 3422 tests (1.12.42)
+→ 195 files / 3482 tests (1.13.1)
+→ 195 files / **3490 tests** (1.13.2) — all green
+
+### Other audit findings considered, not actioned this round
+
+- **Variants response missing `cardSource`** (daily-pick.js line 723): when the user requests >1 variants, each entry gets `generatedAt + weather` but not `cardSource`. The Plan card UI labels rely on cardSource (PR #149). The variant render path may default-display "AI" without distinguishing fresh vs cached. Cosmetic, not a logic bug. Defer.
+- **Auth gate `getSession()` per-fetch**: `authedFetch` calls Supabase's `getSession()` on every browser → function fetch. It hits Supabase's local cache (no network round trip), so cost is sub-millisecond. Not a perf bug but worth noting if call volume ever 10×.
+- **`recordMetric` order in catch path**: when supabase init throws (line 446 area), the catch block's `recordMetric(supabaseForMetrics, ...)` correctly null-guards and returns. No bug — just confirmed safe.
+
+### What I looked at but did NOT find
+- `Array.isArray()` IDB guards: clean. No `?? []` patterns remain on IDB-derived data in `supabaseSync.js`, `wardrobeStore.js`, `historyStore.js`.
+- `console.log` in production: all 18 occurrences are gated behind `import.meta.env.DEV` and stripped by vite's esbuild `pure` config. Clean.
+- `vi.mock` non-top-level: zero remain (commit 39352e2 cleaned this up).
+- `_auth.js` rollout flag: comprehensive coverage now in `tests/auth.test.js` (R2). No drift.

@@ -158,16 +158,50 @@ function computeCacheKey({ date, pinnedWatchId, weather, garments, history }) {
   const wsig = weather
     ? `${Math.round(weather.tempMorning ?? weather.tempC ?? 0)}-${Math.round(weather.tempMidday ?? 0)}-${Math.round(weather.tempEvening ?? 0)}`
     : "nw";
-  const maxCreatedAt = (garments ?? []).reduce(
-    (m, g) => Math.max(m, g.created_at ? new Date(g.created_at).getTime() : 0),
-    0
-  );
-  const gsig = `${(garments ?? []).length}-${maxCreatedAt}`;
+  const list = garments ?? [];
+  // gsig must change when any field that the AI prompt sees changes — not just
+  // when garments are added/removed. The prompt formats each garment as
+  // `${name} (${type/category}, ${color}, ${brand}, formality:${formality})`,
+  // so an edit to color/formality/category that the user makes via
+  // GarmentEditor must produce a different cache key. Otherwise the user
+  // edits a garment, asks Claude again, and gets the pre-edit answer for up
+  // to 4h (today TTL). Bug fix May 5 2026 — was previously
+  //   `${length}-${maxCreatedAt}`
+  // which only tracked add/remove, not in-place edits.
+  let maxCreatedAt = 0;
+  // 32-bit FNV-1a accumulator, order-independent across the wardrobe via XOR
+  // sum. Order independence is correct for our use: the prompt re-derives
+  // ordering from each request, so two wardrobes with the same content in
+  // different array orders should produce the same recommendation.
+  let contentXor = 0;
+  for (const g of list) {
+    if (!g) continue;
+    if (g.created_at) {
+      const t = new Date(g.created_at).getTime();
+      if (t > maxCreatedAt) maxCreatedAt = t;
+    }
+    const sig = [
+      g.id ?? "",
+      g.name ?? "",
+      g.color ?? "",
+      g.formality ?? "",
+      g.type ?? g.category ?? "",
+      g.brand ?? "",
+    ].join("|");
+    let h = 0x811c9dc5; // FNV-1a 32-bit offset basis
+    for (let i = 0; i < sig.length; i++) {
+      h ^= sig.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    contentXor = (contentXor ^ h) >>> 0;
+  }
+  const contentHex = contentXor.toString(16).padStart(8, "0");
+  const gsig = `${list.length}-${maxCreatedAt}-${contentHex}`;
   // history is sorted desc by date, so [0].date is the most recent
   const hsig = `${(history ?? []).length}-${history?.[0]?.date ?? ""}`;
   const watchPart = pinnedWatchId ?? "open";
-  // Keep key under Postgres's index limits — readable, not hashed (debuggable
-  // when something looks stale and you want to grep).
+  // Keep key under Postgres's index limits — readable, not hashed wholesale
+  // (8-char content hex stays grep-friendly when something looks stale).
   return `daily_pick_cache:${date}:${watchPart}:${wsig}:${gsig}:${hsig}`;
 }
 

@@ -91,6 +91,119 @@ describe("computeCacheKey", () => {
     expect(k1).not.toBe(k2);
   });
 
+  // ── Garment-edit invalidation (regression for May 5 2026 bug) ─────────────
+  // BEFORE THE FIX, computeCacheKey only tracked length + max(created_at), so
+  // editing a garment's color/formality/category in place did NOT change the
+  // key. The user would edit a garment, ask Claude again, and get the
+  // pre-edit answer for up to 4 hours (today TTL). Each test below pins one
+  // edited field as a cache-busting signal.
+
+  test("editing a garment color → different key", () => {
+    const garments = [
+      { id: "g1", name: "Polo", color: "navy", formality: 5, category: "shirt", brand: "TH",
+        created_at: "2026-04-01T00:00:00Z" },
+    ];
+    const k1 = computeCacheKey({ ...baseInput, garments });
+    const k2 = computeCacheKey({
+      ...baseInput,
+      garments: [{ ...garments[0], color: "cobalt-blue" }],
+    });
+    expect(k1).not.toBe(k2);
+  });
+
+  test("editing a garment formality → different key", () => {
+    const garments = [
+      { id: "g1", name: "Polo", color: "navy", formality: 5, category: "shirt", brand: "TH",
+        created_at: "2026-04-01T00:00:00Z" },
+    ];
+    const k1 = computeCacheKey({ ...baseInput, garments });
+    const k2 = computeCacheKey({
+      ...baseInput,
+      garments: [{ ...garments[0], formality: 7 }],
+    });
+    expect(k1).not.toBe(k2);
+  });
+
+  test("editing a garment category → different key", () => {
+    const garments = [
+      { id: "g1", name: "Polo", color: "navy", formality: 5, category: "shirt", brand: "TH",
+        created_at: "2026-04-01T00:00:00Z" },
+    ];
+    const k1 = computeCacheKey({ ...baseInput, garments });
+    const k2 = computeCacheKey({
+      ...baseInput,
+      garments: [{ ...garments[0], category: "jacket" }],
+    });
+    expect(k1).not.toBe(k2);
+  });
+
+  test("editing a garment name → different key", () => {
+    const garments = [
+      { id: "g1", name: "Polo", color: "navy", formality: 5, category: "shirt", brand: "TH",
+        created_at: "2026-04-01T00:00:00Z" },
+    ];
+    const k1 = computeCacheKey({ ...baseInput, garments });
+    const k2 = computeCacheKey({
+      ...baseInput,
+      garments: [{ ...garments[0], name: "Cobalt Polo" }],
+    });
+    expect(k1).not.toBe(k2);
+  });
+
+  test("editing a garment brand → different key", () => {
+    const garments = [
+      { id: "g1", name: "Polo", color: "navy", formality: 5, category: "shirt", brand: "TH",
+        created_at: "2026-04-01T00:00:00Z" },
+    ];
+    const k1 = computeCacheKey({ ...baseInput, garments });
+    const k2 = computeCacheKey({
+      ...baseInput,
+      garments: [{ ...garments[0], brand: "Lacoste" }],
+    });
+    expect(k1).not.toBe(k2);
+  });
+
+  test("garments in different array order produce SAME key (order-independent)", () => {
+    // The prompt re-derives ordering. Two array orders with identical content
+    // should hit the same cache. XOR sum of per-garment hashes guarantees this.
+    const a = { id: "g1", name: "Polo", color: "navy", formality: 5, category: "shirt", brand: "TH",
+                created_at: "2026-04-01T00:00:00Z" };
+    const b = { id: "g2", name: "Chinos", color: "khaki", formality: 5, category: "pants", brand: "Gap",
+                created_at: "2026-04-02T00:00:00Z" };
+    const k1 = computeCacheKey({ ...baseInput, garments: [a, b] });
+    const k2 = computeCacheKey({ ...baseInput, garments: [b, a] });
+    expect(k1).toBe(k2);
+  });
+
+  test("garment with no created_at still contributes to content hash", () => {
+    // Defensive: a garment row missing created_at should still bust the cache
+    // when its other fields change. (Older rows in some test fixtures lack
+    // created_at — must not silently collapse all of them to the same hash.)
+    const k1 = computeCacheKey({
+      ...baseInput,
+      garments: [{ id: "g1", color: "navy" }],
+    });
+    const k2 = computeCacheKey({
+      ...baseInput,
+      garments: [{ id: "g1", color: "blue" }],
+    });
+    expect(k1).not.toBe(k2);
+  });
+
+  test("falls back to g.type when g.category is absent (DB schema variance)", () => {
+    // Some garment rows expose `type`, others `category`. The prompt formatter
+    // accepts either; the cache key must too.
+    const k1 = computeCacheKey({
+      ...baseInput,
+      garments: [{ id: "g1", type: "shirt", color: "navy" }],
+    });
+    const k2 = computeCacheKey({
+      ...baseInput,
+      garments: [{ id: "g1", type: "jacket", color: "navy" }],
+    });
+    expect(k1).not.toBe(k2);
+  });
+
   test("logging a wear → different key (history state changed)", () => {
     const k1 = computeCacheKey(baseInput);
     const k2 = computeCacheKey({
