@@ -560,3 +560,112 @@ Existing tests still pass — adding/removing a garment still produces a differe
 - `console.log` in production: all 18 occurrences are gated behind `import.meta.env.DEV` and stripped by vite's esbuild `pure` config. Clean.
 - `vi.mock` non-top-level: zero remain (commit 39352e2 cleaned this up).
 - `_auth.js` rollout flag: comprehensive coverage now in `tests/auth.test.js` (R2). No drift.
+
+---
+
+## Session: May 5 2026 R4 — Five Real Bugs in the AI ↔ Planner Recommendation Loop (v1.13.3)
+
+The deepest round so far. Every bug below was reproducible and either user-visible or a concrete data-corruption risk; none were on the R3 backlog.
+
+### Bug 1 — Reverso dialSide override silently lost on strap change
+
+`WeekPlanner.jsx` line ~1156 had:
+
+```js
+if (enrichedWatch?.dualDial && dialSide) {
+  enrichedWatch = { ...enrichedWatch, dial: dialColor }; // dial override applied
+}
+if (dayStrapObj) {
+  enrichedWatch = { ...day.watch, strap: strapStr };    // ← BUG: spreads day.watch
+}
+```
+
+Reverso is the only `dualDial: { sideA, sideB }` watch in the collection. User flips to side B (white) → tapping a strap reverts the displayed dial to side A (navy). Two state changes, only one survived.
+
+Fix: spread `enrichedWatch` instead of `day.watch` so both overrides compose.
+
+### Bug 2 — `handleAskClaude` stale closure
+
+useCallback deps were `[garments, watches, recentAiPicks, compactPickForExclude, aiAppliedDays, outfitOverrides]`. The function body actually reads `rotation`, `watchOverrides`, `strapOverrides`, `straps`, and `activeStrap` (to build the `pinnedWatch + currentStrap` blocks for the prompt). All five were missing.
+
+The auto-refit useEffect (line ~1568) correctly listed those state slices in its deps, so it re-ran when the user changed strap. But it called `handleAskClaude` — and `handleAskClaude` was the *stale* closure that captured pre-change values. Symptom: change strap → AI gets the old strap → prose explains a strap the user didn't pick. Same shape as the BB41/Rikka mismatch class (PR #141), just on the strap axis instead of the watch axis.
+
+Repo had no eslint, so `react-hooks/exhaustive-deps` never flagged it.
+
+Fix: added the missing deps. The auto-refit's existing early-return guards (`currentWatchId === seen.watchId && currentStrapId === seen.strapId`) plus `aiContextRef`'s synchronous self-write protection prevent any cascading re-fires from the new dep set.
+
+### Bug 3 — Brittle AI garment-name match
+
+Inline matching was strict equality + lowercase fallback:
+
+```js
+const match = garments.find(g =>
+  g.name === name || g.name?.toLowerCase() === name?.toLowerCase());
+```
+
+Broke silently on AI responses with: trailing whitespace, surrounding straight or smart quotes, trailing punctuation (`"Navy Polo."`), or extra padding the model occasionally adds when wrapping a name as a noun phrase. The slot would fail to map → fell back to engine pick → user saw an outfit that didn't match Claude's reasoning. No surfaced warning.
+
+Fix: extracted to `src/utils/aiPickResolver.js` with two pure functions:
+- `normalizeAiName(value)` — trim, strip one layer of quotes (straight + smart), strip trailing punctuation, lowercase. Defensive for non-strings.
+- `resolveGarmentSlots(pick, garments, slots)` — uses `normalizeAiName` on both sides; returns `{ overrides, unmatched }`. The unmatched array surfaces via `console.warn` when names don't resolve, so future model drift is visible.
+
+### Bug 4 — Different-watch-mode response had no validation
+
+PR #162 wired the "Different watch" steer chip to apply `pick.watchId` as a watch override. The match logic was:
+
+```js
+const matchedWatch = watches.find(w => w.id === pick.watchId);
+if (matchedWatch) { setWatchOverrides(prev => ({ ...prev, [date]: pick.watchId })); }
+```
+
+Two failure modes:
+- Hallucinated id: model returns a watchId not in our collection → silent no-op, chip "did nothing" from the user's POV.
+- Retired/pending leak: the prompt was built from `watches.filter(isActiveWatch)` so the model shouldn't return a retired or pending one, but defense in depth says we should validate on receipt too.
+
+Fix: `validateDifferentWatchPick(pickWatchId, watches, isActiveWatch)` returns `{ ok, watch?, reason? }`. WeekPlanner now logs the reason on rejection and only applies the override on success.
+
+### Bug 5 — AI-request race conditions (the worst of the five)
+
+Two related races:
+- **Rapid double-tap of "Ask Claude":** fires two parallel requests; the responses' `setOutfitOverrides` / `setStrapOverrides` / `setRecentAiPicks` calls interleave unpredictably. Whichever resolves second wins, but with a torn write of internal state.
+- **Change watch mid-flight:** user taps "Ask Claude" → user changes watch (auto-refit useEffect debounces 1500ms) → user-original-request response lands at t=2s while the auto-refit's request is still in-flight at t=2.5s → the OLD watch's outfit gets applied, then the auto-refit response lands later and corrects it. Without the abort, the OLD response can fully overwrite the NEW one if request order reverses.
+
+Fix: per-date `AbortController` in `inflightAbortersRef`. At the start of every `handleAskClaude`, the prior controller for that date is aborted. After `await fetch` resolves, a staleness check (`if (inflightAbortersRef.current[date] !== aborter) return;`) drops the response on the floor if a newer request superseded us. AbortError is suppressed from the user-facing error banner — a deliberate supersession isn't a failure.
+
+Also handles double-tap correctly: second tap aborts the first; user accepts a small UX cost (waits one more time) in exchange for getting the right answer. No state torn-write.
+
+### Bonus — Past-corrections false-positive prevention
+
+The fixed name-matching expanded the set of slots that successfully resolve to overrides. The past-corrections synthesis compares AI-suggested name to user-overridden garment name to detect "user disagreed with AI"; with the more permissive matcher, whitespace/punctuation drift between `aiPick[slot]` (raw AI string) and `garments.find(...).name` (DB) would now surface as false-positive disagreements.
+
+Fix: normalize both sides via `normalizeAiName` before the diff predicate. Real disagreements still register; trivial drift is filtered out.
+
+### Tests
+
+New file `tests/aiPickResolver.test.js` (+33 tests):
+- `normalizeAiName` (10): lowercase, trim, straight quotes, single quotes, smart quotes, trailing period, trailing comma, mid-string punctuation preserved, non-string defensive, single-layer quote stripping
+- `resolveGarmentSlots` happy path (5): exact, case-insensitive, whitespace, surrounding quotes, trailing period
+- `resolveGarmentSlots` explicit null (3): literal `null`, string `"null"`, empty string
+- `resolveGarmentSlots` unmatched (2): hallucinated → in `unmatched`, partial unmatched
+- `resolveGarmentSlots` defensive (5): null pick, non-array garments, non-array slots, non-string slot value, garment without name
+- `validateDifferentWatchPick` (8): matched + active, not in collection, retired, pending, missing id, non-string id, non-array watches, optional active predicate
+
+Test totals: 3490 → **3523** (+33), 195 → **196** files. All green.
+
+### Why these all slipped through
+
+- No eslint → no `react-hooks/exhaustive-deps` → bug 2 invisible to tooling.
+- Bug 1 was a 1-line variable-spread mistake; only manifests for a single watch (Reverso), only when both dial-override and strap-override are set. Easy to miss in code review, no test exercised the combination.
+- Bugs 3, 4, 5 are response-handling issues; the model rarely returns whitespace/quoted names AND the network rarely takes long enough for a race AND failure modes are silent (no thrown error). The combined "rare * rare * silent" probability hides them in routine usage but they accumulate over weeks.
+
+### What I considered but did NOT fix this round
+
+- **Variants response missing `cardSource`** (daily-pick.js variants path): variants UX isn't currently a WeekPlanner flow. Cosmetic only when wired up. Defer.
+- **Substring/contains strap match**: Claude sometimes says "navy alligator" for a strap labeled "Navy alligator (aftermarket)". Could ease this with substring fallback, but introduces ambiguity if two straps share a substring. Punted — current behavior leaves strap unchanged on ambiguity, which is safe.
+- **Slot retention on unmatched name**: when AI returns a slot name that doesn't resolve, we currently leave the slot out of `overrides`, which means the engine pick is shown. Some users might prefer "keep my prior manual override." Ambiguous design call; defer until evidence of pain.
+
+### Pipeline
+- 196 files / 3523 tests, all green
+- `npm audit` 0 vulnerabilities
+- Build: 4.93s, ~600 kB raw / ~155 kB gzip (unchanged)
+- Bumped 1.13.2 → 1.13.3 patch

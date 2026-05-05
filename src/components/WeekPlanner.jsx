@@ -11,6 +11,7 @@ import { isActiveWatch } from "../utils/watchFilters.js";
 import { resolveCardSource, cardStatusSubtitle } from "../utils/cardSourceLabel.js";
 import { firstSentence, hasMoreThanSummary } from "../utils/firstSentence.js";
 import { computeOutfitDiff, hasDiff } from "../utils/outfitDiff.js";
+import { resolveGarmentSlots, validateDifferentWatchPick, normalizeAiName } from "../utils/aiPickResolver.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
@@ -995,6 +996,15 @@ export default function WeekPlanner() {
   // useRef (not state) because we don't want the effect to re-run when WE update it.
   const aiContextRef = useRef({});  // { [date]: { watchId, strapId } }
   const refitTimerRef = useRef({}); // { [date]: setTimeout-id }
+  // AI-request lifecycle ref (May 5 2026 race-condition fix):
+  //   inflightAbortersRef holds a per-date AbortController. When a new
+  //   request starts for the same date, the prior one is aborted so its
+  //   delayed response cannot overwrite the newer pick. Without this, a
+  //   slow 6-second response for the OLD watch could land AFTER the user
+  //   changed watch + the auto-refit fired the new (correct) request,
+  //   silently reverting to the wrong outfit. Also handles rapid double-
+  //   taps of "Ask Claude" cleanly — the second tap supersedes the first.
+  const inflightAbortersRef = useRef({}); // { [date]: AbortController }
 
   // PR #156 — what watch the AI was actually styled around at the moment of
   // the ask. Captured at request time (not render time) so a subsequent watch
@@ -1153,7 +1163,11 @@ export default function WeekPlanner() {
         const strapStr = dayStrapObj.type === "bracelet" || dayStrapObj.type === "integrated"
           ? dayStrapObj.type
           : `${dayStrapObj.color} ${dayStrapObj.type}`;
-        enrichedWatch = { ...day.watch, strap: strapStr };
+        // Bug fix May 5 2026 — was `{ ...day.watch, strap }` which dropped the
+        // dialSide override applied above (Reverso side B → reverted to side A
+        // whenever a strap was set). Spread enrichedWatch instead so both
+        // overrides compose.
+        enrichedWatch = { ...enrichedWatch, strap: strapStr };
       }
 
       // Build proper per-slot fake history so diversity penalty fires per-slot
@@ -1314,6 +1328,19 @@ export default function WeekPlanner() {
    */
   const handleAskClaude = useCallback(async (date, dayForecast, opts = {}) => {
     const { steer = null, useExclude = false, rejected = null } = opts;
+    // Abort any earlier in-flight request for this date so its response
+    // can't overwrite the new pick when it lands. Critical for the
+    // change-watch-mid-flight race: without this, a slow 6-second response
+    // for the OLD watch could land AFTER the user changed watch and the
+    // auto-refit fired the new (correct) request, silently reverting to
+    // the wrong outfit. Also handles rapid double-taps cleanly — the
+    // second tap supersedes the first.
+    const priorAborter = inflightAbortersRef.current[date];
+    if (priorAborter) {
+      try { priorAborter.abort(); } catch { /* aborting an already-finished request is fine */ }
+    }
+    const aborter = new AbortController();
+    inflightAbortersRef.current[date] = aborter;
     setAiLoadingDay(date);
     try {
       const weather = dayForecast ? {
@@ -1343,7 +1370,15 @@ export default function WeekPlanner() {
             const aiName = aiPick[slot] ?? null;
             const userId = overrides[slot];
             const userName = userId ? (garments.find(g => g.id === userId)?.name ?? null) : null;
-            if (aiName !== userName) {
+            // Normalize both sides before comparison so trivial differences
+            // (whitespace / quotes / smart quotes / trailing punctuation in
+            // the AI response vs. the wardrobe's stored name) don't get
+            // logged as a false-positive "user disagreed with AI" signal.
+            // Was a real risk after the resolveGarmentSlots fix expanded the
+            // set of slots that successfully resolve to overrides.
+            const aiNorm = aiName == null ? null : normalizeAiName(aiName);
+            const userNorm = userName == null ? null : normalizeAiName(userName);
+            if (aiNorm !== userNorm) {
               out.push({ slot, fromAI: aiName, toUser: userName, date: day });
             }
           }
@@ -1415,7 +1450,16 @@ export default function WeekPlanner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: aborter.signal,
       });
+      // After the response lands, double-check this request is still the
+      // current one for this date. The fetch await might have completed
+      // AFTER a newer request superseded us. If so, drop the response on
+      // the floor — the newer request's setOutfitOverrides will land later
+      // and is what the user actually expects to see.
+      if (inflightAbortersRef.current[date] !== aborter) {
+        return;
+      }
       if (!res.ok) throw new Error(`${res.status}`);
       const pick = await res.json();
       if (pick.error) throw new Error(pick.error);
@@ -1432,24 +1476,29 @@ export default function WeekPlanner() {
         throw new Error(`pinnedWatch mismatch: server returned watchId="${pick.watchId}" but planner pinned "${pinnedWatch.id}"`);
       }
 
-      // Map AI garment names to IDs
-      const overrides = {};
-      for (const slot of OUTFIT_SLOTS) {
-        const name = pick[slot];
-        if (!name || name === "null") { overrides[slot] = null; continue; }
-        const match = garments.find(g =>
-          g.name === name || g.name?.toLowerCase() === name?.toLowerCase()
-        );
-        if (match) overrides[slot] = match.id;
+      // Map AI garment names to IDs via shared resolver — handles whitespace,
+      // surrounding quotes, smart quotes, trailing punctuation. Was previously
+      // strict equality + lowercase fallback, which broke silently for any of
+      // those AI-response quirks (slot fell back to engine pick, user saw an
+      // outfit that didn't match Claude's reasoning).
+      const { overrides, unmatched } = resolveGarmentSlots(pick, garments, OUTFIT_SLOTS);
+      if (unmatched.length) {
+        console.warn("[WeekPlanner] AI returned garments not in wardrobe:",
+          unmatched.map(u => `${u.slot}="${u.name}"`).join(", "));
       }
 
       // PR #162 — in Different-watch mode, AI's chosen watch IS the new
       // override. Apply it before clothing so the rotation re-resolves to the
-      // new watch when the next render reads watchOverrides.
-      if (isDifferentWatchMode && pick.watchId && pick.watchId !== dayObj?.watch?.id) {
-        const matchedWatch = watches.find(w => w.id === pick.watchId);
-        if (matchedWatch) {
-          setWatchOverrides(prev => ({ ...prev, [date]: pick.watchId }));
+      // new watch when the next render reads watchOverrides. Validate the
+      // returned watchId against the actual collection AND active filter —
+      // prevents a hallucinated id from silently no-op'ing the chip and
+      // prevents a retired/pending watch from sneaking in.
+      if (isDifferentWatchMode) {
+        const v = validateDifferentWatchPick(pick.watchId, watches, isActiveWatch);
+        if (v.ok && v.watch.id !== dayObj?.watch?.id) {
+          setWatchOverrides(prev => ({ ...prev, [date]: v.watch.id }));
+        } else if (!v.ok) {
+          console.warn("[WeekPlanner] Different-watch pick rejected:", v.reason);
         }
       }
       // Outside Different-watch mode: do NOT apply watch override from AI —
@@ -1514,15 +1563,36 @@ export default function WeekPlanner() {
         const n = { ...prev }; delete n[date]; return n;
       });
     } catch (e) {
+      // AbortError = the request was deliberately superseded by a newer one.
+      // Don't surface as an error to the user — the newer request is the
+      // intended outcome.
+      if (e?.name === "AbortError") return;
       console.warn("[WeekPlanner] AI pick failed:", e.message);
       // PR #155 — surface the failure as an explicit error state with Retry
       // and "Use planner pick" actions, instead of silently leaving the user
       // staring at an engine pick that looks like a half-broken AI rec.
       setAiErrorByDay(prev => ({ ...prev, [date]: e.message ?? "AI request failed" }));
     } finally {
-      setAiLoadingDay(null);
+      // Only clear inflight markers if WE are still the owner. A newer
+      // request will have already replaced our entry — don't undo its work.
+      if (inflightAbortersRef.current[date] === aborter) {
+        delete inflightAbortersRef.current[date];
+        setAiLoadingDay(null);
+      }
     }
-  }, [garments, watches, recentAiPicks, compactPickForExclude, aiAppliedDays, outfitOverrides]);
+  // Stale-closure fix May 5 2026 — handleAskClaude reads rotation,
+  // watchOverrides, strapOverrides, straps, and activeStrap to build the
+  // pinnedWatch + currentStrap blocks. Previously these were missing from
+  // the dep array, so when the auto-refit useEffect (below) re-fired after
+  // a strap change, it called the stale-closure handleAskClaude with the
+  // PRE-change strapOverrides — Claude got the old strap and the prose
+  // didn't match the user's new selection. Adding the deps re-creates
+  // handleAskClaude on each relevant state change; the early-return guards
+  // in the auto-refit (currentWatchId === seen.watchId &&
+  // currentStrapId === seen.strapId) plus aiContextRef synchronous self-
+  // write protection prevent any cascading re-fires.
+  }, [garments, watches, recentAiPicks, compactPickForExclude, aiAppliedDays,
+      outfitOverrides, rotation, watchOverrides, strapOverrides, straps, activeStrap]);
 
   // PR #161 — Auto-refit on watch/strap change.
   //
