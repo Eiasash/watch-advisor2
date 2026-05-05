@@ -4,13 +4,14 @@
  */
 import { useState, useEffect } from "react";
 import { useThemeStore } from "../../stores/themeStore.js";
+import { signInWithGitHub } from "../../services/supabaseAuth.js";
 
 export default function StyleDNA() {
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
   const [dna, setDna] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [errorState, setErrorState] = useState(null); // { kind: "auth"|"net"|"app", msg: string }
   const [expanded, setExpanded] = useState(false);
 
   const card = isDark ? "#161b22" : "#faf5ff";
@@ -20,18 +21,36 @@ export default function StyleDNA() {
   const accent = "#a855f7";
 
   const fetchDna = async (force = false) => {
-    setLoading(true); setError(null);
+    setLoading(true); setErrorState(null);
     try {
       const url = "/.netlify/functions/style-dna";
       const res = force
         ? await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ forceRefresh: true }) })
         : await fetch(url);
-      if (!res.ok) throw new Error(`${res.status}`);
+      if (!res.ok) {
+        // v1.13.10 — translate raw HTTP codes to actionable UX. The previous
+        // code rendered "401" as the entire card body with a Retry button,
+        // which is useless to a non-signed-in user.
+        if (res.status === 401 || res.status === 403) {
+          setErrorState({ kind: "auth", msg: "Sign in to unlock Style DNA" });
+          return;
+        }
+        if (res.status >= 500) {
+          setErrorState({ kind: "net", msg: `Server hiccup (${res.status}). Try again in a moment.` });
+          return;
+        }
+        setErrorState({ kind: "app", msg: `Couldn't load — HTTP ${res.status}` });
+        return;
+      }
       const data = await res.json();
-      if (data.error && !data.analysis) throw new Error(data.error);
+      if (data.error && !data.analysis) {
+        setErrorState({ kind: "app", msg: data.error });
+        return;
+      }
       setDna(data);
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+    } catch (e) {
+      setErrorState({ kind: "net", msg: `Network error: ${e.message}` });
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchDna(); }, []);
@@ -43,13 +62,27 @@ export default function StyleDNA() {
     </div>
   );
 
-  if (error && !dna) return (
-    <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: "uppercase" }}>🧬 Style DNA</div>
-      <div style={{ fontSize: 11, color: "#ef4444", marginTop: 6 }}>{error}</div>
-      <button onClick={() => fetchDna(true)} style={{ marginTop: 6, padding: "3px 10px", borderRadius: 6, border: `1px solid ${accent}`, background: "transparent", color: accent, fontSize: 10, cursor: "pointer" }}>Retry</button>
-    </div>
-  );
+  if (errorState && !dna) {
+    const isAuth = errorState.kind === "auth";
+    return (
+      <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: 16, marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: "uppercase" }}>🧬 Style DNA</div>
+        <div style={{ fontSize: 12, color: isAuth ? text : "#ef4444", marginTop: 8, lineHeight: 1.4 }}>
+          {isAuth ? "Sign in to unlock Style DNA — analyses your wardrobe + wear history into archetype, color gravity, blind spots." : errorState.msg}
+        </div>
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          {isAuth ? (
+            <button
+              onClick={() => signInWithGitHub().catch(() => setErrorState({ kind: "net", msg: "Sign-in popup closed." }))}
+              style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: accent, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+            >Sign in with GitHub</button>
+          ) : (
+            <button onClick={() => fetchDna(true)} style={{ padding: "3px 10px", borderRadius: 6, border: `1px solid ${accent}`, background: "transparent", color: accent, fontSize: 10, cursor: "pointer" }}>Retry</button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (!dna?.analysis) return null;
   const a = dna.analysis;

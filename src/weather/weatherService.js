@@ -10,14 +10,18 @@
 
 const TIMEOUT_MS = 8000;
 
+// v1.13.10 — return { source } so callers can show "live" vs "fallback".
+// User report: "weather feels static" was caused by silent fallback to
+// hardcoded Jerusalem when geolocation was denied/timed out — the user had
+// no way to tell it wasn't their actual location.
 async function getCoords() {
   try {
     const pos = await new Promise((res, rej) =>
       navigator.geolocation.getCurrentPosition(res, rej, { timeout: 10000, maximumAge: 300000 })
     );
-    return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+    return { latitude: pos.coords.latitude, longitude: pos.coords.longitude, source: "live" };
   } catch (_) {
-    return { latitude: 31.7683, longitude: 35.2137 };
+    return { latitude: 31.7683, longitude: 35.2137, source: "fallback" };
   }
 }
 
@@ -59,7 +63,7 @@ export async function fetchWeather() {
 
 export async function fetchWeatherForecast() {
   try {
-    const { latitude, longitude } = await getCoords();
+    const { latitude, longitude, source } = await getCoords();
     const res = await fetchRace(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum&hourly=temperature_2m&timezone=Asia/Jerusalem`
     );
@@ -67,6 +71,18 @@ export async function fetchWeatherForecast() {
     const daily = data.daily;
     const hourly = data.hourly;
     if (!daily?.time) return [];
+
+    // v1.13.10 — fire a reverse-geocode in parallel so the planner header can
+    // show "Tel Aviv (live)" or "Jerusalem (default)" without an extra hop.
+    let cityName = null;
+    try {
+      const geo = await fetchRace(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const gd = await geo.json();
+      cityName = gd?.address?.city ?? gd?.address?.town ?? gd?.address?.village ?? gd?.address?.county ?? null;
+    } catch (_) { /* reverse-geocode is non-fatal */ }
 
     return daily.time.map((date, i) => {
       const dayAvg = Math.round((daily.temperature_2m_max[i] + daily.temperature_2m_min[i]) / 2);
@@ -99,6 +115,10 @@ export async function fetchWeatherForecast() {
         description: weatherCodeToDesc(daily.weathercode[i]),
         precipitation: daily.precipitation_sum?.[i] ?? 0,
         weathercode: daily.weathercode[i],
+        // v1.13.10 — geolocation provenance + city. Same value on every day's
+        // forecast entry; cheap to duplicate, simple for callers to read.
+        cityName,
+        locationSource: source,
       };
     });
   } catch (err) {

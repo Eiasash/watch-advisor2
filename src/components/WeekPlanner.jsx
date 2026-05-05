@@ -120,15 +120,22 @@ function AiFlexRow({ date, dayForecast, border, isDark, loading, rationale, last
   const bg = isDark ? "#0f131a" : "#f8fafc";
   const text = isDark ? "#e2e8f0" : "#1f2937";
 
-  const chip = (testid, label, onClick) => (
+  // v1.13.10 — bumped padding from "3px 9px" to "6px 11px" so chips clear
+  // the 28px-min touch target (CLAUDE.md says 44px ideal; the AiFlexRow lives
+  // very dense so 28px is the realistic ceiling without breaking the layout).
+  // ariaLabel param exposes the verb to screen readers when label is just a
+  // glyph (e.g. 👎). Falls back to label.
+  const chip = (testid, label, onClick, ariaLabel) => (
     <button
       data-testid={testid}
       onClick={onClick}
       disabled={loading}
+      aria-label={ariaLabel ?? (typeof label === "string" ? label : undefined)}
+      title={ariaLabel ?? (typeof label === "string" ? label : undefined)}
       style={{
-        fontSize: 10, padding: "3px 9px", borderRadius: 999, cursor: loading ? "wait" : "pointer",
+        fontSize: 10, padding: "6px 11px", borderRadius: 999, cursor: loading ? "wait" : "pointer",
         border: `1px solid ${border}`, background: "transparent", color: muted, fontWeight: 600,
-        opacity: loading ? 0.5 : 1,
+        opacity: loading ? 0.5 : 1, minHeight: 28,
       }}
     >{label}</button>
   );
@@ -153,7 +160,7 @@ function AiFlexRow({ date, dayForecast, border, isDark, loading, rationale, last
         {chip(`ai-steer-formal-${date}`, "↑ More formal", () => onAsk(date, dayForecast, { steer: "more_formal", useExclude: true }))}
         {chip(`ai-steer-watch-${date}`, "⌚ Different watch", () => onAsk(date, dayForecast, { steer: "different_watch", useExclude: true }))}
         {chip(`ai-why-${date}`, rationale?.loading ? "…" : (rationale?.text ? "Hide why" : "Why this?"), onWhy)}
-        {chip(`ai-reject-${date}`, "👎", () => setRejectOpen(v => !v))}
+        {chip(`ai-reject-${date}`, "👎", () => setRejectOpen(v => !v), "Reject this pick — give Claude feedback")}
       </div>
       {rejectOpen && (
         <div style={{ marginTop: 6, display: "flex", gap: 6 }}>
@@ -601,26 +608,28 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
                 {hasCustomizations && (
                   <button
                     onClick={() => { setSlotOverrides({}); setShuffleSeed(0); }}
-                    title="Reset slot overrides + shuffle for this outfit"
+                    title="Clear your manual slot picks and let the engine choose"
+                    aria-label="Clear my picks"
                     style={{
                       padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600,
                       cursor: "pointer", border: `1px solid ${border}`,
-                      background: "transparent", color: muted,
+                      background: "transparent", color: muted, minHeight: 28,
                     }}>
-                    ↺ Reset outfit
+                    ↺ Clear picks
                   </button>
                 )}
                 <button
                   onClick={() => { setShuffleSeed(s => s + 1); setSlotOverrides({}); }}
-                  title="Shuffle to next best outfit"
+                  title="Try the next-best outfit for this watch"
+                  aria-label="Try next combo for this watch"
                   style={{
                     padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700,
                     cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
                     border: `1px solid ${shuffleSeed > 0 ? "#6366f1" : border}`,
                     background: shuffleSeed > 0 ? "#6366f122" : "transparent",
-                    color: shuffleSeed > 0 ? "#6366f1" : muted,
+                    color: shuffleSeed > 0 ? "#6366f1" : muted, minHeight: 28,
                   }}>
-                  🔀 {shuffleSeed > 0 ? `#${shuffleSeed + 1}` : "Shuffle"}
+                  🔀 {shuffleSeed > 0 ? `Next #${shuffleSeed + 1}` : "Next combo"}
                 </button>
               </div>
             </div>
@@ -1812,14 +1821,30 @@ export default function WeekPlanner() {
     const hr = Math.floor(min / 60);
     return `${hr}h ago`;
   })();
+  // v1.13.10 — surface where the geolocation came from. "Jerusalem (default)"
+  // tells the user "we couldn't get your real location, this is the fallback —
+  // grant location permission for accurate weather." "Tel Aviv (live)" tells
+  // them it actually used GPS. Pulls from forecast[0] which carries
+  // cityName + locationSource (same value on every day entry).
+  const fc0 = forecast?.[0];
+  const cityLabel = fc0 ? (
+    fc0.cityName
+      ? `${fc0.cityName}${fc0.locationSource === "fallback" ? " (default)" : ""}`
+      : (fc0.locationSource === "fallback" ? "Jerusalem (default — grant location for accuracy)" : null)
+  ) : null;
 
   return (
     <div style={{ padding:"18px 20px", borderRadius:16, background:bg, border:`1px solid ${border}`, marginBottom:16 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:8 }}>
         <h2 style={{ margin:0, fontSize:17, fontWeight:700, color:text }}>7-Day Rotation</h2>
         {forecastAgeStr && (
-          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:sub }}>
-            <span>Weather: {forecastAgeStr}</span>
+          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:sub, flexWrap:"wrap" }}>
+            {cityLabel && (
+              <span style={{ color: fc0?.locationSource === "fallback" ? "#f59e0b" : sub }}>
+                📍 {cityLabel}
+              </span>
+            )}
+            <span>· {forecastAgeStr}</span>
             <button
               onClick={refreshForecastNow}
               disabled={forecastRefreshing}
