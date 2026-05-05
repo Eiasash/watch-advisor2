@@ -5,7 +5,7 @@
  * Persisted to localCache under "styleLearning".
  */
 import { create } from "zustand";
-import { getCachedState, setCachedState } from "../services/localCache.js";
+import { setCachedState } from "../services/localCache.js";
 
 function nudge(map, key, delta) {
   if (!key) return;
@@ -27,10 +27,12 @@ export const useStyleLearnStore = create((set, get) => ({
     decayAll(profile.colors);
     decayAll(profile.types);
     set({ profile });
-    // Persist decayed state
-    getCachedState().then(cached =>
-      setCachedState({ ...cached, styleLearning: profile })
-    ).catch(() => {});
+    // Persist decayed state. setCachedState merges atomically inside an IDB
+    // transaction (v1.13.4 fix), so we don't need an explicit get-then-set
+    // chain — that chain was racy because the read+merge happened in one
+    // microtask and the write in another, allowing concurrent callers to
+    // drop each other's updates.
+    setCachedState({ styleLearning: profile }).catch(() => {});
   },
 
   /** Call after each successful outfit log with garments worn */
@@ -41,9 +43,8 @@ export const useStyleLearnStore = create((set, get) => ({
         nudge(p.colors, g.color, +0.02);
         nudge(p.types, g.type || g.garmentType, +0.02);
       });
-      getCachedState().then(cached =>
-        setCachedState({ ...cached, styleLearning: p })
-      ).catch(() => {});
+      // Atomic merge inside setCachedState — no get-then-set race.
+      setCachedState({ styleLearning: p }).catch(() => {});
       return { profile: p };
     });
   },

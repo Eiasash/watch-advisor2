@@ -27,9 +27,10 @@ export const useRejectStore = create((set, get) => ({
     const entry = { watchId, garmentIds: garmentIds.slice(), context, reason, slot, rejectedAt: Date.now() };
     set(state => {
       const next = fresh([...state.entries, entry]).slice(-200); // cap at 200
-      _getCache().then(cached =>
-        _setCache({ ...cached, rejectLog: next }).catch(() => {})
-      );
+      // Atomic merge inside setCachedState (v1.13.4 fix) — no get-then-set
+      // race. Two concurrent addRejection calls now serialize at the IDB
+      // layer instead of racing in microtasks.
+      _setCache({ rejectLog: next });
       return { entries: next };
     });
   },
@@ -44,9 +45,7 @@ export const useRejectStore = create((set, get) => ({
 
   clearAll: () => {
     set({ entries: [] });
-    _getCache().then(cached =>
-      _setCache({ ...cached, rejectLog: [] }).catch(() => {})
-    );
+    _setCache({ rejectLog: [] });
   },
 
   /** Check if a (watchId + garmentIds combo) was recently rejected */

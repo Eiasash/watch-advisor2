@@ -2,6 +2,16 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-05 — v1.13.5 audit-fix-deploy run
 
+## v1.13.6 — 2026-05-05 race fix (follow-up to v1.13.5)
+
+A fourth deep-audit subagent surfaced two more lost-update races in the same family that v1.13.4's `5eae24f` fixed for `localCache.js` + `settingsPersistence.js`. The pattern was already documented in `localCache.setCachedState()`'s comment, but two stores hadn't been migrated yet.
+
+- **#6 styleLearnStore lost-update race** (`src/stores/styleLearnStore.js:31–32, 44–45`) — `hydrate()` and `recordWear()` did `getCachedState().then(cached => setCachedState({ ...cached, styleLearning }))`. The read+merge ran in one microtask, the write in another, so two concurrent calls (e.g. user logs two outfits in fast succession) both read the same `cached` and the second `setCachedState` dropped the first's update. `setCachedState` is already atomic + merging since v1.13.4, so the explicit get-then-set chain was BOTH redundant AND racy. Replaced with `setCachedState({ styleLearning: profile })` directly.
+- **#7 rejectStore lost-update race** (`src/stores/rejectStore.js:30–31, 47–48`) — same pattern in `addRejection()` and `clearAll()`. Same fix.
+- Removed the now-unused `getCachedState` import from `styleLearnStore.js`.
+
+Tests still 3546 passed (198 files) — no regression.
+
 ## v1.13.5 — 2026-05-05 deep audit-fix-deploy
 
 User report: "https://watch-advisor2.netlify.app/# find bugs deeeeeeeeeeeep audit fix deploy main auto" + screenshots showing literal `🗑` text in Reset App Data buttons + DEBUG CONSOLE showing two `[style-fixed-watch] HTTP 400` errors with `[WeekPlanner] AI pick failed: 400` warnings. Followup: "AI ask claude not responsive when i ask for different watch or choose different sweater etc it doesnt recalibrate the rest of outfit vice versa and idk what to click ask claude or shuffle or reset confusing".
@@ -24,7 +34,7 @@ User report: "https://watch-advisor2.netlify.app/# find bugs deeeeeeeeeeeep audi
 - **Unstaged migrations**: `netlify/functions/_migrations.json` has two locally-drafted RLS migrations (`20260503222400_extend_rls_to_authenticated`, `20260504052807_rls_email_restricted`) that are NOT in any branch. They're cross-session work from a different effort and were intentionally NOT committed in this run. Must land in a dedicated PR with the corresponding `_auth.js` allowlist verification.
 
 ## Current State
-- **Version**: 1.13.5
+- **Version**: 1.13.6
 - **Engine integrity**: All checks PASS
 - **Supabase**: 101 active garments (skill-snapshot), 0 dupes, 0 orphans
 - **Watches**: 23 active + 2 pending (Atelier Wen Perception SG → IL; Fears Brunswick 38 Champagne SG → IL, invoice INV-3936 issued 22 Apr, £2,500 GBP)
