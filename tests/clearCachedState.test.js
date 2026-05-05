@@ -28,6 +28,9 @@ vi.mock("idb", () => ({
             stateStore.clear();
             return Promise.resolve();
           },
+          // get/put added May 5 2026 for setCachedState's tx-wrapped path
+          get: (key) => Promise.resolve(stateStore.get(key)),
+          put: (value, key) => { stateStore.set(key, value); return Promise.resolve(); },
           getAllKeys: () => Promise.resolve([...stateStore.keys()]),
           delete: (key) => { stateStore.delete(key); return Promise.resolve(); },
         },
@@ -37,6 +40,8 @@ vi.mock("idb", () => ({
             imageStore.clear();
             return Promise.resolve();
           },
+          get: (key) => Promise.resolve(imageStore.get(key)),
+          put: (value, key) => { imageStore.set(key, value); return Promise.resolve(); },
           getAllKeys: () => Promise.resolve([...imageStore.keys()]),
           delete: (key) => { imageStore.delete(key); return Promise.resolve(); },
         },
@@ -46,6 +51,8 @@ vi.mock("idb", () => ({
             plannerStore.clear();
             return Promise.resolve();
           },
+          get: (key) => Promise.resolve(plannerStore.get(key)),
+          put: (value, key) => { plannerStore.set(key, value); return Promise.resolve(); },
           getAllKeys: () => Promise.resolve([...plannerStore.keys()]),
           delete: (key) => { plannerStore.delete(key); return Promise.resolve(); },
         },

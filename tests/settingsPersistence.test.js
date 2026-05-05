@@ -5,6 +5,16 @@ const _store = new Map();
 const mockDb = {
   put: vi.fn((store, value, key) => { _store.set(`${store}:${key}`, value); return Promise.resolve(); }),
   get: vi.fn((store, key) => Promise.resolve(_store.get(`${store}:${key}`))),
+  // Transaction-mode support — May 5 2026 lost-update race fix wraps
+  // patchBlob's read+write in a single tx so concurrent settings saves
+  // don't drop each other's fields.
+  transaction: vi.fn((storeName, _mode) => ({
+    store: {
+      get: (key) => Promise.resolve(_store.get(`${storeName}:${key}`)),
+      put: (value, key) => { _store.set(`${storeName}:${key}`, value); return Promise.resolve(); },
+    },
+    done: Promise.resolve(),
+  })),
 };
 vi.mock("../src/services/db.js", () => ({
   db: mockDb,
@@ -51,11 +61,13 @@ describe("settingsPersistence", () => {
     it("persists weekCtx to IDB with 'app' key", async () => {
       const ctx = ["casual", "smart-casual", "formal", "casual", "casual", "casual", "casual"];
       await saveWeekCtx(ctx);
-      // Verify db.put was called with the key parameter
-      expect(mockDb.put).toHaveBeenCalled();
-      const [store, , key] = mockDb.put.mock.calls[0];
-      expect(store).toBe("state");
-      expect(key).toBe("app");
+      // Verify the data landed under the expected key. The May 5 2026
+      // race fix migrated patchBlob from `db.put` to a tx-wrapped
+      // `tx.store.put`, so we assert on the resulting store state
+      // rather than the mock call signature (which was specific to the
+      // pre-tx code path).
+      expect(_store.get("state:app")).toBeDefined();
+      expect(_store.get("state:app").weekCtx).toEqual(ctx);
     });
 
     it("updates wardrobeStore state", async () => {
@@ -122,14 +134,19 @@ describe("settingsPersistence", () => {
     });
   });
 
-  // ── Bug regression: key parameter must be passed to db.put ──────────────
-
+  // ── Bug regression: data must land under (store='state', key='app') ─────
+  //
+  // Original bug: db.put was called without the key parameter, so writes
+  // landed under the wrong key. The May 5 2026 race fix moved patchBlob
+  // to a transaction-wrapped tx.store.put — the regression contract is
+  // unchanged (data must end up at state:app) but the call path differs.
+  // We now assert on the post-write store state rather than the specific
+  // call signature.
   describe("key parameter regression", () => {
-    it("db.put is always called with 3 args (store, value, key)", async () => {
+    it("data lands under store='state', key='app'", async () => {
       await saveWeekCtx(["casual"]);
-      const call = mockDb.put.mock.calls[0];
-      expect(call).toHaveLength(3);
-      expect(call[2]).toBe("app");
+      expect(_store.has("state:app")).toBe(true);
+      expect(_store.get("state:app").weekCtx).toEqual(["casual"]);
     });
   });
 });

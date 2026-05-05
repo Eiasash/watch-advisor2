@@ -10,12 +10,27 @@ export async function getCachedState() {
 /**
  * Merges partial state into persisted state.
  * Passing { weekCtx, onCallDates } won't clobber garments/watches.
+ *
+ * Atomic read-modify-write — wraps both ops in a single IDB transaction
+ * so concurrent callers (e.g. setOutfitOverrides + travelStore + strapStore
+ * all firing useEffect persistence in the same tick) don't lose updates.
+ *
+ * BEFORE: `read existing → merge → put` were three separate microtasks.
+ * Two concurrent calls could both read the same `existing`, both merge
+ * their own field, and the second write would silently drop the first
+ * caller's update. Reproducible under rapid override toggling.
+ *
+ * AFTER: a single readwrite tx serializes the read + write at the IDB
+ * layer. Concurrent callers queue and one finishes before the next reads.
+ * Last-write-wins per-field is preserved (intended); cross-field
+ * lost-update is gone.
  */
 export async function setCachedState(partial) {
   const db = await dbPromise;
-  const existing = (await db.get("state", "app")) || {};
-  const merged = { ...existing, ...partial };
-  await db.put("state", merged, "app");
+  const tx = db.transaction("state", "readwrite");
+  const existing = (await tx.store.get("app")) || {};
+  await tx.store.put({ ...existing, ...partial }, "app");
+  await tx.done;
 }
 
 /** Store a full-resolution blob keyed by garment ID */

@@ -15,12 +15,16 @@ vi.mock("idb", () => ({
       if (store === "images") mockImageStore.set(key, value);
       return Promise.resolve();
     }),
-    transaction: vi.fn((storeName, mode) => {
-      const deletedKeys = [];
+    transaction: vi.fn((storeName, _mode) => {
+      // Per-tx call counters used by stress tests to inject overlap.
+      const target = storeName === "state" ? mockStore : mockImageStore;
       return {
         store: {
-          getAllKeys: () => Promise.resolve([...mockImageStore.keys()]),
-          delete: (key) => { mockImageStore.delete(key); deletedKeys.push(key); return Promise.resolve(); },
+          // generic store ops keyed by the tx target
+          get: (key) => Promise.resolve(target.get(key)),
+          put: (value, key) => { target.set(key, value); return Promise.resolve(); },
+          getAllKeys: () => Promise.resolve([...target.keys()]),
+          delete: (key) => { target.delete(key); return Promise.resolve(); },
         },
         done: Promise.resolve(),
       };

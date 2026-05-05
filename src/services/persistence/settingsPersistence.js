@@ -18,9 +18,20 @@ async function readBlob() {
   return (await db.get(STORE, BLOB_KEY)) ?? {};
 }
 
+/**
+ * Atomic read-modify-write of the state/app blob — wraps both ops in a
+ * single IDB transaction so concurrent callers don't lose each other's
+ * fields. Same race as setCachedState (settings persistence and
+ * localCache.setCachedState write to the same blob); without a tx,
+ * saveWeekCtx + saveOnCallDates firing in quick succession could drop
+ * one of the two writes. See localCache.setCachedState comment for the
+ * full failure mode.
+ */
 async function patchBlob(fields) {
-  const existing = await readBlob();
-  await db.put(STORE, { ...existing, ...fields }, BLOB_KEY);
+  const tx = db.transaction(STORE, "readwrite");
+  const existing = (await tx.store.get(BLOB_KEY)) ?? {};
+  await tx.store.put({ ...existing, ...fields }, BLOB_KEY);
+  await tx.done;
 }
 
 // ── Write ─────────────────────────────────────────────────────────────────────

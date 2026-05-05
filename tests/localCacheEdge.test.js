@@ -20,13 +20,25 @@ vi.mock("idb", () => ({
       if (store === "images") mockImageStore.set(key, value);
       return Promise.resolve();
     }),
-    transaction: vi.fn((storeName, mode) => ({
-      store: {
-        getAllKeys: () => Promise.resolve([...mockImageStore.keys()]),
-        delete: (key) => { mockImageStore.delete(key); return Promise.resolve(); },
-      },
-      done: Promise.resolve(),
-    })),
+    transaction: vi.fn((storeName, _mode) => {
+      const target = storeName === "state" ? mockStore : mockImageStore;
+      return {
+        store: {
+          get: (key) => {
+            if (throwOnGet) return Promise.reject(new Error("IDB read error"));
+            return Promise.resolve(target.get(key));
+          },
+          put: (value, key) => {
+            if (throwOnPut) return Promise.reject(new Error("IDB write error"));
+            target.set(key, value);
+            return Promise.resolve();
+          },
+          getAllKeys: () => Promise.resolve([...target.keys()]),
+          delete: (key) => { target.delete(key); return Promise.resolve(); },
+        },
+        done: Promise.resolve(),
+      };
+    }),
   })),
 }));
 

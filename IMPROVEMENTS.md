@@ -669,3 +669,109 @@ Test totals: 3490 → **3523** (+33), 195 → **196** files. All green.
 - `npm audit` 0 vulnerabilities
 - Build: 4.93s, ~600 kB raw / ~155 kB gzip (unchanged)
 - Bumped 1.13.2 → 1.13.3 patch
+
+---
+
+## Session: May 5 2026 R5 — Stress + Accumulated-Usage Hunt (v1.13.4)
+
+User asked for the deepest pass yet — simulated heavy load, accumulated usage, throttle, until-failure. Found one real lost-update race that was reproducible under realistic concurrency, and confirmed several other surfaces hold under 100× normal load.
+
+### The bug — `setCachedState` / `patchBlob` lost-update race
+
+Both `src/services/localCache.js` `setCachedState` and `src/services/persistence/settingsPersistence.js` `patchBlob` did the classic three-microtask read-modify-write:
+
+```js
+const existing = await db.get("state", "app");          // T1
+const merged = { ...existing, ...partial };
+await db.put("state", merged, "app");                   // T2
+```
+
+Two concurrent callers race:
+- Caller A: reads existing = `{x: 1}`
+- Caller B: reads existing = `{x: 1}` (same)
+- Caller A: writes `{x: 1, a: 2}`
+- Caller B: writes `{x: 1, b: 3}` ← drops A's `a`
+
+Real-world callsites that fire concurrently:
+- `WeekPlanner` persisting `_outfitOverrides` on slot change
+- `travelStore` persisting `travelStore` on trip add
+- `strapStore` persisting `strapStore` on strap activation
+- `prefStore` persisting `prefProfile` on preference change
+- `styleLearnStore` persisting `styleLearning` on preference profile update
+
+All write to the same `state/app` blob via the same merge-then-put pattern. Any two firing in the same tick can lose-update each other.
+
+**Symptom:** rapid edits across multiple panels + a quick reload = silently lost changes. Hard to spot in logs because the write "succeeded."
+
+**Fix:** wrap read + write in a single IDB transaction:
+
+```js
+const tx = db.transaction("state", "readwrite");
+const existing = (await tx.store.get("app")) || {};
+await tx.store.put({ ...existing, ...partial }, "app");
+await tx.done;
+```
+
+IDB's per-store readwrite-tx queue serializes operations across all concurrent callers. The second tx's `get` reads what the first tx just `put`. No data loss.
+
+### New stress test file: `tests/stressSimulation.test.js` (17 tests)
+
+Each `describe` block targets one stress dimension with deliberately-extreme loads:
+
+**Concurrent persistence (3 tests)**
+- 50 concurrent `setCachedState` calls to 50 distinct fields → all 50 survive
+- 50 concurrent same-field writes → some value 0–49 wins (last-write-wins preserved, no `undefined`)
+- 4 interleaved writes to overlapping field sets (mimics tab-A + tab-B persistence collision) → all 4 fields present
+
+**Cache key scaling (4 tests)**
+- 1000-garment wardrobe → key stays under 200 chars (Postgres index bound)
+- 10000-garment wardrobe → key still under 200 chars (FNV-1a hash is constant-width)
+- 100 calls on identical input run in <50ms (no quadratic behaviour)
+- 200 distinct wardrobe states → 0 hash collisions (32-bit XOR sum sufficient at this scale)
+
+**`resolveGarmentSlots` under load (3 tests)**
+- 1000-item wardrobe with mixed input shapes (padded / quoted / trailing-period) → all resolve, <20ms
+- Duplicate-name wardrobe → returns one of the duplicates without crashing
+- 100 unmatched slots → 100 entries in `unmatched`, no runaway memory
+
+**`normalizeAiName` adversarial (4 tests)**
+- 10000 calls in <100ms throughput
+- 100000-char input → no stack overflow
+- `""nested""` → preserves inner quotes (single-layer strip only, not infinite)
+- `""`, `...`, `"."` pathological strings → no crash
+
+**AbortController lifecycle (3 tests)**
+- Aborting an already-finished controller doesn't throw
+- 1000 sequential "asks" on the same date → 0 controllers leak in the ref
+- Rapid double-tap mid-flight → only latest aborter survives, prior is `.signal.aborted = true`
+
+### Mock infrastructure
+
+Real IDB serializes readwrite transactions on the same store via an internal queue. Most existing test mocks didn't model this, so:
+
+1. `tests/localCache.test.js` mock — added `tx.store.get` / `tx.store.put` for the state store path
+2. `tests/localCacheEdge.test.js` mock — same, with error injection through the tx path
+3. `tests/clearCachedState.test.js` mock — added `get/put` to all three (state/images/planner) tx store stubs
+4. `tests/settingsPersistence.test.js` mock — added `transaction()` returning a `tx.store` with `get/put`. Also rewrote two assertions that were checking `db.put` mock call signature directly (the May 5 R5 fix migrated `patchBlob` from `db.put` to `tx.store.put`, so the contract is now "data lands at state:app" rather than "db.put called with 3 args"). The original "key parameter regression" test was guarding a 2024-era bug where the key arg was missing; the new assertion guards the same contract on the new code path.
+5. `tests/stressSimulation.test.js` — built a global per-store tx serialization queue (`txChain`) so concurrent test calls properly model real IDB semantics. Without the queue, the stress test would falsely "pass" against a non-serializing mock and miss real production races.
+
+### What I looked at but did NOT find a bug for
+
+- **Per-date state dict accumulation** (`recentAiPicks`, `aiSourceByDay`, `aiAppliedDays`, etc.): these dicts are NOT persisted across reloads (only `_outfitOverrides` is, and that already prunes >7 days on load). Within-session growth is bounded by session length × dates user interacts with. After a week of daily use → ~7 entries per dict × 12 dicts = 84 small entries. Memory cost is negligible. **Not a real bug at current scale.**
+- **`aiAppliedDays` iteration in past-corrections synthesis**: scales linearly with date count. With 100+ entries (months of usage), still 100 × 5 slots = 500 iterations per AI call (sub-millisecond). **Not a real bug.**
+- **Backup-service concurrent createBackup**: two tabs could both insert + prune to 4-snapshot rolling buffer, briefly producing 5 entries. Self-corrects on next backup. **Marginal, not worth fixing.**
+- **`forecast` cache 1-hour TTL across midnight**: if forecast was fetched at 11:30pm and used at 12:15am, dates don't match — but `forecast.find(f => f.date === day.date)` returns `undefined` and the auto-load skips firing (`if (!dayForecast) continue;`), so no AI call uses stale weather. Visual-only stale forecast bar. **Not functional.**
+- **`handleResetOutfit` partial cleanup**: clears AI state but not `watchOverrides`/`strapOverrides`/`dialSideOverrides` for the date. Reviewed — there are separate "Reset watch" and strap reset affordances; the separation is intentional UX, not a bug.
+- **`recordMetric` tail-100 in catch path**: null-guarded, safe.
+- **`createBackup` 5-snapshot peak in memory**: 4-snapshot rolling buffer briefly holds 5 during put → prune. With ~600 KB per snapshot and 8 GB OPPO RAM, immaterial.
+
+### Pipeline
+- 197 files / 3540 tests, all green
+- `npm audit` 0 vulnerabilities
+- Build clean, ~600 kB raw / ~155 kB gzip (unchanged)
+- Bumped 1.13.3 → 1.13.4 patch
+
+### Where to push next under-load testing if it ever matters
+- **Service-worker cache stampede**: parallel fetches for the same Supabase Storage URL — currently each `cacheFirst` runs independently and would all fetch + put. Could dedupe via an in-flight Map. Not currently observed as a problem; defer.
+- **Claude 429 / billing-error recovery**: backoff strategy not currently tested. `recordMetric` records the error but no client-side circuit breaker. Defer until cost or rate-limit incident provides the data.
+- **IDB quota exhaustion**: blob store can fill up if image cache accumulates without TTL. The image-cache eviction is by garment-id presence (`evictOrphanImages`), not size. Could add an LRU bound. Defer.
