@@ -1,0 +1,38 @@
+name: Test
+
+# Required-check gate for branch protection. Runs on every PR + push to main.
+#
+# Why this exists (2026-05-06): wa2 previously had no GitHub Actions test
+# workflow. The only PR-time signal was the Netlify deploy-preview, which
+# catches `npm run build` failures but NOT vitest failures. After the
+# ward-helper PR #83 incident (broken test committed and merged before CI
+# visibility), the workspace branch-protection rules require a real test
+# gate per repo. wa2 is now gated by both this job and the Netlify preview.
+#
+# CLAUDE.md mandates: `npm test && npm run build must both pass before
+# every git push`. This workflow runs both server-side, eliminating the
+# discipline-only failure mode.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
