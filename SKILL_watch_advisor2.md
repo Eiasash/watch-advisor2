@@ -272,7 +272,7 @@ in Claude responses that may contain thinking blocks + text blocks.
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
-| `app_settings` | **Legacy** | Do NOT use — use `app_config` |
+| `app_settings` | Per-watch active strap (`id='default'`, `active_straps` JSONB keyed by short watch_id) | **Active** — used by strap selector. Earlier skill versions tagged this "legacy"; that was wrong. Read/write via `app_settings`, not `app_config`. |
 
 ### Wardrobe Health (April 11 2026)
 | Category | Count | Notes |
@@ -347,7 +347,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.12.35**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.15**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
@@ -359,6 +359,7 @@ VALUES (
 | **outfit-photo category trap** | Real garments silently miscategorized as `outfit-photo` (excluded by engine filter) are invisible landmines. Fixed Apr 18: Pavarotti navy suit trousers (14-day hidden from engine), White V-Neck Basic Tee dupe, Tan Textured Knit Pullover orphan. **v1.12.33: auto-heal check #9 `outfit_photo_trap` catches this daily** — dual signal (garment-word in name OR non-phantom id pattern). Flips `healthy: false` when found. Skips `exclude_from_wardrobe=true` rows. |
 | **watch_id canonical form** | Keep one form per watch in history. Apr 18 found `gp-laureato` (1 entry) alongside `laureato` (7) — normalized to `laureato`. When logging wears via SQL, always query existing watch_ids first to match the canonical form. |
 | **Pattern rhyme pairing** | Clous de Paris / hobnail dials (Laureato, VC Overseas rep, Ingenieur rep hobnail texture) pair best with small-scale gridded fabrics: Prince of Wales check, glen plaid, nailhead, bird's-eye. The match is structural (grid-on-grid), not color. Documented on the Kiral DB Suit jacket notes for the AI stylist. |
+| **storage.objects anon SELECT required** | Migration `20260422210000` dropped `photos_anon_select` to block bucket enumeration. Side effect: `uploadPhoto({ upsert: true })` and `deleteStoragePhoto()` (both used in `src/services/supabaseStorage.js`) silently broke for anon — upsert returned "new row violates RLS policy", and `.remove()` returned success while affecting zero rows (orphans accumulated). Restored on 2026-05-06 via `20260506050000_restore_photos_anon_select_for_upsert.sql`. **Do NOT drop this policy again** without first refactoring uploadPhoto + deleteStoragePhoto to never depend on UPSERT or row-level DELETE. |
 
 ---
 
@@ -366,8 +367,10 @@ VALUES (
 
 ### Health check
 ```
-GET https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
+curl -H "Authorization: Bearer $VITE_SUPABASE_ANON_KEY" \
+  https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
 ```
+**Auth required** (Bearer token, anon JWT or higher). Endpoint started 401-ing on missing/invalid token after the email-restricted RLS migration on 2026-05-04. Earlier skill versions said "no auth" — that's stale.
 Expected: garmentCount ≥100, orphanedHistoryCount 0, all health "ok", autoHeal.healthy true.
 
 ### Update Claude model (no deploy)

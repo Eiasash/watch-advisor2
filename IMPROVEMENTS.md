@@ -1,6 +1,33 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-05 — v1.13.5 audit-fix-deploy run
+Last updated: 2026-05-06 — v1.13.15 storage RLS fix
+
+## v1.13.15 — 2026-05-06 storage RLS upsert fix + skill corrections
+
+While logging today's wear (Snowflake on titanium bracelet, light blue Gant cable knit) and uploading the outfit photos to Supabase Storage, raw curl + supabase-js client both returned `403 "new row violates RLS policy"` for any `upsert: true` upload — even on brand-new paths. Investigation traced this to migration `20260422210000_drop_photos_bucket_list_policy.sql`, which dropped `photos_anon_select` to block bucket enumeration. Side effect not noticed at the time:
+
+- **`uploadPhoto({ upsert: true })`** in `src/services/supabaseStorage.js` failed for both new and existing paths. Supabase Storage's UPSERT path issues an internal SELECT to decide INSERT vs UPDATE; with no anon SELECT policy, that internal SELECT returns nothing → server treats the write as a UPDATE → "new row violates RLS" because `with_check` rejects.
+- **`deleteStoragePhoto()`** silently leaked orphans. `.remove()` returned `{ data: [], error: null }` (success!) while affecting zero rows in `storage.objects`. Verified by uploading 3 test files, calling remove, and confirming via SQL that all 3 were still present.
+
+This was real prod breakage since 2026-04-22 — every garment thumbnail re-upload or deletion was a no-op for any non-authenticated session (which is the default browser session in this app).
+
+### Bugs shipped in v1.13.15
+
+- **#1 Restored anon SELECT on photos bucket** (`supabase/migrations/20260506050000_restore_photos_anon_select_for_upsert.sql`) — re-creates `photos_anon_select` policy with `USING (bucket_id = 'photos')`. Trade-off accepted: re-enables `.list()` enumeration on the bucket, but every file is already reachable via `getPublicUrl` (paths are deterministic — `garments/{id}/...` and `wear/{id}/...`) and there are no secrets in this single-user app. Functional correctness wins over marginal obscurity. Verified post-migration: upsert on new path ✅, upsert overwriting existing ✅, remove ✅.
+
+- **#2 SKILL `app_settings` correction** — earlier skill versions claimed `app_settings` was legacy and to use `app_config`. Wrong. `app_settings` is actively used for the per-watch active-strap selection (`id='default'`, `active_straps` JSONB keyed by short watch_id). Updated the table.
+
+- **#3 SKILL skill-snapshot auth correction** — earlier skill versions said `skill-snapshot` had no auth. After the 2026-05-04 email-restricted RLS migration, the function now 401s on missing/invalid Bearer token. Updated the quick-reference to show the correct curl invocation.
+
+- **#4 Storage RLS gotcha documented** — added a new row to §7 Key Gotchas warning future Claude not to drop `photos_anon_select` again without first refactoring `uploadPhoto`/`deleteStoragePhoto` to never depend on UPSERT or row-level DELETE.
+
+### Wear logged
+
+History entry `wear-2026-05-06-snowflake` written to Supabase: GS Snowflake SBGA211 on titanium bracelet, Gant Light Blue Cable Knit + Kiral Navy Slim Fit Chinos + Geox Cognac Lace-Up Boot, work context, score 7.5, weight 7. Outfit + wrist photos uploaded to `wear/wear-2026-05-06-snowflake/full.jpg` and `wrist.jpg`.
+
+### Open items
+
+- The fix is asymmetric: `garments` and `history` tables are email-restricted, but `storage.objects` for the `photos` bucket is anon-permissive (insert/update/delete/select). If the threat model wants storage parity, the photo policies should also gate on `auth.jwt()->>'email'` — but that requires the app to authenticate (not just use anon JWT for the publishable client). Out of scope here. Flagging.
 
 ## v1.13.7 — 2026-05-05 supabase embed + weather context
 
