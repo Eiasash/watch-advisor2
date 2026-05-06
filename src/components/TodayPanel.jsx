@@ -33,13 +33,7 @@ import StrapSuggestion  from "./today/StrapSuggestion.jsx";
 import QuickStrapSwap   from "./today/QuickStrapSwap.jsx";
 import NeglectedWatchNudge from "./today/NeglectedWatchNudge.jsx";
 import TailorCountdown  from "./today/TailorCountdown.jsx";
-// v1.13.13 — WatchSuggestionFromOutfit temporarily disabled. v1.13.12 shipped it
-// and the live ErrorBoundary caught a React #310 in the component tree (decoded:
-// "Rendered fewer hooks than during the previous render"). The hooks inside the
-// component are all unconditional before its early-return, so the cause is
-// likely a parent-side prop-identity / render race I couldn't repro from the
-// stack alone (`cs` minified leaf, no source map). Re-enable once the test
-// harness can reproduce the crash. Engine module + tests remain in tree.
+import WatchSuggestionFromOutfit from "./today/WatchSuggestionFromOutfit.jsx";
 import { getTailorPickupDate } from "../config/tailorConfig.js";
 
 import SelfiePanel  from "./SelfiePanel.jsx";
@@ -300,9 +294,19 @@ export default function TodayPanel() {
       <SeasonalTransition garments={garments} isDark={isDark} />
       <TailorCountdown garments={garments} isDark={isDark} pickupDate={getTailorPickupDate()} />
 
-      {/* v1.13.12 — reverse engine: WatchSuggestionFromOutfit. Disabled in
-          v1.13.13 hotfix while the React #310 cause is investigated; the
-          underlying engine module remains importable. */}
+      {/* v1.13.14 — reverse engine RE-ENABLED. v1.13.12 shipped it crash-prone;
+          root cause: useMemo callbacks could throw on bad props (selected
+          undefined during hydration race) → React reported #310. v1.13.14
+          wraps every callback + defensive prop read so throws degrade to
+          empty results, never bubble. Hidden until ≥2 garments selected. */}
+      <WatchSuggestionFromOutfit
+        selected={selected}
+        garments={garments}
+        watches={watches}
+        currentWatchId={watchId}
+        onPickWatch={(id) => setWatchId(id)}
+        isDark={isDark}
+      />
 
       {/* OnCall Planner — shown when shift context selected */}
       {context === "shift" && (

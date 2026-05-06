@@ -20,14 +20,25 @@ import { normalizeType } from "../../classifier/normalizeType.js";
 
 const SLOTS = ["shirt", "pants", "shoes", "jacket", "sweater", "belt"];
 
+// v1.13.14 — defensively guard ALL prop accesses. v1.13.12 shipped this
+// component and triggered React #310 on live — root cause analysis: if
+// `selected` is null/undefined/non-Set on any render path (e.g. parent
+// state hydration race), `for (const id of selected)` throws on the
+// iterator protocol. The throw happens INSIDE useMemo's callback, which
+// React reports as a hook-count mismatch (#310) because the throw
+// bypassed subsequent hooks. Defensive callbacks never throw → no #310.
 function buildOutfitFromSelected(selected, garments) {
   const out = {};
-  for (const id of selected) {
-    const g = garments.find(x => x.id === id);
-    if (!g) continue;
-    const slot = normalizeType(g.type ?? g.category ?? "") || "accessory";
-    if (SLOTS.includes(slot) && !out[slot]) out[slot] = g;
-  }
+  if (!selected || typeof selected[Symbol.iterator] !== "function") return out;
+  if (!Array.isArray(garments) || garments.length === 0) return out;
+  try {
+    for (const id of selected) {
+      const g = garments.find(x => x?.id === id);
+      if (!g) continue;
+      const slot = normalizeType(g.type ?? g.category ?? "") || "accessory";
+      if (SLOTS.includes(slot) && !out[slot]) out[slot] = g;
+    }
+  } catch (_) { /* iterator misbehaved — degrade to empty */ }
   return out;
 }
 
@@ -36,18 +47,29 @@ export default function WatchSuggestionFromOutfit({
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  // v1.13.14 — every callback wrapped in try/catch + defensive prop reads.
+  // ANY throw inside useMemo would bypass the next hook and trip React's
+  // "fewer hooks than previous render" invariant (#310).
   const outfit = useMemo(
-    () => buildOutfitFromSelected(selected, garments),
+    () => {
+      try { return buildOutfitFromSelected(selected, garments); }
+      catch (_) { return {}; }
+    },
     [selected, garments],
   );
 
   const suggestions = useMemo(() => {
-    if (Object.keys(outfit).length < 2) return [];
-    return suggestWatchForOutfit(watches, outfit, { limit: 3 });
+    try {
+      if (Object.keys(outfit).length < 2) return [];
+      if (!Array.isArray(watches)) return [];
+      return suggestWatchForOutfit(watches, outfit, { limit: 3 });
+    } catch (_) { return []; }
   }, [outfit, watches]);
 
   // Hide entirely until we have signal — empty UI is better than noisy UI.
-  if (selected.size < 2 || suggestions.length === 0) return null;
+  // selected may be undefined during hydration; treat as empty, not crash.
+  const selectedSize = (selected && typeof selected.size === "number") ? selected.size : 0;
+  if (selectedSize < 2 || suggestions.length === 0) return null;
 
   const card = isDark ? "#161b22" : "#fefce8";
   const border = isDark ? "#92400e30" : "#fbbf2440";

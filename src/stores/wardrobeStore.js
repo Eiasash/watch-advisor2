@@ -11,6 +11,26 @@ function sanitiseGarment(g) {
   return patched;
 }
 
+/**
+ * v1.13.14 — revoke any blob URLs the garment held (`photoUrl`, `thumbnail`,
+ * extra `photoAngles`) so we don't accumulate dangling references after
+ * `removeGarment`. classifier/pipeline.js creates blob URLs at import time;
+ * without this revoke step, a long session that imports + deletes hundreds
+ * of garments leaks blob handles.
+ *
+ * Idempotent: revokeObjectURL on a non-blob string or already-revoked URL
+ * is a no-op. Wrapped in try/catch so a malformed URL doesn't break the
+ * remove flow.
+ */
+function revokeGarmentBlobs(garment) {
+  if (!garment) return;
+  const candidates = [garment.photoUrl, garment.thumbnail, ...(toArray(garment.photoAngles))];
+  for (const url of candidates) {
+    if (typeof url !== "string" || !url.startsWith("blob:")) continue;
+    try { URL.revokeObjectURL(url); } catch (_) { /* non-fatal */ }
+  }
+}
+
 export const useWardrobeStore = create((set, get) => ({
   garments: [],
   selectedGarmentId: null,
@@ -30,9 +50,11 @@ export const useWardrobeStore = create((set, get) => ({
   updateGarment: (id, updates) => set(state => ({
     garments: state.garments.map(g => g.id === id ? { ...g, ...updates } : g),
   })),
-  removeGarment: id => set(state => ({
-    garments: state.garments.filter(g => g.id !== id),
-  })),
+  removeGarment: id => set(state => {
+    const removed = state.garments.find(g => g.id === id);
+    if (removed) revokeGarmentBlobs(removed);
+    return { garments: state.garments.filter(g => g.id !== id) };
+  }),
   // Add an angle photo URL to a garment (thumbnail string)
   addAngle: (id, thumbDataUrl) => set(state => ({
     garments: state.garments.map(g => {
