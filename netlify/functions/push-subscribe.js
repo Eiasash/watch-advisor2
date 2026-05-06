@@ -1,10 +1,11 @@
 /**
  * Netlify function — save or delete a push subscription.
- * POST { subscription, deviceName } → save
- * DELETE { endpoint }               → remove
+ * POST { subscription, deviceName } → save  (requires Bearer JWT)
+ * DELETE { endpoint }               → remove (requires x-api-secret legacy)
  */
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
+import { requireUser } from "./_auth.js";
 
 
 function sb() {
@@ -24,7 +25,6 @@ export async function handler(event) {
     if (event.httpMethod === "DELETE") {
       // DELETE requires auth — endpoint strings are opaque but guessable if
       // leaked; unauthenticated delete lets anyone unsubscribe anyone's device.
-      // POST (subscribe) stays public so new devices can register themselves.
       const secret = event.headers?.["x-api-secret"];
       if (!process.env.OPEN_API_KEY || !secret || secret !== process.env.OPEN_API_KEY) {
         return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: "Unauthorized" }) };
@@ -36,6 +36,15 @@ export async function handler(event) {
     }
 
     if (event.httpMethod === "POST") {
+      // POST now requires Supabase JWT — was open until v1.13.16. Open POST
+      // = spam vector: anyone could register a push endpoint and start
+      // receiving the user's daily outfit briefs. With the auth gate already
+      // enforced on every other browser-callable function (_auth.js since
+      // v1.13.7), gating this matches the rest of the surface and closes the
+      // last unauthenticated write path on the API.
+      const auth = await requireUser(event);
+      if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
+
       const { subscription, deviceName } = body;
       if (!subscription?.endpoint) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing subscription" }) };
       const keys = subscription?.keys ?? {};

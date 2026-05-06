@@ -347,7 +347,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.15**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.16**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
@@ -360,6 +360,9 @@ VALUES (
 | **watch_id canonical form** | Keep one form per watch in history. Apr 18 found `gp-laureato` (1 entry) alongside `laureato` (7) — normalized to `laureato`. When logging wears via SQL, always query existing watch_ids first to match the canonical form. |
 | **Pattern rhyme pairing** | Clous de Paris / hobnail dials (Laureato, VC Overseas rep, Ingenieur rep hobnail texture) pair best with small-scale gridded fabrics: Prince of Wales check, glen plaid, nailhead, bird's-eye. The match is structural (grid-on-grid), not color. Documented on the Kiral DB Suit jacket notes for the AI stylist. |
 | **storage.objects anon SELECT required** | Migration `20260422210000` dropped `photos_anon_select` to block bucket enumeration. Side effect: `uploadPhoto({ upsert: true })` and `deleteStoragePhoto()` (both used in `src/services/supabaseStorage.js`) silently broke for anon — upsert returned "new row violates RLS policy", and `.remove()` returned success while affecting zero rows (orphans accumulated). Restored on 2026-05-06 via `20260506050000_restore_photos_anon_select_for_upsert.sql`. **Do NOT drop this policy again** without first refactoring uploadPhoto + deleteStoragePhoto to never depend on UPSERT or row-level DELETE. |
+| **storage.objects authenticated role policies** | Added 2026-05-06 v1.13.16 (`20260506050100_storage_authenticated_role_email_gated.sql`). When users sign in via Supabase Auth, the supabase-js client switches from `anon` → `authenticated`. Without explicit authenticated-role policies, every photo write from a signed-in browser fails RLS even though the parallel anon policies would allow it. Four policies (SELECT/INSERT/UPDATE/DELETE) gated on `auth.jwt()->>'email'`. Anon policies are kept for graceful sign-out fallback — RLS evaluates per-role so they don't widen each other. |
+| **Email allowlist — three-layer sync** | The single-user email is hard-coded in three places: (1) `ALLOWED_USER_EMAIL` env var read by `_auth.js`, (2) `public.garments`/`public.history` RLS in `20260504052807_rls_email_restricted.sql`, (3) `storage.objects` RLS in `20260506050100_storage_authenticated_role_email_gated.sql`. Defense-in-depth: a single misconfig can't expose data. **If you ever rotate the email, update both migrations together** — there is no automated sync. |
+| **push-subscribe POST auth** | v1.13.16 added `requireUser()` to the POST path. Was the only browser-callable function still ungated; open POST = spam vector for daily push briefs. DELETE keeps the legacy `x-api-secret`/`OPEN_API_KEY` scheme (separate consumer). All other browser-callable functions go through `_auth.js`. |
 
 ---
 

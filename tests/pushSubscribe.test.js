@@ -22,6 +22,16 @@ vi.mock("../netlify/functions/_cors.js", () => ({
   }),
 }));
 
+// Auth mock — flip authMode per test to assert gate behavior.
+let authMode = "pass"; // "pass" | "401" | "403"
+vi.mock("../netlify/functions/_auth.js", () => ({
+  requireUser: vi.fn(async () => {
+    if (authMode === "401") return { error: "Unauthorized: missing Bearer token", statusCode: 401 };
+    if (authMode === "403") return { error: "Forbidden: not on allowlist", statusCode: 403 };
+    return { user: { email: "eiasashhab@gmail.com" } };
+  }),
+}));
+
 describe("push-subscribe handler", () => {
   let handler;
 
@@ -29,6 +39,7 @@ describe("push-subscribe handler", () => {
     vi.stubEnv("SUPABASE_URL", "https://test.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-key");
     vi.stubEnv("OPEN_API_KEY", "test-open-secret");
+    authMode = "pass";
     mockUpsert.mockReset().mockResolvedValue({ data: null, error: null });
     mockEq.mockReset().mockResolvedValue({ data: null, error: null });
     mockDelete.mockReset().mockReturnValue({ eq: mockEq });
@@ -46,6 +57,7 @@ describe("push-subscribe handler", () => {
   it("POST success returns 200 with ok:true", async () => {
     const r = await handler({
       httpMethod: "POST",
+      headers: { authorization: "Bearer valid-jwt" },
       body: JSON.stringify({
         subscription: {
           endpoint: "https://push.example.com/sub1",
@@ -68,9 +80,37 @@ describe("push-subscribe handler", () => {
     );
   });
 
+  // ── Auth coverage — prevents v1.13.16 regression of the open-POST spam vector
+  it("POST returns 401 when JWT missing (auth gate enforced)", async () => {
+    authMode = "401";
+    const r = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        subscription: { endpoint: "https://x", keys: { p256dh: "k", auth: "a" } },
+      }),
+    });
+    expect(r.statusCode).toBe(401);
+    expect(JSON.parse(r.body).error).toContain("Unauthorized");
+    expect(mockUpsert).not.toHaveBeenCalled();      // never reached the DB
+  });
+
+  it("POST returns 403 when JWT valid but not on allowlist", async () => {
+    authMode = "403";
+    const r = await handler({
+      httpMethod: "POST",
+      headers: { authorization: "Bearer some-other-user-jwt" },
+      body: JSON.stringify({
+        subscription: { endpoint: "https://x", keys: { p256dh: "k", auth: "a" } },
+      }),
+    });
+    expect(r.statusCode).toBe(403);
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
   it("POST returns 400 when subscription is missing", async () => {
     const r = await handler({
       httpMethod: "POST",
+      headers: { authorization: "Bearer valid-jwt" },
       body: JSON.stringify({}),
     });
     expect(r.statusCode).toBe(400);
@@ -80,6 +120,7 @@ describe("push-subscribe handler", () => {
   it("POST returns 400 when subscription.endpoint is missing", async () => {
     const r = await handler({
       httpMethod: "POST",
+      headers: { authorization: "Bearer valid-jwt" },
       body: JSON.stringify({ subscription: { keys: {} } }),
     });
     expect(r.statusCode).toBe(400);

@@ -1,6 +1,25 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-06 — v1.13.15 storage RLS fix
+Last updated: 2026-05-06 — v1.13.16 push-subscribe auth + authenticated-role storage RLS
+
+## v1.13.16 — 2026-05-06 close last open POST + storage RLS for signed-in role
+
+Follow-up to v1.13.15. While auditing the auth surface during the storage RLS investigation, two additional gaps surfaced that v1.13.15 didn't touch:
+
+### Bugs shipped
+
+- **#1 `push-subscribe` POST was unauthenticated** (`netlify/functions/push-subscribe.js`) — the only browser-callable function still missing `requireUser()`. Anyone with the function URL could register a push endpoint and start receiving the user's daily outfit briefs. DELETE was already gated via `x-api-secret`; now POST is gated by Supabase JWT + email allowlist matching the rest of the API surface. Coverage: 11 tests in `tests/pushSubscribe.test.js`, including explicit 401 (missing JWT) and 403 (valid JWT but wrong allowlist) paths to prevent regression.
+
+- **#2 `storage.objects` had only `anon`-role policies** (`supabase/migrations/20260506050100_storage_authenticated_role_email_gated.sql`) — latent issue masked by no one being signed in yet. Once the auth gate (v1.13.7) had a user actually authenticated, the supabase-js client switches from `anon` to `authenticated` role, and every photo write would fail RLS because no `authenticated` policies existed on the photos bucket. Added four `authenticated`-role policies (SELECT/INSERT/UPDATE/DELETE) gated by `auth.jwt()->>'email' = 'eiasashhab@gmail.com'`, matching the email-restriction pattern from `20260504052807_rls_email_restricted.sql` for `garments` + `history`.
+
+### Defense-in-depth posture
+
+The same email allowlist is now enforced at three layers — Netlify functions (`ALLOWED_USER_EMAIL` env var), `public.garments`/`public.history` RLS, and `storage.objects` RLS. A single misconfig (env var typo, accidental policy widening, function bypass) can't expose the data. **If you ever rotate the allowlist email, update both `20260504052807` and `20260506050100` together** — the literal is hard-coded in both for defense reasons; keeping them in sync is a manual checklist item.
+
+### Open items
+
+- `github-pat.js` uses a separate `x-api-secret`/`OPEN_API_KEY` scheme (legitimate — it's for Claude Code session pushes, not browser callers). Unified auth across both schemes is out of scope.
+- Storage policies still allow anon ops (graceful degradation if a session signs out mid-flow). PostgreSQL RLS evaluates per role, so the parallel anon/authenticated policy sets don't widen each other.
 
 ## v1.13.15 — 2026-05-06 storage RLS upsert fix + skill corrections
 
