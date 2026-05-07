@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { useThemeStore } from "../../stores/themeStore.js";
 import { signInWithGitHub } from "../../services/supabaseAuth.js";
+import { authedFetch } from "../../services/authedFetch.js";
 
 export default function StyleDNA() {
   const { mode } = useThemeStore();
@@ -25,8 +26,8 @@ export default function StyleDNA() {
     try {
       const url = "/.netlify/functions/style-dna";
       const res = force
-        ? await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ forceRefresh: true }) })
-        : await fetch(url);
+        ? await authedFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ forceRefresh: true }) })
+        : await authedFetch(url);
       if (!res.ok) {
         // v1.13.10 — translate raw HTTP codes to actionable UX. The previous
         // code rendered "401" as the entire card body with a Retry button,

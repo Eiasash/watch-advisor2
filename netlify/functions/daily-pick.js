@@ -117,7 +117,7 @@ Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), San
 OUTPUT SCHEMA — return ONLY valid JSON matching this shape:
 {
   "watch": "exact watch name",
-  "watchId": "watch_id from: snowflake|rikka|pasha|gp_laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt_master|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35_rep|chopard_alpine|ap_royal_oak|gmt_meteorite|daydate_turq|rolex_op_grape|breguet_tradition",
+  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|breguet_tradition",
   "strap": "specific strap recommendation",
   "shirt": "exact garment name or null",
   "sweater": "exact garment name or null",
@@ -433,14 +433,14 @@ ${recentWatches || "No recent data"}
 RECENT GARMENTS WORN (avoid repeats):
 ${recentGarments || "No recent data"}
 
-WARDROBE (${garments.length} items):
+WARDROBE (${garments.length} items) — when picking shirt/sweater/pants/etc, copy the garment NAME (the part before the first "(") VERBATIM. Do not abbreviate ("navy pants" or "olive shirt" will NOT match). Do not invent items not in this list.
 ${garmentList}
 
 ${variantClause}
 Schema for each outfit:
 {
   "watch": "exact watch name",
-  "watchId": "watch_id from: snowflake|rikka|pasha|gp_laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt_master|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35_rep|chopard_alpine|ap_royal_oak|gmt_meteorite|daydate_turq|rolex_op_grape|breguet_tradition",
+  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|breguet_tradition",
   "strap": "specific strap recommendation",
   "shirt": "exact garment name or null",
   "sweater": "exact garment name or null",

@@ -240,3 +240,96 @@ describe("validateDifferentWatchPick", () => {
     expect(r.ok).toBe(true);
   });
 });
+
+// ── validateDifferentWatchPick — brand-prefix-strip fallback ────────────────
+//
+// Defense in depth for the 2026-05-07 incident: Claude returned `gp_laureato`
+// instead of `laureato` (and `ap_royal_oak` instead of `royal_oak`) because
+// the daily-pick.js prompt had a stale enum that prepended brand qualifiers
+// to canonical seed IDs. The prompt was corrected, but Anthropic's prompt
+// cache holds responses for ~5min and Claude has well-trained instincts to
+// brand-prefix watch references regardless. The validator now strips ONE
+// recognized brand prefix and retries before rejecting.
+//
+// Important: only known brand tokens. We don't strip arbitrary `foo_` —
+// that would let `weird_blackbay` resolve and create false matches.
+
+const PREFIX_WATCHES = [
+  { id: "laureato", brand: "Girard-Perregaux" },
+  { id: "royal_oak", brand: "Audemars Piguet" },
+  { id: "alpine_eagle", brand: "Chopard" },
+  { id: "op_grape", brand: "Rolex" },
+  { id: "blackbay", brand: "Tudor" },
+];
+
+describe("validateDifferentWatchPick — brand-prefix-strip fallback", () => {
+  it('"gp_laureato" → resolves to "laureato"', () => {
+    const r = validateDifferentWatchPick("gp_laureato", PREFIX_WATCHES);
+    expect(r.ok).toBe(true);
+    expect(r.watch.id).toBe("laureato");
+  });
+
+  it('"ap_royal_oak" → resolves to "royal_oak"', () => {
+    const r = validateDifferentWatchPick("ap_royal_oak", PREFIX_WATCHES);
+    expect(r.ok).toBe(true);
+    expect(r.watch.id).toBe("royal_oak");
+  });
+
+  it('"chopard_alpine_eagle" → resolves to "alpine_eagle"', () => {
+    const r = validateDifferentWatchPick("chopard_alpine_eagle", PREFIX_WATCHES);
+    expect(r.ok).toBe(true);
+    expect(r.watch.id).toBe("alpine_eagle");
+  });
+
+  it('"rolex_op_grape" → resolves to "op_grape"', () => {
+    const r = validateDifferentWatchPick("rolex_op_grape", PREFIX_WATCHES);
+    expect(r.ok).toBe(true);
+    expect(r.watch.id).toBe("op_grape");
+  });
+
+  it('case-insensitive prefix match — "GP_laureato" still resolves', () => {
+    const r = validateDifferentWatchPick("GP_laureato", PREFIX_WATCHES);
+    expect(r.ok).toBe(true);
+    expect(r.watch.id).toBe("laureato");
+  });
+
+  it("unknown prefix is NOT stripped — prevents false matches", () => {
+    // "weird_blackbay" must NOT resolve to "blackbay" — only known brand
+    // tokens are eligible for stripping. Otherwise any random string ending
+    // in "_<canonical>" would silently succeed.
+    const r = validateDifferentWatchPick("weird_blackbay", PREFIX_WATCHES);
+    expect(r.ok).toBe(false);
+  });
+
+  it("only ONE prefix layer is stripped (no recursive stripping)", () => {
+    // "gp_ap_laureato" must not resolve. We strip "gp_" once → "ap_laureato"
+    // which is not in collection. If recursion were enabled, this would
+    // strip again to "laureato" and falsely succeed.
+    const r = validateDifferentWatchPick("gp_ap_laureato", PREFIX_WATCHES);
+    expect(r.ok).toBe(false);
+  });
+
+  it("exact match wins over prefix strip (no unnecessary work)", () => {
+    // If "blackbay" exists, we don't even attempt stripping
+    const r = validateDifferentWatchPick("blackbay", PREFIX_WATCHES);
+    expect(r.ok).toBe(true);
+    expect(r.watch.id).toBe("blackbay");
+  });
+
+  it("stripped id pointing to retired/pending still respects active filter", () => {
+    const watches = [
+      { id: "fears", brand: "Fears", pending: true },
+    ];
+    const r = validateDifferentWatchPick("fears_brunswick", watches, w => !w.pending);
+    // strip "fears_" → "brunswick" (not in collection) → reject as not in collection
+    expect(r.ok).toBe(false);
+  });
+
+  it("known prefix without stripping target still rejects gracefully", () => {
+    // "gp_nonexistent" — prefix recognized, stripped to "nonexistent",
+    // but "nonexistent" not in collection → reject
+    const r = validateDifferentWatchPick("gp_nonexistent", PREFIX_WATCHES);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("not in collection");
+  });
+});

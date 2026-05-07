@@ -1587,12 +1587,26 @@ export default function WeekPlanner() {
       // returned watchId against the actual collection AND active filter —
       // prevents a hallucinated id from silently no-op'ing the chip and
       // prevents a retired/pending watch from sneaking in.
+      //
+      // v1.13.17 — when the validator rejects in Different-watch mode, treat
+      // the ENTIRE response as discarded, not just the watch field. Reason:
+      // Claude picked the garments, strap, and reasoning AROUND the rejected
+      // watch ("the GP Laureato's blue dial complements the olive shirt..."),
+      // so applying any of them while keeping the user's previous watch
+      // produces the visible mismatch bug from the 2026-05-07 debug bundle:
+      // Tudor BB41 displayed alongside reasoning about GP Laureato. Surface
+      // as an aiError so the user sees the failure and can retry.
       if (isDifferentWatchMode) {
         const v = validateDifferentWatchPick(pick.watchId, watches, isActiveWatch);
         if (v.ok && v.watch.id !== dayObj?.watch?.id) {
           setWatchOverrides(prev => ({ ...prev, [date]: v.watch.id }));
         } else if (!v.ok) {
           console.warn("[WeekPlanner] Different-watch pick rejected:", v.reason);
+          setAiErrorByDay(prev => ({
+            ...prev,
+            [date]: `AI suggested a watch not in your collection (${pick.watchId ?? "no id returned"}). Try again.`,
+          }));
+          return;
         }
       }
       // Outside Different-watch mode: do NOT apply watch override from AI —

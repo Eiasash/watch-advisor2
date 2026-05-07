@@ -94,20 +94,56 @@ export function resolveGarmentSlots(pick, garments, slots) {
  * the user actually owns and rotates. Defense-in-depth — the prompt says
  * "pick from this list" but model obedience is best-effort.
  *
+ * Defense-in-depth resolution order:
+ *   1. Exact match (canonical seed id, e.g. "laureato").
+ *   2. Brand-prefix strip — Claude has historically prepended brand qualifiers
+ *      ("gp_laureato", "ap_royal_oak", "chopard_alpine_eagle", "rolex_op_grape")
+ *      because they're how watches are colloquially referenced. Strip a single
+ *      leading recognized brand token + underscore and retry the match.
+ *   3. Otherwise reject.
+ *
+ * Only one strip attempt — don't recursively chase. The seed never has IDs
+ * with multiple brand prefixes stacked.
+ *
  * @param {string|null} pickWatchId
  * @param {Array}       watches    — full watch collection
  * @param {function}    isActiveWatch — predicate from watchFilters.js
  * @returns {{ ok: boolean, watch?: object, reason?: string }}
  */
+const BRAND_PREFIXES = [
+  "gp", "ap", "chopard", "rolex", "cartier", "tag", "omega", "tudor",
+  "jlc", "iwc", "vc", "grand_seiko", "gs", "breguet", "fears",
+];
+
 export function validateDifferentWatchPick(pickWatchId, watches, isActiveWatch) {
   if (!pickWatchId || typeof pickWatchId !== "string") {
     return { ok: false, reason: "no watchId in response" };
   }
   if (!Array.isArray(watches)) return { ok: false, reason: "no watch collection" };
-  const matched = watches.find(w => w.id === pickWatchId);
-  if (!matched) return { ok: false, reason: `watchId "${pickWatchId}" not in collection` };
-  if (typeof isActiveWatch === "function" && !isActiveWatch(matched)) {
-    return { ok: false, reason: `watch "${pickWatchId}" is retired or pending` };
+
+  const tryMatch = (id) => {
+    const matched = watches.find(w => w.id === id);
+    if (!matched) return null;
+    if (typeof isActiveWatch === "function" && !isActiveWatch(matched)) {
+      return { ok: false, reason: `watch "${id}" is retired or pending` };
+    }
+    return { ok: true, watch: matched };
+  };
+
+  // 1. Exact
+  let result = tryMatch(pickWatchId);
+  if (result) return result;
+
+  // 2. Strip known brand prefix
+  const lower = pickWatchId.toLowerCase();
+  for (const prefix of BRAND_PREFIXES) {
+    if (lower.startsWith(prefix + "_")) {
+      const stripped = lower.slice(prefix.length + 1);
+      result = tryMatch(stripped);
+      if (result) return result;
+      break; // only strip one layer
+    }
   }
-  return { ok: true, watch: matched };
+
+  return { ok: false, reason: `watchId "${pickWatchId}" not in collection` };
 }
