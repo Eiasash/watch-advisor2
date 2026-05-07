@@ -29,8 +29,8 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 3611 tests, 205 files (Vitest) |
-| Version | **1.13.17** |
+| Tests | 3619 tests, 205 files (Vitest) |
+| Version | **1.13.18** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
 | Last audited | 2026-05-05 R5 (stress + accumulated-usage hunt). Real lost-update race fixed in `src/services/localCache.js` `setCachedState` and `src/services/persistence/settingsPersistence.js` `patchBlob` — both did `db.get → merge → db.put` across three microtasks, so two concurrent callers (e.g. WeekPlanner persisting outfit overrides at the same tick travelStore persists trips) could each read the same `existing`, merge their own field, and the second write would silently drop the first caller's update. Reproducible. Fix: wrapped both in `db.transaction(STORE, "readwrite")` so IDB's per-store serialization queues operations atomically. New file `tests/stressSimulation.test.js` (17 tests) exercises stress dimensions: 50 concurrent persistence writes to distinct fields all survive; 4 interleaved overlapping-field writes preserve all; cache key under 10× (1000) and 100× (10000) wardrobe stays under 200 chars; 100 cache-key calls in <50ms (no quadratic); collision rate across 200 distinct wardrobes = 0; resolveGarmentSlots against 1000-item wardrobe in <20ms; 10000 normalizeAiName calls in <100ms; adversarial input (100k chars, all-quote, all-punctuation) doesn't crash; 1000 sequential AbortController churn = 0 leaks; rapid double-tap mid-flight = only latest aborter survives. Tests updated for the new tx code path: `localCache.test.js`, `localCacheEdge.test.js`, `settingsPersistence.test.js` (asserts on resulting store state instead of pre-tx call signature), `clearCachedState.test.js` (added get/put to mock store stubs). 196 files / 3523 tests → 197 files / 3540 tests, all green. Bumped 1.13.3 → 1.13.4 patch. |
@@ -347,7 +347,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.17**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.18**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
@@ -367,6 +367,8 @@ VALUES (
 | **Different-watch validator failure = full rejection** | v1.13.17 — when `validateDifferentWatchPick` returns `!ok` in Different-watch mode, the entire AI response must be discarded (not just the watch field). Reasoning, strap suggestion, and garment overrides were all written ABOUT the rejected watch, so applying any of them while keeping the user's previous watch produces a visible mismatch. The branch in `WeekPlanner.jsx#handleAskClaude` sets `aiErrorByDay` and early-returns. Don't re-introduce partial application. |
 | **`validateDifferentWatchPick` brand-prefix-strip** | v1.13.17 defense in depth. Anthropic's prompt cache holds responses ~5 min and Claude's training has strong brand-prefix instincts. The validator strips ONE recognized brand token + underscore (`gp_`, `ap_`, `chopard_`, `rolex_`, etc.) and retries before rejecting. Recursion intentionally disabled — only one strip layer. Unknown prefixes are NOT stripped (no false matches like `weird_blackbay` → `blackbay`). |
 | **`authedFetch` for every privileged Netlify function** | Every browser-side call to a `_auth.js`-gated function MUST go through `src/services/authedFetch.js`. Raw `fetch()` won't attach the Bearer JWT and the server returns 401. Failure modes seen in the wild: v1.13.17 `style-dna` (StyleDNA card stuck on "Sign in" while signed in), v1.13.16/17 `pushService.subscribePush` (POST became gated, client wasn't updated). Audit grep: `grep -rn 'fetch(.*\\.netlify/functions' src/ \| grep -v authedFetch`. |
+| **Layer tiers must agree across display + engine + prompt** | v1.13.18 — `getLayerRecommendation` (display badge), `_fillSweaterLayer`/`_fillJacket` (`outfitBuilder.js` engine), and the system prompt's layer-logic block (`netlify/functions/daily-pick.js`) all use temperature thresholds for the same decision. **Drift between any two = visible bug** (the 2026-05-07 incident: badge said "Sweater + jacket" at 16°C while engine refused sweater + prompt said "no sweater"). Canonical 4-tier model: `<10 coat / 10-13 sweater+jacket / 14-21 light jacket / ≥22 none`. The 14°C sweater gate is Eias-calibrated for the Mediterranean coast (no sweaters above 14°C). When changing any one of the three, change all three together and update boundary tests at 10/14/22°C in `tests/weatherService.test.js` + `tests/weatherRules.test.js`. |
+| **`tempDressingMin/Max` not 24h `tempMin/Max` for chips** | v1.13.18 — `forecast.tempMin`/`tempMax` is the full 24h envelope from Open-Meteo. The min is typically the pre-dawn low (4-5am) — irrelevant since Eias is asleep. Chips must use `tempDressingMin`/`tempDressingMax`, computed as min/max across the 7-10am / 11-14pm / 17-20pm waking buckets. The chip falls back to the 24h envelope when hourly data is missing. Don't reintroduce `tempMin–tempMax` in user-facing chips. |
 
 ---
 

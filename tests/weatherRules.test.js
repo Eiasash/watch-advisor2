@@ -74,24 +74,36 @@ describe("weatherDisplayText", () => {
 
 // ─── getLayerRecommendation (weather/weatherService.js) ──────────────────────
 
-// v1.13.7 — thresholds realigned with engine reality (outfitBuilder.js).
+// v1.13.18 — 4-tier model (coat/sweater/jacket/none) realigned with engine
+// + system-prompt rule (NO sweater at ≥14°C on the Mediterranean coast).
+// Earlier 3-tier model produced the 2026-05-07 visible mismatch.
 describe("getLayerRecommendation (engine-aligned)", () => {
-  it("temp < 12 → coat", () => {
+  it("temp < 10 → coat", () => {
     const result = getLayerRecommendation(5);
     expect(result.layer).toBe("coat");
     expect(result.label).toContain("Heavy coat");
   });
 
-  it("temp = 12 → sweater (boundary)", () => {
+  it("temp = 10 → sweater (band start)", () => {
+    expect(getLayerRecommendation(10).layer).toBe("sweater");
+  });
+
+  it("temp = 12 → sweater", () => {
     expect(getLayerRecommendation(12).layer).toBe("sweater");
   });
 
-  it("temp = 18 → sweater", () => {
-    expect(getLayerRecommendation(18).layer).toBe("sweater");
+  it("temp = 14 → jacket (NOT sweater — Mediterranean rule)", () => {
+    expect(getLayerRecommendation(14).layer).toBe("jacket");
   });
 
-  it("temp = 21 → sweater", () => {
-    expect(getLayerRecommendation(21).layer).toBe("sweater");
+  it("temp = 16 → jacket (the 2026-05-07 incident temp — must NOT be sweater)", () => {
+    const r = getLayerRecommendation(16);
+    expect(r.layer).toBe("jacket");
+    expect(r.label).not.toMatch(/[Ss]weater/);
+  });
+
+  it("temp = 21 → jacket", () => {
+    expect(getLayerRecommendation(21).layer).toBe("jacket");
   });
 
   it("temp = 22 → none (boundary)", () => {
@@ -106,9 +118,14 @@ describe("getLayerRecommendation (engine-aligned)", () => {
 // ─── formatWeatherText (weather/weatherService.js) ───────────────────────────
 
 describe("formatWeatherText", () => {
-  it("formats full weather object (engine-aligned label)", () => {
+  it("formats full weather object (sweater band)", () => {
     const result = formatWeatherText({ tempC: 12, description: "Partly cloudy" });
     expect(result).toBe("12°C Partly cloudy — Sweater + jacket recommended");
+  });
+
+  it("formats full weather object (jacket band — incident temp)", () => {
+    const result = formatWeatherText({ tempC: 16, description: "Partly cloudy" });
+    expect(result).toBe("16°C Partly cloudy — Light jacket recommended");
   });
 
   it("returns null for null", () => {

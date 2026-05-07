@@ -1,6 +1,42 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-07 — v1.13.17 different-watch prompt drift + orphaned reasoning + style-dna auth
+Last updated: 2026-05-07 — v1.13.18 weather tier realignment + dressing-hours range
+
+## v1.13.18 — 2026-05-07 weather tier realignment + dressing-hours range
+
+User-reported, same day as v1.13.17. The Plan-tab chip showed "**10°-25°C · Sweater + jacket**" for tomorrow's forecast. Eias is a physician on the Mediterranean coast — he leaves the house at ~6-7am (when it's 16°C) and is back inside by 8pm; the 10°C is the 4am low when he's asleep, and 16°C is jacket weather, not sweater weather. Three coupled bugs:
+
+### Bugs shipped
+
+- **#1 `getLayerRecommendation` thresholds out of sync with the engine** (`src/weather/weatherService.js`) — the v1.13.7 "engine-aligned" comment LIED. The display function used a 3-tier model (`<12 coat / <22 sweater+jacket / ≥22 none`) but the engine's `_fillSweaterLayer` gates sweater at `tempMorning >= 14` (Eias-calibrated 2026-05-02 for the Mediterranean climate) and `_fillJacket` gates jacket at `tempC >= 22`. Result: at 16°C morning the badge said "Sweater + jacket recommended" while the engine itself refused to add a sweater. The user got conflicting advice on the same screen, and the AI prompt's "NO sweater at ≥14°C" rule was undercut by the UI saying the opposite. Fix: 4-tier model — `<10 coat / 10-13 sweater+jacket / 14-21 light jacket / ≥22 none`. Display, engine, and prompt now all agree.
+
+- **#2 24-hour `tempMin/Max` chip surfaced overnight lows the user is asleep for** (`src/weather/weatherService.js`, `src/components/WeekPlanner.jsx`, `src/components/OnCallPlanner.jsx`) — the chip rendered `forecast.tempMin–tempMax` from Open-Meteo's full-day envelope. For a typical spring day in Jerusalem the min is the pre-dawn temperature (often 4-5am), which is irrelevant: the user is asleep, indoors, and not wearing the outfit. The morning/midday/evening line right below already had the dressing-hours data. Fix: added `tempDressingMin`/`tempDressingMax` to each forecast row, computed as `min/max` across the 7-10am morning, 11-14pm midday, and 17-20pm evening buckets. Chip now uses dressing-range with 24h-envelope fallback when hourly data is missing. Range Eias actually feels: 16-23°C, not 10-25°C.
+
+- **#3 System prompt wasn't emphatic enough on "removable layer = jacket, not sweater"** (`netlify/functions/daily-pick.js`) — the original rule said "If morning is cold but midday warms up, recommend a removable layer with a note to shed it." Claude was interpreting "removable layer" as a sweater on a 16°C-morning-23°C-midday day, which sweater band logic supported in the AI's training but contradicted the immediately preceding "NO sweater at ≥14°C" rule. Restructured the prompt block as four explicit morning-temp bands with the hard rule that the removable layer in the 14-21°C band is **a JACKET, never a sweater**, even if Eias might feel chilly in the morning.
+
+### Tests
+
+- **`tests/weatherService.test.js` (+~50 lines)**: 4-tier `getLayerRecommendation` cases including the explicit 16°C "incident temp" guard (must return `jacket`, label must NOT match `/[Ss]weater/`); revised `formatWeatherText` cases for the jacket band; new `fetchWeatherForecast` test that mocks the May 7 forecast (24h min 10°C, max 25°C, but waking-hour buckets 16/23/20) and asserts `tempDressingMin === 16`, `tempDressingMax === 23`, NOT 10-25; fallback test for missing hourly data.
+- **`tests/weatherRules.test.js` (rewritten layer block)**: same 4-tier coverage, with explicit boundary tests at 10°C, 14°C, and 22°C.
+- Updated `tests/weatherService.test.js#getLayerTransition` test that assumed `10°C → coat` (now `10°C → sweater` so the test was changed to use 8°C).
+
+3619/3619 tests green (3611 → 3619, +8 net new). Patch bump 1.13.17 → 1.13.18.
+
+### Files touched
+
+```
+netlify/functions/daily-pick.js         | +6 -2  (4-band layer rule, jacket-as-removable)
+src/weather/weatherService.js           | +27 -10 (4-tier rec + tempDressingMin/Max)
+src/components/WeekPlanner.jsx          | +3 -1  (chip uses dressing range)
+src/components/OnCallPlanner.jsx        | +1 -1  (same chip in OnCall view)
+tests/weatherService.test.js            | +99 -10
+tests/weatherRules.test.js              | +29 -16
+package.json                            | +1 -1
+```
+
+### Why it kept happening
+
+The 2026-05-07 incident was actually three independent drift bugs in adjacent layers — prompt enum, validator early-return, weather tiers — each separately discovered, each silently working at "looks fine on inspection" while wrong in production. Pattern: **anywhere a value or threshold is duplicated across layers (display vs engine vs prompt), drift is the default state.** The dailyPickPromptWatchEnum.test.js regression guard from v1.13.17 is the right shape; this fix closes the layer-tier version of the same gap by aligning all three callers and adding boundary tests at 10/14/22°C with comments that point back to the engine constants in `src/config/scoringWeights.js`.
 
 ## v1.13.17 — 2026-05-07 different-watch prompt drift, orphaned reasoning, style-dna auth
 
