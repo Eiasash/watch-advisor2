@@ -33,7 +33,11 @@ const OUTFIT_SLOT_WEIGHTS = {
 function isWatchActive(w) {
   if (!w) return false;
   if (w.excludeFromWardrobe) return false;
-  if (w.status === "pending" || w.status === "retired") return false;
+  // Match watchSeed.js shape: boolean fields `pending: true` / `retired: true`,
+  // not a `status` string. The dayProfile.js engine uses the same boolean check
+  // (line 113). Keep these two filters in sync — divergence causes retired
+  // watches to leak into one engine path but not the other.
+  if (w.pending || w.retired) return false;
   return true;
 }
 
