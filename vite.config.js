@@ -27,6 +27,15 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     minify: "esbuild",
+    // v1.13.20 — enable production source maps so the next ErrorBoundary
+    // entry can name the actual component instead of the minified `ds`.
+    // The 2026-05-07 mystery boot crash needed this: even with the v1.13.19
+    // serializeForLog fix, knowing "TypeError: Cannot read 'foo' of undefined
+    // at ds (...)" without source maps tells us the type but not WHERE.
+    // Bundle size cost: ~1.5x for the .map (lazy-fetched by devtools only —
+    // user-facing initial bundle is unchanged). Repo is public on GitHub
+    // already so this isn't a code-disclosure regression.
+    sourcemap: true,
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {

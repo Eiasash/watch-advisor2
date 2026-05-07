@@ -1,6 +1,59 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-07 — v1.13.19 ErrorBoundary empty-object logging fix
+Last updated: 2026-05-07 — v1.13.20 garment ID-based selection + production source maps
+
+## v1.13.20 — 2026-05-07 garment ID-based AI selection + production source maps
+
+The Eias-driven session arc continues. v1.13.17–19 fixed the immediately-visible bugs in the May 7 debug bundle; v1.13.20 closes the two remaining items from that session: the garment-hallucination class ("navy pants" / "brown belt" silently falling through to engine pick) and the missing production source maps (so the next ErrorBoundary entry can actually name the throwing component instead of `ds`).
+
+### Bugs / improvements shipped
+
+- **#1 Garment selection now ID-based, with name fallback for backward-compat** (`netlify/functions/daily-pick.js`, `src/utils/aiPickResolver.js`). Previously the prompt sent garment lines as `Name (type, color, brand, formality:N)` and asked Claude to return slot values as exact name strings. The AI routinely abbreviated long wardrobe names — `"Lee Cooper Navy Slim Chino"` came back as `"navy pants"` and the resolver couldn't match. The slot fell through to engine pick silently; user got an outfit that didn't match the AI's reasoning prose. Now every wardrobe line is `id:<id> | <Name> (...)` and the prompt asks for the id directly. The resolver tries exact id match first, then normalized name match. Old prompt-cached responses (5-min Anthropic cache window) still resolve via the name path. Personalization sections (NEWLY ADDED, NEVER WORN, UNDER-WORN, OVER-ROTATED) and the schema in both system + user prompts updated to match.
+  - **Why no fuzzy fallback** ("navy pants" → first navy garment with type=pants): the wardrobe has multiple navy pants and multiple brown belts. Fuzzy matching would produce false positives (engine picks the wrong one and user never knows). The fix gives Claude an unambiguous channel (id) without lowering the bar for ambiguous string-matching. Unmatched stays unmatched and falls through to engine pick the same as before — the only thing that changes is the success rate of the AI channel.
+
+- **#2 Production source maps enabled** (`vite.config.js`). v1.13.19 fixed the `[ErrorBoundary] {}` empty-log issue (Error fields are non-enumerable so JSON.stringify dropped them), but the resulting log line was still `[ErrorBoundary] TypeError: <message> at ds (...)` — `ds` being a minified component name that's opaque without source maps. v1.13.20 sets `build.sourcemap = true` so the `.map` files are emitted alongside each `index-*.js`. Browsers fetch the map lazily for devtools (zero impact on user-facing initial bundle size). Repo is public on GitHub, so this isn't an information-disclosure regression. Any future ErrorBoundary entry now names the actual file + component + line.
+
+### Tests
+
+- **`tests/aiPickResolver.test.js` (+8 tests, "ID-match path" describe block)**:
+  - AI returns id directly → exact id match wins
+  - AI returns `"id:g1"` accidentally (copies the prefix) → strip and resolve
+  - AI returns `"id: g1"` with whitespace → resolve
+  - id-match takes precedence over name-match (id always wins when ambiguous)
+  - BACKWARD-COMPAT: AI returns name (no id) → name-match still works
+  - INCIDENT REGRESSION: abbreviated `"navy pants"` does NOT fuzzy-match — must fall through to unmatched/engine (the multi-navy-pants false-positive guard)
+  - Non-existent id → falls through to name-match, then unmatched
+  - Realistic mixed response (some slots id, some slots name) → all resolve
+
+- **Critical mid-session catch**: my first attempt at the WARDROBE prompt instruction used backticks for inline code-style references (`` `id:<id>` ``) inside an outer template literal. That's a parse error. The vitest text reporter caught it (5 test FILES failing to load with `RollupError: Parse failure: Expected ';', got 'ident' at file: /netlify/functions/daily-pick.js:442:52`) — the json reporter masked it (numFailedTests=0 because there are no individual failed tests when the whole file fails to import). **Lesson**: trust the text reporter; the json `numFailedTests` field counts test-level failures only. The `numTotalTestSuites` count is a useful cross-check — if it drops between PRs, something file-level broke.
+
+3638/3638 tests green (3630 → 3638, +8 net new). Patch bump 1.13.19 → 1.13.20.
+
+### Files
+
+```
+netlify/functions/daily-pick.js | +14 -10  (id: prefix on garmentList + fmtItem; verbatim-or-id rule; schema updates)
+src/utils/aiPickResolver.js     | +27 -7   (id-match path + 'id:' prefix strip)
+tests/aiPickResolver.test.js    | +111     (8 ID-match cases incl. incident regression)
+vite.config.js                  | +9       (sourcemap: true with rationale comment)
+package.json                    | +1 -1
+```
+
+### What's actually closed by this session arc (PRs #170 → #173)
+
+The 2026-05-07 debug bundle is now fully addressed:
+- ✅ `gp_laureato`/`ap_royal_oak` watch ID drift (#170)
+- ✅ Tudor-BB41-with-GP-Laureato-prose orphaned reasoning (#170)
+- ✅ `style-dna` 401 missing JWT (#170)
+- ✅ Brand-prefix-strip defense for prompt-cache window (#170)
+- ✅ Weather chip "10°-25°C" showing overnight low (#171)
+- ✅ "Sweater + jacket" badge at 16°C morning contradicting engine (#171)
+- ✅ Prompt rule "removable layer" being interpreted as authorizing sweater (#171)
+- ✅ ErrorBoundary `{}` empty-log mystery (Error fields non-enumerable; #172)
+- ✅ Garment hallucination "navy pants"/"brown belt" silent fall-through (#173)
+- ✅ Source maps for the next minified-component crash investigation (#173)
+
+Open: the underlying `ds` boot throw — diagnosable now via v1.13.19 + v1.13.20 source maps. Will surface on the next debug bundle.
 
 ## v1.13.19 — 2026-05-07 ErrorBoundary empty-object logging — solving the May 7 mystery
 

@@ -185,6 +185,117 @@ describe("resolveGarmentSlots — defensive input handling", () => {
   });
 });
 
+// ── resolveGarmentSlots — ID-match path (v1.13.20) ──────────────────────────
+//
+// Background: from 2026-04-23 to 2026-05-07 the AI was returning shortened
+// category+color names ("navy pants", "brown belt") that didn't match the
+// full wardrobe entry ("Lee Cooper Navy Slim Chino"). Resolver fell back to
+// engine pick silently. The fix: prompt now includes an `id:` prefix on
+// every wardrobe line and asks the AI to return the id directly. Resolver
+// tries exact id match first, falls back to name match for old responses
+// that haven't aged out of Anthropic's prompt cache (~5 min window).
+
+describe("resolveGarmentSlots — ID-match path", () => {
+  it("AI returns id directly → exact id match wins", () => {
+    const { overrides, unmatched } = resolveGarmentSlots(
+      { shirt: "g1", pants: "g2" },
+      GARMENTS,
+      SLOTS
+    );
+    expect(overrides.shirt).toBe("g1");
+    expect(overrides.pants).toBe("g2");
+    expect(unmatched).toHaveLength(0);
+  });
+
+  it("AI returns 'id:<id>' prefix accidentally → still resolves", () => {
+    // The wardrobe line is `id:g1 | Navy Polo (...)`. If the AI copies the
+    // full prefix instead of just the id, strip it.
+    const { overrides } = resolveGarmentSlots(
+      { shirt: "id:g1" },
+      GARMENTS,
+      SLOTS
+    );
+    expect(overrides.shirt).toBe("g1");
+  });
+
+  it("AI returns 'id: g1' with whitespace → still resolves", () => {
+    const { overrides } = resolveGarmentSlots(
+      { shirt: "id: g1" },
+      GARMENTS,
+      SLOTS
+    );
+    expect(overrides.shirt).toBe("g1");
+  });
+
+  it("id-match takes precedence over name-match (no fallback if id matches)", () => {
+    // Crafted edge case: a garment id that happens to also normalize to
+    // another garment's name. Id-match path is tried first, so the id
+    // garment wins. This guarantees stability when the AI returns ids.
+    const garments = [
+      { id: "g1", name: "Navy Polo" },
+      { id: "navy polo", name: "Black Hoodie" }, // weird but legal — id is "navy polo"
+    ];
+    const { overrides } = resolveGarmentSlots({ shirt: "navy polo" }, garments, SLOTS);
+    // Id "navy polo" matches → resolves to that garment's id, NOT the
+    // name-match for g1.
+    expect(overrides.shirt).toBe("navy polo");
+  });
+
+  it("BACKWARD-COMPAT — AI returns name, no id prefix → name-match still works", () => {
+    // For ~5 min after the prompt-cache flushes, old responses lack the new
+    // id contract. Name-match is the safety net.
+    const { overrides } = resolveGarmentSlots(
+      { shirt: "Navy Polo" },
+      GARMENTS,
+      SLOTS
+    );
+    expect(overrides.shirt).toBe("g1");
+  });
+
+  it("INCIDENT REGRESSION — abbreviated 'navy pants' still NOT matched (would be a false positive)", () => {
+    // The point of the fix is to give the AI an unambiguous channel (id),
+    // NOT to fuzzy-match "navy pants" → first navy garment with type=pants.
+    // That would be a false-positive risk — the wardrobe may have multiple
+    // navy pants. Unmatched-and-unmatched is correct; the AI should use
+    // the id channel instead.
+    const garments = [
+      { id: "g1", name: "Lee Cooper Navy Slim Chino", type: "pants" },
+      { id: "g2", name: "Massimo Navy Wool Pant",   type: "pants" },
+    ];
+    const { overrides, unmatched } = resolveGarmentSlots(
+      { pants: "navy pants" },
+      garments,
+      SLOTS
+    );
+    expect(overrides.pants).toBeUndefined();
+    expect(unmatched).toEqual([{ slot: "pants", name: "navy pants" }]);
+  });
+
+  it("non-existent id → falls through to name-match, then unmatched", () => {
+    const { overrides, unmatched } = resolveGarmentSlots(
+      { shirt: "g_nonexistent" },
+      GARMENTS,
+      SLOTS
+    );
+    expect(overrides).not.toHaveProperty("shirt");
+    expect(unmatched).toEqual([{ slot: "shirt", name: "g_nonexistent" }]);
+  });
+
+  it("realistic mixed response — some slots id, some slots name → all resolve", () => {
+    // Reflects real Claude behavior during the rollout window: AI mostly
+    // uses ids but occasionally falls back to names.
+    const { overrides, unmatched } = resolveGarmentSlots(
+      { shirt: "g1", pants: "Khaki Chinos", shoes: "g3" },
+      GARMENTS,
+      SLOTS
+    );
+    expect(overrides.shirt).toBe("g1");
+    expect(overrides.pants).toBe("g2");
+    expect(overrides.shoes).toBe("g3");
+    expect(unmatched).toHaveLength(0);
+  });
+});
+
 // ── validateDifferentWatchPick ───────────────────────────────────────────────
 
 const WATCHES = [

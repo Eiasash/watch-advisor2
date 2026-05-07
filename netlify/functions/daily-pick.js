@@ -123,13 +123,13 @@ OUTPUT SCHEMA — return ONLY valid JSON matching this shape:
   "watch": "exact watch name",
   "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|breguet_tradition",
   "strap": "specific strap recommendation",
-  "shirt": "exact garment name or null",
-  "sweater": "exact garment name or null",
-  "layer": "exact garment name or null",
-  "pants": "exact garment name",
-  "shoes": "exact garment name",
-  "jacket": "exact garment name or null",
-  "belt": "exact garment name or null",
+  "shirt": "garment id from the WARDROBE list (the value after 'id:' before ' | ') — or null",
+  "sweater": "garment id or null",
+  "layer": "garment id or null",
+  "pants": "garment id",
+  "shoes": "garment id",
+  "jacket": "garment id or null",
+  "belt": "garment id or null",
   "reasoning": "2-3 sentences explaining the outfit logic — color harmony, watch dial pairing, weather transition advice",
   "score": 8.5,
   "layerTip": "e.g. 'Shed the quarter-zip after noon — 17°C midday' or null"
@@ -392,10 +392,12 @@ Your job is to pick the OUTFIT (clothes + strap choice from the available straps
 
   // Personalization sections — server-derived signals about wardrobe state.
   // Compact one-liners so the prompt stays bounded even when all 4 lists fill.
+  // Include id so AI can refer back to the same garment in its response — same
+  // format as the WARDROBE block.
   const fmtItem = (g) => {
     const t = g.type ?? g.category ?? "?";
     const wc = g._wc != null ? `, worn ${g._wc}× last 14d` : "";
-    return `  - ${g.name} (${t}, ${g.color ?? "?"}, formality:${g.formality ?? 5}${wc})`;
+    return `  - id:${g.id} | ${g.name} (${t}, ${g.color ?? "?"}, formality:${g.formality ?? 5}${wc})`;
   };
   let personalizationBlock = "";
   if (personalization) {
@@ -437,7 +439,7 @@ ${recentWatches || "No recent data"}
 RECENT GARMENTS WORN (avoid repeats):
 ${recentGarments || "No recent data"}
 
-WARDROBE (${garments.length} items) — when picking shirt/sweater/pants/etc, copy the garment NAME (the part before the first "(") VERBATIM. Do not abbreviate ("navy pants" or "olive shirt" will NOT match). Do not invent items not in this list.
+WARDROBE (${garments.length} items) — each line is "id:<id> | <Name> (<type>, <color>, <brand>, formality:N)". For shirt/sweater/pants/etc, **return the id (the value after "id:" before " | ")** — for example pants="g_manual_navy_slim_chino". If you absolutely must return a name, copy the name VERBATIM (the part between " | " and " ("); abbreviations like "navy pants" or "olive shirt" will NOT match. Do not invent items not in this list.
 ${garmentList}
 
 ${variantClause}
@@ -446,13 +448,13 @@ Schema for each outfit:
   "watch": "exact watch name",
   "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|monaco|gmt|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|breguet_tradition",
   "strap": "specific strap recommendation",
-  "shirt": "exact garment name or null",
-  "sweater": "exact garment name or null",
-  "layer": "exact garment name or null",
-  "pants": "exact garment name",
-  "shoes": "exact garment name",
-  "jacket": "exact garment name or null",
-  "belt": "exact garment name or null",
+  "shirt": "garment id from the WARDROBE list (the value after 'id:' before ' | ') — or null",
+  "sweater": "garment id or null",
+  "layer": "garment id or null",
+  "pants": "garment id",
+  "shoes": "garment id",
+  "jacket": "garment id or null",
+  "belt": "garment id or null",
   "reasoning": "2-3 sentences explaining the outfit logic — color harmony, watch dial pairing, weather transition advice",
   "score": 8.5,
   "layerTip": "e.g. 'Shed the quarter-zip after noon — 17°C midday' or null"
@@ -660,10 +662,16 @@ export async function handler(event) {
       } catch { weather = { tempC: 15, tempMorning: 10, tempMidday: 17, tempEvening: 12 }; }
     }
 
-    // Build garment summary
+    // Build garment summary. Each line is `id:<id> | <name> (<type>, <color>, <brand>, formality:N)`.
+    // The id-prefix is the v1.13.20 fix for the May 7 hallucination class:
+    // when the AI returned `pants: "navy pants"` we couldn't match it because
+    // the wardrobe entry was `Lee Cooper Navy Slim Chino`. Now the AI is
+    // instructed to return the id (preferred) or fall back to the exact name.
+    // The resolver tries id-match first, then name-match, so old prompt-cached
+    // responses still work.
     const garmentList = (garments ?? []).map(g => {
       const t = g.type ?? g.category;
-      return `${g.name} (${t}, ${g.color}, ${g.brand ?? "unbranded"}, formality:${g.formality ?? 5})`;
+      return `id:${g.id} | ${g.name} (${t}, ${g.color}, ${g.brand ?? "unbranded"}, formality:${g.formality ?? 5})`;
     }).join("\n");
 
     const recentWatches = (history ?? []).map(h =>
