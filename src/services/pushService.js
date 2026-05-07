@@ -3,6 +3,8 @@
  * Handles SW registration, permission, subscribe/unsubscribe.
  */
 
+import { authedFetch } from "./authedFetch.js";
+
 const VAPID_PUBLIC_KEY = "BBWi0RnrKdXH-CBLPn_KLUrX7prcp_mP8GrbV_MeOW4IG1ZX4SxZN9Kh4tXYDZy-GwibkLwD5Y3Ou5YUd8ObMGc";
 
 function urlBase64ToUint8Array(base64String) {
@@ -38,8 +40,8 @@ export async function subscribePush(deviceName) {
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
   });
 
-  // Save to server
-  const res = await fetch("/.netlify/functions/push-subscribe", {
+  // Save to server (POST is auth-gated since v1.13.16 — must send JWT)
+  const res = await authedFetch("/.netlify/functions/push-subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subscription: sub.toJSON(), deviceName }),

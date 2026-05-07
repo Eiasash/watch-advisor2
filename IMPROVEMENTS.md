@@ -1,6 +1,43 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-06 — v1.13.16 push-subscribe auth + authenticated-role storage RLS
+Last updated: 2026-05-07 — v1.13.17 different-watch prompt drift + orphaned reasoning + style-dna auth
+
+## v1.13.17 — 2026-05-07 different-watch prompt drift, orphaned reasoning, style-dna auth
+
+Triggered by an in-app debug bundle (`wa2-debug-2026-05-07-1408.json`) plus two screenshots showing **Tudor BB41 displayed alongside reasoning text about the GP Laureato** ("The GP Laureato's blue integrated dial complements the olive shirt without competing—a..."). Four real bugs in one trace; one cosmetic noise channel deferred.
+
+### Bugs shipped
+
+- **#1 `daily-pick.js` watchId enum drifted from canonical seed IDs** (`netlify/functions/daily-pick.js`) — the system prompt (line 120) and user prompt (line 443) both told Claude to pick from `gp_laureato | ap_royal_oak | gmt_master | chopard_alpine | santos_35_rep | daydate_turq | rolex_op_grape | breguet_tradition | ...`. Real seed IDs: `laureato`, `royal_oak`, `gmt`, `alpine_eagle`, `santos_35`, `daydate`, `op_grape`. Claude faithfully echoed the wrong tokens, the validator (`validateDifferentWatchPick`) rejected every Different-watch reply, and the user saw the rotation fallback watch glued to AI prose written about a watch that was never applied. Fix: replaced both enums with canonical IDs from `watchSeed.js`. Locked down with `tests/dailyPickPromptWatchEnum.test.js` — 13 assertions that read the source, parse every enum, and check (a) every legacy id is gone, (b) every active seed id is present in both enums, (c) pending watches are not exposed to the model, (d) the two enums match each other.
+
+- **#2 Orphaned reasoning + strap + garment overrides on watch rejection** (`src/components/WeekPlanner.jsx`) — when `validateDifferentWatchPick` returned `!ok` in Different-watch mode, the code logged the warning but kept executing: it applied the (partial) garment overrides, applied the strap suggestion, set `aiRationale[date] = pick.reasoning`. The reasoning was written ABOUT the rejected watch ("the GP Laureato's blue dial complements..."); the user's previous watch (Tudor BB41) was preserved. Result: visible mismatch. Fix: when the validator fails in Different-watch mode, surface as `aiErrorByDay` and early-return before any state mutation. The user gets an actionable error ("AI suggested a watch not in your collection (gp_laureato). Try again.") instead of a silently broken UI.
+
+- **#3 Brand-prefix-strip fallback in `validateDifferentWatchPick`** (`src/utils/aiPickResolver.js`) — defense in depth. Anthropic's prompt cache holds responses for ~5 min, and Claude's training has strong "brand-prefix watch references" instincts regardless of prompt instructions. The validator now strips ONE recognized brand token + underscore (`gp_`, `ap_`, `chopard_`, `rolex_`, etc.) and retries the match before rejecting. Recursion is intentionally not enabled — `gp_ap_laureato` should not resolve, only one layer is stripped. Unknown prefixes are NOT stripped (prevents `weird_blackbay` → `blackbay` false matches). 10 new tests in `tests/aiPickResolver.test.js` covering exact-match wins, case-insensitive prefix, unknown-prefix rejection, single-strip-only, and active-filter respected after strip.
+
+- **#4 `style-dna` 401: Bearer token missing** (`src/components/stats/StyleDNA.jsx`) — the StyleDNA card on the Stats panel used raw `fetch()` instead of `authedFetch()`, so the Supabase Auth JWT was never attached. Server-side `_auth.js` correctly returned 401, the card showed "Sign in to unlock Style DNA" even when the user WAS signed in. Fix: swapped both `fetch` calls (GET initial load + POST forceRefresh) to `authedFetch`. While auditing, found the same latent bug in `src/services/pushService.js#subscribePush` (POST became auth-gated in v1.13.16; the client wasn't updated). Fixed in the same patch. DELETE in `pushService.js` left as raw `fetch` — server does not auth-gate that path.
+
+- **#5 Garment hallucination "navy pants" / "brown belt" / "stone jacket"** (`netlify/functions/daily-pick.js`) — partially mitigated. The AI was returning shortened category+color names ("navy pants") instead of the full wardrobe entries, so the resolver fell back to engine pick for those slots. Hardened the prompt instruction in front of the WARDROBE block: "copy the garment NAME (the part before the first `(`) VERBATIM. Do not abbreviate ('navy pants' or 'olive shirt' will NOT match). Do not invent items not in this list." Resolver still degrades gracefully (engine pick) when the AI ignores the instruction; logging via `unmatched` array preserved.
+
+### Deferred
+
+- **`ErrorBoundary` empty-object errors** logged twice on app boot (`[ErrorBoundary] {} {"componentStack":"..."}`). The minified component name `ds` doesn't survive without prod source maps. Likely a non-Error throw somewhere in the render tree; impact is cosmetic (wrapped boundary catches it). Adding a source-map-uploaded production diagnostic build is the right next step.
+
+### Files touched
+
+```
+netlify/functions/daily-pick.js   |  +5 -3   (two enum replacements + verbatim-name reminder)
+src/components/WeekPlanner.jsx    |  +13 -1  (full-rejection on validator fail)
+src/components/stats/StyleDNA.jsx |  +2 -2   (authedFetch import + two call sites)
+src/services/pushService.js       |  +3 -1   (authedFetch import + POST call site)
+src/utils/aiPickResolver.js       |  +44 -8  (BRAND_PREFIXES + tryMatch + strip fallback)
+tests/aiPickResolver.test.js      |  +96     (10 new brand-prefix-strip cases)
+tests/dailyPickPromptWatchEnum.test.js | +112 (NEW: 13 regression-guard tests)
+package.json                      |  +1 -1   (1.13.16 → 1.13.17)
+```
+
+### Why this matters
+
+These weren't "AI being unreliable." Bugs #1 and #4 were our own infrastructure handing the model bad inputs and our own UI not authenticating itself. Bug #2 was UI logic continuing past a hard validation failure. The model-side flakiness (bug #3, #5) is real and gets defense-in-depth treatment, but the bulk of the user-visible breakage came from us.
 
 ## v1.13.16 — 2026-05-06 close last open POST + storage RLS for signed-in role
 
