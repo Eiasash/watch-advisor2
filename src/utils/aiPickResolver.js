@@ -48,10 +48,22 @@ export function normalizeAiName(value) {
 /**
  * Map an AI pick's slot names to wardrobe garment IDs.
  *
+ * v1.13.20 — resolution order:
+ *   1. EXACT id match. The prompt now asks the AI to return the id (e.g.
+ *      `pants: "g_manual_navy_slim_chino"`) so the trivial path is fastest.
+ *   2. Name match (normalized). Backward-compat for older prompt-cached
+ *      responses + the case where the AI ignores the id instruction.
+ *   3. Unmatched → caller decides fallback (engine pick).
+ *
+ * Both id and name matches are normalized (whitespace, quotes, punctuation,
+ * case-insensitive). Returning false-positives is worse than returning
+ * unmatched, so we don't fuzzy-match colors or substrings — only exact id
+ * or fully-normalized name.
+ *
  * @param {object} pick     — Claude response with shirt/sweater/pants/shoes/jacket fields
  * @param {Array}  garments — wardrobe rows (each must have id and name)
  * @param {Array<string>} slots — slot keys to consider (e.g. OUTFIT_SLOTS)
- * @returns {{ overrides: object, unmatched: Array<{slot, name}> }}
+ * @returns {{ overrides: object, unmatched: Array<{slot, name, matchedBy?}> }}
  *   - overrides[slot] === id      → matched
  *   - overrides[slot] === null    → AI explicitly said no item ("null" / null)
  *   - overrides[slot] === undefined (omitted) → no match found; caller decides fallback
@@ -65,7 +77,14 @@ export function resolveGarmentSlots(pick, garments, slots) {
   }
 
   // Pre-normalize once for O(slots * garments) instead of O(slots * garments * normalize)
-  const normalizedGarments = garments.map(g => ({ id: g.id, norm: normalizeAiName(g.name) }));
+  const normalizedGarments = garments.map(g => ({
+    id: g.id,
+    norm: normalizeAiName(g.name),
+  }));
+  // Index by id for O(1) id-match (case-sensitive — ids are slugs/timestamps,
+  // not human-readable, so `g_manual_navy_polo` vs `G_MANUAL_NAVY_POLO`
+  // would be a separate concern; keep strict for now).
+  const idSet = new Set(garments.map(g => g.id));
 
   for (const slot of slots) {
     const raw = pick[slot];
@@ -77,6 +96,17 @@ export function resolveGarmentSlots(pick, garments, slots) {
       continue;
     }
     if (typeof raw !== "string") continue;
+
+    // 1. Exact id match — fast path. The string raw might be `g_xx` or
+    //    `id:g_xx` if the AI accidentally copied the prefix; strip it.
+    const trimmedRaw = raw.trim();
+    const idCandidate = trimmedRaw.startsWith("id:") ? trimmedRaw.slice(3).trim() : trimmedRaw;
+    if (idSet.has(idCandidate)) {
+      overrides[slot] = idCandidate;
+      continue;
+    }
+
+    // 2. Name match — normalized.
     const target = normalizeAiName(raw);
     if (!target) continue;
     const match = normalizedGarments.find(g => g.norm === target);
