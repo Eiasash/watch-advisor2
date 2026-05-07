@@ -260,3 +260,102 @@ describe("debugLogger — fetch interceptor", () => {
     expect(entry.detail).toContain("Validation failed");
   });
 });
+
+// ─── serializeForLog — the 2026-05-07 empty-object-log fix ──────────────────
+//
+// The debug bundle from May 7 showed two `[ErrorBoundary] {}` lines per boot
+// with zero diagnostic content. Root cause: JSON.stringify(new Error(...))
+// returns "{}" because Error fields (name/message/stack) are non-enumerable.
+// The previous tryStringify helper just called JSON.stringify and silently
+// dropped the actual error info. serializeForLog unpacks Error fields
+// explicitly so the message, stack, and any custom props (.status, .code)
+// survive into the debug log.
+
+describe("serializeForLog", () => {
+  let serializeForLog;
+  beforeEach(async () => {
+    ({ serializeForLog } = await import("../src/services/debugLogger.js"));
+  });
+
+  it("Error with message — produces JSON containing the message + name + stack", () => {
+    const e = new Error("the actual message");
+    const out = serializeForLog(e);
+    expect(out).toContain("the actual message");
+    expect(out).toContain("Error");
+    expect(out).toContain("stack");
+  });
+
+  it("Error with empty message — name still surfaces (not just '{}')", () => {
+    const e = new Error();
+    const out = serializeForLog(e);
+    expect(out).not.toBe("{}");
+    expect(out).toContain("Error");
+  });
+
+  it("TypeError preserves its constructor name", () => {
+    const e = new TypeError("bad input");
+    const out = serializeForLog(e);
+    expect(out).toContain("TypeError");
+    expect(out).toContain("bad input");
+  });
+
+  it("Error with custom enumerable props (.status, .code) — preserved", () => {
+    const e = new Error("HTTP 500");
+    e.status = 500;
+    e.code = "ECONN_RESET";
+    const out = serializeForLog(e);
+    expect(out).toContain("HTTP 500");
+    expect(out).toContain("500");
+    expect(out).toContain("ECONN_RESET");
+  });
+
+  it("Error with .cause (Error chain) — one cause level preserved", () => {
+    const inner = new Error("DNS failed");
+    const outer = new Error("Fetch failed", { cause: inner });
+    const out = serializeForLog(outer);
+    expect(out).toContain("Fetch failed");
+    expect(out).toContain("DNS failed");
+  });
+
+  it("plain object — JSON.stringify behavior preserved", () => {
+    expect(serializeForLog({ a: 1, b: "two" })).toBe('{"a":1,"b":"two"}');
+  });
+
+  it("plain {} — returns '{}' (don't try too hard)", () => {
+    expect(serializeForLog({})).toBe("{}");
+  });
+
+  it("non-Object class with non-enumerable fields — falls back to [object Tag]", () => {
+    class CustomThing { constructor() {} }
+    const out = serializeForLog(new CustomThing());
+    expect(out).toBe("[object CustomThing]");
+  });
+
+  it("primitives — String() coercion", () => {
+    expect(serializeForLog("hello")).toBe("hello");
+    expect(serializeForLog(42)).toBe("42");
+    expect(serializeForLog(true)).toBe("true");
+    expect(serializeForLog(null)).toBe("null");
+    expect(serializeForLog(undefined)).toBe("undefined");
+  });
+
+  it("circular reference — doesn't throw, returns String()", () => {
+    const a = { self: null };
+    a.self = a;
+    expect(() => serializeForLog(a)).not.toThrow();
+    expect(serializeForLog(a)).toBe("[object Object]");
+  });
+
+  it("INCIDENT REGRESSION — patched console.error with Error arg produces useful msg", async () => {
+    pushCalls.length = 0;
+    const { initDebugLogger } = await import("../src/services/debugLogger.js");
+    initDebugLogger();
+
+    console.error(new Error("real failure on boot"));
+
+    const entry = pushCalls.find(c => c.source === "console" && c.level === "error");
+    expect(entry).toBeDefined();
+    expect(entry.msg).toContain("real failure on boot");
+    expect(entry.msg).not.toBe("{}"); // the bug we just fixed
+  });
+});

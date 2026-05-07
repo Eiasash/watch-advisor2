@@ -1,6 +1,51 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-07 — v1.13.18 weather tier realignment + dressing-hours range
+Last updated: 2026-05-07 — v1.13.19 ErrorBoundary empty-object logging fix
+
+## v1.13.19 — 2026-05-07 ErrorBoundary empty-object logging — solving the May 7 mystery
+
+The 2026-05-07 debug bundle showed two `[ErrorBoundary] {}` entries fired within the same millisecond on every app boot. The React component stack pointed to a minified component named `ds`, but the actual error fields (name, message, stack) were nowhere — the log line just contained `{}`. Investigated and root-caused.
+
+### Root cause
+
+`JSON.stringify(new Error("real message"))` returns `"{}"`. The Error spec defines `name`, `message`, and `stack` as **non-enumerable** properties, so JSON.stringify silently drops them. The `tryStringify` helper in `src/services/debugLogger.js` did exactly that: any thrown Error reached the patched `console.error` → `JSON.stringify` → `"{}"` debug entry. The component stack was preserved (because info.componentStack is a normal string), but the actual error info was destroyed in transit.
+
+This was the SOLE reason the May 7 mystery was a mystery. The error was always being thrown with a real message and stack; we just couldn't see them.
+
+### Fix
+
+- **`debugLogger.serializeForLog` (renamed from `tryStringify`)**: handles Error instances explicitly. Pulls `name`, `message`, `stack`, optional `cause`, and any custom enumerable props (`.status`, `.code`, etc.) into a serializable object before `JSON.stringify`. For non-Error objects that JSON-stringify to `"{}"` despite having a non-`Object` constructor, falls back to `[object ConstructorName]` so the type at least survives. Plain objects, primitives, and circular refs handled defensively.
+
+- **`ErrorBoundary.componentDidCatch` in `src/main.js`**: bypasses the patched console.error path entirely. Unpacks the Error fields explicitly and pushes a fully structured entry directly to `debugStore`:
+  ```
+  msg:    "[ErrorBoundary] TypeError: <actual message>"
+  stack:  <full stack trace>
+  detail: <React component stack>
+  ```
+  Also still calls the real (un-patched) `window.console.error` for browser-devtools visibility.
+
+- **`unhandledrejection` handler**: improved to call `serializeForLog` when the rejection reason has no `.message` or stringifies to `"[object Object]"`. Previously `Promise.reject({})` produced an opaque `"[object Object]"` log entry.
+
+### What this unlocks
+
+The next time Eias boots the app, the debug log will show what was actually being thrown. We can then chase the real bug (which is presumably still there — this fix only restores diagnostic visibility, not the underlying throw). Without source maps for the minified component name `ds`, this was the only viable path forward.
+
+The `ds` throw will probably be one of: a Supabase client init race, an IDB transaction error during cloud-pull bootstrap, a stale-cache schema-mismatch, or a non-Error throw from a third-party library (some chart libraries throw `{}`). Whichever it is, we'll see it.
+
+### Tests
+
+- **`tests/debugLogger.test.js` (+11 tests)**: `serializeForLog` for Error w/ message, Error w/ empty message, TypeError, Error with custom `.status`/`.code` enumerable props, Error with `.cause` chain, plain object, plain `{}`, custom-class non-Object, primitives, circular refs, and the explicit incident regression test that calls `console.error(new Error(...))` and asserts the captured `entry.msg` contains the message and is NOT `"{}"`.
+
+3630/3630 tests green (3619 → 3630, +11 net new). Patch bump 1.13.18 → 1.13.19.
+
+### Files
+
+```
+src/services/debugLogger.js | +50 -3   (serializeForLog + improved unhandledrejection)
+src/main.js                 | +20 -1   (ErrorBoundary structured push)
+tests/debugLogger.test.js   | +109     (11 serializeForLog cases incl. incident regression)
+package.json                | +1 -1
+```
 
 ## v1.13.18 — 2026-05-07 weather tier realignment + dressing-hours range
 

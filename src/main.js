@@ -2,6 +2,7 @@ import { StrictMode, createElement, Component } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app/AppShell.jsx";
 import { initDebugLogger } from "./services/debugLogger.js";
+import { pushDebugEntry } from "./stores/debugStore.js";
 
 // Build stamp — survives tree-shaking by writing to window (side-effect).
 // Bump to force Netlify to produce a new bundle hash.
@@ -12,7 +13,30 @@ initDebugLogger();
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error, info) { console.error("[ErrorBoundary]", error, info); }
+  componentDidCatch(error, info) {
+    // Bypass the patched console.error path entirely. JSON.stringify produces
+    // "{}" for Error instances (name/message/stack are non-enumerable), and
+    // before v1.13.19 that was the only logging path — the 2026-05-07 debug
+    // bundle showed two identical `[ErrorBoundary] {}` lines per boot with
+    // zero diagnostic content beyond the (minified) component stack. Now we
+    // unpack the Error explicitly and push directly to debugStore.
+    const errFields = error instanceof Error
+      ? { name: error.name, message: error.message, stack: error.stack }
+      : { rawType: typeof error, raw: String(error) };
+    pushDebugEntry({
+      level:   "error",
+      source:  "react",
+      msg:     `[ErrorBoundary] ${errFields.name ?? "non-Error throw"}: ${errFields.message ?? errFields.raw ?? "(no message)"}`,
+      stack:   errFields.stack,
+      detail:  info?.componentStack ?? undefined,
+    });
+    // Also log to the real console (NOT the patched one) so prod debugging
+    // tools still see something readable.
+    if (typeof window !== "undefined" && window.console) {
+      // eslint-disable-next-line no-console
+      window.console.error("[ErrorBoundary]", errFields, info?.componentStack);
+    }
+  }
   render() {
     if (this.state.error) {
       return createElement("div", {
