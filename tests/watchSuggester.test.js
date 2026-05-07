@@ -47,8 +47,8 @@ describe("suggestWatchForOutfit", () => {
 
   it("excludes pending and retired watches", () => {
     const ok = browns("active", 7);
-    const pending = { ...browns("pending", 7), status: "pending" };
-    const retired = { ...browns("retired", 7), status: "retired" };
+    const pending = { ...browns("pending", 7), pending: true };
+    const retired = { ...browns("retired", 7), retired: true };
     const out = { shirt: garm("s", "shirt", "white", 7) };
     const result = suggestWatchForOutfit([ok, pending, retired], out);
     expect(result.length).toBe(1);
@@ -57,7 +57,7 @@ describe("suggestWatchForOutfit", () => {
 
   it("returns inactive watches when includeInactive: true", () => {
     const ok = browns("active", 7);
-    const retired = { ...browns("retired", 7), status: "retired" };
+    const retired = { ...browns("retired", 7), retired: true };
     const result = suggestWatchForOutfit(
       [ok, retired],
       { shirt: garm("s", "shirt", "white", 7) },
@@ -103,5 +103,35 @@ describe("suggestWatchForOutfit", () => {
     const r = suggestWatchForOutfit(watches, out);
     expect(r.length).toBe(1);
     expect(Number.isFinite(r[0].score)).toBe(true);
+  });
+});
+
+/**
+ * Regression suite: use the *actual* watchSeed.js data shape, not synthetic
+ * fixtures. Catches divergence where the engine filter uses one field name
+ * but the seed uses another (the bug fixed in v1.13.17 — `w.status` vs
+ * `w.retired`/`w.pending`). Mirrors the dayProfile.js filter contract.
+ */
+describe("suggestWatchForOutfit — real seed shape", () => {
+  it("filters retired watches (boolean field, not status string)", async () => {
+    const { WATCH_COLLECTION } = await import("../src/data/watchSeed.js");
+    const retiredCount = WATCH_COLLECTION.filter(w => w.retired === true).length;
+    expect(retiredCount).toBeGreaterThan(0); // guard against seed drift hiding the test
+
+    const out = { shirt: garm("s", "shirt", "white", 7) };
+    const result = suggestWatchForOutfit(WATCH_COLLECTION, out);
+    const retiredInResults = result.filter(r => r.watch.retired === true);
+    expect(retiredInResults).toEqual([]); // no retired watches ever surface
+  });
+
+  it("filters pending watches (boolean field, not status string)", async () => {
+    const { WATCH_COLLECTION } = await import("../src/data/watchSeed.js");
+    const pendingCount = WATCH_COLLECTION.filter(w => w.pending === true).length;
+    expect(pendingCount).toBeGreaterThan(0); // guard against seed drift hiding the test
+
+    const out = { shirt: garm("s", "shirt", "white", 7) };
+    const result = suggestWatchForOutfit(WATCH_COLLECTION, out);
+    const pendingInResults = result.filter(r => r.watch.pending === true);
+    expect(pendingInResults).toEqual([]);
   });
 });
