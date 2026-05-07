@@ -52,7 +52,7 @@ function WeatherCard({ day, label, isDark }) {
         <span style={{ fontSize: 22 }}>{weatherIcon(day.weathercode)}</span>
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: text }}>{day.tempC}°C</div>
-          <div style={{ fontSize: 10, color: sub }}>{day.tempMin}–{day.tempMax}°C</div>
+          <div style={{ fontSize: 10, color: sub }}>{day.tempDressingMin ?? day.tempMin}–{day.tempDressingMax ?? day.tempMax}°C</div>
         </div>
       </div>
       <div style={{ fontSize: 11, color: sub }}>{day.description}</div>

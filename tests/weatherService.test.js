@@ -4,20 +4,32 @@ import { getLayerRecommendation, getLayerTransition, formatWeatherText, fetchWea
 // ─── Pure function tests ─────────────────────────────────────────────────────
 
 // v1.13.7 — thresholds realigned with engine reality (outfitBuilder.js).
-// Engine adds sweater+jacket below 22, second layer below 12. Display now
-// matches: <12 coat, 12–21 sweater, ≥22 none.
+// Engine adds sweater at <14°C, jacket at <22°C, second layer at <8°C.
+// Display matches: <10 coat, 10-13 sweater+jacket, 14-21 jacket, ≥22 none.
+// Realigned 2026-05-07 after the user-visible incident where the badge said
+// "Sweater + jacket" at 16°C morning but the engine refused to add a sweater.
 describe("getLayerRecommendation (engine-aligned)", () => {
-  it("returns coat below 12°C", () => {
+  it("returns coat below 10°C", () => {
     expect(getLayerRecommendation(5).layer).toBe("coat");
-    expect(getLayerRecommendation(11).layer).toBe("coat");
+    expect(getLayerRecommendation(9).layer).toBe("coat");
     expect(getLayerRecommendation(-5).layer).toBe("coat");
   });
 
-  it("returns sweater between 12 and 21°C inclusive", () => {
+  it("returns sweater in the 10-13°C band (sweater + jacket)", () => {
+    expect(getLayerRecommendation(10).layer).toBe("sweater");
     expect(getLayerRecommendation(12).layer).toBe("sweater");
-    expect(getLayerRecommendation(15).layer).toBe("sweater");
-    expect(getLayerRecommendation(18).layer).toBe("sweater");
-    expect(getLayerRecommendation(21).layer).toBe("sweater");
+    expect(getLayerRecommendation(13).layer).toBe("sweater");
+  });
+
+  it("returns jacket-only in the 14-21°C band — NO SWEATER (Mediterranean rule)", () => {
+    // This is the band that broke in the 2026-05-07 incident. At 16°C
+    // morning the engine refuses a sweater (>= 14 gate) but the badge said
+    // "Sweater + jacket". Now the badge says "Light jacket" and matches.
+    expect(getLayerRecommendation(14).layer).toBe("jacket");
+    expect(getLayerRecommendation(15).layer).toBe("jacket");
+    expect(getLayerRecommendation(16).layer).toBe("jacket");
+    expect(getLayerRecommendation(18).layer).toBe("jacket");
+    expect(getLayerRecommendation(21).layer).toBe("jacket");
   });
 
   it("returns none at 22°C and above", () => {
@@ -27,15 +39,20 @@ describe("getLayerRecommendation (engine-aligned)", () => {
 
   it("label is engine-truthful", () => {
     expect(getLayerRecommendation(5).label).toContain("Heavy coat");
-    expect(getLayerRecommendation(15).label).toContain("Sweater + jacket");
+    expect(getLayerRecommendation(12).label).toContain("Sweater + jacket");
+    expect(getLayerRecommendation(16).label).toContain("Light jacket");
     expect(getLayerRecommendation(25).label).toContain("No extra");
   });
 
-  it("handles boundary 12 as sweater not coat", () => {
-    expect(getLayerRecommendation(12).layer).toBe("sweater");
+  it("boundary 10°C → sweater (not coat)", () => {
+    expect(getLayerRecommendation(10).layer).toBe("sweater");
   });
 
-  it("handles boundary 22 as none not sweater", () => {
+  it("boundary 14°C → jacket (not sweater)", () => {
+    expect(getLayerRecommendation(14).layer).toBe("jacket");
+  });
+
+  it("boundary 22°C → none (not jacket)", () => {
     expect(getLayerRecommendation(22).layer).toBe("none");
   });
 });
@@ -61,9 +78,17 @@ describe("formatWeatherText", () => {
     expect(result).toContain("coat");
   });
 
-  it("includes sweater recommendation for cool weather", () => {
-    const result = formatWeatherText({ tempC: 14, description: "Partly cloudy" });
+  it("includes sweater recommendation in the 10-13°C band", () => {
+    // 14°C is the band edge — at 14 it's jacket-only (Mediterranean rule).
+    // Sweater is for 10-13°C.
+    const result = formatWeatherText({ tempC: 12, description: "Partly cloudy" });
     expect(result).toContain("Sweater");
+  });
+
+  it("includes light jacket (NOT sweater) at 14°C and above (incident-fix guard)", () => {
+    const result = formatWeatherText({ tempC: 16, description: "Partly cloudy" });
+    expect(result).toContain("Light jacket");
+    expect(result).not.toMatch(/[Ss]weater/);
   });
 });
 
@@ -198,6 +223,104 @@ describe("fetchWeatherForecast", () => {
     const result = await fetchWeatherForecast();
     expect(result).toEqual([]);
   });
+
+  // ─── 2026-05-07 incident regression ────────────────────────────────────────
+  // The chip showed "10°-25°C" for a day where Eias was outside between
+  // morning (16°C) and evening (20°C). The 10°C was the 4am low (asleep).
+  // Confusing UX: the chip implied the morning was 10°C. Fix: derive a
+  // dressing-hours min/max from the 7-10am / 11-14pm / 17-20pm buckets.
+  it("computes tempDressingMin/Max from waking-hours buckets, NOT 24h min/max", async () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (resolve) => resolve({ coords: { latitude: 31.78, longitude: 35.22 } }),
+      },
+    });
+    // Mimic the May 7 forecast: 24h min 10°C (overnight), max 25°C (early
+    // afternoon out of bucket). Buckets average 16/23/20 — dressing range
+    // should be 16-23, NOT 10-25.
+    const hourly = { time: [], temperature_2m: [] };
+    const date = "2026-05-08";
+    // Overnight (4am): 10°C
+    hourly.time.push(`${date}T04:00`); hourly.temperature_2m.push(10);
+    // Morning bucket 7-10: 15, 16, 16, 17 → avg 16
+    [7, 8, 9, 10].forEach((h, idx) => {
+      hourly.time.push(`${date}T${String(h).padStart(2, "0")}:00`);
+      hourly.temperature_2m.push([15, 16, 16, 17][idx]);
+    });
+    // Midday bucket 11-14: 22, 23, 24, 23 → avg 23
+    [11, 12, 13, 14].forEach((h, idx) => {
+      hourly.time.push(`${date}T${String(h).padStart(2, "0")}:00`);
+      hourly.temperature_2m.push([22, 23, 24, 23][idx]);
+    });
+    // Afternoon peak 15: 25 (NOT in any bucket — must not affect dressing range)
+    hourly.time.push(`${date}T15:00`); hourly.temperature_2m.push(25);
+    // Evening bucket 17-20: 21, 20, 19, 20 → avg 20
+    [17, 18, 19, 20].forEach((h, idx) => {
+      hourly.time.push(`${date}T${String(h).padStart(2, "0")}:00`);
+      hourly.temperature_2m.push([21, 20, 19, 20][idx]);
+    });
+
+    vi.stubGlobal("fetch", vi.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve({
+          daily: {
+            time: [date],
+            temperature_2m_max: [25],
+            temperature_2m_min: [10],
+            weathercode: [0],
+          },
+          hourly,
+        }),
+      })
+    ));
+
+    const result = await fetchWeatherForecast();
+    expect(result).toHaveLength(1);
+    const f = result[0];
+    expect(f.tempMorning).toBe(16);
+    expect(f.tempMidday).toBe(23);
+    expect(f.tempEvening).toBe(20);
+    // 24h envelope still preserved for downstream callers that want it
+    expect(f.tempMin).toBe(10);
+    expect(f.tempMax).toBe(25);
+    // Dressing range = min/max across the 3 buckets only
+    expect(f.tempDressingMin).toBe(16);
+    expect(f.tempDressingMax).toBe(23);
+    // The chip uses tempDressingMin/Max — must NOT echo the overnight 10°C
+    expect(f.tempDressingMin).not.toBe(10);
+    // The layer recommendation must be jacket-only at 16°C morning
+    // (the bug was: badge said "Sweater + jacket" at this temp)
+    expect(getLayerRecommendation(f.tempMorning).layer).toBe("jacket");
+    expect(getLayerRecommendation(f.tempMorning).label).not.toMatch(/[Ss]weater/);
+  });
+
+  it("falls back to 24h min/max when hourly data is missing", async () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (resolve) => resolve({ coords: { latitude: 0, longitude: 0 } }),
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve({
+          daily: {
+            time: ["2026-03-08"],
+            temperature_2m_max: [20],
+            temperature_2m_min: [10],
+            weathercode: [0],
+          },
+          // no hourly key
+        }),
+      })
+    ));
+
+    const result = await fetchWeatherForecast();
+    expect(result).toHaveLength(1);
+    expect(result[0].tempMorning).toBeNull();
+    // No buckets → fall back to 24h envelope so the chip still shows something
+    expect(result[0].tempDressingMin).toBe(10);
+    expect(result[0].tempDressingMax).toBe(20);
+  });
 });
 
 // ─── getLayerTransition ───────────────────────────────────────────────────────
@@ -232,9 +355,10 @@ describe("getLayerTransition", () => {
   });
 
   it("includes evening transition when layer changes from midday", () => {
-    // v1.13.7 3-tier — 20°C midday (sweater) → 10°C evening (coat)
-    const result = getLayerTransition({ tempMorning: 20, tempMidday: 20, tempEvening: 10 });
-    expect(result).toContain("10°C evening");
+    // 4-tier (v1.13.18) — 20°C midday (jacket) → 8°C evening (coat).
+    // The transition crosses two bands so a change is reported.
+    const result = getLayerTransition({ tempMorning: 20, tempMidday: 20, tempEvening: 8 });
+    expect(result).toContain("8°C evening");
     expect(result).toContain("coat");
   });
 

@@ -858,7 +858,9 @@ function WeatherBadge({ forecast, isDark }) {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span>{icon}</span>
-        <span>{forecast.tempMin}{"\u00B0"}{"\u2013"}{forecast.tempMax}{"\u00B0"}C</span>
+        <span>
+          {(forecast.tempDressingMin ?? forecast.tempMin)}{"\u00B0"}{"\u2013"}{(forecast.tempDressingMax ?? forecast.tempMax)}{"\u00B0"}C
+        </span>
         {layer.layer !== "none" && (
           <span style={{ color: "#f97316", fontWeight: 600 }}>{"\u00B7"} {layer.label.replace(" recommended", "")}</span>
         )}

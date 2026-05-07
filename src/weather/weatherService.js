@@ -103,12 +103,29 @@ export async function fetchWeatherForecast() {
         tempEvening = avg([17, 18, 19, 20]);
       }
 
+      // Dressing-hours range — min/max across the buckets Eias is actually
+      // outside in (7-10am, 11-14pm, 17-20pm). The 24h tempMin/tempMax
+      // includes the overnight low (often 4-5am) which is irrelevant: he's
+      // asleep. Showing it in the UI ("10°-25°C") created the 2026-05-07
+      // confusion — chip implied morning was 10°C when morning was actually
+      // 16°C and the 10°C was the 4am low. Falls back to 24h range only
+      // when hourly data isn't available.
+      const dressingTemps = [tempMorning, tempMidday, tempEvening].filter(t => t != null);
+      const tempDressingMin = dressingTemps.length
+        ? Math.min(...dressingTemps)
+        : Math.round(daily.temperature_2m_min[i]);
+      const tempDressingMax = dressingTemps.length
+        ? Math.max(...dressingTemps)
+        : Math.round(daily.temperature_2m_max[i]);
+
       return {
         date,
         tempC: tempMorning ?? dayAvg, // Use morning temp as primary — you dress for the morning
         tempAvg: dayAvg,
         tempMin: Math.round(daily.temperature_2m_min[i]),
         tempMax: Math.round(daily.temperature_2m_max[i]),
+        tempDressingMin,
+        tempDressingMax,
         tempMorning,
         tempMidday,
         tempEvening,
@@ -139,19 +156,28 @@ function weatherCodeToDesc(code) {
 
 /**
  * Layer recommendation aligned with the actual outfit-engine thresholds
- * (`outfitBuilder._fillSweaterLayer` / `_fillJacket`):
- *  - temp ≥ 22°C  → engine adds no layer
- *  - 12 ≤ temp < 22 → engine adds sweater + jacket
- *  - temp < 12°C  → engine adds sweater + jacket + second layer (heavy)
+ * (`outfitBuilder._fillSweaterLayer` / `_fillJacket`) AND the system prompt
+ * in `netlify/functions/daily-pick.js`. All three must agree — otherwise the
+ * UI badge promises one thing, the AI's prose promises another, and the
+ * engine ships a third combo.
  *
- * Earlier 4-tier labels (10/16/22) drifted from engine reality — at 18°C
- * the user read "Light layer recommended" but the engine actually added
- * a heavy sweater + jacket. v1.13.7 realigned to 3 tiers so the displayed
- * advice matches the garments the engine ships.
+ *   morning < 10°C   → coat (heavy: sweater + jacket + extra layer)
+ *   morning < 14°C   → sweater + jacket
+ *   morning < 22°C   → light jacket only — NO sweater on the Mediterranean
+ *                       coast at this temp (Eias-calibrated 2026-05-02)
+ *   morning ≥ 22°C   → no extra layer
+ *
+ * The previous v1.13.7 version only had 3 tiers (coat/sweater/none) with the
+ * sweater band at 12–22°C. That contradicted both the engine (which gates
+ * sweater at <14°C since the same calibration) and the system prompt's
+ * "NO sweater at ≥14°C" rule, so the badge said "Sweater + jacket" at 16°C
+ * morning while the engine refused to add a sweater — the user got conflicting
+ * advice on the same screen (the 2026-05-07 incident).
  */
 export function getLayerRecommendation(tempC) {
-  if (tempC < 12) return { layer: "coat", label: "Heavy coat — sweater + jacket + extra layer" };
-  if (tempC < 22) return { layer: "sweater", label: "Sweater + jacket recommended" };
+  if (tempC < 10) return { layer: "coat", label: "Heavy coat — sweater + jacket + extra layer" };
+  if (tempC < 14) return { layer: "sweater", label: "Sweater + jacket recommended" };
+  if (tempC < 22) return { layer: "jacket", label: "Light jacket recommended" };
   return { layer: "none", label: "No extra layer needed" };
 }
 
