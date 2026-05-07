@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { execSync } from "child_process";
 import { readFileSync } from "fs";
+import { inlineCspHashPlugin } from "./scripts/inlineCspHash.mjs";
 
 const commitHash = (() => {
   try {
@@ -17,7 +18,7 @@ const buildNumber = (() => {
 })();
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: [react(), inlineCspHashPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(`${buildDate} · ${commitHash}`),
     __COMMIT_HASH__: JSON.stringify(commitHash),

@@ -97,6 +97,7 @@ supabase/                    schema.sql
 - No self.skipWaiting() on install — main thread sends SKIP_WAITING; 30s auto-activate safety net
 - Three caches: shell (wa2-shell-v13), images (wa2-images-v4), API (wa2-api-v4)
 - `NO_CACHE_FUNCTIONS` list in sw.js: Claude + admin + push-subscribe endpoints pass through uncached (per-user / non-deterministic responses)
+- **Inline cache-nuke** at `index.html:103-142` runs before the module bundle and unregisters SW + clears caches when `CACHE_VERSION` bumps. Its CSP hash in `public/_headers` is auto-generated at build by `scripts/inlineCspHash.mjs` (wired in `vite.config.js`). The sentinel `'sha256-INLINE_SCRIPT_PLACEHOLDER='` is substituted at build time — do NOT hand-edit `'sha256-...'` tokens in `_headers`; bump `CACHE_VERSION` in `index.html` and rebuild.
 
 ### Performance
 - `USE_WORKER=false` in imagePipeline.js
