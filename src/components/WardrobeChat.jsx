@@ -330,7 +330,7 @@ export default function WardrobeChat({ weather, todayContext }) {
               <img src={img} alt={`preview ${i}`} style={{
                 width: 48, height: 48, borderRadius: 8, objectFit: "cover",
               }} />
-              <button onClick={() => setPendingImages(prev => prev.filter((_, j) => j !== i))} style={{
+              <button onClick={() => setPendingImages(prev => prev.filter((_, j) => j !== i))} aria-label="Remove image" style={{
                 position: "absolute", top: -4, right: -4,
                 width: 18, height: 18, borderRadius: "50%",
                 background: "#ef4444", border: "none", color: "#fff",

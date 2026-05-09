@@ -448,7 +448,7 @@ export default function GarmentEditor({ garment, onClose }) {
             <button onClick={() => setShowStats(true)}
               style={{ background:"none", border:`1px solid ${isDark?"#2b3140":"#d1d5db"}`, color:sub, fontSize:11, cursor:"pointer",
                        padding:"4px 10px", borderRadius:6, fontWeight:600 }}>📊</button>
-            <button onClick={onClose}
+            <button onClick={onClose} aria-label="Close garment detail"
               style={{ background:"none", border:"none", color:sub, fontSize:22, cursor:"pointer",
                        lineHeight:1, padding:"4px 8px" }}>✕</button>
           </div>

@@ -49,7 +49,7 @@ export default function NeglectedWatchNudge({ watches, history, currentWatchId, 
         <div style={{ fontSize: 11, color: isDark ? "#d4d4d4" : "#78716c" }}>
           Tap to select · {worst.dial} dial · {worst.style}
         </div>
-        <button onClick={e => { e.stopPropagation(); setDismissed(worst.id); }}
+        <button onClick={e => { e.stopPropagation(); setDismissed(worst.id); }} aria-label="Dismiss neglected watch nudge"
           style={{ fontSize: 14, background: "transparent", border: "none",
             cursor: "pointer", color: isDark ? "#4b5563" : "#9ca3af", padding: "0 4px" }}>✕</button>
       </div>

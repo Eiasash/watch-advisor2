@@ -418,7 +418,7 @@ export default function TodayPanel() {
               <div key={i} style={{ position: "relative", borderRadius: 8, overflow: "hidden", aspectRatio: "1/1" }}>
                 <img src={src} alt={`outfit ${i + 1}`}
                   style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                <button onClick={() => setExtraImgs(prev => prev.filter((_, j) => j !== i))}
+                <button onClick={() => setExtraImgs(prev => prev.filter((_, j) => j !== i))} aria-label="Remove photo"
                   style={{ position: "absolute", top: 4, right: 4, background: "#ef4444", color: "#fff",
                            border: "none", borderRadius: "50%", width: 20, height: 20,
                            fontSize: 11, cursor: "pointer", lineHeight: 1, display: "flex",

@@ -107,7 +107,7 @@ export default function WatchIDPanel({ onIdentified }) {
           <div style={{ fontSize: 15, fontWeight: 800, color: text }}>🔍 Watch ID</div>
           <div style={{ fontSize: 12, color: muted }}>Point at any watch — Claude identifies it</div>
         </div>
-        <button onClick={() => setOpen(false)}
+        <button onClick={() => setOpen(false)} aria-label="Close watch ID panel"
           style={{ background: "none", border: "none", color: muted, fontSize: 18, cursor: "pointer" }}>✕</button>
       </div>
 
@@ -133,9 +133,10 @@ export default function WatchIDPanel({ onIdentified }) {
         <div style={{ position: "relative", marginBottom: 14, borderRadius: 10, overflow: "hidden" }}>
           <img src={image} alt="watch" style={{ width: "100%", maxHeight: 250, objectFit: "cover" }} />
           {loading && (
-            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.65)",
+            <div role="status" aria-live="polite" aria-busy="true"
+                 style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.65)",
                           display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 10 }}>
-              <div style={{ width: 32, height: 32, border: "3px solid #3b82f6",
+              <div aria-hidden="true" style={{ width: 32, height: 32, border: "3px solid #3b82f6",
                             borderTopColor: "transparent", borderRadius: "50%",
                             animation: "spin 0.8s linear infinite" }} />
               <div style={{ color: "#fff", fontSize: 12 }}>Identifying…</div>

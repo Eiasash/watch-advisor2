@@ -238,7 +238,7 @@ export default function ImportPanel() {
       </div>
       {/* Progress bar */}
       {busy && (
-        <div style={{ marginBottom:8 }}>
+        <div role="status" aria-live="polite" aria-busy="true" style={{ marginBottom:8 }}>
           <div style={{ fontSize:12, color:sub, marginBottom:4, textAlign:"center" }}>
             Importing {progress.done}/{progress.total}{progress.phase ? ` · ${progress.phase}` : ""}…
           </div>
