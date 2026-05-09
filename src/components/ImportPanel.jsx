@@ -138,7 +138,9 @@ export default function ImportPanel() {
           const newAngles = [...existAngles, primary.thumbnail].slice(0, MAX_ANGLES);
           updateGarment(existingDupe.id, { photoAngles: newAngles });
           const nextGarments = useWardrobeStore.getState().garments;
-          setCachedState({ watches, garments: nextGarments, history }).catch(() => {});
+          // setCachedState merges; writing closure-stale watches/history corrupts the
+          // legacy backup blob (F-a-6).
+          setCachedState({ garments: nextGarments }).catch(() => {});
           pushGarment({ ...existingDupe, photoAngles: newAngles }).catch(() => {});
           garmentsRef.current = nextGarments;
           if (toast) toast.addToast(`Added angle to "${existingDupe.name}"`, "info", 2500);
@@ -159,7 +161,7 @@ export default function ImportPanel() {
             const newAngles = [...existAngles, primary.thumbnail].slice(0, MAX_ANGLES);
             updateGarment(existingDupe.id, { photoAngles: newAngles });
             const nextGarments = useWardrobeStore.getState().garments;
-            setCachedState({ watches, garments: nextGarments, history }).catch(() => {});
+            setCachedState({ garments: nextGarments }).catch(() => {});
             pushGarment({ ...existingDupe, photoAngles: newAngles }).catch(() => {});
             garmentsRef.current = nextGarments;
             if (toast) toast.addToast(`AI merged angle into "${existingDupe.name}"`, "info", 2500);
@@ -187,7 +189,9 @@ export default function ImportPanel() {
     }
 
     const latest = [...garmentsRef.current];
-    await setCachedState({ watches, garments: latest, history });
+    // setCachedState merges; closure-stale watches/history would corrupt the
+    // legacy backup blob (F-a-6).
+    await setCachedState({ garments: latest });
     setBusy(false);
     setProgress({ done: 0, total: 0, errors: [] });
 

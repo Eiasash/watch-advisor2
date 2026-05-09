@@ -79,9 +79,11 @@ export default function BulkPhotoMatcher() {
         updateGarment(gId, { photoUrl: publicUrl });
       }
 
-      // Persist to IDB immediately so tab-close doesn't lose it
+      // Persist to IDB immediately. setCachedState merges, so write only the
+      // changed key — closure-stale `watches`/`history` would corrupt the
+      // legacy backup blob (F-a-6 fix).
       const updatedGarments = useWardrobeStore.getState().garments;
-      await setCachedState({ garments: updatedGarments, watches, history }).catch(() => {});
+      await setCachedState({ garments: updatedGarments }).catch(() => {});
 
       // Queue a push-garment to sync the URL
       const updatedGarment = updatedGarments.find(g => g.id === gId);
