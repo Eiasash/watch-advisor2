@@ -10,6 +10,7 @@ import { useHistoryStore } from "../stores/historyStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
 import { useToast } from "./ToastProvider.jsx";
 import ImportDebugConsole from "./ImportDebugConsole.jsx";
+import { chunked } from "../utils/chunked.js";
 
 const MAX_ANGLES = 4;
 const DHASH_EXACT_THRESHOLD = 6;   // distance ≤ 6 → definite dupe (auto-merge)
@@ -91,19 +92,22 @@ export default function ImportPanel() {
     setDebugLog([]);
     setShowDebug(true);
 
+    // Run classifier pipeline with concurrency 4. Vision API + canvas work
+    // overlap instead of running serially. dupe-detection at l.124+ still
+    // operates on the post-batch list, so order of completion is fine. (F-c-5)
     const processed = [];
     const errors    = [];
-
-    for (let i = 0; i < files.length; i++) {
-      setProgress(p => ({ ...p, done: i }));
+    let done = 0;
+    await chunked(files, 4, async (file) => {
       try {
-        const g = await runClassifierPipeline(files[i], garmentsRef.current, entry => setDebugLog(prev => [...prev, entry]));
+        const g = await runClassifierPipeline(file, garmentsRef.current, entry => setDebugLog(prev => [...prev, entry]));
         processed.push(g);
       } catch (err) {
-        errors.push(files[i].name);
+        errors.push(file.name);
       }
-      setProgress(p => ({ ...p, done: i + 1, errors: [...errors] }));
-    }
+      done++;
+      setProgress(p => ({ ...p, done, errors: [...errors] }));
+    });
 
     // ── Group by angles within this batch ──────────────────────────────────
     const groups = groupByAngles(processed);
