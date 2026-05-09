@@ -3,6 +3,7 @@ import WeeklyDigest from "./WeeklyDigest.jsx";
 import SelfiePanel  from "../SelfiePanel.jsx";
 import ClaudePick   from "../ClaudePick.jsx";
 import { useStrapStore } from "../../stores/strapStore.js";
+import { useHistoryStore } from "../../stores/historyStore.js";
 
 /**
  * The full "already logged" view shown after an outfit is saved for today.
@@ -98,7 +99,6 @@ export default function LoggedSummary({
                         onChange={async (ev) => {
                           const files = Array.from(ev.target.files ?? []);
                           if (!files.length) return;
-                          const existing = te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []);
                           const newPhotos = [];
                           for (const file of files) {
                             const dataUrl = await new Promise((res) => {
@@ -108,8 +108,11 @@ export default function LoggedSummary({
                             });
                             newPhotos.push(dataUrl);
                           }
+                          // Re-read live entry — notes/score may have changed during FileReader. (F-a-3)
+                          const live = useHistoryStore.getState().entries.find(e => e.id === te.id) ?? te;
+                          const existing = live.outfitPhotos ?? (live.outfitPhoto ? [live.outfitPhoto] : []);
                           const all = [...existing, ...newPhotos];
-                          upsertEntry({ ...te, outfitPhoto: all[0], outfitPhotos: all });
+                          upsertEntry({ ...live, outfitPhoto: all[0], outfitPhotos: all });
                         }}
                       />
                     </label>
@@ -121,11 +124,14 @@ export default function LoggedSummary({
                         onChange={async (ev) => {
                           const file = ev.target.files?.[0];
                           if (!file) return;
-                          const existing = te.outfitPhotos ?? (te.outfitPhoto ? [te.outfitPhoto] : []);
                           const reader = new FileReader();
                           reader.onload = () => {
+                            // Re-read live entry inside FileReader callback — notes/score
+                            // may have changed while the camera image encoded. (F-a-3)
+                            const live = useHistoryStore.getState().entries.find(e => e.id === te.id) ?? te;
+                            const existing = live.outfitPhotos ?? (live.outfitPhoto ? [live.outfitPhoto] : []);
                             const all = [...existing, reader.result];
-                            upsertEntry({ ...te, outfitPhoto: all[0], outfitPhotos: all });
+                            upsertEntry({ ...live, outfitPhoto: all[0], outfitPhotos: all });
                           };
                           reader.readAsDataURL(file);
                         }}
@@ -219,7 +225,9 @@ export default function LoggedSummary({
                     });
                     photos.push(dataUrl);
                   }
-                  upsertEntry({ ...entry, outfitPhoto: photos[0], outfitPhotos: photos });
+                  // Re-read live entry — concurrent edits during FileReader. (F-a-3)
+                  const live = useHistoryStore.getState().entries.find(x => x.id === entry.id) ?? entry;
+                  upsertEntry({ ...live, outfitPhoto: photos[0], outfitPhotos: photos });
                 }}
               />
             </label>
@@ -235,7 +243,9 @@ export default function LoggedSummary({
                   if (!entry) return;
                   const reader = new FileReader();
                   reader.onload = () => {
-                    upsertEntry({ ...entry, outfitPhoto: reader.result, outfitPhotos: [reader.result] });
+                    // Re-read live entry inside callback — concurrent edits. (F-a-3)
+                    const live = useHistoryStore.getState().entries.find(x => x.id === entry.id) ?? entry;
+                    upsertEntry({ ...live, outfitPhoto: reader.result, outfitPhotos: [reader.result] });
                   };
                   reader.readAsDataURL(file);
                 }}
