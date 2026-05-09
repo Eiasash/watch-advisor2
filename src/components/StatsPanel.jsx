@@ -277,6 +277,27 @@ export default function StatsPanel() {
 
   const utilization = useMemo(() => utilizationScore(watches, entries), [watches, entries]);
 
+  // Watch cost-per-wear lists (worn vs neverWorn). Lifted out of an IIFE that
+  // recomputed on every render — including theme toggle and tab switches.
+  // O(watches × entries) was ~23k ops per render at typical data sizes. (F-c-3)
+  const { wornCpw, neverWornCpw } = useMemo(() => {
+    const watchWears = new Map();
+    for (const e of entries) {
+      if (e.watchId) watchWears.set(e.watchId, (watchWears.get(e.watchId) ?? 0) + 1);
+    }
+    const watchCpw = watches
+      .filter(w => w.priceILS > 0 && isActiveWatch(w))
+      .map(w => {
+        const wears = watchWears.get(w.id) ?? 0;
+        return { w, wears, cpw: wears > 0 ? Math.round(w.priceILS / wears) : null };
+      })
+      .sort((a, b) => (a.cpw ?? Infinity) - (b.cpw ?? Infinity));
+    return {
+      wornCpw: watchCpw.filter(x => x.wears > 0).slice(0, 8),
+      neverWornCpw: watchCpw.filter(x => x.wears === 0),
+    };
+  }, [watches, entries]);
+
   return (
     <div style={{ padding: "0 0 100px" }}>
       {/* Header */}
@@ -321,21 +342,10 @@ export default function StatsPanel() {
           )}
 
           {/* Watch cost per wear */}
-          {(() => {
-            const watchCpw = watches
-              .filter(w => w.priceILS > 0 && isActiveWatch(w))
-              .map(w => {
-                const wears = entries.filter(e => e.watchId === w.id).length;
-                return { w, wears, cpw: wears > 0 ? Math.round(w.priceILS / wears) : null };
-              })
-              .sort((a, b) => (a.cpw ?? Infinity) - (b.cpw ?? Infinity));
-            const neverWorn = watchCpw.filter(x => x.wears === 0);
-            const worn = watchCpw.filter(x => x.wears > 0).slice(0, 8);
-            return (
-              <>
-                {worn.length > 0 && (
+          <>
+                {wornCpw.length > 0 && (
                   <Section title="Watch Cost-per-Wear" isDark={isDark}>
-                    {worn.map(({ w, wears, cpw }) => (
+                    {wornCpw.map(({ w, wears, cpw }) => (
                       <div key={w.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                         padding: "6px 10px", borderRadius: 6, marginBottom: 4,
                         background: isDark ? "#0f131a" : "#f9fafb", fontSize: 11 }}>
@@ -350,10 +360,10 @@ export default function StatsPanel() {
                     ))}
                   </Section>
                 )}
-                {neverWorn.length > 0 && (
-                  <Section title={`Never Worn (${neverWorn.length} watches)`} isDark={isDark}>
+                {neverWornCpw.length > 0 && (
+                  <Section title={`Never Worn (${neverWornCpw.length} watches)`} isDark={isDark}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {neverWorn.map(({ w }) => (
+                      {neverWornCpw.map(({ w }) => (
                         <div key={w.id} style={{
                           padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 600,
                           background: w.replica ? "#7f1d1d22" : "#78350f22",
@@ -370,9 +380,7 @@ export default function StatsPanel() {
                     </div>
                   </Section>
                 )}
-              </>
-            );
-          })()}
+          </>
 
           {/* Color palette worn */}
           {colorFreq.length > 0 && (
