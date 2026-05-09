@@ -266,7 +266,7 @@ function AppContent() {
 
       {/* Chat FAB */}
       {!showChat && (
-        <button onClick={() => setShowChat(true)} style={{
+        <button onClick={() => setShowChat(true)} aria-label="Open wardrobe chat" style={{
           position: "fixed", bottom: 80, right: 16, zIndex: 210,
           width: 52, height: 52, borderRadius: "50%",
           background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",

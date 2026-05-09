@@ -75,7 +75,7 @@ export default function WeeklyDigest() {
         <span style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           📋 Last Week
         </span>
-        <button onClick={() => setDismissed(true)} style={{
+        <button onClick={() => setDismissed(true)} aria-label="Dismiss weekly digest" style={{
           background: "none", border: "none", color: muted, fontSize: 16, cursor: "pointer", padding: "2px 6px",
         }}>✕</button>
       </div>

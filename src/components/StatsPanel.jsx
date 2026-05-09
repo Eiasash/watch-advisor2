@@ -527,7 +527,7 @@ export default function StatsPanel() {
                 {cpwItemsSimple.slice(0,8).map(({ g, cpw, wears }) => (
                   <div key={g.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
                     {(g.thumbnail||g.photoUrl)
-                      ? <img src={g.thumbnail||g.photoUrl} style={{ width:28,height:36,objectFit:"cover",borderRadius:4,flexShrink:0 }} />
+                      ? <img src={g.thumbnail||g.photoUrl} alt={g.name ?? g.color ?? ""} style={{ width:28,height:36,objectFit:"cover",borderRadius:4,flexShrink:0 }} />
                       : <div style={{ width:28,height:36,borderRadius:4,background:isDark?"#1a1f2b":"#e5e7eb",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>👕</div>}
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:12, fontWeight:600, color:text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{g.name}</div>

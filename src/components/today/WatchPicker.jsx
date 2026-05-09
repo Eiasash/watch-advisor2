@@ -49,7 +49,8 @@ export default function WatchPicker({
                 </div>
               </div>
               {dsw !== null && (
-                <div style={{ fontSize: 10, fontWeight: 600, color: dsw >= 7 ? "#22c55e" : dsw <= 2 ? "#ef4444" : muted }}>
+                <div aria-label={dsw === 0 ? "Worn today" : dsw >= 7 ? `Rested ${dsw} days` : dsw <= 2 ? `Recently worn ${dsw} days ago` : `Worn ${dsw} days ago`}
+                     style={{ fontSize: 10, fontWeight: 600, color: dsw >= 7 ? "#22c55e" : dsw <= 2 ? "#ef4444" : muted }}>
                   {dsw === 0 ? "today" : `${dsw}d`}
                 </div>
               )}

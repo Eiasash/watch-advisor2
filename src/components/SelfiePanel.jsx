@@ -233,7 +233,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
                   <img src={p.dataUrl} alt="outfit"
                     style={{ width: 90, height: 120, objectFit: "cover", borderRadius: 10,
                              border: `2px solid ${border}`, display: "block" }} />
-                  <button onClick={() => removePhoto(p.id)}
+                  <button onClick={() => removePhoto(p.id)} aria-label="Remove photo"
                     style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", color: "#fff",
                              border: "none", borderRadius: "50%", width: 20, height: 20, fontSize: 11,
                              cursor: "pointer", fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
