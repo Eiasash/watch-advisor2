@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
@@ -13,6 +13,7 @@ import WardrobeGapAnalysis from "./audit/WardrobeGapAnalysis.jsx";
 import TailorQueue from "./audit/TailorQueue.jsx";
 
 async function runAudit(garments, watches, history) {
+  const garmentMap = new Map(garments.map(g => [g.id, g]));
   const garmentsSummary = garments
     .filter(g => g.type !== "outfit-photo" && !g.excludeFromWardrobe)
     .map(g => {
@@ -61,7 +62,7 @@ async function runAudit(garments, watches, history) {
 
   const topWornGarments = Object.entries(garmentWearFreq)
     .sort((a,b) => b[1]-a[1]).slice(0, 8)
-    .map(([id,n]) => { const g = garments.find(x => x.id === id); return (g ? g.name : id) + ` ×${n}`; })
+    .map(([id,n]) => { const g = garmentMap.get(id); return (g ? g.name : id) + ` ×${n}`; })
     .join(", ");
 
   const prompt = `You are a luxury men's wardrobe consultant for a watch collector. Perform a comprehensive audit.
@@ -154,6 +155,7 @@ function Section({ title, items, color = "#3b82f6", isDark }) {
 
 export default function AuditPanel() {
   const garments = useWardrobeStore(s => s.garments) ?? [];
+  const garmentMap = useMemo(() => new Map(garments.map(g => [g.id, g])), [garments]);
   const watches  = useWatchStore(s => s.watches) ?? [];
   const history  = useHistoryStore(s => s.entries) ?? [];
   const { mode } = useThemeStore();
@@ -235,7 +237,7 @@ export default function AuditPanel() {
     <>
     <WardrobeGapAnalysis garments={garments} isDark={isDark} />
     <TailorQueue garments={garments} onMarkDone={(id) => {
-      const g = garments.find(x => x.id === id);
+      const g = garmentMap.get(id);
       if (g) {
         const { updateGarment } = useWardrobeStore.getState();
         const updates = { fit: "regular", notes: (g.notes ?? "").replace(/tailor|cuff|sleeve|billows|pulls at|too wide|too long/gi, "[FIXED]") };
@@ -414,6 +416,7 @@ async function verifyPhoto(garment, allGarments) {
 
 export function PhotoVerifierPanel() {
   const garments      = useWardrobeStore(s => s.garments) ?? [];
+  const garmentMap    = useMemo(() => new Map(garments.map(g => [g.id, g])), [garments]);
   const updateGarment = useWardrobeStore(s => s.updateGarment);
   const watches       = useWatchStore(s => s.watches) ?? [];
   const history       = useHistoryStore(s => s.entries) ?? [];
@@ -505,7 +508,7 @@ export function PhotoVerifierPanel() {
 
   // Resolve what to apply for a garment: user override > AI suggestion > current value
   function resolvedFix(garmentId, r) {
-    const g = garments.find(x => x.id === garmentId);
+    const g = garmentMap.get(garmentId);
     const ov = overrides[garmentId] ?? {};
     return {
       type:  ov.type  ?? r.correctedType  ?? g?.type,
@@ -515,7 +518,7 @@ export function PhotoVerifierPanel() {
   }
 
   function applyFix(garmentId, r) {
-    const g = garments.find(x => x.id === garmentId);
+    const g = garmentMap.get(garmentId);
     if (!g) return;
     const fix = resolvedFix(garmentId, r);
     const patch = {};
@@ -678,7 +681,7 @@ export function PhotoVerifierPanel() {
 
       {/* Mislabel issues */}
       {issues.map(r => {
-        const g = garments.find(x => x.id === r.garmentId);
+        const g = garmentMap.get(r.garmentId);
         if (!g) return null;
         const thumb = g.thumbnail || g.photoUrl;
         const isEdit = editing[r.garmentId];
@@ -792,8 +795,8 @@ export function PhotoVerifierPanel() {
             Angle Shots ({angles.length})
           </div>
           {angles.map(r => {
-            const g      = garments.find(x => x.id === r.garmentId);
-            const parent = garments.find(x => x.id === r.angleOfId);
+            const g      = garmentMap.get(r.garmentId);
+            const parent = garmentMap.get(r.angleOfId);
             if (!g) return null;
             const thumb       = g.thumbnail || g.photoUrl;
             const parentThumb = parent?.thumbnail || parent?.photoUrl;
@@ -846,8 +849,8 @@ export function PhotoVerifierPanel() {
             Duplicates ({dupes.length})
           </div>
           {dupes.map(r => {
-            const g        = garments.find(x => x.id === r.garmentId);
-            const original = garments.find(x => x.id === r.duplicateOfId);
+            const g        = garmentMap.get(r.garmentId);
+            const original = garmentMap.get(r.duplicateOfId);
             if (!g) return null;
             const thumb    = g.thumbnail || g.photoUrl;
             const origThumb = original?.thumbnail || original?.photoUrl;
@@ -900,7 +903,7 @@ export function PhotoVerifierPanel() {
             Outfit Photos ({outfits.length}) — multiple garments detected
           </div>
           {outfits.map(r => {
-            const g = garments.find(x => x.id === r.garmentId);
+            const g = garmentMap.get(r.garmentId);
             if (!g) return null;
             const thumb = g.thumbnail || g.photoUrl;
             return (

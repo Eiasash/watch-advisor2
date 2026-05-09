@@ -63,6 +63,7 @@ export default function StyleDNA() {
   const isDark = mode === "dark";
   const history = useHistoryStore(s => s.entries) ?? [];
   const garments = useWardrobeStore(s => s.garments) ?? [];
+  const garmentMap = useMemo(() => new Map(garments.map(g => [g.id, g])), [garments]);
   const watches = useWatchStore(s => s.watches) ?? [];
   const rejectEntries = useRejectStore(s => s.entries) ?? [];
 
@@ -216,7 +217,7 @@ export default function StyleDNA() {
             Garments you consistently reject — the engine will pre-filter these
           </div>
           {rejProfile.insights.slice(0, 5).map(ins => {
-            const g = garments.find(x => x.id === ins.garmentId);
+            const g = garmentMap.get(ins.garmentId);
             return (
               <div key={ins.garmentId} style={{
                 padding: "6px 0", borderBottom: `1px solid ${isDark ? "#1a1f2b" : "#f3f4f6"}`,
