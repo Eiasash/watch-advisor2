@@ -13,6 +13,7 @@ export default function WeeklyDigest() {
   const history = useHistoryStore(s => s.entries) ?? [];
   const watches = useWatchStore(s => s.watches) ?? [];
   const garments = useWardrobeStore(s => s.garments) ?? [];
+  const garmentMap = useMemo(() => new Map(garments.map(g => [g.id, g])), [garments]);
   const { mode } = useThemeStore();
   const isDark = mode === "dark";
   const [dismissed, setDismissed] = useState(false);
@@ -43,7 +44,7 @@ export default function WeeklyDigest() {
     const gFreq = {};
     weekEntries.forEach(e => (e.garmentIds ?? []).forEach(id => { gFreq[id] = (gFreq[id] ?? 0) + 1; }));
     const topGarmentId = Object.entries(gFreq).sort(([, a], [, b]) => b - a)[0];
-    const topGarment = topGarmentId ? garments.find(g => g.id === topGarmentId[0]) : null;
+    const topGarment = topGarmentId ? garmentMap.get(topGarmentId[0]) : null;
 
     // Context split
     const ctxs = {};

@@ -14,6 +14,11 @@ export default function OutfitHistory() {
   const upsertEntry  = useHistoryStore(s => s.upsertEntry);
   const watches      = useWatchStore(s => s.watches) ?? [];
   const garments     = useWardrobeStore(s => s.garments) ?? [];
+  // O(1) lookup maps — replace per-entry .find() linear scans in the
+  // history list (sorted.map at line 146) and filterOptions/build paths.
+  // (F-c-2 fix.)
+  const watchMap     = useMemo(() => new Map(watches.map(w => [w.id, w])), [watches]);
+  const garmentMap   = useMemo(() => new Map(garments.map(g => [g.id, g])), [garments]);
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
 
@@ -51,10 +56,10 @@ export default function OutfitHistory() {
       if (c) ctxs.add(c);
     });
     return {
-      watches: [...wIds].map(id => ({ id, label: watches.find(w => w.id === id)?.model ?? id })),
+      watches: [...wIds].map(id => ({ id, label: watchMap.get(id)?.model ?? id })),
       contexts: [...ctxs].sort(),
     };
-  }, [entries, watches]);
+  }, [entries, watchMap]);
 
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
@@ -144,8 +149,8 @@ export default function OutfitHistory() {
       )}
 
       {sorted.map(entry => {
-        const watch = watches.find(w => w.id === entry.watchId);
-        const worn  = (entry.garmentIds ?? []).map(id => garments.find(g => g.id === id)).filter(Boolean);
+        const watch = watchMap.get(entry.watchId);
+        const worn  = (entry.garmentIds ?? []).map(id => garmentMap.get(id)).filter(Boolean);
         const dateStr = entry.date || (entry.loggedAt ? entry.loggedAt.slice(0, 10) : "?");
         const dayName = (() => {
           try {
