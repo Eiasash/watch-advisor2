@@ -184,10 +184,14 @@ function AppContent() {
               .wa-tab-label { font-size:11px; line-height:1.2; }
             }
           `}</style>
-          <div className="wa-tab-bar">
+          <div className="wa-tab-bar" role="tablist" aria-label="App sections">
             {TABS.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
                 className={tab === t.key ? "active" : ""}
+                role="tab"
+                aria-selected={tab === t.key}
+                aria-controls={`wa-tabpanel-${t.key}`}
+                id={`wa-tab-${t.key}`}
                 style={{
                   padding:"8px 16px", borderRadius:10, fontSize:13, fontWeight:700,
                   border:`1px solid ${tab === t.key ? "#3b82f6" : border}`,

@@ -89,9 +89,11 @@ export default function BulkTaggerPanel({ isDark }) {
         setTagged(done_);
         setProgress(Math.round((done_ / untagged.length) * 100));
 
-        // Persist to IDB every batch
+        // Persist to IDB every batch — setCachedState merges, so write only
+        // the changed key (F-a-6: closure-stale watches/history corrupted the
+        // legacy backup blob).
         const updated = useWardrobeStore.getState().garments;
-        setCachedState({ garments: updated, watches, history }).catch(() => {});
+        setCachedState({ garments: updated }).catch(() => {});
       } catch (err) {
         setError(err.message);
         break;
