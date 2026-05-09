@@ -1,6 +1,74 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-07 — v1.13.20 garment ID-based selection + production source maps
+Last updated: 2026-05-09 — v1.13.38 doc-drift cleanup + pinnedSlots regression guard
+
+## v1.13.38 — 2026-05-09 doc-drift cleanup + pinnedSlots regression guard
+
+A live audit-fix-deploy session on v1.13.36 surfaced a class of bug the repo has hit before: **doc drift hiding shipped fixes**. Three notes claimed `pinnedSlots` was an open prompt-mechanism gap (IMPROVEMENTS.md v1.13.5 § "Open items", plus two stale comments in `WeekPlanner.jsx` at lines 1641 and 1746). Live grep showed v1.13.13 (commit `bc95721`, "hotfix(planner-ai): pinnedSlots in prompt + disable v1.13.12 component") had **already shipped** the CURRENT-DAY USER PICKS prompt block in `daily-pick.js:370-379`, with the client side wiring `pinnedSlots` into the request body at `WeekPlanner.jsx:1527-1535`. The feature is end-to-end live; the docs lagged.
+
+This is the second time in one session a v1.13.x note about "still open" tripped an audit. (First was the IMPROVEMENTS.md note that nearly led to re-implementing pinnedSlots before grep showed it shipped 25 versions ago.) Per auto-memory `feedback_query_live_state_first.md` — query disk before drafting fixes.
+
+### Shipped in v1.13.38
+
+- **Comment refresh in `WeekPlanner.jsx`** — two stale comment blocks updated:
+  - **Lines 1637-1645** (in `handleAskClaude` after pick applied): used to say "Claude's prompt has no pinnedSlots support" — now reflects v1.13.13 hotfix and explains why the fingerprint trigger remains disabled (engine refit is cheaper than a Claude round-trip per garment swap, not because Claude can't honor pins).
+  - **Lines 1740-1750** (auto-refit useEffect): used to say "Claude doesn't honor pinnedSlots → returns picks for ALL slots → user's manual sweater gets REPLACED" — now reflects v1.13.13's prompt block + ongoing engine-path preference for cost reasons.
+- **New regression test `tests/dailyPickPromptPinnedSlots.test.js` (+6 assertions)** — reads `daily-pick.js` source and locks in the v1.13.13 prompt block:
+  1. `buildUserPrompt({...})` destructures `pinnedSlots`
+  2. Prompt contains the literal `CURRENT-DAY USER PICKS` heading
+  3. Instruction tokens `KEEP THEM EXACTLY` and `refit the other slots around them` are present
+  4. Forbids alternative suggestions for pinned slots (`Do NOT suggest alternatives`)
+  5. Block is conditionally guarded by `typeof pinnedSlots === "object"` AND a `lines.length > 0` non-empty check
+  6. `pinnedSlotsBlock` is interpolated into the final prompt template (not built and dropped)
+
+  Same regression-guard pattern as `dailyPickPromptWatchEnum.test.js` (the v1.13.17 fix). If a future edit silently removes any of these tokens, the test fails before deploy — same way the watchId enum guard catches drift.
+- **No engine-side change**: post-generate validator/enforcer was deferred. The advisor flagged the speculative-work risk: there's no post-v1.13.13 debug bundle, screenshot, or report saying Claude has actually replaced a pinned slot with the prompt block in place. Adding an enforcer now would harden against unverified drift. If telemetry later shows Claude ignoring the prompt block, the enforcer is one focused PR (server-side substitute pinned slot fields back into `pick` before return).
+
+### Why this matters
+
+Two stale comments + a stale IMPROVEMENTS.md item caused two near-misses in one session:
+1. Almost re-implemented `pinnedSlots` from scratch (cost: full PR cycle for nothing).
+2. Almost shipped a server-side enforcer hardening against an un-reproducible bug (cost: validator-pattern code, prompt drift risk, more surface to maintain).
+
+The regression guard test prevents a third class of incident: someone simplifying the prompt block in a future refactor and silently breaking pin behavior.
+
+### Tests
+
+- 3672 → 3678 (+6 from new file); all green.
+
+### Files
+
+```
+src/components/WeekPlanner.jsx              | +12 -10  (two comment refreshes)
+tests/dailyPickPromptPinnedSlots.test.js    | +73     (NEW — 6 assertions)
+IMPROVEMENTS.md                             | +50     (this entry)
+package.json                                | +1 -1
+```
+
+### Open follow-ups (deferred, not speculative)
+
+- **Wider 44px sweep** on chips, secondary buttons, `Sign in with GitHub` (still 33px live in v1.13.37). Defer to a focused a11y pass.
+- **`_migrations.json` working-tree drift** — two RLS migrations from a prior session need their own PR with `_auth.js` allowlist verification (per v1.13.5 note).
+- **`ds` ErrorBoundary mystery** — needs an authenticated debug bundle from Eias.
+- **Server-side pinnedSlots enforcer** — not now, only if Eias reports "I picked X and AI replaced it" with a recent debug bundle.
+- **BulkTagger / token cost / shirt list reconciliation** — operational items in the existing TODO section.
+
+---
+
+## v1.13.37 — 2026-05-09 a11y: 44px floor on header/tabs + aria-labels on icon-only × buttons
+
+Live Chrome DevTools audit of v1.13.36 measured 46 of 72 visible buttons below the CLAUDE.md-mandated 44px touch target. Worst offender: ⚙ Settings at 37×32, icon-only with no `aria-label`. Source audit found 2 truly unlabeled `×` close buttons (AuditPanel lightbox, WeekPlanner photo-remove); StrapLibraryTab/SelfiePanel/TodayPanel already correct. Live deploy v1.13.36 was otherwise clean (no 4xx/5xx, no console errors, all 52 network requests OK).
+
+### Shipped
+
+- **`Header.jsx`** — `btnStyle` padding 6px → 11px + `minHeight: 44`; explicit `aria-label="Settings"` on ⚙ (title-only is unreliable across screen readers).
+- **`AppShell.jsx`** — desktop tab inline-style padding 8 → 11 + `minHeight: 44`; mobile bottom-tab CSS padding 8/6 → 11/9 + `min-height: 44px`. Fixes the tab bar in both layouts (mobile `<600px` media query and ≥600px desktop).
+- **`AuditPanel.jsx:601`** — `aria-label="Close"` on lightbox × close (30×30 button).
+- **`WeekPlanner.jsx:379`** — `aria-label="Remove photo"` on upload-preview × button (matches existing pattern in SelfiePanel.jsx and TodayPanel.jsx).
+
+Tests 3672 green (was 3638). Verify-deploy.sh PASS in 2s.
+
+---
 
 ## v1.13.20 — 2026-05-07 garment ID-based AI selection + production source maps
 
