@@ -176,6 +176,15 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: photoDataUrl, garments: activeGarments }),
       });
+      if (!res.ok) {
+        const status = res.status;
+        if (status === 502 || status === 504) {
+          throw new Error(`Function timed out (${status}). Photo may be too large; try a smaller one.`);
+        }
+        let errMsg = `Server error ${status}. Try again.`;
+        try { const e = await res.json(); if (e.error) errMsg = e.error; } catch (_) {}
+        throw new Error(errMsg);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 

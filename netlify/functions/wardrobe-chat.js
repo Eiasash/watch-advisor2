@@ -220,7 +220,10 @@ export async function handler(event) {
     let weatherCtx = body.context?.weather ? `Current: ${body.context.weather.tempC}°C` : null;
     if (!weatherCtx) {
       try {
-        const wRes = await fetch("https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current=temperature_2m,weathercode&timezone=Asia/Jerusalem");
+        const wRes = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current=temperature_2m,weathercode&timezone=Asia/Jerusalem",
+          { signal: AbortSignal.timeout(5000) }
+        );
         const wData = await wRes.json();
         const temp = wData?.current?.temperature_2m;
         if (temp != null) weatherCtx = `Jerusalem ${temp}°C`;

@@ -127,6 +127,6 @@ async function _doPullThumbs() {
 
     if (import.meta.env.DEV) console.log(`[supabaseSync] thumbnails hydrated: ${Object.keys(thumbMap).length}`);
   } catch (e) {
-    if (import.meta.env.DEV) console.warn("[supabaseSync] pullThumbnails failed:", e.message);
+    console.warn("[supabaseSync] pullThumbnails failed:", e.message);
   }
 }
