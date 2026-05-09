@@ -21,6 +21,25 @@
     "NODE_ENV": "test"
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/watchseed-guard.sh",
+            "timeout": 3,
+            "statusMessage": "watchSeed.js sacred-file guard..."
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/canonical-imports-guard.sh",
+            "timeout": 3,
+            "statusMessage": "Canonical-constant import guard..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
