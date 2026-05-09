@@ -1,6 +1,99 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-09 — v1.13.38 doc-drift cleanup + pinnedSlots regression guard
+Last updated: 2026-05-09 — session close: v1.13.37/38/39 shipped + 3 doc-drift items closed + telemetry baseline
+
+## 2026-05-09 — session consolidation (v1.13.37 / .38 / .39 + audit close-out)
+
+A single `/audit-fix-deploy` cycle on `main` that started with "what's left to fix?" and ended with three ships, three doc-drift closures, a telemetry baseline, and a dependency map for everything that's blocked on user action.
+
+### What shipped this session
+
+| Version | PR | Type | Verify-deploy |
+|---|---|---|---|
+| **v1.13.37** | [#190](https://github.com/Eiasash/watch-advisor2/pull/190) | a11y: 44px floor on header (3 buttons) + tab nav (7 tabs, desktop+mobile) + aria-labels on 2 unlabeled icon-only × buttons | PASS 2s |
+| **v1.13.38** | [#191](https://github.com/Eiasash/watch-advisor2/pull/191) | docs+test: refresh stale `pinnedSlots` comments + lock-in regression guard (6 assertions, same pattern as `dailyPickPromptWatchEnum.test.js`) | PASS 1s |
+| **v1.13.39** | [#192](https://github.com/Eiasash/watch-advisor2/pull/192) | a11y: 44px floor on TodayPanel context chips + GitHubLoginButton "Sign in" | PASS 1s |
+
+Test-suite: 3638 → 3678 (+40 net new — 6 from the regression guard, 34 from sibling work landed mid-session). All green.
+
+### Three doc-drift items closed
+
+The session caught three "open follow-up" items in IMPROVEMENTS.md / source comments that pointed at problems already shipped. Same class of error each time: a v1.13.x note about "still open" was never updated when subsequent PRs closed it.
+
+1. **`pinnedSlots` prompt mechanism** (was flagged "Open" in v1.13.5) — actually shipped in **v1.13.13 commit `bc95721`** as a hotfix. Server-side block at `daily-pick.js:370-379`, client wiring at `WeekPlanner.jsx:1527-1535`. v1.13.38 refreshed the two stale `WeekPlanner.jsx` comments (lines ~1641 and ~1746) that said "Claude doesn't honor pinnedSlots" — now correctly explain the cost-vs-Claude-roundtrip tradeoff, not a capability gap.
+
+2. **`_migrations.json` working-tree drift** (was flagged "Unstaged migrations" in v1.13.5) — both migrations actually shipped:
+   - `20260503222400_extend_rls_to_authenticated.sql` — landed in **PR #140 commit `1085dd2`** ("fix(rls): extend garments + history + app_config policies to authenticated role")
+   - `20260504052807_rls_email_restricted.sql` — landed in **PR #148 commit `1dd3283`** ("security(rls): restrict garments+history to single owner email")
+   - `_auth.js` allowlist verification: ✅ uses `process.env.ALLOWED_USER_EMAIL`, fail-closed semantics, three-state evaluation (prod default-on). Migrations hardcode `eiasashhab@gmail.com` literal in 4 storage policies. Per `~/.claude/...memory/reference_email_addresses.md` — gmail (not yahoo) is the OAuth identity, so the literal is correct.
+
+3. **Server-side `pinnedSlots` enforcer** — speculative work, advisor flagged it twice. Decision: **defer until user-side debug bundle confirms drift**. Telemetry check (below) shows no error pattern, so there's no evidence Claude is currently ignoring the v1.13.13 prompt block.
+
+### Telemetry baseline (Supabase MCP, project `oaojkanozbfpofbewtfq`)
+
+`app_config["daily_pick_metrics"].entries` (tail-100 ringbuffer, last 4 days):
+
+| Metric | Value |
+|---|---|
+| Entries | 10 |
+| OK / errors | 10 / 0 |
+| Watch-pinned calls | 7 / 10 (active feature use) |
+| Avg latency | 4.9s |
+| Max latency | 5.9s (well under 10s Netlify ceiling) |
+| Distinct paths | `daily-pick`, `style-fixed-watch` |
+
+`pinnedSlots` is NOT a recorded field in the metric shape — direct "did Claude obey" telemetry is unavailable. **No error pattern**, no latency spikes. Adding `slotPinCount` to the metric shape was considered and dropped — it would only count usage, not adherence; the real diagnostic requires comparing response slot fields to request pin values, which is response-payload logging (bigger scope).
+
+### Open items requiring user action
+
+These items can't be closed from a code session alone. Documented for the user to bring back when conditions are met:
+
+| Item | What's blocked on | What to provide |
+|---|---|---|
+| **`ds` ErrorBoundary mystery** | Anonymous session can't reproduce — boot throw happens in code path behind auth | Sign in via GitHub OAuth in Chrome on the live site, capture `wa2-debug-YYYY-MM-DD-HHMM.json` debug bundle, share. v1.13.20's source-maps + v1.13.19's serializeForLog mean the next bundle will name the throwing component + stack |
+| **`pinnedSlots` enforcer** | No telemetry signal of drift | A debug bundle or screenshot showing "I picked X garment, AI returned Y in that slot" — then ship a server-side post-validator that hard-substitutes pinned slots before return |
+| **BulkTagger re-run** | Requires authenticated app interaction | Open Wardrobe → BulkTagger panel, run on shirt + sweater categories. 36 shirts in DB, many missing season/context tags |
+| **Token cost monitoring** | Anthropic Console API key | Spot-check Claude billing dashboard against the v1.12.25 baseline ($11.47 at Apr 13 → projected ~$26/month with haiku for `buildWeeklyBrief`) |
+| **Shirt list reconciliation** | Cross-reference live DB vs `SKILL_wardrobe_v10.md` table | DB has 36 shirts, doc lists 34, with naming drift (`"Olive Striped Shirt (Gant)"` vs `"Gant Olive Striped Shirt"`). One-off alignment pass; not engine-affecting |
+| **Pasha navy alligator strap** | DayDayWatchband shipping | Add to pasha straps when delivered |
+| **Tudor canvas straps** | Vendor shipping | navy + olive pending; add to blackbay straps when delivered |
+| **GP Laureato Infinite Grey** | Acquisition (~₪65,000); preserve resources | Personal financial decision |
+
+### Wider 44px sweep — deliberately bounded
+
+v1.13.37 + v1.13.39 together raised the high-impact daily-touch surfaces (header, tab nav, context chips, Sign-in) to 44px. **30+ secondary buttons remain sub-44px** in admin panels (BulkTagger, DebugConsole, GarmentEditor, WatchIDPanel, etc.). These were deliberately left alone because:
+- High collateral risk vs. low daily-UX impact (admin tasks ≠ tap-target priority)
+- 30-file mechanical sweep would dwarf the actual a11y benefit
+- WeekPlanner per-day chips at fontSize 10 (line 553) are *intentionally* compact — bumping them would crowd the planner grid and hurt the at-a-glance week view
+
+If a future a11y push wants to clean these up, a CSS-level `button:not(.wa-icon-btn) { min-height: 44px; }` global rule + opt-out class on the 4 photo-corner × buttons is cleaner than per-component edits.
+
+### Pattern noticed (workflow improvement candidate)
+
+**Three "open" items that were already shipped, all in one session.** This is the third instance of the same class of error in IMPROVEMENTS.md follow-up sections. The auto-memory feedback note `feedback_query_live_state_first.md` warns against this exactly: docs lag reality, query disk first. A pre-audit hook that diffs IMPROVEMENTS.md follow-up items against current `git log` / source state could surface false-open items before each session burns time on them.
+
+### Files touched this session
+
+```
+package.json                                | 4×       (1.13.36 → .37 → .38 → .39)
+src/app/AppShell.jsx                        | +6 -3    (44px tab bar)
+src/components/Header.jsx                   | +6 -3    (44px header buttons + aria-label on ⚙)
+src/components/AuditPanel.jsx               | +1 -1    (aria-label on lightbox ×)
+src/components/WeekPlanner.jsx              | +13 -11  (aria-label + 2 stale comments refreshed)
+src/components/TodayPanel.jsx               | +2 -2    (44px context chips)
+src/components/GitHubLoginButton.jsx        | +2 -1    (44px Sign-in button)
+tests/dailyPickPromptPinnedSlots.test.js    | +73 NEW  (regression guard, 6 assertions)
+IMPROVEMENTS.md                             | +120     (this entry + v1.13.37/38 backfills)
+```
+
+### Verify-deploy gate proof
+
+All three ships passed `bash scripts/verify-deploy.sh` on the canonical literal-string-grep against `https://watch-advisor2.netlify.app/` bundle:
+- v1.13.37 → `index-Csk7Atsu.js` PASS 2s
+- v1.13.38 → `index-BIEZygPK.js` PASS 1s
+- v1.13.39 → `index-BTOTcCle.js` PASS 1s
+
+---
 
 ## v1.13.38 — 2026-05-09 doc-drift cleanup + pinnedSlots regression guard
 
