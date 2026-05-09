@@ -8,6 +8,11 @@ export default function GarmentThumb({ g, selected, onClick, isDark }) {
   const border = isDark ? "#2b3140" : "#d1d5db";
   return (
     <div onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-pressed={!!selected}
+      aria-label={`${selected ? "Selected " : ""}${g.name ?? g.type ?? "garment"}`}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); } }}
       style={{ position: "relative", cursor: "pointer", borderRadius: 10, overflow: "hidden",
                border: `2px solid ${selected ? "#3b82f6" : border}`,
                background: isDark ? "#0f131a" : "#f3f4f6",
