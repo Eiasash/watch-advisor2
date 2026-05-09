@@ -37,6 +37,11 @@ export default function WatchPicker({
           const dsw = daysSinceWorn(w.id, entries);
           return (
             <div key={w.id} onClick={() => onSelectWatch(w.id)}
+              role="button"
+              tabIndex={0}
+              aria-pressed={watchId === w.id}
+              aria-label={`Select ${w.brand} ${w.model}${watchId === w.id ? ", currently selected" : ""}`}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectWatch(w.id); } }}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10,
                        border: `2px solid ${watchId === w.id ? "#3b82f6" : border}`, cursor: "pointer",
                        background: watchId === w.id ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent" }}>

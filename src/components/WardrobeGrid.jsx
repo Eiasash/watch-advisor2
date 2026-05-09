@@ -89,6 +89,10 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
   return (
     <div style={{ ...style, padding:5 }}>
       <div
+        role="button"
+        tabIndex={0}
+        aria-pressed={selectMode ? !!isSelected : undefined}
+        aria-label={`${selectMode ? (isSelected ? "Deselect " : "Select ") : "Edit "}${item.name ?? item.type ?? "garment"}`}
         style={{
           height:"100%", borderRadius:12, overflow:"hidden",
           background: isDark ? "#0f131a" : "#f9fafb",
@@ -100,6 +104,12 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
           userSelect:"none", WebkitUserSelect:"none",
         }}
         onClick={() => selectMode ? onSelect(item.id) : onEdit(item)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            selectMode ? onSelect(item.id) : onEdit(item);
+          }
+        }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onTouchMove={onTouchEnd}
