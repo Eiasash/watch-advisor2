@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useHistoryStore } from "../stores/historyStore.js";
@@ -6,7 +6,12 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { isPushSupported, getSubscriptionStatus, subscribePush, unsubscribePush } from "../services/pushService.js";
 import BulkTaggerPanel from "./BulkTaggerPanel.jsx";
 import BulkPhotoMatcher from "./BulkPhotoMatcher.jsx";
-import DebugConsole from "./DebugConsole.jsx";
+// Lazy: AuditPanel.jsx already lazy-loads DebugConsole. Eager import here was
+// causing the 10.6 kB DebugConsole chunk to be both its own chunk AND rolled
+// into SettingsPanel's chunk (different tree-shake outcomes for eager
+// vs lazy boundaries). Lazy here means both consumers share one async chunk.
+// (F-c-7 fix.)
+const DebugConsole = lazy(() => import("./DebugConsole.jsx"));
 import { clearCachedState } from "../services/localCache.js";
 
 function saveBackup(garments, watches, history) {
@@ -311,7 +316,9 @@ export default function SettingsPanel({ onClose, scrollTo }) {
         </Section>
         {/* Debug Console */}
         <Section title="🪲 Debug Console" isDark={isDark}>
-          <DebugConsole isDark={isDark} />
+          <Suspense fallback={null}>
+            <DebugConsole isDark={isDark} />
+          </Suspense>
         </Section>
 
         {/* Version */}
