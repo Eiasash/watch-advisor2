@@ -282,8 +282,8 @@ export default function TodayPanel() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {CONTEXT_OPTIONS.map(c => (
             <button key={c.key ?? "__any"} onClick={() => setContext(c.key)}
-              style={{ padding: "6px 12px", borderRadius: 20, border: "none", fontSize: 12, fontWeight: 600,
-                       cursor: "pointer",
+              style={{ padding: "11px 14px", borderRadius: 22, border: "none", fontSize: 12, fontWeight: 600,
+                       cursor: "pointer", minHeight: 44,
                        background: context === c.key ? "#3b82f6" : (isDark ? "#1a1f2b" : "#f3f4f6"),
                        color: context === c.key ? "#fff" : muted }}>{c.label}</button>
           ))}

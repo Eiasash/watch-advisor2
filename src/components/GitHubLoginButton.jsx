@@ -53,7 +53,7 @@ export function GitHubLoginButton() {
           display: "flex",
           alignItems: "center",
           gap: 8,
-          padding: "8px 16px",
+          padding: "11px 16px",
           background: "#24292e",
           color: "#fff",
           border: "1px solid #444",
@@ -61,6 +61,7 @@ export function GitHubLoginButton() {
           cursor: "pointer",
           fontSize: 13,
           fontWeight: 600,
+          minHeight: 44,
         }}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
