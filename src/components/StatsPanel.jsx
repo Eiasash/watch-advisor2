@@ -128,6 +128,25 @@ export default function StatsPanel() {
     return m;
   }, [garments]);
 
+  // Per-garment wear stats: { wears, lastDate }. Built once per [entries] so
+  // the three CPW + cold-bench passes don't each iterate the full entries
+  // array per garment. Replaces the O(garments × entries × 3) triple scan
+  // with a single O(entries × avgGarmentsPerEntry) build + O(1) lookups. (F-c-1)
+  const garmentWearMap = useMemo(() => {
+    const m = new Map();
+    for (const e of entries) {
+      const ids = e.garmentIds ?? [];
+      const date = e.date;
+      for (const id of ids) {
+        let stats = m.get(id);
+        if (!stats) { stats = { wears: 0, lastDate: null }; m.set(id, stats); }
+        stats.wears++;
+        if (date && (!stats.lastDate || date > stats.lastDate)) stats.lastDate = date;
+      }
+    }
+    return m;
+  }, [entries]);
+
   // ── Watch wear frequency ────────────────────────────────────────────────────
   const watchFreq = useMemo(() => {
     const freq = {};
@@ -216,11 +235,11 @@ export default function StatsPanel() {
     return garments
       .filter(g => g.price > 0)
       .map(g => {
-        const wears = Math.max(1, entries.filter(e => (e.garmentIds ?? []).includes(g.id)).length);
+        const wears = Math.max(1, garmentWearMap.get(g.id)?.wears ?? 0);
         return { g, wears, cpw: Math.round(g.price / wears) };
       })
       .sort((a, b) => a.cpw - b.cpw);
-  }, [garments, entries]);
+  }, [garments, garmentWearMap]);
 
   const maxWatch   = Math.max(...watchFreq.map(x => x.n), 1);
   const maxColor   = Math.max(...colorFreq.map(x => x[1]), 1);
@@ -230,33 +249,31 @@ export default function StatsPanel() {
 
   // ── Cold bench: garments not worn in 30+ days ───────────────────────────────
   const coldBench = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
-    const cutoffIso = cutoff.toISOString().slice(0, 10);
     return garments
       .filter(g => !g.excludeFromWardrobe && !["outfit-photo","outfit-shot","belt","sunglasses","hat","scarf","bag","accessory"].includes(g.type))
       .map(g => {
-        const worn = entries.filter(e => (e.garmentIds ?? []).includes(g.id));
-        const lastWorn = worn.length > 0 ? worn.sort((a,b) => b.date.localeCompare(a.date))[0].date : null;
+        const stats = garmentWearMap.get(g.id);
+        const wears = stats?.wears ?? 0;
+        const lastWorn = stats?.lastDate ?? null;
         const daysSince = lastWorn ? Math.floor((Date.now() - new Date(lastWorn).getTime()) / 864e5) : 999;
-        return { g, lastWorn, daysSince, wears: worn.length };
+        return { g, lastWorn, daysSince, wears };
       })
       .filter(x => x.daysSince >= 30)
       .sort((a, b) => b.daysSince - a.daysSince)
       .slice(0, 8);
-  }, [garments, entries]);
+  }, [garments, garmentWearMap]);
   const cpwItems = useMemo(() => {
     return garments
       .filter(g => g.price > 0)
       .map(g => {
-        const wears = entries.filter(e => (e.garmentIds ?? []).includes(g.id)).length;
+        const wears = garmentWearMap.get(g.id)?.wears ?? 0;
         if (!wears) return null;
         return { garment: g, wears, cpw: Math.round(g.price / wears) };
       })
       .filter(Boolean)
       .sort((a, b) => a.cpw - b.cpw)
       .slice(0, 8);
-  }, [garments, entries]);
+  }, [garments, garmentWearMap]);
 
   const utilization = useMemo(() => utilizationScore(watches, entries), [watches, entries]);
 
