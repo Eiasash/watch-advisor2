@@ -65,7 +65,7 @@ export const useHistoryStore = create((set, get) => ({
       ? { ...entry, payload: { ...entry.payload, payload_version: "v1" } }
       : entry;
     const stamped = sanitiseEntry(stampedRaw);
-    // 1. Zustand — synchronous
+    // 1. Zustand — synchronous; merge partial into existing entry
     set(state => {
       const idx = state.entries.findIndex(e => e.id === stamped.id);
       const next = idx >= 0
@@ -73,10 +73,13 @@ export const useHistoryStore = create((set, get) => ({
         : [...state.entries, stamped];
       return { entries: next };
     });
-    // 2. IDB — async, fire-and-forget
-    getPersistence().then(m => m.upsert(stamped)).catch(() => {});
-    // 3. Cloud — fire-and-forget
-    pushHistoryEntry(stamped).catch(() => {});
+    // 2. IDB + Cloud — write the MERGED entry, not the partial. Otherwise
+    //    callsites that pass partial updates (WatchDashboard "Check In", many
+    //    quickLog paths) would write the partial to IDB, dropping fields
+    //    Zustand kept in memory. On reload, fields would vanish. (F-a-5)
+    const merged = get().entries.find(e => e.id === stamped.id) ?? stamped;
+    getPersistence().then(m => m.upsert(merged)).catch(() => {});
+    pushHistoryEntry(merged).catch(() => {});
   },
 
   removeEntry: id => {

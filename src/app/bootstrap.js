@@ -192,10 +192,24 @@ export function useBootstrap() {
             }
           }
 
+          // Union-merge cloud with anything local that landed during the
+          // pullCloudState await window (e.g. the user tapped Import while
+          // the cloud roundtrip was in flight). Cloud is authoritative for
+          // overlapping IDs; locally-only items are preserved. (F-a-4)
+          const currentLocalGarments = toArray(useWardrobeStore.getState().garments);
+          const cloudGarmentIds = new Set(cloudGarments.map(g => g.id));
+          const localOnlyGarments = currentLocalGarments.filter(g => !cloudGarmentIds.has(g.id));
+          const mergedGarments = [...cloudGarments, ...localOnlyGarments];
+
+          const currentLocalHistory = toArray(useHistoryStore.getState().entries);
+          const cloudHistoryIds = new Set(h.map(e => e.id));
+          const localOnlyHistory = currentLocalHistory.filter(e => !cloudHistoryIds.has(e.id));
+          const mergedHistory = [...h, ...localOnlyHistory];
+
           setWatches(w);
-          setGarments(cloudGarments);
-          setHistory(h);
-          await setCachedState({ watches: w, garments: cloudGarments, history: h });
+          setGarments(mergedGarments);
+          setHistory(mergedHistory);
+          await setCachedState({ watches: w, garments: mergedGarments, history: mergedHistory });
 
           // Phase 2: lazy-load thumbnails now that UI is interactive with metadata
           pullThumbnails().catch(() => {});
