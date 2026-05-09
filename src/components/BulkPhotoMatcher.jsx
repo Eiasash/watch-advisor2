@@ -8,6 +8,8 @@ import { setCachedState } from "../services/localCache.js";
 import { enqueueTask } from "../services/backgroundQueue.js";
 
 function resizeForUpload(file, maxPx = 512) {
+  // Resolve to null on any failure (F-a-11 fix). Without onerror/onabort the
+  // Promise hangs forever on file read errors.
   return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -20,8 +22,11 @@ function resizeForUpload(file, maxPx = 512) {
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         resolve(c.toDataURL("image/jpeg", 0.85));
       };
+      img.onerror = () => resolve(null);
       img.src = reader.result;
     };
+    reader.onerror = () => resolve(null);
+    reader.onabort = () => resolve(null);
     reader.readAsDataURL(file);
   });
 }

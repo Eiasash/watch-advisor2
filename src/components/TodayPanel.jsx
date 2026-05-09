@@ -85,6 +85,9 @@ function getWatchRecommendations(watches, history, context) {
 }
 
 function resizeImage(file, maxPx = 480) {
+  // Resolve to null on any failure (F-a-11 fix). Without onerror/onabort the
+  // Promise hangs forever on Android Chrome storage-quota errors, leaving
+  // setBusy(true) stuck and "Importing 0/3..." displayed forever.
   return new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -97,8 +100,11 @@ function resizeImage(file, maxPx = 480) {
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         resolve(c.toDataURL("image/jpeg", 0.82));
       };
+      img.onerror = () => resolve(null);
       img.src = reader.result;
     };
+    reader.onerror = () => resolve(null);
+    reader.onabort = () => resolve(null);
     reader.readAsDataURL(file);
   });
 }

@@ -55,11 +55,17 @@ export async function unsubscribePush() {
   const sub = await reg.pushManager.getSubscription();
   if (!sub) return;
 
-  await fetch("/.netlify/functions/push-subscribe", {
+  const res = await fetch("/.netlify/functions/push-subscribe", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint: sub.endpoint }),
   });
+  // Don't proceed to local unsubscribe if the server delete failed — we'd
+  // leave an orphan push_subscriptions row that the push-brief cron keeps
+  // targeting. 404 = already gone server-side, treat as success. (F-b-2 fix.)
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Server unsubscribe failed: ${res.status}`);
+  }
 
   await sub.unsubscribe();
 }

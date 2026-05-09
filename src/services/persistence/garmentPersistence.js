@@ -12,6 +12,14 @@
 import { db } from "../db.js";
 import { useWardrobeStore } from "../../stores/wardrobeStore.js";
 
+// Per-id mutex map: serializes concurrent patch() calls on the same garment so
+// the read-modify-write sequence can't be raced. (F-a-2 fix.) Two simultaneous
+// patches with disjoint `fields` previously read the same `existing`, so the
+// second writer's put dropped the first writer's persisted fields. Now they
+// run sequentially per id; in flight chain is held in this Map and cleared
+// when the last awaiter resolves.
+const _patchLocks = new Map();
+
 const STORE = "garments_items";
 
 // ── Read ─────────────────────────────────────────────────────────────────────
@@ -47,17 +55,24 @@ export async function upsert(garment) {
 
 /**
  * Update specific fields on a garment by id.
- * IDB first, then Zustand.
+ * Per-id mutex serializes concurrent patches so two simultaneous calls on the
+ * same garment can't drop each other's fields. (F-a-2 fix.)
  */
 export async function patch(id, fields) {
-  // Read current IDB state to merge
-  const existing = await db.get(STORE, id);
-  const merged = existing ? { ...existing, ...fields } : { id, ...fields };
+  const prev = _patchLocks.get(id) ?? Promise.resolve();
+  const next = prev.then(async () => {
+    const existing = await db.get(STORE, id);
+    const merged = existing ? { ...existing, ...fields } : { id, ...fields };
+    await db.put(STORE, merged);
+  });
+  _patchLocks.set(id, next);
+  try {
+    await next;
+  } finally {
+    if (_patchLocks.get(id) === next) _patchLocks.delete(id);
+  }
 
-  // 1. IDB
-  await db.put(STORE, merged);
-
-  // 2. Zustand
+  // Zustand
   useWardrobeStore.setState(state => ({
     garments: state.garments.map(g => g.id === id ? { ...g, ...fields } : g),
   }));
