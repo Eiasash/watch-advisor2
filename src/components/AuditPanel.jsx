@@ -598,7 +598,7 @@ export function PhotoVerifierPanel() {
             style={{ position: "relative", maxWidth: 480, width: "100%" }}>
             <img src={lightbox.src} alt="garment"
               style={{ width: "100%", borderRadius: 14, maxHeight: "80vh", objectFit: "contain" }} />
-            <button onClick={() => setLightbox(null)}
+            <button onClick={() => setLightbox(null)} aria-label="Close"
               style={{ position: "absolute", top: -12, right: -12, background: "#ef4444", color: "#fff",
                        border: "none", borderRadius: "50%", width: 30, height: 30,
                        fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>

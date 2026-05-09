@@ -378,6 +378,7 @@ function LogConfirmModal({ isDark, onConfirm, onCancel }) {
                 <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 <button
                   onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                  aria-label="Remove photo"
                   style={{
                     position: "absolute", top: 3, right: 3,
                     background: "#ef4444", color: "#fff",
