@@ -427,7 +427,7 @@ export default function WatchDashboard() {
       }
     }
     return result;
-  }, [enrichedWatch, garments, weatherObj, history, shuffleSeed, slotOverrides, todayContext]);
+  }, [enrichedWatch, wearable, weatherObj, history, shuffleSeed, slotOverrides, todayContext]);
 
   // Merge: engine base + per-slot manual overrides
   const mergedOutfit = useMemo(() => {
