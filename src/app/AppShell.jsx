@@ -169,7 +169,7 @@ function AppContent() {
                 flex:1 1 0; min-width:0;
                 border-radius:0 !important; border:none !important;
                 border-top:2px solid transparent !important;
-                padding:8px 4px 6px !important; font-size:11px !important;
+                padding:11px 4px 9px !important; font-size:11px !important; min-height:44px;
                 flex-direction:column; display:flex; align-items:center; justify-content:center; gap:1px;
                 white-space:nowrap;
                 -webkit-tap-highlight-color:transparent;
@@ -193,11 +193,11 @@ function AppContent() {
                 aria-controls={`wa-tabpanel-${t.key}`}
                 id={`wa-tab-${t.key}`}
                 style={{
-                  padding:"8px 16px", borderRadius:10, fontSize:13, fontWeight:700,
+                  padding:"11px 16px", borderRadius:10, fontSize:13, fontWeight:700,
                   border:`1px solid ${tab === t.key ? "#3b82f6" : border}`,
                   background: tab === t.key ? "#1d4ed822" : "transparent",
                   color: tab === t.key ? "#3b82f6" : isDark ? "#8b93a7" : "#6b7280",
-                  cursor:"pointer", whiteSpace:"nowrap",
+                  cursor:"pointer", whiteSpace:"nowrap", minHeight:44,
                 }}>
                 <span className="wa-tab-icon">{t.icon}</span>
                 <span className="wa-tab-label">{t.label}</span>

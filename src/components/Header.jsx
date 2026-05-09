@@ -12,9 +12,9 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
   const isDark = mode === "dark";
 
   const btnStyle = {
-    padding: "6px 12px", borderRadius: 8, border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
+    padding: "11px 14px", borderRadius: 8, border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
     background: isDark ? "#0f131a" : "#f9fafb", color: isDark ? "#e2e8f0" : "#1f2937",
-    fontSize: 14, cursor: "pointer",
+    fontSize: 14, cursor: "pointer", minHeight: 44,
   };
 
   return (
@@ -54,7 +54,7 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
           {isDark ? "\u263E" : "\u2600"} {isDark ? "Night" : "Day"}
         </button>
         {/* Settings */}
-        <button onClick={onOpenSettings} title="Settings" style={btnStyle}>
+        <button onClick={onOpenSettings} title="Settings" aria-label="Settings" style={btnStyle}>
           &#9881;
         </button>
       </div>
