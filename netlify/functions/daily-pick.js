@@ -630,7 +630,8 @@ export async function handler(event) {
     if (!weather) {
       try {
         const wRes = await fetch(
-          "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current_weather=true&hourly=temperature_2m&timezone=Asia/Jerusalem&forecast_days=2"
+          "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current_weather=true&hourly=temperature_2m&timezone=Asia/Jerusalem&forecast_days=2",
+          { signal: AbortSignal.timeout(5000) }
         );
         const wData = await wRes.json();
         const hourly = wData.hourly;

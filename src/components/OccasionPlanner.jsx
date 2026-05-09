@@ -41,6 +41,15 @@ export default function OccasionPlanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ occasion: occ, garments, watches }),
       });
+      if (!res.ok) {
+        const status = res.status;
+        if (status === 502 || status === 504) {
+          throw new Error(`Function timed out (${status}). Try again with a shorter occasion description.`);
+        }
+        let errMsg = `Server error ${status}. Try again.`;
+        try { const e = await res.json(); if (e.error) errMsg = e.error; } catch (_) {}
+        throw new Error(errMsg);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);

@@ -281,7 +281,10 @@ export default function LoggedSummary({
                 a.download = `outfit-${TODAY_ISO}.png`;
                 a.click();
               }
-            } catch (_) {}
+            } catch (e) {
+              if (e?.name === "AbortError") return;
+              console.warn("[outfit-card] share failed:", e?.message ?? e);
+            }
           }}
           style={{
             width: "100%", padding: "10px 14px", borderRadius: 12,

@@ -51,6 +51,7 @@ export async function handler(event) {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model: "text-embedding-3-small", input: normalised }),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!res.ok) {
