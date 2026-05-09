@@ -1637,10 +1637,12 @@ export default function WeekPlanner() {
       // PR #161 — record (watchId, strapId) so the auto-refit effect can
       // detect drift and re-fire when the user changes either one.
       // v1.13.10 — outfitFingerprint drift was REMOVED (see auto-refit
-      // useEffect comment for full reason: AI refit replaces user's manual
-      // garment pick because Claude's prompt has no pinnedSlots support;
-      // the engine's silent re-fit via weekOutfits useMemo already handles
-      // garment changes correctly).
+      // useEffect comment for full reason). Note: v1.13.13 (commit bc95721)
+      // since added a CURRENT-DAY USER PICKS prompt block to daily-pick.js,
+      // and the body above already sends pinnedSlots when overrides exist —
+      // so AI refit *can* honor user pins now. The fingerprint trigger remains
+      // off because the engine's silent re-fit via weekOutfits useMemo
+      // handles garment changes without a Claude round-trip (cheaper, faster).
       aiContextRef.current[date] = {
         watchId: dayWatchIdForStrap ?? null,
         strapId: dayStrapIdForAsk ?? null,
@@ -1741,13 +1743,14 @@ export default function WeekPlanner() {
       // garment-slot overrides. Reason: when the user picks a sweater the
       // ENGINE path's weekOutfits useMemo re-runs buildOutfit with the
       // sweater in pinnedSlotGarments (line ~1251) and re-coordinates the
-      // OTHER slots around it — exactly what the user wants. Firing the AI
-      // refit here would call handleAskClaude → Claude doesn't honor
-      // pinnedSlots → returns picks for ALL slots → user's manual sweater
-      // gets REPLACED with whatever Claude chose. v1.13.5's outfit
-      // fingerprint drift was actively counterproductive — reverted in
-      // v1.13.10. The engine's silent refit handles the user's mental
-      // model "I changed this, the rest adjusts" correctly.
+      // OTHER slots around it — exactly what the user wants, and free.
+      // v1.13.13 (bc95721) added the CURRENT-DAY USER PICKS prompt block
+      // and the body builder above sends `pinnedSlots`, so a Claude refit
+      // would *also* respect user pins — but it'd cost a Claude call per
+      // garment swap. The engine's silent refit is cheaper and faster, so
+      // garment-only drift stays on the engine path. v1.13.5's outfit
+      // fingerprint trigger was actively counterproductive — reverted in
+      // v1.13.10 — and there's no reason to re-add it now.
       if (currentWatchId === seen.watchId && currentStrapId === seen.strapId) continue;
       // Drift detected — schedule debounced refit.
       if (refitTimerRef.current[day.date]) clearTimeout(refitTimerRef.current[day.date]);
