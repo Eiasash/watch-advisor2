@@ -29,16 +29,19 @@ export default function WeekPlanLock({ weekPlan, watches, isDark }) {
   const handleSave = useCallback(async () => {
     if (!weekPlan?.length) return;
     setSaving(true);
-    const cached = await getCachedState().catch(() => ({}));
-    await setCachedState({ ...cached, _weekPlan: weekPlan });
+    // Direct merge — setCachedState atomically merges. The previous
+    // get-then-spread pattern stomped concurrent writes from rejectStore /
+    // styleLearnStore / travelStore / strapStore / ImportPanel that landed
+    // during the await window. (F-a-1 fix.)
+    await setCachedState({ _weekPlan: weekPlan });
     setSaved(weekPlan);
     setSaving(false);
   }, [weekPlan]);
 
   const handleClear = useCallback(async () => {
-    const cached = await getCachedState().catch(() => ({}));
-    delete cached._weekPlan;
-    await setCachedState(cached);
+    // Set to null instead of read-then-spread-then-delete. Mount effect treats
+    // null _weekPlan as falsy (no plan). Same lost-update fix as handleSave.
+    await setCachedState({ _weekPlan: null });
     setSaved(null);
   }, []);
 

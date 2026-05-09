@@ -89,19 +89,33 @@ export default function BulkPhotoMode({ onClose }) {
 
       // Update store
       updateGarment(current.id, { thumbnail: dataUrl });
-      // Persist to IDB
+      // Persist to IDB — write only `garments`. Previously also piggybacked
+      // closure-stale `watches`/`history`, which corrupted the legacy blob.
       const updated = useWardrobeStore.getState().garments;
-      const ws = useWatchStore.getState().watches ?? [];
-      const hist = useHistoryStore.getState().entries ?? [];
-      setCachedState({ watches: ws, garments: updated, history: hist }).catch(() => {});
-      // Save image to IDB
+      setCachedState({ garments: updated }).catch(() => {});
+      // Save image to IDB (local, fast, fire-and-forget)
       saveImage(current.id, dataUrl).catch(() => {});
-      // Push to Supabase
-      pushGarment({ ...current, thumbnail: dataUrl }).catch(() => {});
-      uploadPhoto(current.id, dataUrl, "thumbnail").catch(() => {});
+
+      // Cloud writes — await with allSettled so we can SURFACE failures.
+      // SyncBar is occluded by this full-screen modal so silent .catch()
+      // means user thinks the photo saved when only the local copy did.
+      // (F-b-1 fix.)
+      const cloudResults = await Promise.allSettled([
+        pushGarment({ ...current, thumbnail: dataUrl }),
+        uploadPhoto(current.id, dataUrl, "thumbnail"),
+      ]);
+      const failures = cloudResults.filter(r => r.status === "rejected");
 
       setCompleted(c => c + 1);
-      addToast?.(`📸 ${current.name} — done`, "success");
+      if (failures.length) {
+        // Re-queue via backgroundQueue (persists across tab close) and warn.
+        try {
+          await enqueueTask("upload-photo", { garmentId: current.id, dataUrl, kind: "thumbnail" });
+        } catch { /* queue full / IDB error — best effort */ }
+        addToast?.(`📸 ${current.name} — saved locally; ${failures.length}/2 cloud writes pending retry`, "warning");
+      } else {
+        addToast?.(`📸 ${current.name} — done`, "success");
+      }
       // Auto-advance
       advanceToNext();
     } catch (err) {
