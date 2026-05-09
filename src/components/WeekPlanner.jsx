@@ -972,6 +972,10 @@ export default function WeekPlanner() {
   const setWeekCtx = useWardrobeStore(s => s.setWeekCtx);
   const setOnCallDates = useWardrobeStore(s => s.setOnCallDates);
   const garments     = useWardrobeStore(s => s.garments) ?? [];
+  // O(1) lookup map. Replaces 5 sites of `garments.find(g => g.id === id)`
+  // inside `weekOutfits` and the per-day-card render. Each site previously
+  // ran a linear scan per id, multiplied by the loop body. (F-c-2 fix.)
+  const garmentMap   = useMemo(() => new Map(garments.map(g => [g.id, g])), [garments]);
   const straps       = useStrapStore(s => s.straps) ?? {};
   const activeStrap  = useStrapStore(s => s.activeStrap) ?? {};
   const { mode }     = useThemeStore();
@@ -1191,7 +1195,7 @@ export default function WeekPlanner() {
             // Check if user manually overrode this slot
             if (slot in dayOverrides) {
               const overrideId = dayOverrides[slot];
-              loggedOutfit[slot] = overrideId ? garments.find(g => g.id === overrideId) ?? null : null;
+              loggedOutfit[slot] = overrideId ? garmentMap.get(overrideId) ?? null : null;
             } else {
               const candidates = garments.filter(g => loggedIds.includes(g.id));
               const match = candidates.find(g => normalizeType(g.type ?? "") === slot);
@@ -1438,7 +1442,7 @@ export default function WeekPlanner() {
             if (!(slot in overrides)) continue;
             const aiName = aiPick[slot] ?? null;
             const userId = overrides[slot];
-            const userName = userId ? (garments.find(g => g.id === userId)?.name ?? null) : null;
+            const userName = userId ? (garmentMap.get(userId)?.name ?? null) : null;
             // Normalize both sides before comparison so trivial differences
             // (whitespace / quotes / smart quotes / trailing punctuation in
             // the AI response vs. the wardrobe's stored name) don't get
@@ -2411,7 +2415,7 @@ export default function WeekPlanner() {
                             <div style={{ fontSize: 10, color: muted, fontStyle: "italic" }}>{entry.notes}</div>
                           )}
                           {(entry.garmentIds?.length > 0) && (() => {
-                            const wornGs = entry.garmentIds.map(id => garments.find(g => g.id === id)).filter(Boolean);
+                            const wornGs = entry.garmentIds.map(id => garmentMap.get(id)).filter(Boolean);
                             return (
                               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
                                 {wornGs.map(g => {
@@ -2496,7 +2500,7 @@ export default function WeekPlanner() {
               loggedAt: new Date().toISOString(),
             });
             // Feed style learning — resolve garment objects from IDs
-            const wornG = garmentIds.map(id => garments.find(g => g.id === id)).filter(Boolean);
+            const wornG = garmentIds.map(id => garmentMap.get(id)).filter(Boolean);
             if (wornG.length > 0) {
               try { useStyleLearnStore.getState().recordWear(wornG); } catch { /* non-fatal */ }
             }
@@ -2530,7 +2534,7 @@ export default function WeekPlanner() {
             });
             // Feed style learning for worn garments
             if (garmentIds?.length > 0) {
-              const wornG = garmentIds.map(id => garments.find(g => g.id === id)).filter(Boolean);
+              const wornG = garmentIds.map(id => garmentMap.get(id)).filter(Boolean);
               if (wornG.length > 0) {
                 import("../stores/styleLearnStore.js").then(({ useStyleLearnStore }) => {
                   useStyleLearnStore.getState().recordWear(wornG);
