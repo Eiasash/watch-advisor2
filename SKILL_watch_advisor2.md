@@ -29,13 +29,13 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 3638 tests, 205 files (Vitest) |
-| Version | **1.13.20** |
+| Tests | 3639 tests, 204 files (Vitest) |
+| Version | **1.13.30** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-05-05 R5 (stress + accumulated-usage hunt). Real lost-update race fixed in `src/services/localCache.js` `setCachedState` and `src/services/persistence/settingsPersistence.js` `patchBlob` — both did `db.get → merge → db.put` across three microtasks, so two concurrent callers (e.g. WeekPlanner persisting outfit overrides at the same tick travelStore persists trips) could each read the same `existing`, merge their own field, and the second write would silently drop the first caller's update. Reproducible. Fix: wrapped both in `db.transaction(STORE, "readwrite")` so IDB's per-store serialization queues operations atomically. New file `tests/stressSimulation.test.js` (17 tests) exercises stress dimensions: 50 concurrent persistence writes to distinct fields all survive; 4 interleaved overlapping-field writes preserve all; cache key under 10× (1000) and 100× (10000) wardrobe stays under 200 chars; 100 cache-key calls in <50ms (no quadratic); collision rate across 200 distinct wardrobes = 0; resolveGarmentSlots against 1000-item wardrobe in <20ms; 10000 normalizeAiName calls in <100ms; adversarial input (100k chars, all-quote, all-punctuation) doesn't crash; 1000 sequential AbortController churn = 0 leaks; rapid double-tap mid-flight = only latest aborter survives. Tests updated for the new tx code path: `localCache.test.js`, `localCacheEdge.test.js`, `settingsPersistence.test.js` (asserts on resulting store state instead of pre-tx call signature), `clearCachedState.test.js` (added get/put to mock store stubs). 196 files / 3523 tests → 197 files / 3540 tests, all green. Bumped 1.13.3 → 1.13.4 patch. |
+| Last audited | 2026-05-09. 3,639/204 all green. Site health: garments=114, history=73, orphaned=0, model=claude-sonnet-4-6. May token cost so far $1.95 (455K input / 39K output). v1.13.21–1.13.30: a11y aria-labels, net timeout hardening, claude-client default maxAttempts=1+8.5s timeout+dedup wardrobe-chat tools, critical race fixes+bulk-photo+push-unsubscribe, defensive batch tab a11y+prompt-injection guards, wardrobe-chat security caps, perf passes (garmentMap/watchMap StatsPanel/WeekPlanner/OutfitHistory/WeeklyDigest), lazy-load DebugConsole. |
 | Active model | `claude-sonnet-4-6` |
-| April token cost | $12.63 (2.85M input / 272K output — Apr 30 snapshot) |
+| May 2026 token cost | $1.95 (455K input / 39K output — 2026-05-09 snapshot) |
 | Current scoring weights (live, from skill-snapshot) | rotationFactor=0.40, repetitionPenalty=-0.28, neverWornRotationPressure=0.50, neverWornRecencyScore=0.50, colorMatch=2.5, formalityMatch=3, watchCompatibility=3, weatherLayer=1, contextFormality=0.5, diversityFactor=-0.12, seasonMatch=0.3, contextMatch=0.1 — auto-heal has not yet written any tunes (`tuned: []`) |
 | Wardrobe skill | SKILL_wardrobe_v10.md |
 
@@ -133,7 +133,7 @@ netlify/functions/
   push-brief.js           — scheduled daily outfit brief (cron, no CORS)
   push-no-wear.js         — push if no wear logged in 7 days (cron, no CORS)
   supabase-keepalive.js   — Supabase ping every 5 days (cron, no CORS)
-  skill-snapshot.js       — live app state endpoint (GET, no auth required)
+  skill-snapshot.js       — live app state endpoint (GET, **requires Bearer auth** — `requireUser()` gated)
   generate-embedding.js   — OpenAI embedding generation
 .github/workflows/
   weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
@@ -347,7 +347,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.20**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.30**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
