@@ -184,7 +184,9 @@ describe("callClaude", () => {
     expect(opts.headers["content-type"]).toBe("application/json");
   });
 
-  it("retries on 529 and succeeds on second attempt", async () => {
+  // Default maxAttempts is 1 (no retry) — Netlify free tier 10s ceiling.
+  // Retry behavior is opt-in via { maxAttempts: 2-3 }.
+  it("retries on 529 and succeeds on second attempt (maxAttempts: 3)", async () => {
     const mockResponse = { id: "msg_ok", content: [{ text: "ok" }] };
     fetch
       .mockResolvedValueOnce({
@@ -199,12 +201,12 @@ describe("callClaude", () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-    const result = await callClaude("test-key", {});
+    const result = await callClaude("test-key", {}, { maxAttempts: 3 });
     expect(result).toEqual(mockResponse);
     expect(fetch).toHaveBeenCalledTimes(2);
   }, 10000);
 
-  it("retries on 503 and succeeds on second attempt", async () => {
+  it("retries on 503 and succeeds on second attempt (maxAttempts: 3)", async () => {
     const mockResponse = { id: "msg_ok2", content: [{ text: "ok" }] };
     fetch
       .mockResolvedValueOnce({
@@ -219,12 +221,12 @@ describe("callClaude", () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-    const result = await callClaude("test-key", {});
+    const result = await callClaude("test-key", {}, { maxAttempts: 3 });
     expect(result).toEqual(mockResponse);
     expect(fetch).toHaveBeenCalledTimes(2);
   }, 10000);
 
-  it("max 3 attempts then throws on final 529", async () => {
+  it("max 3 attempts then throws on final 529 (maxAttempts: 3)", async () => {
     fetch.mockResolvedValue({
       ok: false,
       status: 529,
@@ -233,7 +235,19 @@ describe("callClaude", () => {
     });
 
     // 3rd attempt: attempt=2, MAX-1=2 → condition false → falls to !res.ok → throws
-    await expect(callClaude("test-key", {})).rejects.toThrow("Claude API error: 529");
+    await expect(callClaude("test-key", {}, { maxAttempts: 3 })).rejects.toThrow("Claude API error: 529");
     expect(fetch).toHaveBeenCalledTimes(3);
   }, 30000);
+
+  it("default (maxAttempts: 1): no retry on 529, throws immediately", async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      status: 529,
+      headers: { get: () => null },
+      text: () => Promise.resolve("overloaded"),
+    });
+
+    await expect(callClaude("test-key", {})).rejects.toThrow("Claude API error: 529");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
 });

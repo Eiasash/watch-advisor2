@@ -346,11 +346,13 @@ Be specific, opinionated, and brief. Use actual garment names and IDs. Don't hed
         { role: "assistant", content: firstResult.content },
         { role: "user",     content: toolResults },
       ];
+      // Drop tools on the second turn — we're just narrating the result of the
+      // already-executed tool call. Re-sending the ~2KB TOOLS array wastes input
+      // tokens and Claude won't (and shouldn't) call another tool here.
       const secondResult = await callClaude(apiKey, {
         model,
         max_tokens: 600,
         system: systemPrompt,
-        tools: TOOLS,
         messages: followUp,
       }, { maxAttempts: 1 });
       const responseText = extractText(secondResult, "Done.");

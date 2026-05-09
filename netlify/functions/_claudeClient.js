@@ -45,17 +45,23 @@ export function _resetModelCache() { _cachedModel = null; }
 
 /**
  * Shared Claude API client with exponential backoff retry.
- * Handles 529 (overloaded) and 503 with Retry-After header.
+ * Handles 529 (overloaded) and 503.
  *
  * @param {string} apiKey
  * @param {object} payload  - Anthropic messages API payload
  * @param {object} [opts]
- * @param {number} [opts.maxAttempts=3] - Reduce to 1 for time-critical functions (Vision)
+ * @param {number} [opts.maxAttempts=1] - Default 1 (no retry) — Netlify free tier has 10s hard limit. Pass 2-3 only when caller can tolerate longer waits.
  * @param {number} [opts.maxDelayMs=8000] - Cap retry delay; Netlify free tier = 10s hard limit
- * @param {AbortSignal} [opts.signal]   - Optional abort signal for caller-controlled timeout
+ * @param {AbortSignal} [opts.signal]   - Optional abort signal. Defaults to AbortSignal.timeout(8500) to bound each call below Netlify's 10s ceiling.
  */
 export async function callClaude(apiKey, payload, opts = {}) {
-  const { maxAttempts = 3, maxDelayMs = 8000, signal } = opts;
+  const { maxAttempts = 1, maxDelayMs = 8000, signal: callerSignal } = opts;
+  // Default per-call timeout for the no-retry path: cap below Netlify 10s ceiling
+  // so we time out before the function does. Without this, dead Claude sockets
+  // consume the full 10s budget and the function returns 502 with no body.
+  // Callers opting into retries (maxAttempts > 1) get no default timeout —
+  // they've explicitly accepted longer waits; Netlify's 10s ceiling is the backstop.
+  const signal = callerSignal ?? (maxAttempts === 1 ? AbortSignal.timeout(8500) : null);
   let lastErr;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (signal?.aborted) throw new Error("Claude API: aborted");
@@ -77,11 +83,9 @@ export async function callClaude(apiKey, payload, opts = {}) {
       signal,
     });
     if ((res.status === 529 || res.status === 503) && attempt < maxAttempts - 1) {
-      const ra = res.headers.get("retry-after");
-      if (ra) {
-        const raDelay = Math.min(parseInt(ra, 10) * 1000, maxDelayMs);
-        await new Promise(r => setTimeout(r, raDelay));
-      }
+      // Retry-After header was previously honored with an explicit sleep here,
+      // but combined with the formula-sleep at the top of the next iteration it
+      // could blow past Netlify's 10s ceiling. Use formula sleep only.
       lastErr = new Error(`Claude ${res.status} (attempt ${attempt + 1})`);
       continue;
     }
