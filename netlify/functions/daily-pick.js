@@ -3,9 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
 import { requireUser } from "./_auth.js";
 
-// Exported for unit testing — see tests/dailyPickPersonalization.test.js
-// and tests/dailyPickCache.test.js
-export { categorizeGarments, computeCacheKey, cacheTtlMs };
+// Exported for unit testing — see tests/dailyPickPersonalization.test.js,
+// tests/dailyPickCache.test.js, tests/dailyPickPromptDiversity.test.js
+export { categorizeGarments, computeCacheKey, cacheTtlMs, buildUserPrompt };
 
 /**
  * Latency / observability helper (PR #147 — critique #10).
@@ -301,6 +301,7 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
     : "";
 
   let excludeBlock = "";
+  let colorRotationBlock = "";
   if (Array.isArray(excludeRecent) && excludeRecent.length) {
     const lines = excludeRecent.slice(0, 6).map((p, i) => {
       if (typeof p === "string") return `  ${i + 1}. ${p}`;
@@ -309,6 +310,48 @@ function buildUserPrompt({ todayStr, weather, garmentList, garments, recentWatch
       return `  ${i + 1}. ${w} + ${top} + ${p.pants ?? "?"} + ${p.shoes ?? "?"}`;
     }).join("\n");
     excludeBlock = `\nDO NOT REPEAT these recent suggestions — pick something genuinely different:\n${lines}\n`;
+
+    // v1.13.43 — DIVERSITY ENFORCEMENT (root cause: 2026-05-10 stuck-loop bug).
+    //
+    // Without this block, "Try another"/"Different one" sees Claude swap one
+    // newly-added cobalt-blue shirt for the OTHER newly-added cobalt-blue shirt
+    // and consider that "different" — different garment id, same perceived look.
+    // The user's frustration is "all the buttons do nothing"; the AI is
+    // technically obeying the exclude, but the NEWLY ADDED + color-match-to-dial
+    // pressure traps it in one color family.
+    //
+    // Fix: when ≥2 recent picks share a shirt color, surface the over-used
+    // colors explicitly and instruct Claude that variety beats freshness on
+    // this turn. Only kicks in once a stuck pattern is observable, so normal
+    // first-time picks are unaffected.
+    if (excludeRecent.length >= 2 && Array.isArray(garments) && garments.length) {
+      // Build name + id lookup once. Keys are lowercased+trimmed. We accept
+      // either the AI's chosen id or its name (compactPickForExclude sends
+      // whatever the AI returned, which can be either form).
+      const colorByRef = new Map();
+      for (const g of garments) {
+        if (!g) continue;
+        const c = (g.color ?? "").toString().toLowerCase().trim();
+        if (!c) continue;
+        if (g.id) colorByRef.set(String(g.id).toLowerCase().trim(), c);
+        if (g.name) colorByRef.set(String(g.name).toLowerCase().trim(), c);
+      }
+      const shirtColorCounts = new Map();
+      for (const p of excludeRecent.slice(0, 6)) {
+        if (!p || typeof p !== "object") continue;
+        const ref = (p.shirt ?? p.sweater ?? "").toString().toLowerCase().trim();
+        if (!ref) continue;
+        const color = colorByRef.get(ref);
+        if (!color) continue;
+        shirtColorCounts.set(color, (shirtColorCounts.get(color) ?? 0) + 1);
+      }
+      const overUsedColors = [...shirtColorCounts.entries()]
+        .filter(([_c, n]) => n >= 2)
+        .map(([c]) => c);
+      if (overUsedColors.length) {
+        colorRotationBlock = `\nDIVERSITY ENFORCEMENT — these shirt color(s) appeared in multiple recent picks: ${overUsedColors.join(", ")}. The user has cycled through them and perceives them as "the same shirt." Pick a SHIRT WITH A DIFFERENT COLOR FAMILY this turn. Variety beats freshness here — even if a NEWLY ADDED option matches one of these colors, prefer a different-color shirt (newly added or not). This single instruction overrides the "strongly prefer NEWLY ADDED" preference for the shirt slot only on this turn.\n`;
+      }
+    }
   }
 
   let rejectedBlock = "";
@@ -432,7 +475,7 @@ Your job is to pick the OUTFIT (clothes + strap choice from the available straps
 
   return `DATE: ${todayStr}
 WEATHER: Current ${weather.tempC}°C. Morning: ${weather.tempMorning ?? "?"}°C, Midday: ${weather.tempMidday ?? "?"}°C, Evening: ${weather.tempEvening ?? "?"}°C. ${weather.description ?? ""}
-${steerLine}${pinnedWatchBlock}${pinnedSlotsBlock}${availableWatchesBlock}${excludeBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
+${steerLine}${pinnedWatchBlock}${pinnedSlotsBlock}${availableWatchesBlock}${excludeBlock}${colorRotationBlock}${rejectedBlock}${correctionsBlock}${recentRejectionsBlock}${personalizationBlock}
 RECENT WATCHES WORN (avoid repeats):
 ${recentWatches || "No recent data"}
 
