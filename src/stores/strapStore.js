@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
+import { canonicalizeActiveStraps } from "../data/strapAliases.js";
 import { setCachedState } from "../services/localCache.js";
 
 function buildInitialStraps() {
@@ -155,9 +156,12 @@ export const useStrapStore = create((set, get) => ({
 
   hydrate: (saved) => {
     if (!saved) return;
+    // Normalize legacy strap IDs (e.g., rikka-titanium-bracelet → rikka-bracelet)
+    // so user IDB caches that pre-date the v1.13.40 rename resolve correctly.
+    const canonicalActive = canonicalizeActiveStraps(saved.activeStrap);
     set(s => ({
       straps: { ...s.straps, ...saved.straps },
-      activeStrap: { ...s.activeStrap, ...saved.activeStrap },
+      activeStrap: { ...s.activeStrap, ...canonicalActive },
     }));
   },
 

@@ -39,7 +39,7 @@ describe("strapStore", () => {
 
   it("sets first strap as active for each watch", () => {
     const state = useStrapStore.getState();
-    expect(state.activeStrap["snowflake"]).toBe("snowflake-grey-alligator");
+    expect(state.activeStrap["snowflake"]).toBe("snowflake-titanium-bracelet");
   });
 
   // ─── setActiveStrap ──────────────────────────────────────────────────────
@@ -96,8 +96,8 @@ describe("strapStore", () => {
   it("deleteStrap resets active to fallback when deleting active strap", () => {
     useStrapStore.getState().setActiveStrap("snowflake", "snowflake-navy-alligator");
     useStrapStore.getState().deleteStrap("snowflake-navy-alligator");
-    // Should fall back to the other strap
-    expect(useStrapStore.getState().activeStrap["snowflake"]).toBe("snowflake-grey-alligator");
+    // Should fall back to the first remaining Snowflake strap (titanium bracelet — current default)
+    expect(useStrapStore.getState().activeStrap["snowflake"]).toBe("snowflake-titanium-bracelet");
   });
 
   it("deleteStrap sets active to null when no fallback exists", () => {
@@ -112,7 +112,7 @@ describe("strapStore", () => {
   it("getActiveStrapObj returns current active strap object", () => {
     const strap = useStrapStore.getState().getActiveStrapObj("snowflake");
     expect(strap).not.toBeNull();
-    expect(strap.id).toBe("snowflake-grey-alligator");
+    expect(strap.id).toBe("snowflake-titanium-bracelet");
   });
 
   it("getActiveStrapObj returns null for unknown watch", () => {
