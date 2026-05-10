@@ -61,7 +61,7 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: accent, marginBottom: 3, textTransform: "uppercase" }}>{label}</div>
           <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.2, color: isDark ? "#e2e8f0" : "#1f2937" }}>{watch.model}</div>
           <div style={{ fontSize: 13, color: "#8b93a7", marginTop: 2 }}>{watch.brand} &middot; {watch.ref}</div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>
+          <div style={{ fontSize: 12, color: isDark ? "#9ca3af" : "#6b7280", marginTop: 3 }}>
             {watch.dualDial
               ? <>{watch.dualDial.sideA} / {watch.dualDial.sideB} dial &middot; </>
               : <>{watch.dial} dial &middot; </>
@@ -145,7 +145,7 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
         )}
         <div style={{ padding: "6px 10px 8px", display: "flex", alignItems: "flex-start", gap: 4 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>
+            <div style={{ fontSize: 10, color: isDark ? "#9ca3af" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>
               {slot}{isOverridden ? " ✎" : ""}
             </div>
             {garment ? (
@@ -184,7 +184,7 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
             )}
           </div>
           {candidates.length > 0 && (
-            <span style={{ fontSize: 10, color: "#6b7280", flexShrink: 0, marginTop: 2 }}>{open ? "▲" : "▼"}</span>
+            <span style={{ fontSize: 10, color: isDark ? "#9ca3af" : "#6b7280", flexShrink: 0, marginTop: 2 }}>{open ? "▲" : "▼"}</span>
           )}
         </div>
       </div>
@@ -253,7 +253,7 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
             );
           })}
           {candidates.length === 0 && (
-            <div style={{ padding: "10px 12px", color: "#6b7280", fontSize: 11, fontStyle: "italic" }}>No other options</div>
+            <div style={{ padding: "10px 12px", color: isDark ? "#9ca3af" : "#6b7280", fontSize: 11, fontStyle: "italic" }}>No other options</div>
           )}
         </div>
       )}
@@ -566,7 +566,7 @@ export default function WatchDashboard() {
       </div>
 
       {!selectedWatch && (
-        <div style={{ color: "#6b7280", fontSize: 14 }}>No watches available.</div>
+        <div style={{ color: isDark ? "#9ca3af" : "#6b7280", fontSize: 14 }}>No watches available.</div>
       )}
 
       {selectedWatch && (
@@ -678,7 +678,7 @@ export default function WatchDashboard() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: 13, color: isDark ? "#9ca3af" : "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Outfit built around this watch
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -745,7 +745,7 @@ export default function WatchDashboard() {
                 {[...removedSlots].map(s => (
                   <button key={s} onClick={() => setRemovedSlots(prev => { const n = new Set(prev); n.delete(s); return n; })}
                     style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6,
-                      border: "1px dashed #6b7280", background: "transparent", color: "#6b7280", cursor: "pointer" }}>
+                      border: "1px dashed #6b7280", background: "transparent", color: isDark ? "#9ca3af" : "#6b7280", cursor: "pointer" }}>
                     + Restore {s}
                   </button>
                 ))}

@@ -928,7 +928,7 @@ function OnCallCalendar({ onCallDates, onToggle, isDark }) {
 
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:2, marginBottom:4 }}>
         {["Mo","Tu","We","Th","Fr","Sa","Su"].map(d => (
-          <div key={d} style={{ textAlign:"center", fontSize:10, fontWeight:700, color:"#6b7280", padding:"2px 0" }}>{d}</div>
+          <div key={d} style={{ textAlign:"center", fontSize:10, fontWeight:700, color:isDark?"#9ca3af":"#6b7280", padding:"2px 0" }}>{d}</div>
         ))}
         {grid.map((d, i) => {
           if (!d) return <div key={i} />;
