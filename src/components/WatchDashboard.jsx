@@ -180,7 +180,7 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
                 )}
               </>
             ) : (
-              <div style={{ fontSize: 11, color: "#4b5563", fontStyle: "italic" }}>Empty</div>
+              <div style={{ fontSize: 11, color: isDark ? "#9ca3af" : "#6b7280", fontStyle: "italic" }}>Empty</div>
             )}
           </div>
           {candidates.length > 0 && (
@@ -689,7 +689,7 @@ export default function WatchDashboard() {
                   fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
                   border: `1px solid ${shuffleSeed > 0 ? "#6366f1" : (isDark ? "#2b3140" : "#d1d5db")}`,
                   background: shuffleSeed > 0 ? "#6366f122" : "transparent",
-                  color: shuffleSeed > 0 ? "#818cf8" : (isDark ? "#6b7280" : "#9ca3af"),
+                  color: shuffleSeed > 0 ? "#818cf8" : (isDark ? "#9ca3af" : "#6b7280"),
                   fontWeight: 600,
                 }}
               >
@@ -838,7 +838,7 @@ export default function WatchDashboard() {
             style={{
               width: "100%", marginBottom: 12, padding: "10px 0", borderRadius: 8,
               border: "none",
-              background: outfitLogged ? "#166534" : "#22c55e",
+              background: outfitLogged ? "#14532d" : "#15803d",
               color: "#fff",
               fontSize: 13, fontWeight: 700, cursor: outfitLogged ? "default" : "pointer",
               transition: "background 0.3s",
@@ -871,7 +871,7 @@ export default function WatchDashboard() {
                   {strapRec.recommended.label}
                 </span>
                 {strapRec.alternatives?.length > 0 && (
-                  <span style={{ color: isDark ? "#6b7280" : "#9ca3af", marginLeft: 6, fontSize: 11 }}>
+                  <span style={{ color: isDark ? "#9ca3af" : "#6b7280", marginLeft: 6, fontSize: 11 }}>
                     · also: {strapRec.alternatives[0].label}
                   </span>
                 )}
@@ -881,7 +881,7 @@ export default function WatchDashboard() {
 
           {/* Skip — compact inline */}
           <button onClick={() => setShowRejectModal(true)}
-          style={{ fontSize:11, color:isDark?"#4b5563":"#9ca3af", background:"none", border:"none",
+          style={{ fontSize:11, color:isDark?"#9ca3af":"#6b7280", background:"none", border:"none",
                    cursor:"pointer", width:"100%", padding:"4px 0", textAlign:"center", marginBottom: 4 }}>
             ✕ Skip this outfit
           </button>
@@ -936,7 +936,7 @@ export default function WatchDashboard() {
               display: "block", width: "100%", textAlign: "center",
               padding: "8px", marginTop: 8, borderRadius: 8,
               border: "none", background: "transparent",
-              color: isDark ? "#6b7280" : "#9ca3af", fontSize: 12, cursor: "pointer",
+              color: isDark ? "#9ca3af" : "#6b7280", fontSize: 12, cursor: "pointer",
             }}>Just shuffle (no reason)</button>
           </div>
         </div>

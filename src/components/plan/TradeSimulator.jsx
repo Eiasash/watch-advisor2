@@ -25,7 +25,7 @@ export default function TradeSimulator() {
   const card = isDark ? "#161b22" : "#fff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
   const accent = "#f59e0b";
 
   const active = watches.filter(w => isActiveWatch(w) && !w.replica);

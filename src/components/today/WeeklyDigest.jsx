@@ -67,7 +67,7 @@ export default function WeeklyDigest() {
   const card = isDark ? "#161b22" : "#f0fdf4";
   const border = isDark ? "#16a34a30" : "#bbf7d040";
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
   const accent = "#22c55e";
 
   return (

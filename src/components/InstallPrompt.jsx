@@ -73,7 +73,7 @@ export default function InstallPrompt({ isDark }) {
         }}>Later</button>
         <button onClick={install} style={{
           padding: "7px 14px", borderRadius: 8, border: "none",
-          background: "#3b82f6", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer",
+          background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer",
         }}>Install</button>
       </div>
     </div>

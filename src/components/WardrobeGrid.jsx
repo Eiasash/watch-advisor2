@@ -198,15 +198,15 @@ const Cell = React.memo(function Cell({ columnIndex, rowIndex, style, data }) {
           }}>{item.name}</div>
 
           <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:2 }}>
-            <span style={{ fontSize:10, color:isDark?"#6b7280":"#9ca3af" }}>{item.type}</span>
+            <span style={{ fontSize:10, color:isDark?"#9ca3af":"#6b7280" }}>{item.type}</span>
             {item.color && (
               <>
-                <span style={{ fontSize:10, color:"#4b5563" }}>·</span>
+                <span style={{ fontSize:10, color:isDark?"#9ca3af":"#6b7280" }}>·</span>
                 <span style={{
                   display:"inline-block", width:9, height:9, borderRadius:"50%",
                   background:swatch, border:"1px solid #374151", flexShrink:0,
                 }} />
-                <span style={{ fontSize:10, color:isDark?"#6b7280":"#9ca3af" }}>{item.color}</span>
+                <span style={{ fontSize:10, color:isDark?"#9ca3af":"#6b7280" }}>{item.color}</span>
               </>
             )}
           </div>
@@ -584,7 +584,7 @@ export default function WardrobeGrid() {
       {/* Grid */}
       <div ref={containerRef}>
         {filtered.length === 0 ? (
-          <div style={{ color:"#4b5563", fontSize:14, padding:"24px 0", textAlign:"center" }}>
+          <div style={{ color:isDark?"#9ca3af":"#6b7280", fontSize:14, padding:"24px 0", textAlign:"center" }}>
             {allItems.length === 0 ? "No garments yet — import photos to start." : "No items in this filter."}
           </div>
         ) : (

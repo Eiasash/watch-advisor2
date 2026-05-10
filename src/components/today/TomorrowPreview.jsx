@@ -11,7 +11,7 @@ import { useThemeStore } from "../../stores/themeStore.js";
 export default function TomorrowPreview({ preview }) {
   const { mode } = useThemeStore();
   const isDark   = mode === "dark";
-  const muted    = isDark ? "#6b7280" : "#9ca3af";
+  const muted    = isDark ? "#9ca3af" : "#6b7280";
   const text     = isDark ? "#e2e8f0" : "#1f2937";
 
   if (!preview) return null;

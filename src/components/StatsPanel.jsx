@@ -28,7 +28,7 @@ function colorOf(c) { return COLOR_SWATCH[c?.toLowerCase()] ?? "#6b7280"; }
 function BarRow({ label, count, max, color, isDark, emoji }) {
   const pct = max > 0 ? (count / max) * 100 : 0;
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
       <div style={{ width: 100, fontSize: 12, color: text, fontWeight: 600, flexShrink: 0, display: "flex", gap: 5, alignItems: "center" }}>
@@ -48,7 +48,7 @@ function BarRow({ label, count, max, color, isDark, emoji }) {
 function Section({ title, children, isDark }) {
   const card   = isDark ? "#171a21" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
-  const muted  = isDark ? "#6b7280" : "#9ca3af";
+  const muted  = isDark ? "#9ca3af" : "#6b7280";
   return (
     <div style={{ background: card, borderRadius: 16, border: `1px solid ${border}`, padding: 18, marginBottom: 16 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: muted, textTransform: "uppercase",
@@ -110,7 +110,7 @@ export default function StatsPanel() {
 
   const bg   = isDark ? "#101114" : "#f9fafb";
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
   const card  = isDark ? "#171a21" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
 
@@ -417,7 +417,7 @@ export default function StatsPanel() {
                         <div style={{ width: "100%", aspectRatio: "3/4", display: "flex", alignItems: "center",
                                       justifyContent: "center", background: isDark ? "#0f131a" : "#f3f4f6", fontSize: 20 }}>👕</div>
                       )}
-                      <div style={{ position: "absolute", top: 4, right: 4, background: "#3b82f6", color: "#fff",
+                      <div style={{ position: "absolute", top: 4, right: 4, background: "#2563eb", color: "#fff",
                                     borderRadius: 20, fontSize: 10, fontWeight: 700, padding: "1px 5px" }}>{n}×</div>
                     </div>
                     <div style={{ fontSize: 9, color: muted, lineHeight: 1.3 }}>{g.name?.slice(0,14)}</div>

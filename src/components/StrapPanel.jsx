@@ -46,7 +46,7 @@ function StrapModal({ initial = {}, onSave, onClose, isDark }) {
           </select>
 
           <div>
-            <div style={{ fontSize: 11, color: isDark ? "#6b7280" : "#9ca3af", marginBottom: 6, fontWeight: 600 }}>COLOR</div>
+            <div style={{ fontSize: 11, color: isDark ? "#9ca3af" : "#6b7280", marginBottom: 6, fontWeight: 600 }}>COLOR</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {COLORS.map(c => (
                 <div key={c} onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -70,7 +70,7 @@ function StrapModal({ initial = {}, onSave, onClose, isDark }) {
             fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
           <button onClick={() => form.label.trim() && onSave(form)}
             style={{ flex: 2, padding: "9px 0", borderRadius: 8, border: "none",
-            background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            background: "#2563eb", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             {initial.id ? "Save Changes" : "Add Strap"}
           </button>
         </div>
@@ -128,7 +128,7 @@ function StrapCard({ strap, isActive, onSelect, onPhoto, onWristShot, onEdit, on
                     textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>
         {strap.type}
       </div>
-      <div style={{ fontSize: 10, color: isDark ? "#6b7280" : "#9ca3af", lineHeight: 1.35 }}>
+      <div style={{ fontSize: 10, color: isDark ? "#9ca3af" : "#6b7280", lineHeight: 1.35 }}>
         {strap.useCase}
       </div>
 
@@ -296,7 +296,7 @@ Return ONLY valid JSON:
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${border}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: isDark ? "#6b7280" : "#9ca3af",
+        <div style={{ fontSize: 13, fontWeight: 600, color: isDark ? "#9ca3af" : "#6b7280",
                       textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Straps — {watchStraps.length}
         </div>
@@ -309,7 +309,7 @@ Return ONLY valid JSON:
             </button>
           )}
           <button onClick={() => setModal({ mode: "add" })}
-            style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: "#3b82f6",
+            style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: "#2563eb",
                      color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
             + Add strap
           </button>

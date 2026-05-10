@@ -120,7 +120,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
   const border = isDark ? "#2b3140" : "#d1d5db";
   const cardBg = isDark ? "#0f131a" : "#f3f4f6";
   const textColor = isDark ? "#e2e8f0" : "#1f2937";
-  const mutedColor = isDark ? "#6b7280" : "#6b7280";
+  const mutedColor = isDark ? "#9ca3af" : "#6b7280";
 
   return (
     <div style={{
@@ -144,7 +144,7 @@ export default function SettingsPanel({ onClose, scrollTo }) {
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: pushStatus === "subscribed" ? 8 : 0 }}>
             <div>
               <div style={{ fontSize:13, fontWeight:600 }}>Daily push notification</div>
-              <div style={{ fontSize:11, color: isDark ? "#6b7280" : "#9ca3af", marginTop:2 }}>
+              <div style={{ fontSize:11, color: isDark ? "#9ca3af" : "#6b7280", marginTop:2 }}>
                 {pushStatus === "subscribed" && "\u2713 Active \u2014 6:30am daily"}
                 {pushStatus === "unsubscribed" && "Watch + outfit pick sent at 6:30am"}
                 {pushStatus === "denied" && "\u26a0 Permission blocked \u2014 check browser settings"}
@@ -340,7 +340,7 @@ function Section({ title, isDark, children }) {
     }}>
       <div style={{
         fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
-        color: isDark ? "#6b7280" : "#9ca3af", marginBottom: 10,
+        color: isDark ? "#9ca3af" : "#6b7280", marginBottom: 10,
       }}>{title}</div>
       {children}
     </div>
