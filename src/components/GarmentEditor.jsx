@@ -95,11 +95,11 @@ function canonicalType(t) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function Section({ label, children }) {
+function Section({ label, children, isDark }) {
   return (
     <div style={{ marginBottom:14 }}>
       <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.08em",
-                    textTransform:"uppercase", color:"#6b7280", marginBottom:6 }}>
+                    textTransform:"uppercase", color:isDark?"#9ca3af":"#6b7280", marginBottom:6 }}>
         {label}
       </div>
       {children}
@@ -543,7 +543,7 @@ export default function GarmentEditor({ garment, onClose }) {
           )}
 
           {/* Name */}
-          <Section label="Name">
+          <Section isDark={isDark} label="Name">
             <div style={{ position:"relative" }}>
               <input
                 value={name}
@@ -573,7 +573,7 @@ export default function GarmentEditor({ garment, onClose }) {
           </Section>
 
           {/* Type */}
-          <Section label="Type">
+          <Section isDark={isDark} label="Type">
             {TYPE_GROUPS.map(group => (
               <div key={group.label} style={{ marginBottom:8 }}>
                 <div style={{ fontSize:9, fontWeight:700, color:sub, letterSpacing:"0.06em",
@@ -597,7 +597,7 @@ export default function GarmentEditor({ garment, onClose }) {
           </Section>
 
           {/* Primary color */}
-          <Section label="Primary Color">
+          <Section isDark={isDark} label="Primary Color">
             <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:6 }}>
               {COLOR_PALETTE.map(c => (
                 <ColorSwatch key={c.name} c={c} selected={color === c.name} onClick={setColor} />
@@ -633,7 +633,7 @@ export default function GarmentEditor({ garment, onClose }) {
           </Section>
 
           {/* Accent color */}
-          <Section label="Accent / Secondary Color (optional)">
+          <Section isDark={isDark} label="Accent / Secondary Color (optional)">
             <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:6 }}>
               <button onClick={() => setColor2("")} style={{
                 width:28, height:28, borderRadius:6, border:`1px solid ${border}`,
@@ -648,7 +648,7 @@ export default function GarmentEditor({ garment, onClose }) {
           </Section>
 
           {/* Material */}
-          <Section label="Material / Fabric">
+          <Section isDark={isDark} label="Material / Fabric">
             <ChipPicker
               options={["wool","cotton","linen","denim","leather","suede","synthetic","cashmere","knit","corduroy","tweed","flannel","canvas","rubber","mesh"]}
               value={material} multi={false} onChange={setMaterial} isDark={isDark}
@@ -657,19 +657,19 @@ export default function GarmentEditor({ garment, onClose }) {
           </Section>
 
           {/* Pattern */}
-          <Section label="Pattern">
+          <Section isDark={isDark} label="Pattern">
             <ChipPicker options={PATTERNS} value={pattern} multi={false} onChange={setPattern} isDark={isDark} />
           </Section>
 
           {/* Weight + Fit — two compact pickers side by side */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-            <Section label="Weight">
+            <Section isDark={isDark} label="Weight">
               <ChipPicker
                 options={["ultralight","light","medium","heavy"]}
                 value={weight} multi={false} onChange={setWeight} isDark={isDark}
               />
             </Section>
-            <Section label="Fit">
+            <Section isDark={isDark} label="Fit">
               <ChipPicker
                 options={["slim","regular","relaxed","oversized"]}
                 value={fit} multi={false} onChange={setFit} isDark={isDark}
@@ -700,17 +700,17 @@ export default function GarmentEditor({ garment, onClose }) {
           </div>
 
           {/* Seasons */}
-          <Section label="Season">
+          <Section isDark={isDark} label="Season">
             <ChipPicker options={SEASONS} value={seasons} multi={true} onChange={setSeasons} isDark={isDark} />
           </Section>
 
           {/* Contexts */}
-          <Section label="Best For">
+          <Section isDark={isDark} label="Best For">
             <ChipPicker options={CONTEXTS} value={contexts} multi={true} onChange={setContexts} isDark={isDark} />
           </Section>
 
           {/* Notes */}
-          <Section label="Notes">
+          <Section isDark={isDark} label="Notes">
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               rows={2} style={{ ...inp, resize:"vertical" }}
               placeholder="Fit, condition, pairing ideas…" />

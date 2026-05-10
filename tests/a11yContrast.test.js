@@ -1,8 +1,9 @@
 /**
- * a11y contrast regression guard — pinned 2026-05-10 in v1.13.41.
+ * a11y contrast regression guard — pinned 2026-05-10 in v1.13.41/42.
  *
  * Live audit on https://watch-advisor2.netlify.app surfaced 24 WCAG 2.1 AA
- * contrast violations. Fixed in PR #197 (claude/term-wa2-a11y-2026-05-10).
+ * contrast violations on first pass. Fixed in PR #197 (24→11) and the v1.13.42
+ * follow-up (11→target 0) — same loop-until-verified pattern as Geri #125.
  *
  * Rules guarded here:
  *   1. Muted-text pattern is `isDark ? "#9ca3af" : "#6b7280"` — NOT the inverted

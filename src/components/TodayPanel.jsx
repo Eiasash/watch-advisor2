@@ -284,7 +284,7 @@ export default function TodayPanel() {
             <button key={c.key ?? "__any"} onClick={() => setContext(c.key)}
               style={{ padding: "11px 14px", borderRadius: 22, border: "none", fontSize: 12, fontWeight: 600,
                        cursor: "pointer", minHeight: 44,
-                       background: context === c.key ? "#3b82f6" : (isDark ? "#1a1f2b" : "#f3f4f6"),
+                       background: context === c.key ? "#2563eb" : (isDark ? "#1a1f2b" : "#f3f4f6"),
                        color: context === c.key ? "#fff" : muted }}>{c.label}</button>
           ))}
         </div>
@@ -468,7 +468,7 @@ export default function TodayPanel() {
               style={{
                 width: 40, height: 36, borderRadius: 8, border: "none", fontSize: 14, fontWeight: 700,
                 cursor: "pointer",
-                background: outfitScore === s ? "#3b82f6" : (isDark ? "#1a1f2b" : "#f3f4f6"),
+                background: outfitScore === s ? "#2563eb" : (isDark ? "#1a1f2b" : "#f3f4f6"),
                 color: outfitScore === s ? "#fff" : muted,
               }}>{s}</button>
           ))}
