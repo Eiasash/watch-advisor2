@@ -29,13 +29,13 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 3639 tests, 204 files (Vitest) |
-| Version | **1.13.30** |
+| Tests | 3686 tests, 210 files (Vitest) |
+| Version | **1.13.40** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-05-09. 3,639/204 all green. Site health: garments=114, history=73, orphaned=0, model=claude-sonnet-4-6. May token cost so far $1.95 (455K input / 39K output). v1.13.21–1.13.30: a11y aria-labels, net timeout hardening, claude-client default maxAttempts=1+8.5s timeout+dedup wardrobe-chat tools, critical race fixes+bulk-photo+push-unsubscribe, defensive batch tab a11y+prompt-injection guards, wardrobe-chat security caps, perf passes (garmentMap/watchMap StatsPanel/WeekPlanner/OutfitHistory/WeeklyDigest), lazy-load DebugConsole. |
+| Last audited | 2026-05-10. 3,686/210 all green. Site health: garments=114, history=73, orphaned=0, model=claude-sonnet-4-6. May token cost so far $2.02 (474K input / 39K output). v1.13.21–1.13.40 highlights: a11y aria-labels, net timeout hardening, claude-client default maxAttempts=1+8.5s timeout+dedup wardrobe-chat tools, critical race fixes+bulk-photo+push-unsubscribe, defensive batch tab a11y+prompt-injection guards, wardrobe-chat security caps, perf passes (garmentMap/watchMap StatsPanel/WeekPlanner/OutfitHistory/WeeklyDigest), lazy-load DebugConsole, 44px touch floor + aria-labels on icon-only buttons, keyboard access for div onClick, closure-stale-read race fixes, auth coverage tests, **v1.13.40: rikka-titanium-bracelet → rikka-bracelet rename + alias map for legacy IDB caches + Supabase migration normalizing 4 cloud history rows; Rikka SS bracelet & Snowflake titanium bracelet both moved to first-slot default**. |
 | Active model | `claude-sonnet-4-6` |
-| May 2026 token cost | $1.95 (455K input / 39K output — 2026-05-09 snapshot) |
+| May 2026 token cost | $2.02 (474K input / 39K output — 2026-05-10 snapshot) |
 | Current scoring weights (live, from skill-snapshot) | rotationFactor=0.40, repetitionPenalty=-0.28, neverWornRotationPressure=0.50, neverWornRecencyScore=0.50, colorMatch=2.5, formalityMatch=3, watchCompatibility=3, weatherLayer=1, contextFormality=0.5, diversityFactor=-0.12, seasonMatch=0.3, contextMatch=0.1 — auto-heal has not yet written any tunes (`tuned: []`) |
 | Wardrobe skill | SKILL_wardrobe_v10.md |
 
@@ -347,7 +347,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.30**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.40**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |
@@ -358,6 +358,8 @@ VALUES (
 | **silver dial** | Not in DIAL_COLOR_MAP. Use `"silver-white"` for light silver dials (matches Snowflake). Adding a "silver" key broke colorMaterialDetection test. |
 | **outfit-photo category trap** | Real garments silently miscategorized as `outfit-photo` (excluded by engine filter) are invisible landmines. Fixed Apr 18: Pavarotti navy suit trousers (14-day hidden from engine), White V-Neck Basic Tee dupe, Tan Textured Knit Pullover orphan. **v1.12.33: auto-heal check #9 `outfit_photo_trap` catches this daily** — dual signal (garment-word in name OR non-phantom id pattern). Flips `healthy: false` when found. Skips `exclude_from_wardrobe=true` rows. |
 | **watch_id canonical form** | Keep one form per watch in history. Apr 18 found `gp-laureato` (1 entry) alongside `laureato` (7) — normalized to `laureato`. When logging wears via SQL, always query existing watch_ids first to match the canonical form. |
+| **Strap ID alias map** | `src/data/strapAliases.js` normalizes legacy strap IDs (e.g., `rikka-titanium-bracelet` → `rikka-bracelet`) at IDB hydrate + cloud-pull boundary. Wired into `strapStore.hydrate` and `bootstrap`. **Never delete an alias entry** — users with stale IDB still need it. To rename a strap: (1) update seed, (2) add alias entry, (3) write Supabase migration normalizing `history.payload->>'strapId'`, (4) test guard `tests/watchSeedLegacyIds.test.js` enforces all three layers. |
+| **Default-strap convention** | First strap in `watch.straps[]` array is the default per `buildInitialStraps()` in strapStore. To change a watch's default, reorder the array — `app_settings.active_straps` will sync on next user write but seed first-slot is the source of truth for new state. v1.13.40: Rikka + Snowflake bracelets moved to first slot per Eias's directive that bracelets are the default for both. |
 | **Pattern rhyme pairing** | Clous de Paris / hobnail dials (Laureato, VC Overseas rep, Ingenieur rep hobnail texture) pair best with small-scale gridded fabrics: Prince of Wales check, glen plaid, nailhead, bird's-eye. The match is structural (grid-on-grid), not color. Documented on the Kiral DB Suit jacket notes for the AI stylist. |
 | **storage.objects anon SELECT required** | Migration `20260422210000` dropped `photos_anon_select` to block bucket enumeration. Side effect: `uploadPhoto({ upsert: true })` and `deleteStoragePhoto()` (both used in `src/services/supabaseStorage.js`) silently broke for anon — upsert returned "new row violates RLS policy", and `.remove()` returned success while affecting zero rows (orphans accumulated). Restored on 2026-05-06 via `20260506050000_restore_photos_anon_select_for_upsert.sql`. **Do NOT drop this policy again** without first refactoring uploadPhoto + deleteStoragePhoto to never depend on UPSERT or row-level DELETE. |
 | **storage.objects authenticated role policies** | Added 2026-05-06 v1.13.16 (`20260506050100_storage_authenticated_role_email_gated.sql`). When users sign in via Supabase Auth, the supabase-js client switches from `anon` → `authenticated`. Without explicit authenticated-role policies, every photo write from a signed-in browser fails RLS even though the parallel anon policies would allow it. Four policies (SELECT/INSERT/UPDATE/DELETE) gated on `auth.jwt()->>'email'`. Anon policies are kept for graceful sign-out fallback — RLS evaluates per-role so they don't widen each other. |
@@ -427,3 +429,4 @@ timeout 120 node node_modules/.bin/vitest run
 - Never skip `garmentIds` + `payload_version: "v1"` in history
 - Never invoke cron functions via HTTP
 - Never lower SCORE_CEILING without recalibrating
+- Never delete an entry from `STRAP_ID_ALIASES` (`src/data/strapAliases.js`) — users with stale IDB caches still need it. Audit history with the matching SQL in `supabase/migrations/` and confirm zero remaining rows before pruning.
