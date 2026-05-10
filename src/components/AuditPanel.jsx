@@ -465,7 +465,7 @@ export function PhotoVerifierPanel() {
   const bg     = isDark ? "#13161f" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const sub    = isDark ? "#6b7280" : "#9ca3af";
+  const sub    = isDark ? "#9ca3af" : "#6b7280";
   const card   = isDark ? "#0f131a" : "#f9fafb";
   const inputBg = isDark ? "#1a1f2b" : "#ffffff";
 
@@ -657,7 +657,7 @@ export function PhotoVerifierPanel() {
         <button
           onClick={() => issues.forEach(r => applyFix(r.garmentId, r))}
           style={{ padding: "8px 16px", borderRadius: 10, border: "none",
-                   background: "#22c55e", color: "#fff", fontSize: 13, fontWeight: 700,
+                   background: "#15803d", color: "#fff", fontSize: 13, fontWeight: 700,
                    cursor: "pointer", marginBottom: 10, width: "100%" }}>
           Apply All {issues.length} Fixes
         </button>
@@ -767,7 +767,7 @@ export function PhotoVerifierPanel() {
               {/* Action buttons column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
                 <button onClick={() => applyFix(r.garmentId, r)}
-                  style={{ padding: "6px 11px", borderRadius: 8, border: "none", background: "#22c55e",
+                  style={{ padding: "6px 11px", borderRadius: 8, border: "none", background: "#15803d",
                            color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                   ✓ Apply
                 </button>
@@ -1208,7 +1208,7 @@ function SyncAnglesPanel({ isDark }) {
           onClick={handleSync}
           style={{
             padding: "8px 16px", borderRadius: 8, border: "none",
-            background: "#3b82f6", color: "#fff", fontSize: 12,
+            background: "#2563eb", color: "#fff", fontSize: 12,
             fontWeight: 600, cursor: "pointer",
           }}>
           Sync {totalIssues} garment{totalIssues !== 1 ? "s" : ""}
@@ -1414,7 +1414,7 @@ function OrphanedHistoryPatch({ isDark }) {
                 {selected.length > 0 && (
                   <button onClick={() => applyPatch(entry)}
                     style={{ marginTop: 8, width: "100%", padding: "7px 0", borderRadius: 8,
-                             border: "none", background: "#3b82f6", color: "#fff",
+                             border: "none", background: "#2563eb", color: "#fff",
                              fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                     Patch {selected.length} garment{selected.length > 1 ? "s" : ""} → {entry.date}
                   </button>

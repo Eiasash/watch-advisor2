@@ -57,7 +57,7 @@ export default function SyncBar() {
         <span>{config.icon} {config.label}</span>
       )}
       {sync.queued > 0 && (
-        <span style={{ color: isDark ? "#6b7280" : "#9ca3af", marginLeft: 6 }}>
+        <span style={{ color: isDark ? "#9ca3af" : "#6b7280", marginLeft: 6 }}>
           &middot; {sync.queued} queued
         </span>
       )}

@@ -145,7 +145,7 @@ function AppContent() {
             }}>
               <span style={{ flex: 1 }}>Sync failed: {syncError}</span>
               <button onClick={retrySync} style={{
-                background: "#3b82f6", color: "#fff", border: "none",
+                background: "#2563eb", color: "#fff", border: "none",
                 borderRadius: 6, padding: "6px 14px", cursor: "pointer",
                 fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
               }}>Retry sync</button>
@@ -196,7 +196,7 @@ function AppContent() {
                   padding:"11px 16px", borderRadius:10, fontSize:13, fontWeight:700,
                   border:`1px solid ${tab === t.key ? "#3b82f6" : border}`,
                   background: tab === t.key ? "#1d4ed822" : "transparent",
-                  color: tab === t.key ? "#3b82f6" : isDark ? "#8b93a7" : "#6b7280",
+                  color: tab === t.key ? (isDark ? "#60a5fa" : "#1d4ed8") : isDark ? "#8b93a7" : "#6b7280",
                   cursor:"pointer", whiteSpace:"nowrap", minHeight:44,
                 }}>
                 <span className="wa-tab-icon">{t.icon}</span>
@@ -293,7 +293,7 @@ function AppContent() {
           }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>💬 Wardrobe AI</span>
             <button onClick={() => setShowChat(false)} style={{
-              background: "none", border: "none", color: isDark ? "#6b7280" : "#9ca3af",
+              background: "none", border: "none", color: isDark ? "#9ca3af" : "#6b7280",
               fontSize: 22, cursor: "pointer", padding: "4px 8px",
             }}>✕</button>
           </div>

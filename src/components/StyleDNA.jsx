@@ -36,7 +36,7 @@ function Section({ title, icon, children, isDark, defaultOpen = true }) {
         <span style={{ fontSize: 13, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>
           {icon} {title}
         </span>
-        <span style={{ fontSize: 10, color: isDark ? "#6b7280" : "#9ca3af" }}>{open ? "▲" : "▼"}</span>
+        <span style={{ fontSize: 10, color: isDark ? "#9ca3af" : "#6b7280" }}>{open ? "▲" : "▼"}</span>
       </div>
       {open && <div style={{ padding: 14 }}>{children}</div>}
     </div>
@@ -49,7 +49,7 @@ function ProgressBar({ value, max, color, isDark, label, sublabel }) {
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "#e2e8f0" : "#1f2937" }}>{label}</span>
-        <span style={{ fontSize: 10, color: isDark ? "#6b7280" : "#9ca3af" }}>{sublabel}</span>
+        <span style={{ fontSize: 10, color: isDark ? "#9ca3af" : "#6b7280" }}>{sublabel}</span>
       </div>
       <div style={{ height: 8, borderRadius: 4, background: isDark ? "#1a1f2b" : "#e5e7eb", overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: color, transition: "width 0.4s" }} />
@@ -68,7 +68,7 @@ export default function StyleDNA() {
   const rejectEntries = useRejectStore(s => s.entries) ?? [];
 
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
 
   const dna = useMemo(() => buildStyleDNA(history, garments, watches), [history, garments, watches]);
   const rejProfile = useMemo(() => buildRejectionProfile(rejectEntries), [rejectEntries]);

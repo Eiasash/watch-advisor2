@@ -27,7 +27,7 @@ export default function OccasionPlanner() {
   const [error,   setError]   = useState(null);
 
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const muted  = isDark ? "#6b7280" : "#9ca3af";
+  const muted  = isDark ? "#9ca3af" : "#6b7280";
   const card   = isDark ? "#171a21" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
 

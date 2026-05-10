@@ -24,8 +24,10 @@ export default function QuickStrapSwap({ watchId, isDark }) {
 
   const border = isDark ? "#2b3140" : "#e5e7eb";
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
-  const accent = "#8b5cf6";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
+  // Theme-aware accent: violet-500 fails AA on light-violet bg in light mode (3.78);
+  // violet-700 (#7c3aed) on light-violet bg = 5.09 PASS. Dark mode keeps brighter shade.
+  const accent = isDark ? "#a78bfa" : "#7c3aed";
 
   return (
     <div style={{ marginBottom: 10 }}>
@@ -105,7 +107,7 @@ export default function QuickStrapSwap({ watchId, isDark }) {
               setAddForm({ label: '', color: '', type: 'leather', useCase: '' });
               setShowAdd(false);
             }} style={{ flex: 1, fontSize: 11, padding: '5px', borderRadius: 6,
-              border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+              border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Save</button>
             <button onClick={() => setShowAdd(false)}
               style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6,
                 border: `1px solid ${border}`, background: 'transparent', color: muted, cursor: 'pointer' }}>Cancel</button>

@@ -11,7 +11,7 @@ export default function OutfitCompare({ entries, watches, garments, isDark }) {
   const [selecting, setSelecting] = useState(null); // 0 or 1
 
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
   const card = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
   const accent = "#3b82f6";

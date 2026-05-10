@@ -58,7 +58,7 @@ function daysSinceWorn(watchId, history) {
 }
 
 function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
-  if (!watch) return <div style={{ color:"#4b5563", fontSize:12, fontStyle:"italic" }}>No watches</div>;
+  if (!watch) return <div style={{ color:isDark?"#9ca3af":"#6b7280", fontSize:12, fontStyle:"italic" }}>No watches</div>;
   const accent = isOnCall ? "#f97316" : "#3b82f6";
   return (
     <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -75,7 +75,7 @@ function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
         <div style={{ fontSize:11, fontWeight:700, color:isDark?"#e2e8f0":"#111827", lineHeight:1.2 }}>
           {watch.brand ?? ""} {watch.model ?? watch.name ?? "Watch"}
         </div>
-        <div style={{ fontSize:10, color:isDark?"#6b7280":"#9ca3af", display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+        <div style={{ fontSize:10, color:isDark?"#9ca3af":"#6b7280", display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
           <span>{watch.dualDial ? `${watch.dualDial.sideA}/${watch.dualDial.sideB}` : (watch.dial ?? "")} dial</span>
           <span style={{
             padding:"1px 5px", borderRadius:4, fontSize: 11, fontWeight:700,
@@ -87,7 +87,7 @@ function WatchMini({ watch, label, isDark, isOnCall, daysSince }) {
       </div>
       {daysSince !== undefined && daysSince !== null && (
         <div style={{ fontSize:10, fontWeight:700, flexShrink:0,
-                      color: daysSince >= 7 ? "#22c55e" : daysSince <= 2 ? "#ef4444" : (isDark?"#6b7280":"#9ca3af") }}>
+                      color: daysSince >= 7 ? "#22c55e" : daysSince <= 2 ? "#ef4444" : (isDark?"#9ca3af":"#6b7280") }}>
           {daysSince === 0 ? "today" : `${daysSince}d`}
         </div>
       )}
@@ -104,7 +104,7 @@ function AiFlexRow({ date, dayForecast, border, isDark, loading, rationale, last
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
   const accent = "#8b5cf6";
-  const muted = isDark ? "#6b7280" : "#9ca3af";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
   const bg = isDark ? "#0f131a" : "#f8fafc";
   const text = isDark ? "#e2e8f0" : "#1f2937";
 
@@ -209,7 +209,7 @@ function RotationInsights({ rotation, history, isDark }) {
   if (!rotation.length) return null;
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text = isDark ? "#e2e8f0" : "#1f2937";
-  const sub = isDark ? "#6b7280" : "#9ca3af";
+  const sub = isDark ? "#9ca3af" : "#6b7280";
 
   // Count unique watches in the 7-day plan
   const weekWatchIds = new Set(rotation.map(d => d.watch?.id).filter(Boolean));
@@ -304,7 +304,7 @@ function LogConfirmModal({ isDark, onConfirm, onCancel }) {
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const muted  = isDark ? "#6b7280" : "#9ca3af";
+  const muted  = isDark ? "#9ca3af" : "#6b7280";
 
   const handleFiles = async (e) => {
     const files = Array.from(e.target.files ?? []);
@@ -406,7 +406,7 @@ function LogConfirmModal({ isDark, onConfirm, onCancel }) {
             onClick={() => onConfirm({ notes: notes.trim() || null, photos })}
             style={{
               flex: 2, padding: "11px 0", borderRadius: 10,
-              border: "none", background: "#22c55e",
+              border: "none", background: "#15803d",
               color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
             }}>
             ✓ Log It
@@ -436,7 +436,7 @@ function AddOutfitModal({ isDark, watches, garments, day, forecast, history, wea
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const muted  = isDark ? "#6b7280" : "#9ca3af";
+  const muted  = isDark ? "#9ca3af" : "#6b7280";
   const sub    = isDark ? "#94a3b8" : "#64748b";
 
   const selectedWatch = watches.find(w => w.id === watchId);
@@ -738,7 +738,7 @@ function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates = []
   const [open, setOpen] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const icon = SLOT_ICONS[slot] ?? "\u2022";
-  const sub = isDark ? "#6b7280" : "#9ca3af";
+  const sub = isDark ? "#9ca3af" : "#6b7280";
   const photo = garment?.thumbnail || garment?.photoUrl;
 
   return (
@@ -797,7 +797,7 @@ function OutfitSlotChip({ slot, garment, isDark, border, onSwap, candidates = []
               padding: "6px 10px", cursor: "pointer",
               background: !garment ? (isDark ? "#0c1f3f" : "#eff6ff") : "transparent",
               borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
-              color: isDark ? "#6b7280" : "#9ca3af", fontStyle: "italic", fontSize: 11,
+              color: isDark ? "#9ca3af" : "#6b7280", fontStyle: "italic", fontSize: 11,
             }}
           >
             <span style={{ fontSize: 14, width: 24, textAlign: "center" }}>✕</span>
@@ -867,7 +867,7 @@ function WeatherBadge({ forecast, isDark }) {
         )}
       </div>
       {hasHourly && (
-        <div style={{ fontSize: 10, marginTop: 3, color: isDark ? "#6b7280" : "#9ca3af" }}>
+        <div style={{ fontSize: 10, marginTop: 3, color: isDark ? "#9ca3af" : "#6b7280" }}>
           {forecast.tempMorning != null && <span>🌅 {forecast.tempMorning}°</span>}
           {forecast.tempMidday != null && <span> · ☀️ {forecast.tempMidday}°</span>}
           {forecast.tempEvening != null && <span> · 🌙 {forecast.tempEvening}°</span>}
@@ -1843,7 +1843,7 @@ export default function WeekPlanner() {
   const bg     = isDark ? "#171a21" : "#fff";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const sub    = isDark ? "#6b7280" : "#9ca3af";
+  const sub    = isDark ? "#9ca3af" : "#6b7280";
   const muted  = sub; // alias — used by history entry notes display
 
   // v1.13.7 — "Updated Nm ago" weather indicator. Surfaces the cache age so
@@ -2376,7 +2376,7 @@ export default function WeekPlanner() {
                     }}
                     style={{
                       width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 8,
-                      background: isToday ? "#22c55e" : isDark ? "#1e293b" : "#f1f5f9",
+                      background: isToday ? "#15803d" : isDark ? "#1e293b" : "#f1f5f9",
                       color: isToday ? "#fff" : isDark ? "#94a3b8" : "#64748b",
                       fontSize: 12, fontWeight: 700, cursor: "pointer",
                       border: isToday ? "none" : `1px solid ${border}`,

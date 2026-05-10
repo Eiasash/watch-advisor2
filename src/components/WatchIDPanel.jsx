@@ -46,7 +46,7 @@ export default function WatchIDPanel({ onIdentified }) {
   const card   = isDark ? "#171a21" : "#ffffff";
   const border = isDark ? "#2b3140" : "#e5e7eb";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
-  const muted  = isDark ? "#6b7280" : "#9ca3af";
+  const muted  = isDark ? "#9ca3af" : "#6b7280";
   const bg     = isDark ? "#0f131a" : "#f3f4f6";
 
   async function handleFile(file) {
@@ -229,7 +229,7 @@ export default function WatchIDPanel({ onIdentified }) {
           {onIdentified && (
             <button onClick={() => { onIdentified(result); setOpen(false); }}
               style={{ marginTop: 12, width: "100%", padding: "10px 0", borderRadius: 10,
-                       border: "none", background: "#3b82f6", color: "#fff",
+                       border: "none", background: "#2563eb", color: "#fff",
                        fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
               Add to Collection →
             </button>

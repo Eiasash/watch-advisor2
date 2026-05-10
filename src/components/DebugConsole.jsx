@@ -18,7 +18,7 @@ function AppHealthPanel({ isDark }) {
   const cardBg  = isDark ? "#111827" : "#ffffff";
   const border  = isDark ? "#1e2a3a" : "#e5e7eb";
   const text    = isDark ? "#e5e7eb" : "#111827";
-  const sub     = isDark ? "#6b7280" : "#9ca3af";
+  const sub     = isDark ? "#9ca3af" : "#6b7280";
   const green   = "#22c55e";
   const yellow  = "#eab308";
   const red     = "#ef4444";
