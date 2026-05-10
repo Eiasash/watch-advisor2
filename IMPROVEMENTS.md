@@ -1,6 +1,62 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-10 — v1.13.41/42 a11y contrast campaign closed (24→11→4) under WCAG 1.4.3 large-text exemption
+Last updated: 2026-05-10 — v1.13.43 ships diversity-enforcement escape hatch for AI stuck-loop bug
+
+## 2026-05-10 (cont.) — v1.13.43 (AI prompt: DIVERSITY ENFORCEMENT block)
+
+User-reported bug: hitting "Different one / Try another / More casual / More formal" 5× in 5 min returned essentially the same outfit each time — JLC Reverso (overridden) + cobalt-blue shirt + minor variations of pants/shoes. User's phrasing: "App is broken not generating nothing."
+
+### Root cause (verified via SQL on `oaojkanozbfpofbewtfq`)
+
+Three constraints compounded inside `daily-pick.js` to lock the AI on cobalt-blue:
+
+1. **Watch override + casual context = inherent conflict.** Reverso is formality 9/10. User pinned it AND set context=Casual. Engine's own "Why" panel reported "Formality alignment: weak (0–20%)" — visible self-diagnosis, no escape.
+2. **Two cobalt-blue shirts (Pierre Cardin Polo + TH Tee) added 2026-05-03**, both `wears=0`. Both qualified for `NEWLY ADDED` ("strongly prefer one of these when context allows") AND color-matched Reverso's navy dial AND fit casual context.
+3. **The exclude block treats outfits as `{watch + shirt + pants + shoes}` signatures.** Claude swapped Polo↔Tee and called it "different" — different garment id, same perceived color. The instruction `pick something genuinely different` was too vague to detect a color-family lock.
+
+The result: every reroll kept one of the two cobalt-blue shirts. Steer="more_formal" was too weak to override the NEWLY-ADDED + casual-context pull.
+
+### Fix shipped in PR (TBD — branch `claude/term-diversity-escape`)
+
+Targeted prompt-engineering fix in `netlify/functions/daily-pick.js` `buildUserPrompt`:
+
+- New `colorRotationBlock` constructed alongside the existing `excludeBlock`.
+- Activates only when `excludeRecent.length >= 2` AND `garments` is provided.
+- Resolves each excluded outfit's `shirt` value (id OR name) to its color via the wardrobe lookup the prompt already has.
+- If any color appears ≥2× across the recent shirt picks, injects:
+  > `DIVERSITY ENFORCEMENT — these shirt color(s) appeared in multiple recent picks: <colors>. … Pick a SHIRT WITH A DIFFERENT COLOR FAMILY this turn. Variety beats freshness here — even if a NEWLY ADDED option matches one of these colors, prefer a different-color shirt (newly added or not). This single instruction overrides the "strongly prefer NEWLY ADDED" preference for the shirt slot only on this turn.`
+- Block is positioned in the final template adjacent to `excludeBlock` (between exclude and rejected) so the directive sits next to its referent.
+- Zero impact on first-time picks (fewer than 2 entries in exclude → no block).
+- Zero impact when colors actually vary (no over-used color → no block).
+
+### Tests
+
+- New `tests/dailyPickPromptDiversity.test.js` — 9 cases:
+  - empty exclude → no block
+  - 1 entry → no block
+  - 2 entries, different colors → no block
+  - 2 entries, same color → block names that color
+  - 2 entries via NAME (not id) → block still fires (AI sometimes returns names)
+  - 3+ entries, two colors each repeating → both colors named
+  - empty garments → no crash, no block
+  - legacy string-form excludeRecent → ignored cleanly
+  - source-position lock: `colorRotationBlock` lives between `excludeBlock` and `rejectedBlock` in the final template
+- `buildUserPrompt` newly exported from daily-pick.js for direct unit testing (mirrors existing `categorizeGarments` / `computeCacheKey` test exports).
+- Full suite: **3,703 / 3,703 passed** (0 failures).
+
+### What this does NOT fix
+
+- The underlying contradiction (formality-9 watch + casual context) is still a contradiction. The "Why" panel will still show "Formality alignment: weak" because that's an honest readout. Resolution is at the user end: change context to `smart-casual` for Reverso, or pick a different watch for casual days.
+- The "More casual" / "More formal" steer text in `STEER_INSTRUCTIONS` is still soft ("push toward / relax"). Could be hardened in a future iteration if "weak alignment" complaints persist after this fix lands.
+
+### Verify-deploy
+
+After merge, expected behavior on the same Reverso-pinned + Casual scenario:
+1. First "Try another" → first cobalt-blue shirt (no exclude yet, no block).
+2. Second "Try another" → exclude has 1 entry, still no block. Claude may still pick cobalt-blue.
+3. Third "Try another" → exclude has 2 entries, BOTH cobalt-blue → block fires, Claude must pick a non-cobalt shirt (e.g., olive tee, salmon polo, mustard polo, white linen — all also NEWLY ADDED but different colors).
+
+---
 
 ## 2026-05-10 (cont.) — v1.13.41/42 + closure (a11y contrast WCAG AA campaign)
 
