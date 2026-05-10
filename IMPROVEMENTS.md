@@ -1,6 +1,49 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-09 — session close: v1.13.37/38/39 shipped + 3 doc-drift items closed + telemetry baseline
+Last updated: 2026-05-10 — session close: v1.13.40 shipped (legacy strap ID rename + alias map) + doc drift refreshed
+
+## 2026-05-10 — v1.13.40 (legacy strap ID rename + bracelet defaults)
+
+Single-session fix triggered by a doc-audit gap: Eias flagged that the Rikka SS bracelet was misleadingly named `rikka-titanium-bracelet` in the seed (Snowflake is the titanium GS, not Rikka). Audit also revealed `app_settings.active_straps.rikka` referenced a ghost ID (`rikka-bracelet`) that didn't exist in the seed — three different IDs across seed/cloud/history.
+
+### Three-layer fix shipped in PR [#195](https://github.com/Eiasash/watch-advisor2/pull/195)
+
+1. **Seed rename + reorder** (`src/data/watchSeed.js`)
+   - `rikka-titanium-bracelet` → **`rikka-bracelet`** with label "Stainless steel bracelet"
+   - Both Rikka SS bracelet *and* Snowflake titanium bracelet moved to first slot per Eias's directive that bracelets are the default for both. `buildInitialStraps()` picks first-slot as active default → seed reorder = default change.
+   - Top-level `watch.strap` field updated to `"bracelet"` for both watches.
+
+2. **Runtime alias map** (`src/data/strapAliases.js` — new)
+   - Maps `rikka-titanium-bracelet` and `rikka-bracelet-ss` → canonical `rikka-bracelet`.
+   - Two helpers: `canonicalStrapId(id)` for single-ID resolution, `canonicalizeActiveStraps(map)` for the `watch_id → strap_id` map.
+   - Wired into `strapStore.hydrate` (IDB cached state) and `bootstrap` cloud-pull merge so any user with stale state resolves to canonical at app load.
+
+3. **Supabase migration** (`20260510143000_alias_legacy_rikka_strap_ids.sql`)
+   - `UPDATE history SET payload = jsonb_set(payload, '{strapId}', '"rikka-bracelet"')` for both legacy variants.
+   - Idempotent (safe to re-run). Applied to remote: **0 legacy IDs remain, 4 canonical** (was 3 titanium + 1 ss + 0 canonical).
+
+### Tests
+
+- `tests/watchSeedLegacyIds.test.js` rewritten — was a single-purpose drift guard against rename, now enforces three-layer canonical state (seed canonical exists + legacy gone, alias map covers both legacy IDs, alias targets exist in seed).
+- `tests/strapStore.test.js` — 3 default-strap assertions updated (`snowflake-grey-alligator` → `snowflake-titanium-bracelet`) reflecting new first-slot order.
+- 3,686 / 3,686 green (+6 net new alias-map tests).
+
+### Skill-doc additions (this PR)
+
+- New gotcha row: **Strap ID alias map** — explains the boundary normalization pattern and the four-step rename procedure (seed + alias + migration + test guard).
+- New gotcha row: **Default-strap convention** — first slot in `watch.straps[]` is the default. Reorder to change.
+- New hard constraint: never delete an entry from `STRAP_ID_ALIASES` without auditing zero remaining cloud rows for the legacy ID.
+- Header bumps: v1.13.30 → v1.13.40, 3,639/204 → 3,686/210, May token cost $1.95 → $2.02.
+
+### Why this matters
+
+The legacy ID was already a known issue (test guard with explicit "DO NOT rename" docstring). The original concern was orphaning user history. This PR addresses that concern by writing the alias infrastructure FIRST, then renaming. Future strap renames now have a documented four-step path: seed + alias + migration + test guard.
+
+### Verify-deploy
+
+Production deploy `state: "ready"` at v1.13.40 within ~60s of merge. PR check-runs all green: `vitest`, `netlify/watch-advisor2/deploy-preview`.
+
+---
 
 ## 2026-05-09 — session consolidation (v1.13.37 / .38 / .39 + audit close-out)
 
