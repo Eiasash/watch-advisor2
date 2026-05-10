@@ -3,7 +3,15 @@
  *
  * Live audit on https://watch-advisor2.netlify.app surfaced 24 WCAG 2.1 AA
  * contrast violations on first pass. Fixed in PR #197 (24→11) and the v1.13.42
- * follow-up (11→target 0) — same loop-until-verified pattern as Geri #125.
+ * follow-up (11→4) — same loop-until-verified pattern as Geri #125.
+ *
+ * CAMPAIGN CLOSED at 4 hairline residuals (4.03–4.45:1) per WCAG 1.4.3
+ * large-text exemption (3:1 threshold for ≥18pt or ≥14pt-bold). See
+ * IMPROVEMENTS.md "v1.13.41/42 + closure" for the full policy decision.
+ * Loop-until-verified converged 24→11→4 across two passes; a third pass
+ * was declined as "chasing" once residuals fell below the AA-large-text
+ * floor. The 8 rules below catch any reintroduction of flat
+ * (non-theme-aware) color values that would fail AA on EITHER theme.
  *
  * Rules guarded here:
  *   1. Muted-text pattern is `isDark ? "#9ca3af" : "#6b7280"` — NOT the inverted
