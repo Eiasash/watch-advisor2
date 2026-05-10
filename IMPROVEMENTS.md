@@ -1,6 +1,71 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-10 — v1.13.43 ships diversity-enforcement escape hatch for AI stuck-loop bug
+Last updated: 2026-05-10 — v1.13.44 hardens steer formality floors (companion to v1.13.43 diversity escape)
+
+## 2026-05-10 (cont.) — v1.13.44 (AI prompt: quantitative formality floors on steer)
+
+Companion fix to v1.13.43. The diversity-enforcement block escapes shirt-color stuck loops, but a second class of stuck-loop existed: clicking "More formal" with a high-formality watch + casual context still produced casual polos because `STEER_INSTRUCTIONS.more_formal` used soft verbs ("push toward dress shirts") that Claude could trade off against color-match pressure.
+
+### Before
+
+```js
+more_casual: "Make this MORE CASUAL than your usual default — relax formality, prefer t-shirts/sneakers/casual watches.",
+more_formal: "Make this MORE FORMAL than your usual default — push toward dress shirts/leather shoes/dressier watches.",
+```
+
+"Relax" and "push toward" are soft. When two soft signals compete (relax-toward-casual context vs. push-toward-formal steer), Claude resolves by ranking other factors (color match, newly-added priority). Cobalt polos (formality 5) won.
+
+### After
+
+```js
+more_casual: "... HARD CONSTRAINT: every chosen garment must have formality ≤ 5. ... Reject dress shirts, dress trousers, leather oxfords/derbies with formality ≥ 6 — DO NOT pick them even if they match the watch better. If the wardrobe genuinely contains no garment ≤ 5 for a required slot (rare), pick the lowest-formality available item for that one slot and call it out in the reasoning.",
+more_formal: "... HARD CONSTRAINT: every chosen garment must have formality ≥ 6. ... Reject t-shirts, polos, casual graphic tees with formality ≤ 5 — DO NOT pick them even if they color-match the watch dial perfectly. If the wardrobe genuinely contains no garment ≥ 6 for a required slot (rare), pick the highest-formality available item for that one slot and call it out in the reasoning.",
+```
+
+Three structural changes:
+1. **Numeric threshold** instead of category words. `formality ≥ 6` is unambiguous; "dress shirts" is interpretable.
+2. **Explicit rejection list** for the opposite tier with "DO NOT pick them even if they color-match the watch dial perfectly" — directly nullifies the failure mode where color-match overrode formality.
+3. **Wardrobe-availability fallback** so an unbalanced wardrobe doesn't cause refusal. Claude picks the closest tier and is told to flag it in reasoning instead of staying silent.
+
+### Threshold rationale (formality 5/6 boundary)
+
+Surveyed the actual wardrobe (114 active garments):
+
+| Formality | Examples |
+|-----------|----------|
+| 2-3 | Lee Cooper Navy Tee, TH Cobalt Tee, Nautica burgundy long-sleeve |
+| 4 | Di Porto Red White stripe oxford, Nautica White Navy stripe |
+| 5 | Cobalt polo, Salmon polo, Light Blue polo, casual cream button-downs |
+| 6 | White dress shirt, Pavarotti light blue dress shirt, Pink slim fit |
+| 7 | Kiral ecru pinstripe |
+
+The 5/6 boundary cleanly separates "casual button-down or polo" from "dress shirt I'd wear to a wedding." No row is awkwardly straddling.
+
+### Tests
+
+- New `tests/dailyPickPromptSteer.test.js` — 10 cases:
+  - Source-level: `more_formal` contains floor + rejection + "rare" fallback
+  - Source-level: `more_casual` contains ceiling + rejection + "rare" fallback
+  - Source-level: `different_watch` unchanged (no formality language)
+  - Behavioral: each steer threads correctly into FLEXIBILITY DIRECTIVE
+  - Behavioral: no steer → no FLEXIBILITY DIRECTIVE
+  - Behavioral: unknown steer value → silent ignore, no crash
+  - Composition: steer + DIVERSITY ENFORCEMENT can fire simultaneously (different axes)
+- Full suite: **3,713 / 3,713 passed** (+10 net from v1.13.43).
+
+### What this does NOT fix
+
+- The watch-vs-context contradiction itself is unchanged — Reverso (formality 9) + Casual context still produces a "Why" panel that flags weak alignment. The user has to resolve at watch or context level. The diversity + steer hardening just guarantee that *clicking the buttons* now produces meaningfully different outputs.
+- Watch swapping on `more_formal` / `more_casual` is still unconstrained — Claude can pick a casual watch on `more_formal` if it ignores the spirit. Could be tightened by also binding watch formality, but that's out of scope here (the user usually pins the watch explicitly via `pinnedWatch`).
+
+### Verify-deploy
+
+After merge, expected behavior:
+1. Pin Reverso, set Casual, click "More formal." Claude must now pick a dress shirt (white/pink/light-blue/Kiral pinstripe), dress trousers, leather derbies — even though Reverso's navy dial color-matches cobalt polos.
+2. Pin Reverso, set Casual, click "More casual" (you've inverted the request). Claude must now pick a t-shirt or polo (formality ≤ 5), chinos, casual shoes.
+3. First "Try another" with no steer behaves identically to before — soft scoring path, no hard constraint.
+
+---
 
 ## 2026-05-10 (cont.) — v1.13.43 (AI prompt: DIVERSITY ENFORCEMENT block)
 

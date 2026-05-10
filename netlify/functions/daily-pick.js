@@ -77,9 +77,29 @@ export { recordMetric }; // exported for unit tests
  *                    outfit to explain.
  */
 
+// v1.13.44 — quantitative formality floors/ceilings for steer (root cause: 2026-05-10 follow-up).
+//
+// Before this change, the steer text used soft verbs ("push toward",
+// "relax") which Claude could obey or ignore depending on competing
+// signals. When the user pinned a formality-9 watch (Reverso) and set
+// context=Casual then clicked "More formal," Claude saw two equally weak
+// signals (relax-toward-casual context vs. push-toward-formal steer) and
+// chose whatever scored highest on color match — usually still a polo.
+//
+// Fix: bind each formality steer to a hard numeric threshold on garment
+// formality. Cobalt-blue polos and tees (formality 3-5) cannot satisfy
+// "more_formal" under this rule no matter how well they color-match the
+// dial. Wardrobe-availability fallback is explicit so the AI doesn't
+// freeze when the floor cannot be met — it picks the closest available.
+//
+// Floor/ceiling 5 chosen against the actual wardrobe distribution: 5 is
+// the polo/casual-button-down tier; 6 is dress shirt; 7 is dressier shirt
+// (Kiral pinstripe); 3-4 is t-shirt / casual graphic tee. The 5 boundary
+// cleanly splits "shirt I'd wear to a wedding" from "shirt I'd wear to a
+// beach" without splitting hairs over individual rows.
 const STEER_INSTRUCTIONS = {
-  more_casual: "Make this MORE CASUAL than your usual default — relax formality, prefer t-shirts/sneakers/casual watches.",
-  more_formal: "Make this MORE FORMAL than your usual default — push toward dress shirts/leather shoes/dressier watches.",
+  more_casual: "Make this MORE CASUAL than your usual default. HARD CONSTRAINT: every chosen garment must have formality ≤ 5. Prefer t-shirts/polos (formality 3-5), chinos, sneakers/casual shoes/Chelsea boots. Reject dress shirts, dress trousers, leather oxfords/derbies with formality ≥ 6 — DO NOT pick them even if they match the watch better. If the wardrobe genuinely contains no garment ≤ 5 for a required slot (rare), pick the lowest-formality available item for that one slot and call it out in the reasoning.",
+  more_formal: "Make this MORE FORMAL than your usual default. HARD CONSTRAINT: every chosen garment must have formality ≥ 6. Prefer dress shirts (formality 6-7), dress trousers/Kiral chinos, leather oxford/derby shoes. Reject t-shirts, polos, casual graphic tees with formality ≤ 5 — DO NOT pick them even if they color-match the watch dial perfectly. If the wardrobe genuinely contains no garment ≥ 6 for a required slot (rare), pick the highest-formality available item for that one slot and call it out in the reasoning.",
   different_watch: "Suggest a DIFFERENT WATCH FACE for this outfit — the user already saw your prior pick and wants an alternative timepiece.",
 };
 
