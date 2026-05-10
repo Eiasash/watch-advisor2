@@ -9,6 +9,7 @@ import { setTailorConfig } from "../config/tailorConfig.js";
 import { registerHandler, resumePendingTasks, flushTasksByType } from "../services/backgroundQueue.js";
 import { checkAndBackup } from "../services/backupService.js";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
+import { canonicalizeActiveStraps } from "../data/strapAliases.js";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
@@ -237,8 +238,11 @@ export function useBootstrap() {
             }
             if (settings.active_straps && typeof settings.active_straps === "object") {
               const strapState = useStrapStore.getState();
-              // Merge cloud active straps with local (cloud wins)
-              const mergedActive = { ...strapState.activeStrap, ...settings.active_straps };
+              // Merge cloud active straps with local (cloud wins). Canonicalize
+              // legacy strap IDs (e.g., rikka-titanium-bracelet → rikka-bracelet)
+              // so any cloud rows written before the v1.13.40 rename still resolve.
+              const canonicalCloud = canonicalizeActiveStraps(settings.active_straps);
+              const mergedActive = { ...strapState.activeStrap, ...canonicalCloud };
               useStrapStore.setState({ activeStrap: mergedActive });
             }
             if (settings.custom_straps && typeof settings.custom_straps === "object") {
