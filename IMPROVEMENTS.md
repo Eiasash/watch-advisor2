@@ -1,6 +1,48 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-11 — v1.13.45 fixes three Rules-of-Hooks violations (React error #300 on fresh sessions)
+Last updated: 2026-05-11 — v1.13.46 ships shared authStore + sign-in empty state + WeekPlanner auto-fetch gating
+
+## 2026-05-11 — v1.13.46 (auth UX: shared store + sign-in empty state + gated auto-fetch)
+
+### Symptom
+
+Two related issues visible on fresh / unauthenticated sessions, both fallout from the email-allowlist RLS shipped in v1.13.16:
+
+1. **Misleading header copy.** Subtitle read `Watch-first outfit planner · 23 watches · 0 garments · v1.13.45`. Watches come from `watchSeed.js` (always available); garments come from Supabase (RLS-hidden until sign-in). User couldn't tell whether the wardrobe was deleted or just hidden.
+2. **401 console spam.** `WeekPlanner` mounted on the Plan tab fired its two auto-fetch `useEffect`s (auto-refit on drift + first-render auto-load of today + tomorrow) against `/style-fixed-watch`. That function goes through `_auth.js`; without a session each call returned 401 and the planner showed only engine-pick reasoning.
+
+### Root cause
+
+No shared auth state in the client. `GitHubLoginButton` owned a local `useState(user)` via its own `getSession()` + `onAuthStateChange` subscription; nothing else in the tree could read it. `Header.jsx` rendered the bare `0 garments` count regardless of session; `WeekPlanner.jsx`'s auto-fetch effects had no gate on auth and burned 401s every mount.
+
+### Fix
+
+- **`src/stores/authStore.js` (new).** Zustand store with `{ user, isAuthed, _initialized }` and an idempotent `initAuthStore()` that runs the initial `getSession()` and subscribes to `onAuthStateChange` for the page lifetime. `_initialized` flips true once the initial check resolves — this matters because it lets consumers distinguish "checked, no user" (show sign-in) from "not yet checked" (show nothing). Without that flag, a real authed reload would flash the sign-in hint for the ~50ms before the session loads.
+- **`src/app/bootstrap.js`.** Calls `initAuthStore()` at the top of the boot IIFE (fire-and-forget, no `await` — cache hydration shouldn't block on auth).
+- **`src/components/Header.jsx`.** When `authInitialized && !isAuthed && activeGarmentCount === 0`, the subtitle swaps `N garments` for an amber `Sign in to load your wardrobe`. Authed state is unchanged.
+- **`src/components/WeekPlanner.jsx`.** Both auto-fetch `useEffect`s early-return when `!isAuthed`. The first-render auto-load specifically does **not** latch `autoLoadedRef = true` while unauthed — that way, when the user signs in mid-session, the effect re-runs (deps include `isAuthed`) and fires once. The auto-refit effect re-fires naturally when other deps change.
+
+### Tests
+
+- `tests/authStore.test.js` (new, 4 tests) — initial state, `_setSession(null)` flips `_initialized` without authing, `_setSession(user)` lifts `isAuthed=true`, subscriber ordering.
+- 3718 / 3718 pass (was 3714).
+
+### Why not migrate `GitHubLoginButton` to the shared store
+
+It still owns its local user state. The migration is straightforward (read from `useAuthStore` instead of subscribing locally) but adds churn to a working component. Kept the diff tight; if the duplicate subscription ever bites, swap it in a one-liner.
+
+### Files
+
+```
+src/stores/authStore.js         | +44 (new)
+src/app/bootstrap.js            | +7
+src/components/Header.jsx       | +14 / -2
+src/components/WeekPlanner.jsx  | +7 / -3
+tests/authStore.test.js         | +49 (new)
+package.json                    | 1.13.45 → 1.13.46
+```
+
+---
 
 ## 2026-05-11 — v1.13.45 (Rules of Hooks: hooks-before-early-return)
 
