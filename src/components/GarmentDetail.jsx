@@ -9,15 +9,11 @@
 import React, { useMemo } from "react";
 
 export default function GarmentDetail({ garment, history, watches, garments, isDark, onClose }) {
-  if (!garment) return null;
-
-  const text = isDark ? "#e2e8f0" : "#1f2937";
-  const muted = isDark ? "#9ca3af" : "#6b7280";
-  const card = isDark ? "#171a21" : "#fff";
-  const border = isDark ? "#2b3140" : "#e5e7eb";
-  const accent = "#3b82f6";
-
+  // Hooks MUST run before any conditional return (Rules of Hooks). Otherwise a
+  // garment=null → garment=defined transition changes hook count between
+  // renders → React error #300. Guard the useMemo body with the garment check.
   const stats = useMemo(() => {
+    if (!garment) return null;
     const wearDates = [];
     const watchPairings = {};
     const garmentPairings = {};
@@ -68,7 +64,16 @@ export default function GarmentDetail({ garment, history, watches, garments, isD
       topPairings,
       contextDist: Object.entries(contextDist).sort(([, a], [, b]) => b - a),
     };
-  }, [garment.id, history, watches, garments]);
+  }, [garment?.id, history, watches, garments]);
+
+  // Post-hook early return — safe because all hooks above always run.
+  if (!garment) return null;
+
+  const text = isDark ? "#e2e8f0" : "#1f2937";
+  const muted = isDark ? "#9ca3af" : "#6b7280";
+  const card = isDark ? "#171a21" : "#fff";
+  const border = isDark ? "#2b3140" : "#e5e7eb";
+  const accent = "#3b82f6";
 
   const photo = garment.thumbnail || garment.photoUrl;
 

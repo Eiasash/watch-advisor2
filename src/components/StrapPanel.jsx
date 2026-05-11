@@ -235,14 +235,14 @@ export default function StrapPanel({ watch, isDark: isDarkProp }) {
     deleteStrap(strapId);
   }, [deleteStrap]);
 
-  if (!watch) return null;
-
-  const currentActiveId = activeStrap[watch.id];
-  const border = isDark ? "#2b3140" : "#d1d5db";
-  const text   = isDark ? "#e2e8f0" : "#1f2937";
+  // All hooks below MUST run before the conditional early return — Rules of
+  // Hooks. Otherwise a watch=null→defined transition (transient during boot)
+  // changes hook count between renders → React error #300.
   const garments = useWardrobeStore(s => s.garments) ?? [];
   const [aiStrapLoading, setAiStrapLoading] = useState(false);
   const [aiStrapHint, setAiStrapHint] = useState(null);
+
+  const currentActiveId = watch ? activeStrap[watch.id] : null;
 
   const handleStrapAI = useCallback(async () => {
     if (!watch) return;
@@ -292,6 +292,11 @@ Return ONLY valid JSON:
     } catch { /* silent */ }
     setAiStrapLoading(false);
   }, [watch, watchStraps, garments, currentActiveId, setActive]);
+
+  if (!watch) return null;
+
+  const border = isDark ? "#2b3140" : "#d1d5db";
+  const text   = isDark ? "#e2e8f0" : "#1f2937";
 
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${border}` }}>

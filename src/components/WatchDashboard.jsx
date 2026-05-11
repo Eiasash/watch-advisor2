@@ -34,13 +34,18 @@ const DIAL_SWATCH = {
 };
 
 function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
-  if (!watch) return null;
-  const swatch = DIAL_SWATCH[watch.dial] ?? "#444";
-  const activeStrapObj = useStrapStore(s => s.getActiveStrapObj?.(watch.id));
-  const strapLabel = activeStrapObj?.label ?? watch.strap ?? null;
-  const allStraps = useStrapStore(s => s.getStrapsForWatch(watch.id));
+  // Hooks MUST be called before any conditional return — Rules of Hooks.
+  // `watch` may be null transiently when activeWatch flips during boot/sign-in
+  // (e.g. fresh session with empty stores). Returning before hooks changes the
+  // hook count between renders → React error #300 ("Rendered fewer hooks than
+  // expected"). Always call hooks first, branch on render output only.
+  const activeStrapObj = useStrapStore(s => s.getActiveStrapObj?.(watch?.id));
+  const allStraps = useStrapStore(s => s.getStrapsForWatch(watch?.id));
   const setActive = useStrapStore(s => s.setActiveStrap);
   const [showStraps, setShowStraps] = useState(false);
+  if (!watch) return null;
+  const swatch = DIAL_SWATCH[watch.dial] ?? "#444";
+  const strapLabel = activeStrapObj?.label ?? watch.strap ?? null;
 
   return (
     <div style={{
