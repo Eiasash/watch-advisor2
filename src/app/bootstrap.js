@@ -17,6 +17,7 @@ import { useStrapStore }         from "../stores/strapStore.js";
 import { useRejectStore, hydrateRejectStore } from "../stores/rejectStore.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
 import { useTravelStore }     from "../stores/travelStore.js";
+import { initAuthStore } from "../stores/authStore.js";
 import { pushDebugEntry } from "../stores/debugStore.js";
 import { toArray } from "../utils/toArray.js";
 
@@ -43,6 +44,12 @@ export function useBootstrap() {
     let settingsDebounce = null;
 
     (async () => {
+      // ── 0. Kick off auth subscription (idempotent; no await — we don't
+      // gate cache hydration on it). The store flips to isAuthed=true once
+      // Supabase reports a session, which then unlocks the gated WeekPlanner
+      // auto-load + the Header empty-state copy.
+      initAuthStore();
+
       // ── 1. Serve from local cache immediately ─────────────────────────────
       const cached = await getCachedState();
 
