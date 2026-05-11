@@ -2,6 +2,7 @@ import React from "react";
 import { useWatchStore } from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore } from "../stores/themeStore.js";
+import { useAuthStore } from "../stores/authStore.js";
 import { isActiveWatch } from "../utils/watchFilters.js";
 import { GitHubLoginButton } from "./GitHubLoginButton.jsx";
 
@@ -10,6 +11,13 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
   const garments = useWardrobeStore(s => s.garments) ?? [];
   const { mode, toggle } = useThemeStore();
   const isDark = mode === "dark";
+  const isAuthed = useAuthStore(s => s.isAuthed);
+  const authInitialized = useAuthStore(s => s._initialized);
+  const activeGarmentCount = garments.filter(g => !g.excludeFromWardrobe).length;
+  // Show the sign-in hint only AFTER the initial session check has completed
+  // — otherwise we'd flash "Sign in" for ~50ms on a real authed reload before
+  // getSession() resolves and the IDB cache hydrates the garments store.
+  const showSignInHint = authInitialized && !isAuthed && activeGarmentCount === 0;
 
   const btnStyle = {
     padding: "11px 14px", borderRadius: 8, border: `1px solid ${isDark ? "#2b3140" : "#d1d5db"}`,
@@ -29,7 +37,11 @@ export default function Header({ onOpenSettings, onOpenSearch }) {
           watch-advisor
         </h1>
         <div style={{ color: isDark ? "#9ca3af" : "#6b7280", fontSize: 13, marginTop: 2 }}>
-          Watch-first outfit planner &middot; {watches.filter(isActiveWatch).length} watches &middot; {garments.filter(g => !g.excludeFromWardrobe).length} garments &middot; <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>v{__BUILD_NUMBER__}</span>
+          {showSignInHint ? (
+            <>Watch-first outfit planner &middot; {watches.filter(isActiveWatch).length} watches &middot; <span style={{ color: isDark ? "#fbbf24" : "#92400e", fontWeight: 600 }}>Sign in to load your wardrobe</span> &middot; <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>v{__BUILD_NUMBER__}</span></>
+          ) : (
+            <>Watch-first outfit planner &middot; {watches.filter(isActiveWatch).length} watches &middot; {activeGarmentCount} garments &middot; <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>v{__BUILD_NUMBER__}</span></>
+          )}
         </div>
       </div>
       <div className="wa-header-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>

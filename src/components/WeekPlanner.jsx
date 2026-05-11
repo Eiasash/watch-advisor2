@@ -13,6 +13,7 @@ import { firstSentence, hasMoreThanSummary } from "../utils/firstSentence.js";
 import { computeOutfitDiff, hasDiff } from "../utils/outfitDiff.js";
 import { resolveGarmentSlots, validateDifferentWatchPick, normalizeAiName } from "../utils/aiPickResolver.js";
 import { useStyleLearnStore } from "../stores/styleLearnStore.js";
+import { useAuthStore } from "../stores/authStore.js";
 
 import { setCachedState, getCachedState } from "../services/localCache.js";
 import { authedFetch } from "../services/authedFetch.js";
@@ -981,6 +982,11 @@ export default function WeekPlanner() {
   const activeStrap  = useStrapStore(s => s.activeStrap) ?? {};
   const { mode }     = useThemeStore();
   const isDark     = mode === "dark";
+  // Gate auto-Claude-fetch effects on auth. The /style-fixed-watch and
+  // /daily-pick functions are _auth.js-gated, so firing them when unauthed
+  // produces a stream of 401s in the console and burns no Claude credits but
+  // pollutes logs and confuses any future debugging.
+  const isAuthed = useAuthStore(s => s.isAuthed);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showOutfits, setShowOutfits]   = useState(true);
   const [watchOverrides, setWatchOverrides] = useState({});
@@ -1731,6 +1737,7 @@ export default function WeekPlanner() {
   // Watch overrides only fire if the user has already engaged AI for that day
   // (aiAppliedDays.has) — we don't auto-fire on engine-pick-only days.
   useEffect(() => {
+    if (!isAuthed) return; // auth-gated function would 401 → noop
     for (const day of rotation) {
       if (!day?.date || !aiAppliedDays.has(day.date)) continue;
       const seen = aiContextRef.current[day.date];
@@ -1765,7 +1772,7 @@ export default function WeekPlanner() {
     return () => {
       for (const id of Object.values(refitTimerRef.current)) clearTimeout(id);
     };
-  }, [watchOverrides, strapOverrides, activeStrap, rotation, aiAppliedDays, straps, forecast, handleAskClaude]);
+  }, [watchOverrides, strapOverrides, activeStrap, rotation, aiAppliedDays, straps, forecast, handleAskClaude, isAuthed]);
 
   // Auto-load AI rec for today (idx 0) + tomorrow (idx 1) on first render
   // when watches + forecast are ready.
@@ -1784,6 +1791,7 @@ export default function WeekPlanner() {
   const autoLoadedRef = useRef(false);
   useEffect(() => {
     if (autoLoadedRef.current) return;
+    if (!isAuthed) return; // auth-gated /style-fixed-watch would 401 — wait for sign-in
     if (!rotation.length || !forecast?.length || !watches.length) return;
     autoLoadedRef.current = true;
 
@@ -1809,7 +1817,7 @@ export default function WeekPlanner() {
       try { sessionStorage.setItem(SESSION_KEY, JSON.stringify([...alreadyAutoLoaded])); }
       catch { /* sessionStorage may be disabled — non-fatal */ }
     }
-  }, [rotation, forecast, watches.length, aiAppliedDays, handleAskClaude]);
+  }, [rotation, forecast, watches.length, aiAppliedDays, handleAskClaude, isAuthed]);
 
   // "Why this?" — surface stored reasoning, or call the endpoint with why:true
   // for a fresh rationale on the current day's outfit.
