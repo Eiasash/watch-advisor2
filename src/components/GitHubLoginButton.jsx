@@ -1,21 +1,14 @@
-import { useState, useEffect } from "react";
-import { signInWithGitHub, signOut, getSession } from "../services/supabaseAuth.js";
-import { supabase } from "../services/supabaseClient.js";
+import { useState } from "react";
+import { signInWithGitHub, signOut } from "../services/supabaseAuth.js";
+import { useAuthStore } from "../stores/authStore.js";
 
 export function GitHubLoginButton() {
-  const [user, setUser] = useState(null);
+  // Read from the shared store instead of running a second getSession() +
+  // onAuthStateChange subscription. The store is initialized once at boot
+  // (src/app/bootstrap.js → initAuthStore) and any component can read.
+  const user = useAuthStore(s => s.user);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    getSession().then((session) => {
-      setUser(session?.user ?? null);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
 
   if (user) {
     return (

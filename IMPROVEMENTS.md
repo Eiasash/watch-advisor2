@@ -1,6 +1,39 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-11 — v1.13.46 ships shared authStore + sign-in empty state + WeekPlanner auto-fetch gating
+Last updated: 2026-05-11 — v1.13.47 closes the auth-uniqueness loose end (GitHubLoginButton → shared store)
+
+## 2026-05-11 (cont.) — v1.13.47 (auth uniqueness: GitHubLoginButton → shared store)
+
+Closes the explicit deferral from v1.13.46.
+
+### Change
+
+`GitHubLoginButton.jsx` previously ran its own `getSession()` + `onAuthStateChange` subscription via `useState(user)` + `useEffect`. Now reads `const user = useAuthStore(s => s.user)`. The local `useEffect` + the `supabase` direct import are gone.
+
+### Why bother
+
+Three reasons the redundant subscription was a problem worth ranking above zero:
+
+1. **State inconsistency window.** Two subscribers update their own local state on their own schedules. Between auth event fire and component re-render there's a window where Header sees the new state and Login button sees the old (or vice versa). Small window in practice, but it exists.
+2. **Test surface.** Mocking auth for unit tests required mocking both `supabase.auth.onAuthStateChange` *and* the auth store. Now only the store needs stubbing.
+3. **Future-drift risk.** Any new auth-aware component would have to choose between "subscribe locally like the login button" and "read the store like the header". Two patterns in the same codebase invite the wrong choice.
+
+### Regression guard
+
+`tests/authSubscriptionUniqueness.test.js` (new) — static scan over `src/**/*.{js,jsx}`. Any file outside the allowlist (`authStore.js`, `authedFetch.js`, `supabaseAuth.js`) that references `onAuthStateChange(` or `supabase.auth.getSession(` fails the test. Forces future auth-aware components to read from the store instead of re-introducing local subscriptions.
+
+### Files
+
+```
+src/components/GitHubLoginButton.jsx       | +5 / -16
+tests/authSubscriptionUniqueness.test.js   | +75 (new)
+SKILL_watch_advisor2.md                    | gotcha updated to reflect migration + new guard
+package.json                               | 1.13.46 → 1.13.47
+```
+
+3719 / 3719 tests pass (was 3718 — 1 new).
+
+---
 
 ## 2026-05-11 — v1.13.46 (auth UX: shared store + sign-in empty state + gated auto-fetch)
 
