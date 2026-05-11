@@ -1,6 +1,68 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-10 — v1.13.44 hardens steer formality floors (companion to v1.13.43 diversity escape)
+Last updated: 2026-05-11 — v1.13.45 fixes three Rules-of-Hooks violations (React error #300 on fresh sessions)
+
+## 2026-05-11 — v1.13.45 (Rules of Hooks: hooks-before-early-return)
+
+### Symptom
+
+Live app showed React error #300 ("Rendered fewer hooks than expected") on Eias's fresh Chrome session. Page partially rendered (header, Today's Pick) then ErrorBoundary blanked one subtree. Console:
+
+```
+Error: Minified React error #300; visit https://reactjs.org/docs/error-decoder.html?invariant=300
+debugLogger.js:55 [ErrorBoundary] {...}
+```
+
+Trigger: fresh / unauthenticated session — Supabase RLS on `garments`/`history` requires `auth.jwt()->>'email' = 'eiasashhab@gmail.com'`. Without a session, `pullCloudState()` returns `[]` for both tables. Stores stay empty. `activeWatch` flips null → defined transiently during boot. Components that called hooks AFTER an `if (!prop) return null;` gate saw hook count change between renders and crashed.
+
+### Root cause — three sites
+
+| Component | File | Hooks after early return |
+|-----------|------|--------------------------|
+| `WatchCard` | `src/components/WatchDashboard.jsx:37` | 3× `useStrapStore` + 1× `useState` |
+| `GarmentDetail` | `src/components/GarmentDetail.jsx:12` | 1× `useMemo` |
+| `StrapPanel` | `src/components/StrapPanel.jsx:238` | 1× `useWardrobeStore` + 2× `useState` + 1× `useCallback` |
+
+All three followed the same anti-pattern:
+
+```jsx
+function Comp({ prop }) {
+  if (!prop) return null;            // ← early-return BEFORE hooks
+  const x = useStore(s => s.x);      // ← hook only runs when prop is defined
+}
+```
+
+When `prop` flips null → defined, render N calls 0 hooks, render N+1 calls 1+ hooks. React's hook-position invariant breaks → #300.
+
+### Fix
+
+For each component: move every hook above the early return; make selector args null-safe (`watch?.id`); guard the useMemo body with the same condition when applicable. Six lines moved per component on average.
+
+### Regression guard
+
+`tests/hooksBeforeEarlyReturn.test.js` — pure static scan over `src/**/*.{js,jsx}`. Tracks brace depth and only flags returns at the component's own statement level (depth=1), not inside nested `useMemo`/`useCallback` bodies, event handlers, map callbacks, or block statements. This precision matters — naive line-based scans produced 32 false positives on the same codebase before the depth check.
+
+**Opt-out:** `// hooks-order-ok` on the early-return line. Reserved for components that genuinely have no hooks below (the regex still flags them because the scanner can't disambiguate without a full AST parse).
+
+The test caught a **third** bug I'd missed in manual review (`StrapPanel`). Without the static check, that one would have shipped to v1.13.45 and re-surfaced #300 on the same fresh-session path the moment Eias opened the strap drawer.
+
+### Files
+
+```
+src/components/WatchDashboard.jsx  | +9 / -4
+src/components/GarmentDetail.jsx   | +14 / -9
+src/components/StrapPanel.jsx      | +12 / -8
+tests/hooksBeforeEarlyReturn.test.js | +141 (new)
+package.json                       | 1.13.44 → 1.13.45
+```
+
+3714 / 3714 tests pass (was 3713 — new test added).
+
+### Non-fix: "0 garments" on the screenshot
+
+Same screenshot showed "23 watches · 0 garments" + 401 on `style-fixed-watch`. That's RLS working as designed — single-tenant email allowlist. The UX is misleading (looks like data loss instead of "sign in required"), but the data path is correct. Deferred: a "please sign in" empty state instead of the bare `0 garments` count + the auth-gated `WeekPlanner` fetches that fire-and-fail when unauthenticated.
+
+---
 
 ## 2026-05-10 (cont.) — v1.13.44 (AI prompt: quantitative formality floors on steer)
 
