@@ -20,7 +20,7 @@
 
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, dirname, relative } from "node:path";
+import { join, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -52,7 +52,10 @@ describe("auth subscription uniqueness", () => {
   it("only authStore.js / authedFetch.js / supabaseAuth.js may subscribe to auth events", () => {
     const offenders = [];
     for (const file of walk(SRC)) {
-      const rel = relative(join(SRC, ".."), file);
+      // Normalize to forward slashes — path.relative() yields backslashes on
+      // Windows, which never match the forward-slash ALLOWED entries (the test
+      // passed on Linux CI but flagged the allowed files as offenders locally).
+      const rel = relative(join(SRC, ".."), file).split(sep).join("/");
       if (ALLOWED.has(rel)) continue;
       const text = readFileSync(file, "utf8");
       for (const re of PATTERNS) {
