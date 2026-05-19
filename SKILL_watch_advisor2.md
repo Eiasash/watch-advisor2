@@ -29,8 +29,8 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 3686 tests, 210 files (Vitest) |
-| Version | **1.13.47** |
+| Tests | 3748 tests, 212 files (Vitest) |
+| Version | **1.13.48** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
 | Last audited | 2026-05-10. 3,686/210 all green. Site health: garments=114, history=73, orphaned=0, model=claude-sonnet-4-6. May token cost so far $2.02 (474K input / 39K output). v1.13.21–1.13.40 highlights: a11y aria-labels, net timeout hardening, claude-client default maxAttempts=1+8.5s timeout+dedup wardrobe-chat tools, critical race fixes+bulk-photo+push-unsubscribe, defensive batch tab a11y+prompt-injection guards, wardrobe-chat security caps, perf passes (garmentMap/watchMap StatsPanel/WeekPlanner/OutfitHistory/WeeklyDigest), lazy-load DebugConsole, 44px touch floor + aria-labels on icon-only buttons, keyboard access for div onClick, closure-stale-read race fixes, auth coverage tests, **v1.13.40: rikka-titanium-bracelet → rikka-bracelet rename + alias map for legacy IDB caches + Supabase migration normalizing 4 cloud history rows; Rikka SS bracelet & Snowflake titanium bracelet both moved to first-slot default**. |
@@ -77,9 +77,9 @@ src/
     scoring.js            — scoreGarment(), strapShoeScore() [ALWAYS 1.0], contextFormalityScore()
     watchStyles.js        — STYLE_TO_SLOTS, STYLE_FORMALITY_TARGET
     scoringFactors/
-      diversityFactor.js  — diversity bonus from pre-computed candidate.diversityBonus
-      repetitionFactor.js — garment repetition penalty (-0.28 if worn in last 5)
-      rotationFactor.js   — rotation pressure × 0.40 weight
+      diversityFactor.js  — diversity bonus from candidate.diversityBonus, ×CATEGORY_ROTATION_MULTIPLIER
+      repetitionFactor.js — garment repetition penalty (-0.28 if worn in last 5), ×CATEGORY_ROTATION_MULTIPLIER
+      rotationFactor.js   — rotation pressure × 0.40 weight, ×CATEGORY_ROTATION_MULTIPLIER
       seasonContextFactor.js — season/context tag matching (+0.30 season, +0.25 context)
       weightFactor.js     — garment weight (light/heavy) scoring
   aiStylist/
@@ -201,15 +201,16 @@ UPDATE app_config SET value = '{"rotationFactor": 0.45}'::jsonb WHERE key = 'sco
 ### Post-score Modifiers
 | Modifier | Value | Source |
 |----------|-------|--------|
-| rotationFactor | ×0.40 | `rotationFactor.js` |
-| repetitionPenalty | -0.28 (worn in recent 5) | `contextMemory.js` |
-| diversityPenalty | -0.12 × recent appearances (last 7 days) | `outfitBuilder.js` |
+| rotationFactor | ×0.40, then ×CATEGORY_ROTATION_MULTIPLIER | `rotationFactor.js` |
+| repetitionPenalty | -0.28 (worn in recent 5), then ×CATEGORY_ROTATION_MULTIPLIER | `contextMemory.js` |
+| diversityPenalty | -0.12 × recent appearances (last 7 days), then ×CATEGORY_ROTATION_MULTIPLIER | `outfitBuilder.js` |
 | rejectPenalty | -0.30 | rejectStore |
 | replicaPenalty | -60% in clinic/formal/shift | `outfitBuilder.js` |
 | seasonMatch | +0.30 (in-season), -0.80 (opposite) | `seasonContextFactor.js` |
 | contextMatch | +0.25 | `seasonContextFactor.js` |
 | weightFactor | ±0.15 max | `weightFactor.js` |
 | coherenceBonus | ±20% of baseScore | `outfitBuilder.js _crossSlotCoherence()` |
+| formalityCoherence | ×0.55–1.0 multiplier in `_pairHarmonyScore` — intra-outfit formality-spread penalty (spread ≤3 free; -15%/excess pt) | `outfitBuilder.js formalitySpreadMultiplier()` |
 
 ### Cross-Slot Coherence — v2
 ```
@@ -347,7 +348,7 @@ VALUES (
 | **Vitest** | `timeout 120 node node_modules/.bin/vitest run` — never `npx vitest`. |
 | **npm install** | `PUPPETEER_SKIP_DOWNLOAD=true npm install` required. |
 | **Feature branches** | Claude Code tends to push to feature branches. Verify + merge to main. |
-| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.47**. |
+| **Version bump** | Always bump `package.json` version. Patch/minor/major. Current: **1.13.48**. |
 | **w_ seed garments** | 53 exist, all excluded. Do NOT re-activate. |
 | **quickLog/legacy** | Never remove from history entries — orphan check depends on them. |
 | **sed vs python** | `python3 -c` with `str.replace()` is more reliable than `sed` for JSX edits. |

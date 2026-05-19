@@ -205,9 +205,41 @@ function _sameColor(a, b) {
 }
 
 /**
+ * Intra-outfit formality coherence (Eias, 2026-05-20).
+ *
+ * Garment-to-garment formality — distinct from formalityMatchScore (garment vs
+ * watch) and contextFormalityScore (garment vs context). Neither of those
+ * catches a dress trouser (formality 7) sitting next to an athletic sneaker
+ * (formality 3): each piece scores fine on its own, but the 4-point spread
+ * between them is visually incoherent.
+ *
+ * Returns a multiplier (≤ 1.0) folded into _pairHarmonyScore. A spread within
+ * FORMALITY_SPREAD_TOLERANCE is penalty-free, so a normal smart-casual range
+ * (polo 4 + chino 5 + casual derby 6 = spread 2) is untouched. Each excess
+ * point costs 15%, floored at 0.55. The check is symmetric — it never flags an
+ * outfit merely for being casual (head-to-toe casual = spread ~1), only for
+ * being internally inconsistent.
+ *
+ *   spread ≤ 3 → 1.00   spread 4 → 0.85   spread 5 → 0.70   spread ≥ 6 → 0.55
+ */
+const FORMALITY_SPREAD_TOLERANCE = 3;
+const FORMALITY_SPREAD_COST = 0.15;
+const FORMALITY_SPREAD_FLOOR = 0.55;
+function formalitySpreadMultiplier(garments) {
+  const fvals = (garments ?? []).filter(Boolean).map(g => g.formality ?? 5);
+  if (fvals.length < 2) return 1;
+  const spread = Math.max(...fvals) - Math.min(...fvals);
+  if (spread <= FORMALITY_SPREAD_TOLERANCE) return 1;
+  return Math.max(
+    FORMALITY_SPREAD_FLOOR,
+    1 - (spread - FORMALITY_SPREAD_TOLERANCE) * FORMALITY_SPREAD_COST,
+  );
+}
+
+/**
  * Outfit-level pair harmony score for a shirt/pants/shoes combination.
- * Penalises exact color matches between pieces and delegates to
- * pantsShoeHarmony for the pants→shoes tonal check.
+ * Penalises exact color matches between pieces, delegates to pantsShoeHarmony
+ * for the pants→shoes tonal check, and applies intra-outfit formality coherence.
  * Returns a multiplier (≤ 1.0).
  */
 function _pairHarmonyScore(shirt, pants, shoes) {
@@ -218,6 +250,9 @@ function _pairHarmonyScore(shirt, pants, shoes) {
   if (shirt && shoes && _sameColor(shirt, shoes) && (shoes.color ?? "").toLowerCase() !== "white") score *= 0.9;
   // Pants–shoes tonal harmony (warm/cool check from pantsShoeHarmony)
   score *= pantsShoeHarmony(pants, shoes);
+  // Intra-outfit formality coherence — penalise large formality spreads
+  // (e.g. dress trousers + athletic sneaker)
+  score *= formalitySpreadMultiplier([shirt, pants, shoes]);
   return score;
 }
 
@@ -745,4 +780,4 @@ export function explainOutfitChoice(watch, outfit, weather) {
 }
 
 // Exported for testing
-export { _isPulloverType, _isCasualJacket, _pairHarmonyScore, _sameColor };
+export { _isPulloverType, _isCasualJacket, _pairHarmonyScore, _sameColor, formalitySpreadMultiplier };

@@ -1,6 +1,46 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-11 — v1.13.47 closes the auth-uniqueness loose end (GitHubLoginButton → shared store)
+Last updated: 2026-05-20 — v1.13.48: per-category rotation damping + intra-outfit formality coherence
+
+## 2026-05-20 — v1.13.48 (rotation scoping + formality coherence)
+
+User-directed scoring change (Eias). Two independent fixes.
+
+### 1. Per-category rotation damping
+
+Rotation pressure, the repetition penalty and the diversity penalty are now multiplied by `CATEGORY_ROTATION_MULTIPLIER[slot]` (in `scoringWeights.js`) before reaching the score:
+
+- **shoes → ×0** — rotation-neutral. Footwear is a ~8-pair set; penalising a recently-worn shoe just forces a worse-pairing shoe. A shoe that pairs well should be pickable regardless of how recently it was worn.
+- **pants → ×0.4** — relieved. Bottoms rotate less than tops in practice.
+- everything else → ×1.0 (shirts unchanged — full rotation pressure).
+
+The global `rotationFactor` weight (0.40) and `repetitionPenalty` (-0.28) are intentionally untouched — this is per-slot scoping, not a global weakening. Applied in `rotationFactor.js`, `repetitionFactor.js`, `diversityFactor.js` via `categoryRotationMultiplier(garment)` (reads `garment.type`, falls back to `garment.category`).
+
+### 2. Intra-outfit formality coherence
+
+The engine scored every garment against the **watch** (`formalityMatchScore`) and the **context** (`contextFormalityScore`) but never garment-to-garment. Nothing caught a dress trouser (formality 7) next to an athletic sneaker (formality 3) — each piece scored fine alone, the 4-point spread between them was invisible.
+
+New `formalitySpreadMultiplier([shirt,pants,shoes])` folds into `_pairHarmonyScore` as a ≤1.0 multiplier: spread ≤3 is free (a normal smart-casual range — polo 4 + chino 5 + derby 6), each excess point costs 15%, floored at 0.55. Symmetric — a head-to-toe casual outfit (spread ~1) is never penalised; only internal inconsistency is.
+
+### Regression guards
+
+- `tests/categoryRotationDamping.test.js` (new) — multiplier table + all 3 factors' damping (shoes ×0, pants ×0.4, shirt ×1).
+- `tests/formalityCoherence.test.js` (new) — spread→multiplier mapping + `_pairHarmonyScore` integration (dress-trouser+sneaker < dress-trouser+derby).
+
+### Files
+
+```
+src/config/scoringWeights.js                   | + CATEGORY_ROTATION_MULTIPLIER + categoryRotationMultiplier()
+src/outfitEngine/scoringFactors/rotationFactor.js   | category damping
+src/outfitEngine/scoringFactors/repetitionFactor.js | category damping
+src/outfitEngine/scoringFactors/diversityFactor.js  | category damping
+src/outfitEngine/outfitBuilder.js               | + formalitySpreadMultiplier() into _pairHarmonyScore
+tests/categoryRotationDamping.test.js           | +new
+tests/formalityCoherence.test.js                | +new
+SKILL_watch_advisor2.md                         | scoring tables updated
+```
+
+Tests: 3748/3748 green.
 
 ## 2026-05-11 (cont.) — v1.13.47 (auth uniqueness: GitHubLoginButton → shared store)
 
