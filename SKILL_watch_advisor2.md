@@ -136,7 +136,8 @@ netlify/functions/
   skill-snapshot.js       — live app state endpoint (GET, **requires Bearer auth** — `requireUser()` gated)
   generate-embedding.js   — OpenAI embedding generation
 .github/workflows/
-  weekly-audit.yml        — Monday 6am UTC autonomous audit via Claude Code
+  pr-test.yml             — vitest + build gate on every PR + push to main
+  dependabot-auto-merge.yml — auto-merge dependabot PRs that pass CI
 supabase/migrations/      — SQL migration audit trail
 tests/                    — 144 Vitest test files (2475+ tests)
 ```

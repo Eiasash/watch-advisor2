@@ -158,18 +158,6 @@ describe("push-brief — no-wear gap detection", () => {
   });
 });
 
-// ─── Phase 5F: weekly audit YAML exists ─────────────────────────────────────
-
-describe("weekly-audit.yml", () => {
-  it("workflow file exists with correct schedule", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync(".github/workflows/weekly-audit.yml", "utf8");
-    expect(content).toContain("cron: '0 6 * * 1'");
-    expect(content).toContain("workflow_dispatch");
-    expect(content).toContain("anthropics/claude-code-action@beta");
-  });
-});
-
 // ─── Phase 6.1: netlify.toml keepalive schedule ─────────────────────────────
 
 describe("netlify.toml — keepalive schedule", () => {
