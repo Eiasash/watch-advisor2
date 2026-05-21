@@ -1297,7 +1297,7 @@ A "simplification" PR could easily collapse the three-state flag back into a boo
 - `package.json`: bumped + overrides updated
 
 ### Open carry-forward
-- Coverage report at lines:50/branches:40 not actually enforced in CI yet — the threshold is in `vite.config.js` but no CI step runs `vitest run --coverage`. Wire that into `.github/workflows/weekly-audit.yml` next round.
+- Coverage report at lines:50/branches:40 not actually enforced in CI yet — the threshold is in `vite.config.js` but no CI step runs `vitest run --coverage`. Wire that into `.github/workflows/pr-test.yml` next round (originally slated for `weekly-audit.yml`, removed in #212).
 - Reuse `scripts/rls-audit.sh` from CI: needs `SUPABASE_DB_URL` as a GH Actions secret, then add a job step. Skipped this round to avoid a multi-PR setup.
 - React 18 → 19, vite 7 → 8, jsdom 28 → 29, zustand 4 → 5 majors all still deferred — none are blocking and each needs its own breaking-change review session.
 
