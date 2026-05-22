@@ -314,7 +314,7 @@ VALUES (
 | `AuditPanel.jsx` | AI audit + orphan patch tool. |
 | `StrapPanel.jsx` | Strap selection + AI hint. |
 | `GarmentEditor.jsx` | Metadata edit. |
-| `WardrobeGrid.jsx` | Browse + filter. |
+| `WardrobeGrid.jsx` | Browse + filter + last-worn sort. |
 | `BulkTaggerPanel.jsx` | Batch AI tagging. |
 | `DebugConsole.jsx` | Error log + monthly cost + App Health. |
 

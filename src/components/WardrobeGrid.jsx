@@ -7,6 +7,7 @@ import { useThemeStore } from "../stores/themeStore.js";
 import { setCachedState } from "../services/localCache.js";
 import { deleteGarment, pushGarment, deleteStoragePhoto } from "../services/supabaseSync.js";
 import GarmentEditor from "./GarmentEditor.jsx";
+import { sortGarmentsByWear, coerceSortMode, SORT_PREF_KEY } from "../domain/wardrobeSort.js";
 const BulkPhotoMode = lazy(() => import("./BulkPhotoMode.jsx"));
 
 const CELL_HEIGHT = 272;
@@ -334,6 +335,15 @@ export default function WardrobeGrid() {
   const [query, setQuery]       = useState("");
   const [editing, setEditing]   = useState(null);
   const [showBulkPhoto, setShowBulkPhoto] = useState(false);
+  const [sortMode, setSortMode] = useState(() => {
+    try { return coerceSortMode(localStorage.getItem(SORT_PREF_KEY)); }
+    catch { return "stale"; }
+  });
+  const changeSort = useCallback((m) => {
+    const next = coerceSortMode(m);
+    setSortMode(next);
+    try { localStorage.setItem(SORT_PREF_KEY, next); } catch { /* private mode / quota */ }
+  }, []);
 
   // Count garments without photos (for banner)
   const noPhotoCount = useMemo(() => {
@@ -352,6 +362,7 @@ export default function WardrobeGrid() {
   const gridRef     = useRef(null);
   const containerRef = useRef(null);
   const selectedRef  = useRef(null);
+  const sortedRef    = useRef([]);
 
   useEffect(() => {
     function onResize() {
@@ -396,7 +407,13 @@ export default function WardrobeGrid() {
     return arr;
   }, [allItems, activeFilter, query]);
 
-  const rowCount = Math.max(1, Math.ceil(filtered.length / COLUMN_COUNT));
+  // Sort runs AFTER the type/search filter — re-orders only what is visible.
+  const sorted = useMemo(() => sortGarmentsByWear(filtered, sortMode), [filtered, sortMode]);
+  // Mirror the rendered order into a ref so the scroll-to-selected effect can
+  // index the list the grid actually shows.
+  useEffect(() => { sortedRef.current = sorted; }, [sorted]);
+
+  const rowCount = Math.max(1, Math.ceil(sorted.length / COLUMN_COUNT));
 
   const typeCounts = useMemo(() => {
     const c = {};
@@ -414,7 +431,7 @@ export default function WardrobeGrid() {
     setActiveFilter("all");
     setQuery("");
     setTimeout(() => {
-      const idx = allItems.findIndex(g => g.id === selectedGarmentId);
+      const idx = sortedRef.current.findIndex(g => g.id === selectedGarmentId);
       if (idx >= 0 && gridRef.current) {
         gridRef.current.scrollToItem({ rowIndex: Math.floor(idx / COLUMN_COUNT), columnIndex: 0, align: "center" });
         containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -484,12 +501,12 @@ export default function WardrobeGrid() {
   // Memoized itemData — stable reference means React.memo(Cell) skips re-renders
   // when filter/selection/theme haven't changed.
   const cellData = useMemo(() => ({
-    items: filtered, columns: COLUMN_COUNT, isDark,
+    items: sorted, columns: COLUMN_COUNT, isDark,
     selectMode, selectedIds, selectedGarmentId,
     onSelect: toggleSelect, onLongPress: handleLongPress,
     onEdit: handleEdit, onDelete: handleSingleDelete,
     selectedRef, history,
-  }), [filtered, COLUMN_COUNT, isDark, selectMode, selectedIds, selectedGarmentId,
+  }), [sorted, COLUMN_COUNT, isDark, selectMode, selectedIds, selectedGarmentId,
       toggleSelect, handleLongPress, handleEdit, handleSingleDelete, history]);
 
   const tabStyle = active => ({
@@ -565,8 +582,21 @@ export default function WardrobeGrid() {
         }}
       />
 
-      {/* Filter tabs */}
+      {/* Sort toggle + filter tabs — one overflow-scrolling row. The sort group
+          is pinned first (flexShrink:0) so it stays visible at 360px with full
+          labels while the type tabs scroll behind it. */}
       <div style={{ display:"flex", gap:5, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
+        <div style={{ display:"flex", gap:4, flexShrink:0 }}
+             role="group" aria-label="Sort wardrobe by last worn">
+          <button type="button" onClick={() => changeSort("stale")}
+            aria-pressed={sortMode === "stale"} aria-label="Sort by least recently worn"
+            title="Least recently worn first" style={tabStyle(sortMode === "stale")}>Stale</button>
+          <button type="button" onClick={() => changeSort("recent")}
+            aria-pressed={sortMode === "recent"} aria-label="Sort by most recently worn"
+            title="Most recently worn first" style={tabStyle(sortMode === "recent")}>Recent</button>
+        </div>
+        <div aria-hidden="true" style={{ width:1, alignSelf:"stretch", flexShrink:0,
+                                         background:isDark ? "#2b3140" : "#d1d5db" }} />
         {ALL_FILTERS.map(tab => (
           <button key={tab.key} onClick={() => setActiveFilter(tab.key)} style={tabStyle(activeFilter === tab.key)}>
             {tab.label} {typeCounts[tab.key] > 0 ? `(${typeCounts[tab.key]})` : ""}
