@@ -134,11 +134,18 @@ export async function pushGarment(garment) {
   }
 }
 
+// Soft-delete: never DROP a garment row from cloud — set exclude_from_wardrobe = true
+// instead. The wardrobe pull filters on this column, so behavior is identical for the user,
+// but history references, photos, and embeddings are preserved for audit/restore. Hard
+// deletion via .delete() corrupted history entries and lost photos before v1.13.50.
 export async function deleteGarment(id) {
   if (IS_PLACEHOLDER) return;
   setSyncState({ queued: getSyncState().queued + 1 });
   try {
-    const { error } = await supabase.from("garments").delete().eq("id", id);
+    const { error } = await supabase
+      .from("garments")
+      .update({ exclude_from_wardrobe: true })
+      .eq("id", id);
     if (error) console.warn("[supabaseSync] deleteGarment error:", error.message);
   } catch (e) {
     console.warn("[supabaseSync] deleteGarment failed:", e.message);
