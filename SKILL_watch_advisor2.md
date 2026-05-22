@@ -33,7 +33,7 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Version | **1.13.48** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-05-10. 3,686/210 all green. Site health: garments=114, history=73, orphaned=0, model=claude-sonnet-4-6. May token cost so far $2.02 (474K input / 39K output). v1.13.21–1.13.40 highlights: a11y aria-labels, net timeout hardening, claude-client default maxAttempts=1+8.5s timeout+dedup wardrobe-chat tools, critical race fixes+bulk-photo+push-unsubscribe, defensive batch tab a11y+prompt-injection guards, wardrobe-chat security caps, perf passes (garmentMap/watchMap StatsPanel/WeekPlanner/OutfitHistory/WeeklyDigest), lazy-load DebugConsole, 44px touch floor + aria-labels on icon-only buttons, keyboard access for div onClick, closure-stale-read race fixes, auth coverage tests, **v1.13.40: rikka-titanium-bracelet → rikka-bracelet rename + alias map for legacy IDB caches + Supabase migration normalizing 4 cloud history rows; Rikka SS bracelet & Snowflake titanium bracelet both moved to first-slot default**. |
+| Last audited | 2026-05-22. v1.13.48 in prod. Site health: garments=118, history=85, orphaned=0, active straps=41, model=claude-sonnet-4-6. v1.13.41–48 highlights: a11y contrast (24 WCAG AA fixes + residual 11→0), DIVERSITY ENFORCEMENT block in `buildUserPrompt` to escape shirt-color stuck loops, quantitative formality floors on `STEER_INSTRUCTIONS` (`more_formal` ≥6, `more_casual` ≤5 — no soften-back to soft verbs), Rules-of-Hooks fix across 3 components + static-scan regression guard `tests/hooksBeforeEarlyReturn.test.js`, shared `useAuthStore` + sign-in empty state + `WeekPlanner` auto-fetch gated on `isAuthed`, `GitHubLoginButton` migrated off local subscription with uniqueness guard `tests/authSubscriptionUniqueness.test.js`, and **v1.13.48 (PR #210): `CATEGORY_ROTATION_MULTIPLIER` in `scoringWeights.js` damps rotation/repetition/diversity factors per slot — shoes ×0 (rotation-neutral, re-wear free), pants ×0.4, others ×1; global 0.40/-0.28 weights untouched. Also `formalitySpreadMultiplier()` in `_pairHarmonyScore` — intra-outfit formality spread ≤3 free, -15% per excess pt, floor 0.55. Regression guards: `tests/categoryRotationDamping.test.js` + `tests/formalityCoherence.test.js`**. |
 | Active model | `claude-sonnet-4-6` |
 | May 2026 token cost | $2.02 (474K input / 39K output — 2026-05-10 snapshot) |
 | Current scoring weights (live, from skill-snapshot) | rotationFactor=0.40, repetitionPenalty=-0.28, neverWornRotationPressure=0.50, neverWornRecencyScore=0.50, colorMatch=2.5, formalityMatch=3, watchCompatibility=3, weatherLayer=1, contextFormality=0.5, diversityFactor=-0.12, seasonMatch=0.3, contextMatch=0.1 — auto-heal has not yet written any tunes (`tuned: []`) |
@@ -225,6 +225,23 @@ Same tone, 2+ pieces        → -0.05
 ### Strap-Shoe Rule — DEAD (v1.12.12)
 `strapShoeScore()` always returns 1.0. `filterShoesByStrap` removed. Strap chip gone from UI.
 Do NOT re-add any strap-shoe filtering or scoring logic.
+
+### CATEGORY_ROTATION_MULTIPLIER — empirical justification (v1.13.48)
+
+The `shoes: 0` multiplier looks aggressive but is justified by the May 2026 history:
+across 17 entries with `garmentIds` (May 1–19, pre-deploy), one shoe — the chestnut
+Ecco S-Lite Hybrid derby — accounts for **8 of 17 wears (47%)** across 7 distinct
+watches and contexts spanning dress (Reverso) through sport (Black Bay). The engine
+was previously penalising re-wear via rotation/repetition/diversity factors, but the
+user overrode the suggestion ~half the time. Setting `shoes: 0` stops the engine
+fighting an empirical preference. Pants tell a softer story (Kiral Khaki = 4/17 ≈ 24%,
+no single dominant pick), justifying `pants: 0.4` rather than 0. Shirts show no
+concentration (10 unique items in 17 wears) — no damping needed, multiplier stays 1.
+
+If you ever tune these multipliers, re-run the same SQL on `history.payload->garmentIds`
+joined to `garments.category` for the last 30 days. The empirical floor for shoes
+damping is the percentage of wears using the single most-worn shoe — if that drops
+below ~25%, reconsider raising shoes back toward 0.2–0.3.
 
 ### Context Values
 Valid: `clinic`, `smart-casual`, `formal`, `shift`, `casual`, `date-night`, `riviera`,
