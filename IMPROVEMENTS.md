@@ -1,6 +1,62 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-20 — v1.13.48: per-category rotation damping + intra-outfit formality coherence
+Last updated: 2026-05-22 — v1.13.49: WardrobeGrid last-worn sort
+
+## 2026-05-22 — v1.13.49 (WardrobeGrid last-worn sort)
+
+User-directed feature (Eias). The wardrobe grid had a type filter and search
+but no ordering control — garments rendered in raw store order.
+
+### Change
+
+A 2-state sort toggle ("Stale" / "Recent") in the WardrobeGrid header orders
+the grid by `garment.lastWorn`:
+
+- **Stale** (default) — least-recently-worn first; never-worn garments at the
+  **top** (loudest "you're ignoring this" signal). Default because
+  rotation/discovery is the actionable view for a wardrobe.
+- **Recent** — most-recently-worn first; never-worn at the **bottom**.
+
+`garment.lastWorn` is the same denormalized ISO-date field the per-card
+"Nd ago" badge already renders (kept current by `updateGarment` on the
+outfit-log and selfie-match paths) — so the sort agrees with the badges.
+
+Sort runs **after** the type/search filter, re-ordering only what is visible.
+Mode persists per-device in `localStorage["wa2:wardrobeGridSort"]`. Equal
+worn-dates tie-break deterministically by garment id. The ordering logic is a
+pure domain module (`src/domain/wardrobeSort.js`) — components stay UI-only.
+
+The toggle is pinned first in the filter-tab row with `flexShrink:0`; that row
+already overflow-scrolls, so the sort group stays visible at a 360px viewport
+with full "Stale"/"Recent" labels while the type tabs scroll behind it — no
+icon-only fallback needed. A 1px divider separates it from the type filters.
+The scroll-to-selected-garment effect now indexes the sorted list (it
+previously indexed the unsorted `allItems`).
+
+### Regression guards
+
+- `tests/wardrobeSort.test.js` (new, 20 tests) — both modes, never-worn
+  placement, unparseable-date handling, id tie-break, immutability,
+  non-array/empty input, filter→sort composition.
+
+### Follow-ups (out of scope — recorded so they aren't lost)
+
+- **Frequency sort** — order by wear *count* rather than last date; needs a
+  per-garment wear-count aggregation over history. Separate ticket.
+- **"Stale 90+d" cull-candidate badge** — a per-card badge flagging long-idle
+  garments as decluttering candidates. Natural neighbour of the Stale sort.
+
+### Files
+
+```
+src/domain/wardrobeSort.js       | +new — sortGarmentsByWear + coerceSortMode + SORT_PREF_KEY
+src/components/WardrobeGrid.jsx   | sort toggle + sorted memo; scroll-to-selected indexes sorted list
+tests/wardrobeSort.test.js        | +new (20 tests)
+package.json                      | 1.13.48 -> 1.13.49
+SKILL_watch_advisor2.md           | component table line updated
+```
+
+Tests: 3767/3767 green (+20 new; net of #213 weekly-audit test removal).
 
 ## 2026-05-20 — v1.13.48 (rotation scoping + formality coherence)
 
