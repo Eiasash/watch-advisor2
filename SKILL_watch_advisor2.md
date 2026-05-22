@@ -287,7 +287,7 @@ in Claude responses that may contain thinking blocks + text blocks.
 | Table | Purpose | Notes |
 |-------|---------|-------|
 | `garments` | Wardrobe items | **100 active as of April 11 2026** |
-| `history` | Wear log | 48 entries. payload_version: "v1" on all |
+| `history` | Wear log | 85 entries (2026-05-22). `payload_version: "v1"` on all rows. |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
@@ -313,6 +313,23 @@ VALUES (
   NOW()
 ) ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, created_at = NOW();
 ```
+
+### History Entry Flags — actual semantics (audited 2026-05-22)
+
+The earlier one-line table ("`legacy: true` = pre-March 2026, garmentIds unrecoverable") was
+the original migration intent but drifted out of date once `auto-heal.js` started auto-stamping.
+What's true today:
+
+| Flag | When it's set | Effect |
+|------|---------------|--------|
+| `quickLog: true` | One-tap watch log from TodayPanel — watch logged, no garments captured. Also auto-stamped by auto-heal on orphan entries whose IDs do **not** start with `today-`/`dash-` (i.e. modern orphans get `quickLog` not `legacy`). | Excluded from orphan check. Excluded from score backfill. |
+| `legacy: true` | Three triggers: (1) original 2026-02 migration `_migrations.json` stamped 6 specific `today-*`/`dash-*` IDs that pre-date garmentIds tracking; (2) auto-heal stamps orphans whose IDs start with `today-`/`dash-` (path 2a in `auto-heal.js`); (3) **auto-heal stamps any entry with garmentIds populated but no `score` value that is more than 3 days old** (path 2b). This last trigger explains modern `legacy:true` rows that still have garmentIds — they're not corrupt, they're "stale unscored". | Excluded from orphan check. Excluded from `ScoreBackfill.jsx` (locked out of retroactive scoring — by design, since stale-unscored implies the AI scoring window has passed). |
+| `payload_version: "v1"` | Always set on insert/update. Auto-heal back-fills it if missing during any stamp operation. | Schema version. Required on every row. |
+
+**Implication for new code:** if you want a new entry to remain score-backfill-eligible, score it within 3 days (or include a `score` key — auto-heal's stale-unscored check requires `score == null`, so any non-null value blocks the legacy stamp).
+
+### Context enum (engine + history)
+Valid `payload.context` values: `clinic` · `smart-casual` · `formal` · `shift` · `casual` · `date-night` · `riviera` · `work`. Anything outside this set is a UI freeform leak — normalize on read or migrate. As of 2026-05-22 zero invalid contexts exist in history (one prior `Any Vibe` on `rotation-1778177718618` was normalized to `casual`).
 
 ### IDB Array Safety
 `.filter()` crashes traced to IDB cache returning non-array truthy values (strings) for array fields.
