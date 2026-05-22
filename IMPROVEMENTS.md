@@ -22,7 +22,7 @@ the grid by `garment.lastWorn`:
 outfit-log and selfie-match paths) — so the sort agrees with the badges.
 
 Sort runs **after** the type/search filter, re-ordering only what is visible.
-Mode persists per-device in `localStorage["wa2:wardrobeGridSort"]`. Equal
+Mode persists per-device in `localStorage["wa2-wardrobe-grid-sort"]`. Equal
 worn-dates tie-break deterministically by garment id. The ordering logic is a
 pure domain module (`src/domain/wardrobeSort.js`) — components stay UI-only.
 

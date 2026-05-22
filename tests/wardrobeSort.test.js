@@ -41,7 +41,7 @@ describe("coerceSortMode", () => {
 
 describe("SORT_PREF_KEY", () => {
   it("is the documented per-device localStorage key", () => {
-    expect(SORT_PREF_KEY).toBe("wa2:wardrobeGridSort");
+    expect(SORT_PREF_KEY).toBe("wa2-wardrobe-grid-sort");
   });
 });
 

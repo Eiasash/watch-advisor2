@@ -13,7 +13,7 @@
  * Domain rule: no React, no Zustand, no side effects — pure data → data.
  */
 
-export const SORT_PREF_KEY = "wa2:wardrobeGridSort";
+export const SORT_PREF_KEY = "wa2-wardrobe-grid-sort";
 
 /**
  * Coerce any stored/raw value to a valid sort mode. Anything that is not
