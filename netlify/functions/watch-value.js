@@ -22,7 +22,7 @@ const KNOWN_VALUES = {
   santos_large: { ref: "W2SA0009", marketILS: 26000, trend: "stable" },
   santos_octagon: { ref: "Vintage 1980s", marketILS: 8000, trend: "rising" },
   blackbay: { ref: "M7941A1A0RU-0003", marketILS: 9500, trend: "stable" },
-  monaco: { ref: "CW2111", marketILS: 12000, trend: "stable" },
+  "gp-vintage-1945": { ref: "25805-11-822-BAEA", marketILS: 14000, trend: "stable" },
   gmt: { ref: "116710LN", marketILS: 55000, trend: "rising" },
   speedmaster: { ref: "310.30.42.50.01.001", marketILS: 24000, trend: "stable" },
   hanhart: { ref: "417 ES", marketILS: 7000, trend: "stable" },

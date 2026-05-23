@@ -81,7 +81,7 @@ const TOOLS = [
     input_schema: {
       type: "object",
       properties: {
-        watch_id:  { type: "string", description: "Watch ID: snowflake, rikka, pasha, laureato, reverso, santos_large, santos_octagon, blackbay, monaco, gmt, speedmaster, hanhart, laco" },
+        watch_id:  { type: "string", description: "Watch ID: snowflake, rikka, pasha, laureato, reverso, santos_large, santos_octagon, blackbay, gp-vintage-1945, gmt, speedmaster, hanhart, laco" },
         label:     { type: "string", description: "Display label, e.g. 'Brown leather'" },
         color:     { type: "string" },
         type:      { type: "string", enum: ["leather","bracelet","nato","canvas","rubber","suede"] },
@@ -266,7 +266,7 @@ WARDROBE (${garments?.length ?? 0} garments — format: [ID] Name (type, color, 
 ${garmentList}
 
 WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
-Watch IDs for add_strap tool: snowflake, rikka, pasha, laureato, reverso, santos_large, santos_octagon, blackbay, monaco, gmt, speedmaster, hanhart, laco
+Watch IDs for add_strap tool: snowflake, rikka, pasha, laureato, reverso, santos_large, santos_octagon, blackbay, gp-vintage-1945, gmt, speedmaster, hanhart, laco
 Genuine: GS Snowflake (silver-white, titanium bracelet option), GS Rikka SBGH351 (green, teal alligator default or stainless-steel bracelet — NOT titanium; titanium is Snowflake only), Pasha 41 WSPA0026 (grey), GP Laureato 42mm (blue, integrated), JLC Reverso Duoface (navy), Santos Large (white/gold), Santos Octagon YG (white, vintage), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
 Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
 

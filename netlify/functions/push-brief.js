@@ -83,7 +83,7 @@ async function buildBrief(apiKey) {
   for (const wid of recentWatchIds) {
     watchWearMap[wid] = (watchWearMap[wid] ?? 0) + 1;
   }
-  const allGenuine = ["snowflake","rikka","pasha","laureato","reverso","santos_large","santos_octagon","blackbay","monaco","gmt","speedmaster","hanhart","laco"];
+  const allGenuine = ["snowflake","rikka","pasha","laureato","reverso","santos_large","santos_octagon","blackbay","gp-vintage-1945","gmt","speedmaster","hanhart","laco"];
   const neglected = allGenuine
     .filter(w => !recentWatchIds.slice(0, 7).includes(w))
     .slice(0, 3);
