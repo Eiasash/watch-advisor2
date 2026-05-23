@@ -97,8 +97,8 @@ describe("strapLibrary", () => {
     });
 
     it("recommends black shoe for black leather", () => {
-      const watch = WATCH_COLLECTION.find(w => w.id === "monaco");
-      const strap = watch.straps[0]; // black leather
+      const watch = WATCH_COLLECTION.find(w => w.id === "blackbay");
+      const strap = watch.straps.find(s => s.color === "black" && s.type === "leather");
       const recs = sampleOutfitsForStrap(strap, watch);
       expect(recs.some(r => /black/i.test(r.shoes))).toBe(true);
     });
