@@ -203,7 +203,16 @@ export default function TodayPanel() {
     upsertEntry(entry);
 
     const wornIds = [...selected];
-    wornIds.forEach(id => updateGarment(id, { lastWorn: TODAY_ISO }));
+    wornIds.forEach(id => {
+      // Track lastWorn (for "recently worn" sort in GarmentPicker) AND
+      // wearCount (for tie-break + "frequency" weighting). Mirrors the
+      // strapStore wear-bookkeeping pattern. The previous garment value is
+      // looked up via the garments array (in-scope component-level state) so
+      // we don't depend on store internals.
+      const prev = garments.find(g => g.id === id);
+      const prevCount = prev?.wearCount ?? 0;
+      updateGarment(id, { lastWorn: TODAY_ISO, wearCount: prevCount + 1 });
+    });
 
     // Style learning — writes to the store that scoreGarment reads from.
     try {
