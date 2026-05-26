@@ -29,9 +29,23 @@ export default function GarmentPicker({
     ...[...types].filter(t => !GARMENT_PRIORITY.includes(t)),
   ];
 
-  const visible = filter === "all"
+  const visible = (filter === "all"
     ? activeGarments
-    : activeGarments.filter(g => (g.type ?? "").toLowerCase() === filter);
+    : activeGarments.filter(g => (g.type ?? "").toLowerCase() === filter)
+  ).slice().sort((a, b) => {
+    // Sort by recency-of-wear first (most recent at top), then by total wear count,
+    // so daily drivers (e.g. Ecco S-Lite, RL light blue shirt) float above visually-
+    // similar duplicates during check-in. Items never worn (no lastWorn) sink to the
+    // bottom; among never-worn, preserve natural order. Garment with same lastWorn
+    // date is tie-broken by wearCount (more-worn first), then natural order.
+    const aWorn = a.lastWorn || "";
+    const bWorn = b.lastWorn || "";
+    if (aWorn !== bWorn) return bWorn.localeCompare(aWorn); // ISO date strings sort lex
+    const aCount = a.wearCount ?? 0;
+    const bCount = b.wearCount ?? 0;
+    if (aCount !== bCount) return bCount - aCount;
+    return 0; // stable: preserve natural order on full tie
+  });
 
   return (
     <div style={{ background: card, borderRadius: 14, border: `1px solid ${border}`, padding: collapsed ? "10px 16px" : 16, marginBottom: 14 }}>
