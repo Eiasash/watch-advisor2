@@ -71,7 +71,7 @@ export default function GarmentPicker({
           <button key={t} onClick={() => setFilter(t)}
             style={{ padding: "4px 10px", borderRadius: 14, border: "none", fontSize: 11, fontWeight: 600,
                      whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0,
-                     background: filter === t ? "#3b82f6" : (isDark ? "#1a1f2b" : "#f3f4f6"),
+                     background: filter === t ? "#2563eb" : (isDark ? "#1a1f2b" : "#f3f4f6"),
                      color: filter === t ? "#fff" : muted }}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>

@@ -76,7 +76,7 @@ function WatchCard({ watch, label, accent = "#3b82f6", isDark }) {
           {strapLabel && (
             <div
               onClick={() => allStraps.length > 1 && setShowStraps(s => !s)}
-              style={{ fontSize: 11, color: showStraps ? "#3b82f6" : "#6b7280", marginTop: 2,
+              style={{ fontSize: 11, color: showStraps ? (isDark ? "#60a5fa" : "#2563eb") : (isDark ? "#9ca3af" : "#6b7280"), marginTop: 2,
                        fontStyle: "italic", cursor: allStraps.length > 1 ? "pointer" : "default" }}>
               {strapLabel} {allStraps.length > 1 ? (showStraps ? "▲" : "▼ change") : ""}
             </div>

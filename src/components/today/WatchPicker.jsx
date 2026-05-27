@@ -40,7 +40,6 @@ export default function WatchPicker({
               role="button"
               tabIndex={0}
               aria-pressed={watchId === w.id}
-              aria-label={`Select ${w.brand} ${w.model}${watchId === w.id ? ", currently selected" : ""}`}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectWatch(w.id); } }}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10,
                        border: `2px solid ${watchId === w.id ? "#3b82f6" : border}`, cursor: "pointer",
@@ -76,7 +75,7 @@ export default function WatchPicker({
                 style={{ padding: "5px 10px", borderRadius: 8,
                          border: `1px solid ${activeStrapId === s.id ? "#3b82f6" : border}`,
                          background: activeStrapId === s.id ? "#3b82f622" : "transparent",
-                         color: activeStrapId === s.id ? "#3b82f6" : muted,
+                         color: activeStrapId === s.id ? (isDark ? "#60a5fa" : "#2563eb") : muted,
                          fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                 {s.label}
               </button>
