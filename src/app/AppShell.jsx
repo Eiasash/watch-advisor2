@@ -38,10 +38,13 @@ const StrapLibraryTab = lazy(() => import("../components/StrapLibraryTab.jsx"));
 function TabPane({ active, children, tabKey }) {
   const [visited, setVisited] = useState(false);
   useEffect(() => { if (active && !visited) setVisited(true); }, [active, visited]);
-  if (!visited) return null;
-  // Render with role="tabpanel" + id + aria-labelledby so the matching
-  // aria-controls on the tab button (id="wa-tabpanel-${key}") resolves to a
-  // real element. Lighthouse a11y otherwise flags aria-controls as invalid.
+  // Always render the wrapper so aria-controls on the tab buttons has a
+  // resolvable target on initial load — even for tabs the user hasn't
+  // visited yet. Lazy-load behavior preserved: children only render after
+  // first activation, so the heavy panel contents still don't mount up
+  // front. Caught by Codex P2 on PR #224 — without this, inactive tabs'
+  // aria-controls pointed to missing elements (regression of the
+  // aria-valid-attr-value fix).
   return (
     <div
       role="tabpanel"
@@ -50,7 +53,7 @@ function TabPane({ active, children, tabKey }) {
       hidden={!active}
       style={{ display: active ? "block" : "none" }}
     >
-      {children}
+      {visited ? children : null}
     </div>
   );
 }
