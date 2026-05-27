@@ -1,4 +1,4 @@
-// Watch_Collection v11.6 — 23 active (13 genuine + 10 replica) + 2 pending + 4 retired — May 23 2026 (Monaco → GP Vintage 1945)
+// Watch_Collection v11.8 — 23 active (13 genuine + 10 replica) + 2 pending + 5 retired — May 27 2026 (Rolex GMT 116710LN → GO Seventies Chrono Panorama Date, +₪3K cash to Eias)
 export const WATCH_COLLECTION = [
   { id:"snowflake", brand:"Grand Seiko", model:"Snowflake", ref:"SBGA211", dial:"silver-white", strap:"bracelet", formality:7, style:"sport-elegant", lug:19, size:41, priceILS:22000, straps:[ {id:"snowflake-titanium-bracelet", label:"Titanium bracelet", color:"silver", type:"bracelet", useCase:"Default — daily driver, any footwear"}, {id:"snowflake-grey-alligator", label:"Grey alligator", color:"grey", type:"leather", useCase:"Dressy / formal alternate"}, {id:"snowflake-navy-alligator", label:"Navy alligator", color:"navy", type:"leather", useCase:"Dressy / navy outfits"} ] },
   { id:"rikka", brand:"Grand Seiko", model:"Rikka", ref:"SBGH351", dial:"green", strap:"bracelet", formality:7, style:"sport-elegant", lug:21, size:40, priceILS:28000, straps:[ {id:"rikka-bracelet", label:"Stainless steel bracelet", color:"silver", type:"bracelet", useCase:"Default — daily driver, repaired Apr 2026 (legacy IDs rikka-titanium-bracelet and rikka-bracelet-ss aliased to this; bracelet is steel — titanium is Snowflake-only)"}, {id:"rikka-teal-alligator", label:"Teal alligator", color:"teal", type:"leather", useCase:"Statement — complements green dial"}, {id:"rikka-brown-leather", label:"Brown leather", color:"brown", type:"leather", useCase:"Smart casual / brown Eccos"} ] },
@@ -9,7 +9,7 @@ export const WATCH_COLLECTION = [
   { id:"santos_octagon", brand:"Cartier", model:"Santos Octagon YG", ref:"Vintage 1980s", dial:"white", strap:"bracelet", formality:8, style:"dress", lug:18, size:29, priceILS:8000, straps:[ {id:"santos_octagon-leather", label:"Leather strap", color:"tan", type:"leather", useCase:"Dress / date night"} ] },
   { id:"blackbay", brand:"Tudor", model:"Black Bay 41", ref:"M7941A1A0RU-0003", dial:"black-red", strap:"bracelet", formality:6, style:"sport", lug:21, size:41, priceILS:9500, shiftWatch:true, straps:[ {id:"blackbay-steel", label:"Five-link steel bracelet", color:"silver", type:"bracelet", useCase:"Default sporty/casual"}, {id:"blackbay-brown-distressed", label:"Distressed brown leather", color:"brown", type:"leather", useCase:"Smart casual / brown Eccos"}, {id:"blackbay-black-leather", label:"Black leather white stitch", color:"black", type:"leather", useCase:"Dressy / clinic"}, {id:"blackbay-tag-nato", label:"TAG Heuer black/tan NATO", color:"black", type:"nato", useCase:"Casual / weekend — black canvas, tan edge stitch, TAG buckle"}, {id:"blackbay-laco-cross", label:"Laco distressed brown leather (cross-strap)", color:"brown", type:"leather", useCase:"Weekend/casual — 20mm in 21mm lugs, slight gap acceptable"}, {id:"blackbay-blue-fkm", label:"Blue FKM rubber (DayDayWatchband)", color:"navy", type:"rubber", useCase:"Sporty / summer / weekend casual — quick-release pins, FKM vulcanized rubber, navy-blue tone reads near-black in low light"}, {id:"blackbay-navy-canvas", label:"Navy canvas #18", color:"navy", type:"canvas", pending:true, useCase:"Smart casual, navy outfits — Tudor deployant"}, {id:"blackbay-olive-canvas", label:"Olive canvas #21", color:"olive", type:"canvas", pending:true, useCase:"Field/casual, olive outfits — Tudor deployant"} ] },
   { id:"gp-vintage-1945", brand:"Girard-Perregaux", model:"Vintage 1945 Big Date", ref:"25805-11-822-BAEA", dial:"ivory", strap:"bracelet", formality:7, style:"dress", lug:22, size:32, priceILS:16000, genuine:true, limitedEdition:"LE 999", straps:[ {id:"gp-vintage-bracelet", label:"Stainless steel bracelet (OEM)", color:"silver", type:"bracelet", useCase:"Default — any footwear"}, {id:"gp-vintage-brown-deployant", label:"Brown leather with original deployant (OEM)", color:"brown", type:"leather", useCase:"Smart casual / dressy — brown Eccos, camel"} ] },
-  { id:"gmt", brand:"Rolex", model:"GMT-Master II", ref:"116710LN", dial:"black", strap:"bracelet", formality:7, style:"sport", lug:20, size:40, priceILS:55000, straps:[ {id:"gmt-oyster", label:"Steel Oyster bracelet", color:"silver", type:"bracelet", useCase:"Default — any footwear"} ] },
+  { id:"go-seventies-chrono", brand:"Glashütte Original", model:"Seventies Chronograph Panorama Date", ref:"1-37-02-03-02-70", dial:"blue", strap:"bracelet", formality:7, style:"sport-elegant", lug:20, size:40, priceILS:30000, genuine:true, straps:[ {id:"go-seventies-bracelet", label:"Stainless steel bracelet (OEM)", color:"silver", type:"bracelet", useCase:"Default — any footwear, daily rotation"} ] },
   { id:"speedmaster", brand:"Omega", model:"Speedmaster Professional 3861", ref:"310.30.42.50.01.001", dial:"black", strap:"bracelet", formality:7, style:"sport", lug:20, size:42, priceILS:24000, shiftWatch:true, straps:[ {id:"speedy-bracelet", label:"Steel bracelet", color:"silver", type:"bracelet", useCase:"Default"}, {id:"speedy-teal-buttero", label:"Dark teal Buttero leather", color:"teal", type:"leather", useCase:"Statement — Italian veg-tanned"}, {id:"speedy-black-orange", label:"Black leather / orange lining", color:"black", type:"leather", useCase:"Sporty — NASA heritage"}, {id:"speedy-navy-rubber", label:"Navy leather/rubber", color:"navy", type:"leather", useCase:"Smart casual / clinic"}, {id:"speedy-white-rubber", label:"White rubber rally", color:"white", type:"rubber", useCase:"Summer / Riviera"}, {id:"speedy-navy-canvas", label:"Dark navy canvas / gold stitch saffiano", color:"navy", type:"canvas", useCase:"Warm accent / smart casual"}, {id:"speedy-black-gold", label:"Black grained leather / gold butterfly deployant", color:"black", type:"leather", useCase:"Dressy warm accent"}, {id:"speedy-tan-calf", label:"Tan/honey calf leather", color:"tan", type:"leather", useCase:"Everyday smart casual / brown Eccos"}, {id:"speedy-nato", label:"Navy/white/orange NATO", color:"navy", type:"nato", useCase:"Casual summer / regatta"}, {id:"speedy-tag-nato", label:"TAG Heuer black/tan NATO", color:"black", type:"nato", useCase:"Casual / weekend — black canvas, tan edge stitch, TAG buckle"} ] },
   { id:"hanhart", brand:"Hanhart", model:"Pioneer Flyback", ref:"417 ES", dial:"white-teal", strap:"black leather", formality:6, style:"pilot", lug:20, size:39, priceILS:7000, shiftWatch:true, straps:[ {id:"hanhart-black", label:"Black leather / white stitch (OEM)", color:"black", type:"leather", useCase:"Versatile — formal shoes or white sneakers"}, {id:"hanhart-teal", label:"Teal/green leather / yellow lining (aftermarket)", color:"teal", type:"leather", useCase:"Primary statement"}, {id:"hanhart-light-brown", label:"Light brown leather", color:"brown", type:"leather", useCase:"Smart casual / brown Eccos"}, {id:"hanhart-dark-green", label:"Dark green suede rough-out", color:"olive", type:"leather", useCase:"Field casual"}, {id:"hanhart-sage", label:"Sage/olive chunky leather", color:"olive", type:"leather", useCase:"Military vibe"}, {id:"hanhart-grey-canvas", label:"Grey woven canvas", color:"grey", type:"canvas", useCase:"Vintage military casual"} ] },
   { id:"laco", brand:"Laco", model:"Flieger Type B", ref:"Type B", dial:"black", strap:"distressed brown leather", formality:5, style:"pilot", lug:22, size:42, priceILS:2500, straps:[ {id:"laco-brown-distressed", label:"Distressed brown leather", color:"brown", type:"leather", useCase:"Rugged casual"} ] },
@@ -107,6 +107,26 @@ export const WATCH_COLLECTION = [
     retired: true,
     retiredDate: "2026-05",
     retiredReason: "Traded to Timor Josef + ₪4,000 cash → Girard-Perregaux Vintage 1945 Big Date 25805 (LE 999)"
+  },
+  {
+    id: "gmt",
+    brand: "Rolex",
+    model: "GMT-Master II",
+    ref: "116710LN",
+    size: 40,
+    movement: "Cal 3186",
+    dial: "black",
+    dialColor: "black",
+    strap: "bracelet",
+    formality: 7,
+    style: "sport",
+    lug: 20,
+    lugWidth: 20,
+    bracelet: true,
+    genuine: true,
+    retired: true,
+    retiredDate: "2026-05",
+    retiredReason: "Traded to Timor Josef, received ₪3,000 cash → Glashütte Original Seventies Chronograph Panorama Date (ref 1-37-02-03-02-70, blue dial, SS bracelet)"
   }
 ];
 
