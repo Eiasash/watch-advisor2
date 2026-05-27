@@ -86,13 +86,17 @@ if ("serviceWorker" in navigator) {
     } catch { /* sessionStorage blocked — proceed normally */ }
 
     try {
-      // Capture whether a SW was already controlling the page BEFORE registration.
-      // controllerchange fires for BOTH first-install (null → SW) and update
-      // (oldSW → newSW). Reloading on first-install is incorrect: the page was
-      // already rendered correctly from network. Lighthouse counts the first-
-      // install reload as a page redirect, costing ~3.2s LCP on every fresh
-      // visit (top opportunity in the perf audit). Sibling of Toranot #107.
-      const hadControllerAtBoot = !!navigator.serviceWorker.controller;
+      // If the tab boots with no controller, the FIRST controllerchange will
+      // be the SW gaining control of this page — a first install, no reload
+      // needed (page already rendered correctly from network). But a LATER
+      // controllerchange in the same long-lived tab comes from a real update
+      // (UpdateBanner polling, 30s safety net) and DOES need a reload so the
+      // user picks up the new bundle.
+      //
+      // Track this as a one-shot "skip" flag. Codex P2 on #225 caught the
+      // earlier "stays false forever" version which regressed the update
+      // path for sessions first-installed in the same tab.
+      let pendingFirstInstallSkip = !navigator.serviceWorker.controller;
 
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       if (import.meta.env.DEV) console.log("[SW] registered, scope:", reg.scope);
@@ -110,12 +114,15 @@ if ("serviceWorker" in navigator) {
         });
       });
 
-      // When SW controller changes, reload — but only if there was a previous
-      // controller (update path). On first install, no reload is needed.
+      // When SW controller changes, reload — but consume the first-install
+      // event (no reload needed on initial uncontrolled→controlled transition).
       let refreshing = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (pendingFirstInstallSkip) {
+          pendingFirstInstallSkip = false; // consume — future events reload
+          return;
+        }
         if (refreshing) return;
-        if (!hadControllerAtBoot) return; // first install — page already rendered
         refreshing = true;
         window.location.reload();
       });
