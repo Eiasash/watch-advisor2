@@ -86,6 +86,18 @@ if ("serviceWorker" in navigator) {
     } catch { /* sessionStorage blocked — proceed normally */ }
 
     try {
+      // If the tab boots with no controller, the FIRST controllerchange will
+      // be the SW gaining control of this page — a first install, no reload
+      // needed (page already rendered correctly from network). But a LATER
+      // controllerchange in the same long-lived tab comes from a real update
+      // (UpdateBanner polling, 30s safety net) and DOES need a reload so the
+      // user picks up the new bundle.
+      //
+      // Track this as a one-shot "skip" flag. Codex P2 on #225 caught the
+      // earlier "stays false forever" version which regressed the update
+      // path for sessions first-installed in the same tab.
+      let pendingFirstInstallSkip = !navigator.serviceWorker.controller;
+
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       if (import.meta.env.DEV) console.log("[SW] registered, scope:", reg.scope);
 
@@ -102,10 +114,17 @@ if ("serviceWorker" in navigator) {
         });
       });
 
-      // When SW controller changes (new SW took over), reload once
+      // When SW controller changes, reload — but consume the first-install
+      // event (no reload needed on initial uncontrolled→controlled transition).
       let refreshing = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (!refreshing) { refreshing = true; window.location.reload(); }
+        if (pendingFirstInstallSkip) {
+          pendingFirstInstallSkip = false; // consume — future events reload
+          return;
+        }
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
       });
 
     } catch (err) {
