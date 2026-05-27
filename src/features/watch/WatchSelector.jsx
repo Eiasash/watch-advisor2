@@ -7,8 +7,9 @@ export default function WatchSelector({ watches, activeWatch, onChange, isDark =
   const selectable = watches.filter(isActiveWatch);
   return (
     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-      <label style={{ fontSize:12, fontWeight:600, color: isDark ? "#8b93a7" : "#6b7280", whiteSpace:"nowrap" }}>Watch</label>
+      <label htmlFor="watch-selector" style={{ fontSize:12, fontWeight:600, color: isDark ? "#8b93a7" : "#6b7280", whiteSpace:"nowrap" }}>Watch</label>
       <select
+        id="watch-selector"
         value={activeWatch?.id ?? ""}
         onChange={e => {
           const watch = selectable.find(w => w.id === e.target.value);

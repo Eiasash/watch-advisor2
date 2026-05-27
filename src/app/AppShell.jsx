@@ -35,11 +35,27 @@ const StrapLibraryTab = lazy(() => import("../components/StrapLibraryTab.jsx"));
  * TabPane — mounts children on first activation, then stays mounted but hidden.
  * Preserves component state (uploads, AI results, form inputs) across tab switches.
  */
-function TabPane({ active, children }) {
+function TabPane({ active, children, tabKey }) {
   const [visited, setVisited] = useState(false);
   useEffect(() => { if (active && !visited) setVisited(true); }, [active, visited]);
-  if (!visited) return null;
-  return <div style={{ display: active ? "block" : "none" }}>{children}</div>;
+  // Always render the wrapper so aria-controls on the tab buttons has a
+  // resolvable target on initial load — even for tabs the user hasn't
+  // visited yet. Lazy-load behavior preserved: children only render after
+  // first activation, so the heavy panel contents still don't mount up
+  // front. Caught by Codex P2 on PR #224 — without this, inactive tabs'
+  // aria-controls pointed to missing elements (regression of the
+  // aria-valid-attr-value fix).
+  return (
+    <div
+      role="tabpanel"
+      id={`wa-tabpanel-${tabKey}`}
+      aria-labelledby={`wa-tab-${tabKey}`}
+      hidden={!active}
+      style={{ display: active ? "block" : "none" }}
+    >
+      {visited ? children : null}
+    </div>
+  );
 }
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
@@ -207,12 +223,12 @@ function AppContent() {
 
           {/* Tab content — keep visited tabs mounted but hidden to preserve state */}
           <div className="wa-bottom-pad">
-          <TabPane active={tab === "today"}>
+          <TabPane active={tab === "today"} tabKey="today">
             <TodayPanel />
             <WatchDashboard />
           </TabPane>
 
-          <TabPane active={tab === "wardrobe"}>
+          <TabPane active={tab === "wardrobe"} tabKey="wardrobe">
             <style>{`
               .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
               @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
@@ -223,19 +239,19 @@ function AppContent() {
             </div>
           </TabPane>
 
-          <TabPane active={tab === "straps"}>
+          <TabPane active={tab === "straps"} tabKey="straps">
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading straps…</div>}>
               <StrapLibraryTab />
             </Suspense>
           </TabPane>
 
-          <TabPane active={tab === "travel"}>
+          <TabPane active={tab === "travel"} tabKey="travel">
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading travel…</div>}>
               <TravelTab />
             </Suspense>
           </TabPane>
 
-          <TabPane active={tab === "plan"}>
+          <TabPane active={tab === "plan"} tabKey="plan">
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
               <WeekPlanner />
               <WatchRotationPanel />
@@ -243,14 +259,14 @@ function AppContent() {
             </Suspense>
           </TabPane>
 
-          <TabPane active={tab === "history"}>
+          <TabPane active={tab === "history"} tabKey="history">
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading…</div>}>
               <OutfitHistory />
               <StatsPanel />
             </Suspense>
           </TabPane>
 
-          <TabPane active={tab === "audit"}>
+          <TabPane active={tab === "audit"} tabKey="audit">
             <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
               <AuditTab />
             </Suspense>
