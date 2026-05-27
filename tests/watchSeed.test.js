@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 
 describe("watchSeed data integrity", () => {
-  it("contains exactly 29 watches (13 active genuine + 2 pending + 10 replica + 4 retired)", () => {
-    expect(WATCH_COLLECTION).toHaveLength(29);
+  it("contains exactly 30 watches (13 active genuine + 2 pending + 10 replica + 5 retired)", () => {
+    expect(WATCH_COLLECTION).toHaveLength(30);
   });
 
   it("has 13 active genuine watches (excludes pending/perception)", () => {
@@ -18,9 +18,9 @@ describe("watchSeed data integrity", () => {
     expect(replicas).toHaveLength(10);
   });
 
-  it("has 4 retired watches", () => {
+  it("has 5 retired watches", () => {
     const retired = WATCH_COLLECTION.filter(w => w.retired);
-    expect(retired).toHaveLength(4);
+    expect(retired).toHaveLength(5);
   });
 
   it("all watches have unique IDs", () => {
