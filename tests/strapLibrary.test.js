@@ -111,7 +111,7 @@ describe("strapLibrary", () => {
     });
 
     it("flags bracelet as versatile", () => {
-      const watch = WATCH_COLLECTION.find(w => w.id === "go-seventies-chrono");
+      const watch = WATCH_COLLECTION.find(w => w.id === "laureato");
       const strap = watch.straps[0];
       const recs = sampleOutfitsForStrap(strap, watch);
       expect(recs.some(r => r.context === "Versatile")).toBe(true);
