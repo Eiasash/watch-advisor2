@@ -172,8 +172,11 @@ export function scoreWatchForDay(watch, dayProfile, history = []) {
   // Extra jitter when history is empty — all watches get identical recencyScore
   // so seed-array order dominates. A second jitter hash (~0.045 range) is big
   // enough to vary daily picks without overriding formality/style differences.
+  // The +epsilon floor guarantees a strictly-positive boost even on dates where
+  // the jitter hash lands on a multiple of 1000 (hash → 0), so an empty-history
+  // (first-wear) score is always greater than the equivalent non-empty score.
   if (history.length === 0) {
-    score += dailyJitter(watch.id, todayStr + "x") * 5;
+    score += dailyJitter(watch.id, todayStr + "x") * 5 + 1e-4;
   }
 
   return score;
