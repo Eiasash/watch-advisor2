@@ -2,6 +2,15 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
+## 2026-05-30 — feat(ui): surface strap health in the bundle's strap pick (v1.13.58)
+
+Follow-up to v1.13.57. `recommendStrap` returns `healthPct` on the recommended strap; this adds a
+small health pill in WatchDashboard at both strap-rec render sites (the "Wear: …" card and the
+compact inline line). Color scale matches the StrapHealth dashboard (>60 green / >30 amber / <30
+red); shows "health NN%" with a "rotate soon" warning under 30%. Hidden for bracelets and unworn
+straps (healthPct ≥ 100), so it appears only once a finite-life strap has measurable wear. UI-only;
+engine unchanged. Build green, 3780 tests pass.
+
 ## 2026-05-30 — feat: bundle strap pick now factors rotation + strap health (v1.13.57)
 
 `recommendStrap()` (the strap step of bundle generation) previously scored straps only on
