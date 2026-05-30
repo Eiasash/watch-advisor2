@@ -2,6 +2,16 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
+## 2026-05-30 — feat: Tudor BB41 AliExpress black FKM rubber strap (v1.13.56)
+
+Added `blackbay-black-fkm` to the BB41 straps array in `src/data/watchSeed.js`
+(label "Black FKM rubber (AliExpress)", color black, type rubber, steel deployant clasp).
+Second, distinct rubber strap alongside the v1.13.52 DayDayWatchband blue FKM
+(`blackbay-blue-fkm`, navy) — blue was already present/correctly attributed; only the
+black was missing. BB41 now 7 active + 2 pending canvas. Active strap count 42→43.
+Full suite green (3775 passed, +5 parametrized strap-validation cases). `active_straps`
+left untouched (still pointing at blue FKM; not auto-flipped).
+
 ## 2026-05-30 — docs: SKILL_watch_advisor2.md synced to v1.13.55 (PR #233)
 
 Documentation-only. The in-repo dev skill was stuck at v1.13.48 (audited
