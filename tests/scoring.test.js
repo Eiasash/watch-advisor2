@@ -173,8 +173,8 @@ describe("weatherLayerScore", () => {
   it("jacket in cool (12°C) → 0.8", () => {
     expect(weatherLayerScore({ type: "jacket" }, { tempC: 12 })).toBe(0.8);
   });
-  it("jacket in mild (18°C) → 0.5", () => {
-    expect(weatherLayerScore({ type: "jacket" }, { tempC: 18 })).toBe(0.5);
+  it("jacket in mild (18°C) → 0.1 (>=13)", () => {
+    expect(weatherLayerScore({ type: "jacket" }, { tempC: 18 })).toBe(0.1);
   });
   it("jacket in hot (30°C) → 0.1", () => {
     expect(weatherLayerScore({ type: "jacket" }, { tempC: 30 })).toBe(0.1);

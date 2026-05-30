@@ -19,9 +19,8 @@ export const LAYER_TYPES = new Set(["jacket", "sweater", "coat", "layer", "outer
 // Evaluated top-to-bottom — first match wins.
 export const LAYER_TEMP_BRACKETS = [
   { below: 10, score: 1.0 },
-  { below: 16, score: 0.8 },
-  { below: 22, score: 0.5 },
-  { below: Infinity, score: 0.1 }, // too warm for a layer
+  { below: 13, score: 0.8 },
+  { below: Infinity, score: 0.1 }, // >= 13C: no warmth layer needed
 ];
 
 // ── UI layer suggestion helpers ───────────────────────────────────────────────
@@ -45,9 +44,7 @@ const LAYER_LABELS = {
 export function weatherLayerSuggestion(weather) {
   const temp = weather?.temperature ?? 22;
   if (temp < 10) return "heavy-jacket";
-  if (temp < 16) return "jacket";
-  if (temp < 21) return "light-sweater";
-  if (temp < 26) return "optional-layer";
+  if (temp < 13) return "light-sweater";
   return "no-layer";
 }
 

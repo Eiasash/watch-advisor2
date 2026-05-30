@@ -73,9 +73,9 @@ describe("buildOutfit — outfit-shot type excluded", () => {
 // ─── buildOutfit — sweater temperature threshold ────────────────────────────
 
 describe("buildOutfit — sweater temperature threshold", () => {
-  it("sweater at exactly 13°C (< 14) → present", () => {
-    const outfit = buildOutfit(snowflake, fullWardrobe, { tempC: 13 });
-    expect(outfit.sweater).toBeTruthy();
+  it("sweater at 9°C → present, at 13°C → null (no-layer threshold)", () => {
+    expect(buildOutfit(snowflake, fullWardrobe, { tempC: 9 }).sweater).toBeTruthy();
+    expect(buildOutfit(snowflake, fullWardrobe, { tempC: 13 }).sweater).toBeNull();
   });
 
   it("sweater at exactly 14°C → null (Mediterranean threshold, 2026-05-02)", () => {

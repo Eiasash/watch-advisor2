@@ -185,8 +185,8 @@ describe("weatherLayerScore — temperature boundaries", () => {
     expect(weatherLayerScore({ type: "jacket" }, { tempC: 10 })).toBe(0.8);
   });
 
-  it("jacket at exactly 16°C → 0.5", () => {
-    expect(weatherLayerScore({ type: "jacket" }, { tempC: 16 })).toBe(0.5);
+  it("jacket at exactly 16°C → 0.1 (>=13)", () => {
+    expect(weatherLayerScore({ type: "jacket" }, { tempC: 16 })).toBe(0.1);
   });
 
   it("jacket at exactly 22°C → 0.1", () => {
