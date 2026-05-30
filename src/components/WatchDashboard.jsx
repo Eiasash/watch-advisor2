@@ -452,8 +452,8 @@ export default function WatchDashboard() {
   // Strap recommendation — which strap to wear today based on outfit + context
   const strapRec = useMemo(() => {
     if (!selectedWatch) return null;
-    return recommendStrap(selectedWatch, mergedOutfit, todayContext);
-  }, [selectedWatch, mergedOutfit, todayContext]);
+    return recommendStrap(selectedWatch, mergedOutfit, todayContext, weather, history);
+  }, [selectedWatch, mergedOutfit, todayContext, weather, history]);
 
   // Hide when today already has logged entries — TodayPanel handles that view
   const todayIso = new Date().toISOString().slice(0, 10);

@@ -127,3 +127,60 @@ describe("strapRecommender", () => {
     expect(result.recommended.score).toBeLessThanOrEqual(1.0);
   });
 });
+
+describe("strapRecommender — rotation + health (bundle generation)", () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const daysAgo = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  const brownShoes = { id: "sh1", type: "shoes", color: "brown", formality: 6 };
+  const outfit = { shoes: brownShoes, shirt: { color: "white" }, pants: { color: "navy" } };
+
+  it("backward-compatible: no history => same pick", () => {
+    const w = { id: "w", dial: "white", straps: [
+      { id: "brown", label: "Brown leather", color: "brown", type: "leather" },
+      { id: "black", label: "Black leather", color: "black", type: "leather" },
+    ]};
+    expect(recommendStrap(w, outfit, "smart-casual").recommended.color).toBe("brown");
+    expect(recommendStrap(w, outfit, "smart-casual", {}, []).recommended.color).toBe("brown");
+  });
+
+  it("rotation: deprioritises the strap worn today between two equal straps", () => {
+    const w = { id: "w", dial: "white", straps: [
+      { id: "brownA", label: "Brown leather A", color: "brown", type: "leather" },
+      { id: "brownB", label: "Brown leather B", color: "brown", type: "leather" },
+    ]};
+    const res = recommendStrap(w, outfit, "smart-casual", {}, [{ date: today, watchId: "w", strapId: "brownA" }]);
+    expect(res.recommended.id).toBe("brownB");
+  });
+
+  it("health: prefers a fresh strap over a near-end-of-life equal one", () => {
+    const w = { id: "w", dial: "white", straps: [
+      { id: "wornGator", label: "Brown alligator", color: "brown", type: "alligator" },
+      { id: "freshGator", label: "Brown alligator B", color: "brown", type: "alligator" },
+    ]};
+    const history = Array.from({ length: 210 }, (_, i) => ({ date: daysAgo(120 + i), watchId: "w", strapId: "wornGator" }));
+    const res = recommendStrap(w, outfit, "smart-casual", {}, history);
+    expect(res.recommended.id).toBe("freshGator");
+    const worn = [res.recommended, ...res.alternatives].find(s => s.id === "wornGator");
+    expect(worn.healthPct).toBeLessThan(30);
+  });
+
+  it("bracelet is infinite-life: never health-penalised even with heavy wear", () => {
+    const w = { id: "w", dial: "white", straps: [
+      { id: "brace", label: "Steel bracelet", color: "silver", type: "bracelet" },
+      { id: "brown", label: "Brown leather", color: "brown", type: "leather" },
+    ]};
+    const history = Array.from({ length: 400 }, (_, i) => ({ date: daysAgo(10 + i), watchId: "w", strapId: "brace" }));
+    const res = recommendStrap(w, outfit, "formal", {}, history);
+    const brace = [res.recommended, ...res.alternatives].find(s => s.id === "brace");
+    expect(brace).toBeTruthy();
+    expect(brace.healthPct).toBe(100);
+  });
+
+  it("exposes healthPct on the recommended strap", () => {
+    const w = { id: "w", dial: "white", straps: [
+      { id: "brown", label: "Brown leather", color: "brown", type: "leather" },
+      { id: "black", label: "Black leather", color: "black", type: "leather" },
+    ]};
+    expect(recommendStrap(w, outfit, "smart-casual", {}, [])).toHaveProperty("recommended.healthPct");
+  });
+});

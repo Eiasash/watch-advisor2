@@ -11,6 +11,7 @@
  */
 
 import { strapShoeScore } from "./scoring.js";
+import { buildStrapLifecycle } from "../domain/strapLifecycle.js";
 
 const EXEMPT_TYPES = new Set(["bracelet", "integrated"]);
 const FORMAL_CONTEXTS = new Set(["clinic", "formal", "shift"]);
@@ -118,22 +119,75 @@ function scoreStrapForOutfit(strap, outfit, context, watch, weather) {
   return Math.min(1.0, shoeScore + contextBonus + paletteBonus + dialBonus + weatherBonus);
 }
 
+// ── Rotation + strap-health signals (gentle, tie-breaking) ──────────────────
+// Generated bundles spread wear across a watch's straps and ease off straps
+// nearing end of life — without overriding color/context fit and WITHOUT ever
+// touching shoe selection. Deltas are small vs the ~0–1 base score. Bracelets /
+// integrated are infinite-life and are never health-penalised.
+const ROTATION_RECENCY_W = 0.18; // worn today -> -0.18, fading to 0 over 30 days
+const ROTATION_FREQ_W    = 0.07; // dominant strap in rotation -> up to -0.07
+const HEALTH_W           = 0.15; // critically low health (<30%) -> up to -0.15
+
+function _strapWearStats(watch, history) {
+  const ids = new Set((watch?.straps ?? []).map(s => s.id));
+  const byId = {};
+  let totalWears = 0;
+  (Array.isArray(history) ? history : []).forEach(e => {
+    const sid = e.strapId ?? e.payload?.strapId;
+    if (!sid || !ids.has(sid)) return;
+    const date = e.date ?? e.payload?.date;
+    if (!byId[sid]) byId[sid] = { count: 0, lastWorn: null };
+    byId[sid].count++;
+    totalWears++;
+    if (date && (!byId[sid].lastWorn || date > byId[sid].lastWorn)) byId[sid].lastWorn = date;
+  });
+  const healthById = {};
+  try {
+    for (const s of buildStrapLifecycle(history, [watch])) healthById[s.strapId] = s.healthPct;
+  } catch { /* health is best-effort */ }
+  return { byId, totalWears, healthById };
+}
+
+// Recency + frequency pressure -> deprioritise the just-worn / over-worn strap.
+function _rotationPenalty(strapId, stats) {
+  const w = stats.byId[strapId];
+  if (!w || !w.lastWorn) return 0; // never worn -> rotation-favoured, no penalty
+  const days = (Date.now() - new Date(w.lastWorn).getTime()) / 86400000;
+  const recency = Math.max(0, 1 - days / 30);
+  const share = stats.totalWears > 0 ? Math.min(1, w.count / stats.totalWears) : 0;
+  return ROTATION_RECENCY_W * recency + ROTATION_FREQ_W * share;
+}
+
+// Finite-life straps only: nudge away from a strap that is nearly spent.
+function _healthPenalty(healthPct) {
+  if (!isFinite(healthPct) || healthPct >= 30) return 0; // healthy or bracelet (Inf -> 100)
+  return HEALTH_W * (1 - healthPct / 30);
+}
+
 /**
  * @param {object} watch    - Watch with .straps[]
  * @param {object} outfit   - Built outfit { shoes, shirt, pants, jacket, sweater, layer }
  * @param {string} context  - e.g. "clinic", "smart-casual"
+ * @param {object} weather  - Optional weather context
+ * @param {Array}  history  - Optional wear history (enables strap rotation + health)
  * @returns {{ recommended, reason, alternatives } | null}
  */
-export function recommendStrap(watch, outfit, context, weather) {
+export function recommendStrap(watch, outfit, context, weather, history = []) {
   const straps = watch?.straps;
   if (!straps || straps.length <= 1) return null;
 
   const shoes = outfit?.shoes;
+  const stats = _strapWearStats(watch, history);
 
-  const scored = straps.map(s => ({
-    ...s,
-    score: scoreStrapForOutfit(s, outfit, context, watch, weather),
-  })).sort((a, b) => b.score - a.score);
+  const scored = straps.map(s => {
+    const healthPct = stats.healthById[s.id] ?? 100;
+    const base = scoreStrapForOutfit(s, outfit, context, watch, weather);
+    // Preserve hard shoe-fail (0) exactly — penalties never resurrect a failed strap.
+    const score = base === 0
+      ? 0
+      : Math.max(0.02, base - _rotationPenalty(s.id, stats) - _healthPenalty(healthPct));
+    return { ...s, score, healthPct };
+  }).sort((a, b) => b.score - a.score);
 
   const best = scored[0];
   if (!best || best.score === 0) return null;
@@ -165,11 +219,15 @@ export function recommendStrap(watch, outfit, context, weather) {
       : `${best.label} scores highest for ${context ?? "smart-casual"} context.`;
   }
 
+  if (isFinite(best.healthPct) && best.healthPct < 30) {
+    reason += ` (strap health ~${best.healthPct}% — rotate/replace soon)`;
+  }
+
   return {
-    recommended: { id: best.id, label: best.label, color: best.color, score: best.score },
+    recommended: { id: best.id, label: best.label, color: best.color, score: best.score, healthPct: best.healthPct },
     reason,
     alternatives: scored.slice(1, 3).filter(s => s.score > 0).map(s => ({
-      id: s.id, label: s.label, color: s.color, score: s.score,
+      id: s.id, label: s.label, color: s.color, score: s.score, healthPct: s.healthPct,
     })),
   };
 }
