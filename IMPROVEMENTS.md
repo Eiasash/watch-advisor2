@@ -1,6 +1,24 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-22 — v1.13.49: WardrobeGrid last-worn sort
+Last updated: 2026-05-30 — docs: SKILL_watch_advisor2.md synced to v1.13.55 (PR #233)
+
+## 2026-05-30 — docs: SKILL_watch_advisor2.md synced to v1.13.55 (PR #233)
+
+Documentation-only. The in-repo dev skill was stuck at v1.13.48 (audited
+2026-05-22) — missing both recent acquisitions (GP Vintage 1945, GO Seventies)
+and the v1.13.49–55 changes. Synced the §1 header to v1.13.55, refreshed live
+Supabase health (garments 123 / history 95 / orphaned 0 / active straps 42,
+model claude-sonnet-4-6), and added a v1.13.49–55 changelog: last-worn toggle
+(.49), deleteGarment soft-delete fix (.50), Monaco→GP Vintage 1945 + dial:"ivory"
+(.51), BB41 blue FKM rubber strap (.52), Rolex GMT→GO Seventies trade + GO
+default strap corrected to navy alligator (.53–54), GO caseback ref/serial/value
+correction 1-37-02-08-02-62 / Nr.0157 / ₪40K + empty-history jitter floor 1e-4 (.55).
+
+No code or bundle change; app version intentionally NOT bumped (doc-only).
+
+### Note
+This IMPROVEMENTS.md log itself still lacks per-version entries for v1.13.50–55;
+the authoritative changelog for those now lives in `SKILL_watch_advisor2.md` §1.
 
 ## 2026-05-22 — v1.13.49 (WardrobeGrid last-worn sort)
 
