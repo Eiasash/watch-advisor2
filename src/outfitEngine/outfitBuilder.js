@@ -623,7 +623,7 @@ export function buildOutfit(watch, wardrobe, weather = {}, history = [], garment
   // Use the full strapRecommender which considers shoe color, outfit palette,
   // context formality, and dial harmony — not just shoe matching.
   if (outfit.shoes && watch.straps?.length > 1) {
-    const rec = _recommendStrap(watch, outfit, context);
+    const rec = _recommendStrap(watch, outfit, context, weather, history);
     if (rec?.recommended && rec.recommended.id !== watchWithStrap._activeStrapId) {
       outfit._strapRecommendation = { id: rec.recommended.id, label: rec.recommended.label };
     } else {

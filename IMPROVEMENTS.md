@@ -2,6 +2,19 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
+## 2026-05-30 — feat: bundle strap pick now factors rotation + strap health (v1.13.57)
+
+`recommendStrap()` (the strap step of bundle generation) previously scored straps only on
+shoe/palette/context/dial/weather and was never given wear history — so generated bundles always
+picked the same strap and ignored `strapLifecycle` (which existed but was dashboard-only). Now
+`recommendStrap(watch, outfit, context, weather, history)` applies two gentle, tie-breaking penalties:
+rotation (recency: worn-today → −0.18 fading over 30d, + frequency share → up to −0.07) and health
+(finite-life straps only, <30% health → up to −0.15; bracelets/integrated are infinite-life, never
+penalised). `healthPct` is exposed on the recommended strap + alternatives, with a "rotate/replace
+soon" note when <30%. Both call sites (outfitBuilder, WatchDashboard) now pass history + weather.
+Backward-compatible: no history ⇒ identical output. Shoe selection/rotation untouched (shoes×0
+preserved; `strapShoeScore` unchanged). +5 tests (3775→3780, all green).
+
 ## 2026-05-30 — feat: Tudor BB41 AliExpress black FKM rubber strap (v1.13.56)
 
 Added `blackbay-black-fkm` to the BB41 straps array in `src/data/watchSeed.js`
