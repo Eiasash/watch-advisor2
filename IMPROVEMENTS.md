@@ -1,6 +1,6 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-30 — docs: SKILL_watch_advisor2.md synced to v1.13.55 (PR #233)
+Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
 ## 2026-05-30 — docs: SKILL_watch_advisor2.md synced to v1.13.55 (PR #233)
 
@@ -19,6 +19,71 @@ No code or bundle change; app version intentionally NOT bumped (doc-only).
 ### Note
 This IMPROVEMENTS.md log itself still lacks per-version entries for v1.13.50–55;
 the authoritative changelog for those now lives in `SKILL_watch_advisor2.md` §1.
+
+> _Entries v1.13.50–55 below were **backfilled on 2026-05-30** from the Watch/Wardrobe
+> collection corrections logs. These versions shipped 2026-05-23 → 05-28 without
+> contemporaneous IMPROVEMENTS.md entries; each summarizes the change, not the original
+> implementation detail (no test-guard filenames are asserted where not independently verified)._
+
+## 2026-05-28 — v1.13.55 (GO Seventies caseback correction + empty-history jitter floor)
+
+Two changes (PR #231):
+
+1. **GO Seventies seed correction.** The GO Seventies Chronograph was seeded with an
+   assumed ref `1-37-02-03-02-70` and `marketILS: 30000`. The caseback (12 o'clock moon
+   aperture + galvanized blue sunburst) confirms the current-generation blue: ref
+   **`1-37-02-08-02-62`**, serial **Nr.0157**, case 042425. `Nr.0157` is GO's individual
+   production number, **not** a limited edition. Value corrected to **₪40000** (retail
+   €13,600; ~$11–13K used), which re-frames Trade #4 (Rolex GMT → GO + ₪3K cash to Eias)
+   as a **fair/even** swap rather than value-down. `watchSeed.js` ref + `marketILS` updated.
+2. **Empty-history jitter floor.** The first-wear tie-break boost was derived from a date
+   hash and evaluated to **0** on hash-multiples-of-1000, making a first-wear test flaky.
+   Added a strictly-positive **1e-4 floor** so empty-history scores always sit just above
+   non-empty. (Architecture note: "Empty-history jitter floor = 1e-4 (v1.13.55)".)
+
+App version 1.13.54 → 1.13.55.
+
+## 2026-05-27 — v1.13.54 (GO Seventies default strap corrected to navy alligator)
+
+PR #226 had defaulted the new GO Seventies to a steel bracelet (`go-seventies-bracelet`).
+The watch was delivered on the **OEM navy Louisiana alligator** (signed folding deployant)
+only — the steel bracelet is **not owned** (wishlist). Fixed (PR #228): default strap →
+**`go-seventies-navy-gator`** (type `leather`); `active_straps["go-seventies-chrono"]` and
+the acquisition-day wear log repointed. Strap subtotals: bracelet 8→7, leather 27→28.
+
+## 2026-05-27 — v1.13.53 (Trade #4: Rolex GMT → GO Seventies Chronograph)
+
+Trade #4 with Timor Josef: **Rolex GMT-Master II 116710LN OUT + ₪3,000 cash to Eias →
+Glashütte Original Seventies Chronograph Panorama Date IN.** Added to `watchSeed.js`
+(`go-seventies-chrono`, dial `blue`, in-house Cal 37-02 flyback column-wheel chrono,
+40mm cushion); Rolex GMT retired and `active_straps.gmt` removed. `daily-pick.js` watchId
+enum updated `gmt` → `go-seventies-chrono` in both system and user prompts (PR #226).
+Seed count 29→30, retired 4→5; the suite tracks the 30-watch seed.
+
+## 2026-05-23 — v1.13.52 (Tudor BB41 blue FKM rubber strap)
+
+Added a **blue FKM rubber** strap for the Tudor BB41 (DayDayWatchband, quick-release pins),
+slotted into the BB41 `straps[]` array between the TAG NATO and the pending navy canvas.
+Set as the BB41 active default via `app_settings.active_straps.blackbay = "blackbay-blue-fkm"`.
+BB41 now 6 active straps + 2 canvas pending.
+
+## 2026-05-23 — v1.13.51 (Trade #3: TAG Monaco → GP Vintage 1945 + `dial:"ivory"`)
+
+Trade #3 with Timor Josef: **TAG Heuer Monaco CW2111 + ₪4,000 cash → Girard-Perregaux
+Vintage 1945 Big Date `25805-11-822-BAEA`.** Added to `watchSeed.js` (GP03300, 32×48mm
+cushion, ivory dial + applied rose-gold numerals, SS bracelet + OEM brown leather with
+signed GP deployant); Monaco retired. New **`ivory`** family added to `DIAL_COLOR_MAP`,
+pairing with navy, brown, camel, cognac, charcoal, burgundy, olive, ecru, cream, stone,
+denim, dark brown, sand.
+
+## 2026-05-23 — v1.13.50 (deleteGarment soft-delete fix)
+
+`deleteGarment` was issuing a **hard `DELETE`** on the `garments` row, which also orphaned
+the row's Supabase Storage photo folder and was irrecoverable. Changed to a **soft delete**
+(`exclude_from_wardrobe = true`, plus `duplicate_of` + an audit field on the cleanup paths)
+so rows and their history references survive. **Garments deleted before v1.13.50 are
+unrecoverable** (true hard-DELETE victims; their orphaned storage folders remain). Soft
+delete is now the only sanctioned removal path.
 
 ## 2026-05-22 — v1.13.49 (WardrobeGrid last-worn sort)
 
