@@ -29,11 +29,11 @@ Sole developer: Eias (physician, inpatient geriatric ward, Jerusalem).
 | Supabase project | `oaojkanozbfpofbewtfq` |
 | Supabase URL | `https://oaojkanozbfpofbewtfq.supabase.co` |
 | Stack | React 18 + Vite + Zustand + IndexedDB (idb) + Netlify Functions + Supabase |
-| Tests | 3748 tests, 212 files (Vitest) |
-| Version | **1.13.48** |
+| Tests | 3,770 tests (Vitest) |
+| Version | **1.13.55** |
 | Device | OPPO Find X9 Pro |
 | Deploys | Auto on push to `main` |
-| Last audited | 2026-05-22. v1.13.48 in prod. Site health: garments=118, history=85, orphaned=0, active straps=41, model=claude-sonnet-4-6. v1.13.41–48 highlights: a11y contrast (24 WCAG AA fixes + residual 11→0), DIVERSITY ENFORCEMENT block in `buildUserPrompt` to escape shirt-color stuck loops, quantitative formality floors on `STEER_INSTRUCTIONS` (`more_formal` ≥6, `more_casual` ≤5 — no soften-back to soft verbs), Rules-of-Hooks fix across 3 components + static-scan regression guard `tests/hooksBeforeEarlyReturn.test.js`, shared `useAuthStore` + sign-in empty state + `WeekPlanner` auto-fetch gated on `isAuthed`, `GitHubLoginButton` migrated off local subscription with uniqueness guard `tests/authSubscriptionUniqueness.test.js`, and **v1.13.48 (PR #210): `CATEGORY_ROTATION_MULTIPLIER` in `scoringWeights.js` damps rotation/repetition/diversity factors per slot — shoes ×0 (rotation-neutral, re-wear free), pants ×0.4, others ×1; global 0.40/-0.28 weights untouched. Also `formalitySpreadMultiplier()` in `_pairHarmonyScore` — intra-outfit formality spread ≤3 free, -15% per excess pt, floor 0.55. Regression guards: `tests/categoryRotationDamping.test.js` + `tests/formalityCoherence.test.js`**. |
+| Last audited | 2026-05-30. v1.13.55 in prod. Site health: garments=123, history=95, orphaned=0, active straps=42, model=claude-sonnet-4-6. **v1.13.49–55 highlights:** v1.13.49 last-worn strap toggle; v1.13.50 `deleteGarment` soft-delete fix (was hard-DELETEing rows — pre-v1.13.50 phantoms are irrecoverable; never hard-delete, always `exclude_from_wardrobe=true`); v1.13.51 Trade #3 (TAG Monaco → **GP Vintage 1945 Big Date** 25805-11-822-BAEA) + `dial:"ivory"` added to `DIAL_COLOR_MAP`; v1.13.52 Tudor BB41 blue FKM rubber strap added (new default); v1.13.53–54 Trade #4 (Rolex GMT 116710LN → **GO Seventies Chronograph Panorama Date**, +₪3K cash to Eias) + GO default strap corrected to navy alligator (came on gator, not bracelet — `go-seventies-navy-gator`); v1.13.55 (PR #231) GO ref/serial/value corrected from caseback (ref `1-37-02-08-02-62`, serial Nr.0157, marketILS 40000) + empty-history jitter floor 1e-4 (boost was 0 on hash-multiple-of-1000 dates → flaky first-wear test). Trades #3/#4 are 1-for-1 genuine swaps — active genuine holds at 13; retired 3→5 (Monaco, GMT); 2 pending (Atelier Wen Perception, Fears Brunswick Champagne). |
 | Active model | `claude-sonnet-4-6` |
 | May 2026 token cost | $2.02 (474K input / 39K output — 2026-05-10 snapshot) |
 | Current scoring weights (live, from skill-snapshot) | rotationFactor=0.40, repetitionPenalty=-0.28, neverWornRotationPressure=0.50, neverWornRecencyScore=0.50, colorMatch=2.5, formalityMatch=3, watchCompatibility=3, weatherLayer=1, contextFormality=0.5, diversityFactor=-0.12, seasonMatch=0.3, contextMatch=0.1 — auto-heal has not yet written any tunes (`tuned: []`) |
@@ -287,7 +287,7 @@ in Claude responses that may contain thinking blocks + text blocks.
 | Table | Purpose | Notes |
 |-------|---------|-------|
 | `garments` | Wardrobe items | **100 active as of April 11 2026** |
-| `history` | Wear log | 85 entries (2026-05-22). `payload_version: "v1"` on all rows. |
+| `history` | Wear log | 95 entries (2026-05-30). `payload_version: "v1"` on all rows. |
 | `app_config` | Key-value config | JSONB. Never double-parse. |
 | `errors` | Error logging | |
 | `push_subscriptions` | Push notif subs | |
