@@ -13,28 +13,28 @@ describe("weatherLayerSuggestion", () => {
     expect(weatherLayerSuggestion({ temperature: 9 })).toBe("heavy-jacket");
   });
 
-  it("temp = 10 → jacket (boundary)", () => {
-    expect(weatherLayerSuggestion({ temperature: 10 })).toBe("jacket");
+  it("temp = 10 → light-sweater (band start)", () => {
+    expect(weatherLayerSuggestion({ temperature: 10 })).toBe("light-sweater");
   });
 
-  it("temp = 15 → jacket", () => {
-    expect(weatherLayerSuggestion({ temperature: 15 })).toBe("jacket");
+  it("temp = 15 → no-layer (>=13)", () => {
+    expect(weatherLayerSuggestion({ temperature: 15 })).toBe("no-layer");
   });
 
-  it("temp = 16 → light-sweater (boundary)", () => {
-    expect(weatherLayerSuggestion({ temperature: 16 })).toBe("light-sweater");
+  it("temp = 16 → no-layer", () => {
+    expect(weatherLayerSuggestion({ temperature: 16 })).toBe("no-layer");
   });
 
-  it("temp = 20 → light-sweater", () => {
-    expect(weatherLayerSuggestion({ temperature: 20 })).toBe("light-sweater");
+  it("temp = 20 → no-layer", () => {
+    expect(weatherLayerSuggestion({ temperature: 20 })).toBe("no-layer");
   });
 
-  it("temp = 21 → optional-layer (boundary)", () => {
-    expect(weatherLayerSuggestion({ temperature: 21 })).toBe("optional-layer");
+  it("temp = 21 → no-layer", () => {
+    expect(weatherLayerSuggestion({ temperature: 21 })).toBe("no-layer");
   });
 
-  it("temp = 25 → optional-layer", () => {
-    expect(weatherLayerSuggestion({ temperature: 25 })).toBe("optional-layer");
+  it("temp = 25 → no-layer", () => {
+    expect(weatherLayerSuggestion({ temperature: 25 })).toBe("no-layer");
   });
 
   it("temp = 26 → no-layer (boundary)", () => {
@@ -92,18 +92,18 @@ describe("getLayerRecommendation (engine-aligned)", () => {
     expect(getLayerRecommendation(12).layer).toBe("sweater");
   });
 
-  it("temp = 14 → jacket (NOT sweater — Mediterranean rule)", () => {
-    expect(getLayerRecommendation(14).layer).toBe("jacket");
+  it("temp = 14 → none (>=13 → no layer)", () => {
+    expect(getLayerRecommendation(14).layer).toBe("none");
   });
 
   it("temp = 16 → jacket (the 2026-05-07 incident temp — must NOT be sweater)", () => {
     const r = getLayerRecommendation(16);
-    expect(r.layer).toBe("jacket");
+    expect(r.layer).toBe("none");
     expect(r.label).not.toMatch(/[Ss]weater/);
   });
 
-  it("temp = 21 → jacket", () => {
-    expect(getLayerRecommendation(21).layer).toBe("jacket");
+  it("temp = 21 → none", () => {
+    expect(getLayerRecommendation(21).layer).toBe("none");
   });
 
   it("temp = 22 → none (boundary)", () => {
@@ -120,12 +120,12 @@ describe("getLayerRecommendation (engine-aligned)", () => {
 describe("formatWeatherText", () => {
   it("formats full weather object (sweater band)", () => {
     const result = formatWeatherText({ tempC: 12, description: "Partly cloudy" });
-    expect(result).toBe("12°C Partly cloudy — Sweater + jacket recommended");
+    expect(result).toBe("12°C Partly cloudy — Sweater or light layer");
   });
 
   it("formats full weather object (jacket band — incident temp)", () => {
     const result = formatWeatherText({ tempC: 16, description: "Partly cloudy" });
-    expect(result).toBe("16°C Partly cloudy — Light jacket recommended");
+    expect(result).toBe("16°C Partly cloudy — No extra layer needed");
   });
 
   it("returns null for null", () => {

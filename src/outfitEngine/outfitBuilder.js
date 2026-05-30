@@ -269,8 +269,8 @@ function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, o
   // are irrelevant to what gets worn during waking hours.
   // When weather is missing/unknown, default to 14°C — exactly at the no-sweater
   // threshold so the engine does NOT auto-add a sweater on a silent fetch failure.
-  const temp = weather?.tempMorning ?? weather?.tempC ?? 14;
-  if (temp >= 14) return;
+  const temp = weather?.tempMorning ?? weather?.tempC ?? 13;
+  if (temp >= 13) return; // layer rule: no warmth layer at >= 13C
 
   // 10-14°C = warm transition zone. Sweater is optional — only add if high-scoring.
   // Below 10°C = sweater strongly recommended (normal flow).
@@ -333,10 +333,11 @@ function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, o
  */
 function _fillJacket(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights) {
   const temp = weather.tempC;
-  if (temp >= 22) return;
-
   const isFormalCtx = context === "formal"
     || context === "clinic" || context === "shift";
+  // Layer rule: no warmth layer at >= 13C for casual/weekend outfits. Formal/clinic/
+  // shift keep the blazer up to < 22C (part of the look, not a warmth layer).
+  if (temp >= (isFormalCtx ? 22 : 13)) return;
   const jackets = wearable.filter(candidate => {
     if ((candidate.type) !== "jacket") return false;
     if (isFormalCtx) {

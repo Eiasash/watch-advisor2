@@ -176,8 +176,7 @@ function weatherCodeToDesc(code) {
  */
 export function getLayerRecommendation(tempC) {
   if (tempC < 10) return { layer: "coat", label: "Heavy coat — sweater + jacket + extra layer" };
-  if (tempC < 14) return { layer: "sweater", label: "Sweater + jacket recommended" };
-  if (tempC < 22) return { layer: "jacket", label: "Light jacket recommended" };
+  if (tempC < 13) return { layer: "sweater", label: "Sweater or light layer" };
   return { layer: "none", label: "No extra layer needed" };
 }
 

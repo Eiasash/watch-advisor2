@@ -44,14 +44,15 @@ describe("Integration: weatherLayerSuggestion thresholds", () => {
     expect(weatherLayerSuggestion({ temperature: 9 })).toBe("heavy-jacket");
   });
 
-  it("temp < 16 → jacket", () => {
-    expect(weatherLayerSuggestion({ temperature: 10 })).toBe("jacket");
-    expect(weatherLayerSuggestion({ temperature: 15 })).toBe("jacket");
+  it("10-12°C → light-sweater, >=13 → no-layer", () => {
+    expect(weatherLayerSuggestion({ temperature: 10 })).toBe("light-sweater");
+    expect(weatherLayerSuggestion({ temperature: 12 })).toBe("light-sweater");
+    expect(weatherLayerSuggestion({ temperature: 15 })).toBe("no-layer");
   });
 
-  it("temp 16-20 → light-sweater", () => {
-    expect(weatherLayerSuggestion({ temperature: 16 })).toBe("light-sweater");
-    expect(weatherLayerSuggestion({ temperature: 20 })).toBe("light-sweater");
+  it("temp 16-20 → no-layer (>=13)", () => {
+    expect(weatherLayerSuggestion({ temperature: 16 })).toBe("no-layer");
+    expect(weatherLayerSuggestion({ temperature: 20 })).toBe("no-layer");
   });
 
   it("temp >= 26 → no-layer", () => {

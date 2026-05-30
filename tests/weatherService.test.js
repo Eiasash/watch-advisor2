@@ -15,21 +15,18 @@ describe("getLayerRecommendation (engine-aligned)", () => {
     expect(getLayerRecommendation(-5).layer).toBe("coat");
   });
 
-  it("returns sweater in the 10-13°C band (sweater + jacket)", () => {
+  it("returns sweater in the 10-12°C band", () => {
     expect(getLayerRecommendation(10).layer).toBe("sweater");
     expect(getLayerRecommendation(12).layer).toBe("sweater");
-    expect(getLayerRecommendation(13).layer).toBe("sweater");
+    expect(getLayerRecommendation(13).layer).toBe("none");
   });
 
-  it("returns jacket-only in the 14-21°C band — NO SWEATER (Mediterranean rule)", () => {
-    // This is the band that broke in the 2026-05-07 incident. At 16°C
-    // morning the engine refuses a sweater (>= 14 gate) but the badge said
-    // "Sweater + jacket". Now the badge says "Light jacket" and matches.
-    expect(getLayerRecommendation(14).layer).toBe("jacket");
-    expect(getLayerRecommendation(15).layer).toBe("jacket");
-    expect(getLayerRecommendation(16).layer).toBe("jacket");
-    expect(getLayerRecommendation(18).layer).toBe("jacket");
-    expect(getLayerRecommendation(21).layer).toBe("jacket");
+  it("returns no layer in the 13-21°C band (>=13 → no layer)", () => {
+    expect(getLayerRecommendation(14).layer).toBe("none");
+    expect(getLayerRecommendation(15).layer).toBe("none");
+    expect(getLayerRecommendation(16).layer).toBe("none");
+    expect(getLayerRecommendation(18).layer).toBe("none");
+    expect(getLayerRecommendation(21).layer).toBe("none");
   });
 
   it("returns none at 22°C and above", () => {
@@ -39,8 +36,8 @@ describe("getLayerRecommendation (engine-aligned)", () => {
 
   it("label is engine-truthful", () => {
     expect(getLayerRecommendation(5).label).toContain("Heavy coat");
-    expect(getLayerRecommendation(12).label).toContain("Sweater + jacket");
-    expect(getLayerRecommendation(16).label).toContain("Light jacket");
+    expect(getLayerRecommendation(12).label).toContain("Sweater");
+    expect(getLayerRecommendation(16).label).toContain("No extra");
     expect(getLayerRecommendation(25).label).toContain("No extra");
   });
 
@@ -48,8 +45,8 @@ describe("getLayerRecommendation (engine-aligned)", () => {
     expect(getLayerRecommendation(10).layer).toBe("sweater");
   });
 
-  it("boundary 14°C → jacket (not sweater)", () => {
-    expect(getLayerRecommendation(14).layer).toBe("jacket");
+  it("boundary 13°C → none (>=13)", () => {
+    expect(getLayerRecommendation(13).layer).toBe("none");
   });
 
   it("boundary 22°C → none (not jacket)", () => {
@@ -85,9 +82,9 @@ describe("formatWeatherText", () => {
     expect(result).toContain("Sweater");
   });
 
-  it("includes light jacket (NOT sweater) at 14°C and above (incident-fix guard)", () => {
+  it("no warmth layer at 14°C and above (>=13 → no layer)", () => {
     const result = formatWeatherText({ tempC: 16, description: "Partly cloudy" });
-    expect(result).toContain("Light jacket");
+    expect(result).toContain("No extra layer");
     expect(result).not.toMatch(/[Ss]weater/);
   });
 });
@@ -290,7 +287,7 @@ describe("fetchWeatherForecast", () => {
     expect(f.tempDressingMin).not.toBe(10);
     // The layer recommendation must be jacket-only at 16°C morning
     // (the bug was: badge said "Sweater + jacket" at this temp)
-    expect(getLayerRecommendation(f.tempMorning).layer).toBe("jacket");
+    expect(getLayerRecommendation(f.tempMorning).layer).toBe("none");
     expect(getLayerRecommendation(f.tempMorning).label).not.toMatch(/[Ss]weater/);
   });
 

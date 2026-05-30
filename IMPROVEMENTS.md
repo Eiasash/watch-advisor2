@@ -2,6 +2,18 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
+## 2026-05-30 — feat: layer logic is now a clean 3-tier rule — coat<10 / sweater 10-12 / none>=13 (v1.13.59)
+
+User-defined rule (stated to the in-app Wardrobe AI, which can't persist engine changes). Aligned
+every layer threshold to one 3-tier model: getLayerRecommendation (UI text) coat <10 / "Sweater or
+light layer" 10-12 / none >=13 (the stray 14-21°C "Light jacket" tier removed); LAYER_TEMP_BRACKETS
+scoring <10→1.0 / <13→0.8 / >=13→0.1; weatherLayerSuggestion heavy-jacket<10 / light-sweater 10-12 /
+no-layer>=13; outfitBuilder sweater gate 14→13 (+ default fallback 14→13); outfitBuilder jacket gate
+casual now >=13 (was >=22), while formal/clinic/shift keep <22 so the blazer survives (it's a look
+element, not a warmth layer). OVERRIDES the 2026-05-07 "incident-fix" calibration that put a light
+jacket at 14-21°C — per the explicit rule, >=13°C now means no warmth layer at all. 22 stale
+threshold tests updated; +4 new layerLogic tests. 3784 green.
+
 ## 2026-05-30 — feat(ui): surface strap health in the bundle's strap pick (v1.13.58)
 
 Follow-up to v1.13.57. `recommendStrap` returns `healthPct` on the recommended strap; this adds a
