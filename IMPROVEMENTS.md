@@ -2,6 +2,18 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
+## 2026-05-30 — fix(wardrobe-chat): stop the bot claiming it persists rules it can't; sync layer rule (v1.13.60)
+
+The in-app Wardrobe AI told the user it had "noted" a layer-logic rule and would "apply it going
+forward" — it has no tool to persist engine rules, so that was a hallucination. Added a "WHAT YOU
+CANNOT DO" boundary to the wardrobe-chat system prompt: it may only persist via its tools (garments,
+straps, wear history) and must never claim to have noted/saved/updated/"will apply" any rule,
+preference, threshold, or setting it has no tool for. Also synced the prompt's stale layer-logic line
+to the shipped engine rule (<10 coat / 10-12 sweater-light / >=13 none) and removed the dead
+strap-shoe coordination line (standing preference: never surface it). Backend-only; 3784 green.
+NOTE: the prompt's hardcoded watch roster is still stale (lists Monaco + GMT-Master II, omits GO
+Seventies and GP Vintage 1945) — flagged for a follow-up, not fixed here.
+
 ## 2026-05-30 — feat: layer logic is now a clean 3-tier rule — coat<10 / sweater 10-12 / none>=13 (v1.13.59)
 
 User-defined rule (stated to the in-app Wardrobe AI, which can't persist engine changes). Aligned
