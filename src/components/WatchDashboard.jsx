@@ -280,6 +280,26 @@ function OutfitSlot({ slot, garment, isDark, onSelect, candidates = [], onSwap, 
   );
 }
 
+const strapHealthColor = (p) => (p > 60 ? "#22c55e" : p > 30 ? "#f59e0b" : "#ef4444");
+
+// Strap-health pill for the bundle's recommended strap. Hidden for bracelets and
+// unworn straps (healthPct >= 100 / null) — only shown once a finite-life strap has
+// measurable wear. Warns to rotate/replace under 30%. Color scale matches StrapHealth.
+function StrapHealthPill({ pct }) {
+  if (pct == null || pct >= 100) return null;
+  const c = strapHealthColor(pct);
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 700,
+      color: c, border: `1px solid ${c}55`, background: `${c}1a`, borderRadius: 999,
+      padding: "1px 6px", marginLeft: 6, whiteSpace: "nowrap", verticalAlign: "middle",
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: c }} />
+      {pct < 30 ? `health ${pct}% · rotate soon` : `health ${pct}%`}
+    </span>
+  );
+}
+
 export default function WatchDashboard() {
   const watches        = useWatchStore(s => s.watches) ?? [];
   const activeWatch    = useWatchStore(s => s.activeWatch);
@@ -592,6 +612,7 @@ export default function WatchDashboard() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: isDark ? "#86efac" : "#166534" }}>
                   Wear: {strapRec.recommended.label}
+                  <StrapHealthPill pct={strapRec.recommended.healthPct} />
                 </div>
                 <div style={{ fontSize: 11, color: isDark ? "#8b93a7" : "#6b7280", marginTop: 2 }}>
                   {strapRec.reason}
@@ -875,6 +896,7 @@ export default function WatchDashboard() {
                 <span style={{ color: isDark ? "#a1a9b8" : "#4b5563" }}>
                   {strapRec.recommended.label}
                 </span>
+                <StrapHealthPill pct={strapRec.recommended.healthPct} />
                 {strapRec.alternatives?.length > 0 && (
                   <span style={{ color: isDark ? "#9ca3af" : "#6b7280", marginLeft: 6, fontSize: 11 }}>
                     · also: {strapRec.alternatives[0].label}
