@@ -2,6 +2,15 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
+## 2026-05-30 — fix(wardrobe-chat): watch roster generated from the seed, no more drift (v1.13.61)
+
+The chat system prompt hardcoded the watch roster and still listed the traded-away TAG Monaco and
+Rolex GMT-Master II while omitting the GO Seventies and GP Vintage 1945. Replaced the hardcoded prose
+with a roster generated at request time from WATCH_COLLECTION (the canonical seed the store hydrates
+from): genuine = active non-replica, replica = active replica, a pending count, and the Rikka
+stainless-steel caveat retained. Can't drift on future trades. +1 guard test (Seventies + Vintage 1945
+present, Monaco absent). Backend-only; 3785 green.
+
 ## 2026-05-30 — fix(wardrobe-chat): stop the bot claiming it persists rules it can't; sync layer rule (v1.13.60)
 
 The in-app Wardrobe AI told the user it had "noted" a layer-logic rule and would "apply it going

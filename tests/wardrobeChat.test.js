@@ -135,6 +135,20 @@ describe("wardrobe-chat", () => {
     expect(res.statusCode).toBe(200);
   });
 
+  it("watch roster is generated from the seed — current pieces, no retired ones", async () => {
+    const { callClaude } = await import("../netlify/functions/_claudeClient.js");
+    callClaude.mockClear();
+    await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ message: "list my watches" }),
+    });
+    const sys = callClaude.mock.calls[0][1].system;
+    expect(sys).toContain("Seventies Chronograph");
+    expect(sys).toContain("Vintage 1945");
+    expect(sys).not.toContain("Monaco"); // traded away — must not appear
+  });
+
   it("handles conversation history", async () => {
     const res = await handler({
       httpMethod: "POST",
