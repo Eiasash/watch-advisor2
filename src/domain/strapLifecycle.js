@@ -29,7 +29,7 @@ const LIFESPAN_BY_TYPE = {
  * @param {string} type — strap type from strapStore if available
  * @returns {number} estimated total wears
  */
-function estimateLifespan(label = "", type = "") {
+export function estimateLifespan(label = "", type = "") {
   const l = (label + " " + type).toLowerCase();
   if (l.includes("bracelet") || l.includes("steel") || l.includes("titanium")) return Infinity;
   if (l.includes("alligator") || l.includes("croc")) return LIFESPAN_BY_TYPE.alligator;
@@ -38,6 +38,23 @@ function estimateLifespan(label = "", type = "") {
   if (l.includes("rubber") || l.includes("silicone")) return LIFESPAN_BY_TYPE.rubber;
   if (l.includes("leather") || l.includes("calf") || l.includes("suede")) return LIFESPAN_BY_TYPE.leather;
   return LIFESPAN_BY_TYPE.default;
+}
+
+/**
+ * Canonical per-strap health model — the single source of truth shared by
+ * buildStrapLifecycle (recommender + WatchDashboard pill) and the strapStore's
+ * getStrapStats (StrapHealth dashboard). Both MUST use this so the two never disagree.
+ * @returns {{ lifespan:number, healthPct:number, remaining:number, needsReplacement:boolean }}
+ */
+export function computeStrapHealth({ wears = 0, label = "", type = "" } = {}) {
+  const lifespan = estimateLifespan(label, type);
+  const finite = isFinite(lifespan);
+  return {
+    lifespan,
+    healthPct: finite ? Math.max(0, Math.round((1 - wears / lifespan) * 100)) : 100,
+    remaining: finite ? Math.max(0, lifespan - wears) : Infinity,
+    needsReplacement: finite && wears >= lifespan,
+  };
 }
 
 /**
@@ -80,9 +97,7 @@ export function buildStrapLifecycle(history, watches) {
       const lastWorn = sortedDates[sortedDates.length - 1] ?? null;
       const wearCount = data.dates.length;
 
-      const lifespan = estimateLifespan(data.label ?? "", strapType);
-      const remaining = lifespan === Infinity ? Infinity : Math.max(0, lifespan - wearCount);
-      const healthPct = lifespan === Infinity ? 100 : Math.max(0, Math.round((1 - wearCount / lifespan) * 100));
+      const { lifespan, remaining, healthPct } = computeStrapHealth({ wears: wearCount, label: data.label ?? "", type: strapType });
 
       // Estimate replacement date based on current wear rate
       let replacementDate = null;
