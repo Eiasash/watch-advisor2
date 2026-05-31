@@ -337,14 +337,14 @@ describe("strapStore — getStrapStats", () => {
       useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
     }
     const stats = useStrapStore.getState().getStrapStats("snowflake-grey-alligator");
-    // leather type → lifespan 200; 100/200 = 50% used → 50% health
+    // alligator → lifespan 280 (shared canonical model); 100/280 used → 64% health
     expect(stats.wears).toBe(100);
-    expect(stats.healthPct).toBe(50);
-    expect(stats.lifespan).toBe(200);
+    expect(stats.healthPct).toBe(64);
+    expect(stats.lifespan).toBe(280);
   });
 
   it("healthPct is clamped to 0 at max wears", () => {
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 300; i++) {
       useStrapStore.getState().incrementWearCount("snowflake-grey-alligator");
     }
     const stats = useStrapStore.getState().getStrapStats("snowflake-grey-alligator");
@@ -352,10 +352,10 @@ describe("strapStore — getStrapStats", () => {
     expect(stats.needsReplacement).toBe(true);
   });
 
-  it("bracelet type uses 9999 lifespan → near 100% health", () => {
+  it("bracelet → Infinity lifespan, 100% health, never needs replacement", () => {
     const stats = useStrapStore.getState().getStrapStats("snowflake-titanium-bracelet");
     expect(stats).not.toBeNull();
-    expect(stats.lifespan).toBe(9999);
+    expect(stats.lifespan).toBe(Infinity);
     expect(stats.healthPct).toBe(100);
     expect(stats.needsReplacement).toBe(false);
   });

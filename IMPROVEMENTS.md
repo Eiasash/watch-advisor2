@@ -2,6 +2,18 @@
 Generated: 2026-04-23 (cumulative)
 Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
 
+## 2026-05-30 — fix: unify strap-health on one model (pill ↔ StrapHealth tab) (v1.13.62)
+
+The WatchDashboard strap-health pill (via buildStrapLifecycle) and the StrapHealth dashboard (via
+strapStore.getStrapStats) used two different lifespan tables (leather 350 vs 200, alligator 280 vs
+lumped-as-leather, canvas 500 vs 300, rubber 600 vs 350, bracelet Infinity vs 9999), so the same strap
+could show different health %s. Exported a canonical computeStrapHealth() from domain/strapLifecycle.js
+and routed BOTH buildStrapLifecycle and getStrapStats through it — one source of truth for lifespan +
+healthPct + needsReplacement. The store now also picks up the alligator distinction (label-aware) it was
+missing. 3 getStrapStats tests moved to the canonical numbers (280 / Infinity). 3785 green.
+NOTE: wear COUNT still comes from two counters (pill = history rows; tab = strap.wearCount); they track
+the same logging event so they match in practice — not merged here (would couple the store to historyStore).
+
 ## 2026-05-30 — fix(wardrobe-chat): watch roster generated from the seed, no more drift (v1.13.61)
 
 The chat system prompt hardcoded the watch roster and still listed the traded-away TAG Monaco and

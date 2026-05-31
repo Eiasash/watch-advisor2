@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { WATCH_COLLECTION } from "../data/watchSeed.js";
 import { canonicalizeActiveStraps } from "../data/strapAliases.js";
 import { setCachedState } from "../services/localCache.js";
+import { computeStrapHealth } from "../domain/strapLifecycle.js";
 
 function buildInitialStraps() {
   const straps = {};
@@ -132,16 +133,15 @@ export const useStrapStore = create((set, get) => ({
     if (!strap) return null;
     const wears = strap.wearCount ?? 0;
     const type = (strap.type ?? "").toLowerCase();
-    // Estimated lifespan by type
-    const lifespanMap = { leather: 200, canvas: 300, nato: 400, rubber: 350, bracelet: 9999 };
-    const lifespan = lifespanMap[type] ?? 250;
-    const healthPct = Math.max(0, Math.round(((lifespan - wears) / lifespan) * 100));
+    // Single source of truth for the lifespan/health model — shared with the strap
+    // recommender + pill (was a divergent local lifespanMap). See domain/strapLifecycle.js.
+    const { lifespan, healthPct, needsReplacement } = computeStrapHealth({ wears, label: strap.label, type: strap.type });
     return {
       wears,
       lastWorn: strap.lastWorn ?? null,
       type,
       healthPct,
-      needsReplacement: wears >= lifespan,
+      needsReplacement,
       lifespan,
     };
   },
