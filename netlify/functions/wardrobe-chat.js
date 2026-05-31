@@ -10,6 +10,7 @@ import { callClaude, getConfiguredModel, extractText } from "./_claudeClient.js"
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
 import { requireUser } from "./_auth.js";
+import { WATCH_COLLECTION } from "../../src/data/watchSeed.js";
 
 // ── Field caps + sanitization (F-e-2 / F-e-11 fix) ─────────────────────────
 // Garment / strap / history fields written via Claude tool calls are persisted
@@ -260,15 +261,27 @@ export async function handler(event) {
       todayCtx = (dow >= 0 && dow <= 4) ? "smart-casual (work day)" : "casual (weekend)";
     }
 
+    // Watch roster generated from the canonical seed (single source of truth) so it
+    // never drifts on trades — previously hardcoded prose still listed traded-away pieces.
+    const _activeW = WATCH_COLLECTION.filter(w => !w.retired && !w.pending);
+    const _genuineW = _activeW.filter(w => !w.replica);
+    const _replicaW = _activeW.filter(w => w.replica);
+    const _pendingW = WATCH_COLLECTION.filter(w => w.pending);
+    const watchIdList = _genuineW.map(w => w.id).join(", ");
+    const genuineList = _genuineW.map(w => `${w.brand} ${w.model} (${w.dial})`).join(", ");
+    const replicaList = _replicaW.map(w => `${w.brand} ${w.model} (${w.dial})`).join(", ");
+    const watchCountLine = `WATCH COLLECTION (${_genuineW.length} genuine active + ${_replicaW.length} replica${_pendingW.length ? ` + ${_pendingW.length} pending` : ""}):`;
+
     const systemPrompt = `You are Eias's personal wardrobe and watch advisor with full access to his wardrobe, watches, and wear history. You can BOTH give advice AND perform real actions on the data.
 
 WARDROBE (${garments?.length ?? 0} garments — format: [ID] Name (type, color, brand, formality:N, material, weight, seasons, contexts)):
 ${garmentList}
 
-WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
-Watch IDs for add_strap tool: snowflake, rikka, pasha, laureato, reverso, santos_large, santos_octagon, blackbay, gp-vintage-1945, gmt, speedmaster, hanhart, laco
-Genuine: GS Snowflake (silver-white, titanium bracelet option), GS Rikka SBGH351 (green, teal alligator default or stainless-steel bracelet — NOT titanium; titanium is Snowflake only), Pasha 41 WSPA0026 (grey), GP Laureato 42mm (blue, integrated), JLC Reverso Duoface (navy), Santos Large (white/gold), Santos Octagon YG (white, vintage), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
-Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
+${watchCountLine}
+Watch IDs for add_strap tool: ${watchIdList}
+Genuine: ${genuineList}
+Replica: ${replicaList}
+Note: GS Rikka bracelet is STAINLESS STEEL — titanium is the Snowflake only.
 
 RECENT WEAR HISTORY (last 20):
 ${recentWears || "No recent data"}
