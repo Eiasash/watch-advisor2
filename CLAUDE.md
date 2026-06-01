@@ -41,7 +41,7 @@ Stack: React 18 (createElement, no JSX except .jsx files) + Vite 7 + Zustand 4 +
 ## Architecture — strict, do not violate
 
 ```
-src/                          150 files, ~23,000 LOC
+src/                          169 files, ~23,000 LOC
   app/            bootstrap.js (boot sequence), AppShell.jsx (layout + tabs)
   components/     UI only — no business logic (63 JSX files)
   engine/         scoring, rotation, day profiles — pure functions
@@ -84,7 +84,7 @@ supabase/                    schema.sql
 - Accessories via Claude Vision fallback or filename only
 
 ### Tests — auto-expansion mandatory
-- **~3175 tests across 183 files** — run `npm test` to see current count
+- **~3175 tests across 222 files** — run `npm test` to see current count
 - Test mock architecture is frozen — do not change how mocks are structured
 - Always run `npm test` before every push. ALL tests must pass.
 - Test files in `tests/` — pattern: `tests/<module>.test.js`
@@ -131,9 +131,9 @@ supabase/                    schema.sql
 
 | Metric | Value |
 |--------|-------|
-| Source files | 150 |
+| Source files | 169 |
 | Source LOC | ~23,000 |
-| Test files | 183 |
+| Test files | 222 |
 | Test LOC | ~29,500 |
 | Tests | ~3175 |
 | Test pass rate | 100% |
