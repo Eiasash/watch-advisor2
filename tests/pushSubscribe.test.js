@@ -130,7 +130,7 @@ describe("push-subscribe handler", () => {
   it("DELETE success returns 200", async () => {
     const r = await handler({
       httpMethod: "DELETE",
-      headers: { "x-api-secret": "test-open-secret" },
+      headers: { authorization: "Bearer valid-jwt" },
       body: JSON.stringify({ endpoint: "https://push.example.com/sub1" }),
     });
     expect(r.statusCode).toBe(200);
@@ -140,7 +140,8 @@ describe("push-subscribe handler", () => {
     expect(mockEq).toHaveBeenCalledWith("endpoint", "https://push.example.com/sub1");
   });
 
-  it("DELETE returns 401 without x-api-secret", async () => {
+  it("DELETE returns 401 without Bearer JWT", async () => {
+    authMode = "401";
     const r = await handler({
       httpMethod: "DELETE",
       body: JSON.stringify({ endpoint: "https://push.example.com/sub1" }),
@@ -152,7 +153,7 @@ describe("push-subscribe handler", () => {
   it("DELETE returns 400 when endpoint is missing", async () => {
     const r = await handler({
       httpMethod: "DELETE",
-      headers: { "x-api-secret": "test-open-secret" },
+      headers: { authorization: "Bearer valid-jwt" },
       body: JSON.stringify({}),
     });
     expect(r.statusCode).toBe(400);

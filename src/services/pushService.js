@@ -55,7 +55,7 @@ export async function unsubscribePush() {
   const sub = await reg.pushManager.getSubscription();
   if (!sub) return;
 
-  const res = await fetch("/.netlify/functions/push-subscribe", {
+  const res = await authedFetch("/.netlify/functions/push-subscribe", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint: sub.endpoint }),

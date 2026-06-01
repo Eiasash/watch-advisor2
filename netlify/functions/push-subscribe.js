@@ -1,7 +1,7 @@
 /**
  * Netlify function — save or delete a push subscription.
- * POST { subscription, deviceName } → save  (requires Bearer JWT)
- * DELETE { endpoint }               → remove (requires x-api-secret legacy)
+ * POST { subscription, deviceName } → save   (requires Bearer JWT)
+ * DELETE { endpoint }               → remove (requires Bearer JWT)
  */
 import { createClient } from "@supabase/supabase-js";
 import { cors } from "./_cors.js";
@@ -23,12 +23,11 @@ export async function handler(event) {
     const body = JSON.parse(event.body ?? "{}");
 
     if (event.httpMethod === "DELETE") {
-      // DELETE requires auth — endpoint strings are opaque but guessable if
-      // leaked; unauthenticated delete lets anyone unsubscribe anyone's device.
-      const secret = event.headers?.["x-api-secret"];
-      if (!process.env.OPEN_API_KEY || !secret || secret !== process.env.OPEN_API_KEY) {
-        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: "Unauthorized" }) };
-      }
+      // DELETE requires Bearer JWT — same gate as POST. The x-api-secret scheme
+      // was never reachable from the browser (OPEN_API_KEY is server-side only).
+      // A user deleting their own subscription sends the same JWT they use for POST.
+      const auth = await requireUser(event);
+      if (auth.error) return { statusCode: auth.statusCode, headers: CORS, body: JSON.stringify({ error: auth.error }) };
       const { endpoint } = body;
       if (!endpoint) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "Missing endpoint" }) };
       await sb().from("push_subscriptions").delete().eq("endpoint", endpoint);

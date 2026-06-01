@@ -109,6 +109,7 @@ describe("pushService", () => {
     mockPushManager.getSubscription.mockResolvedValue(mockSubscription);
     await unsubscribePush();
     expect(mockSubscription.unsubscribe).toHaveBeenCalled();
+    // authedFetch calls through to global fetch; assert the underlying call shape.
     expect(fetch).toHaveBeenCalledWith(
       "/.netlify/functions/push-subscribe",
       expect.objectContaining({ method: "DELETE" }),
