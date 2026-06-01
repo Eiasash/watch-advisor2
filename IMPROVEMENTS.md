@@ -1,6 +1,58 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-05-30 — backfilled v1.13.50–55 IMPROVEMENTS entries + skill sync to v1.13.55
+Last updated: 2026-06-01 — v1.13.63/v1.13.64 bug fixes (push-subscribe DELETE auth + daily-pick layer prompt)
+
+## 2026-06-01 — fix(prompt): sync daily-pick layer band to engine 13°C gate, add formality gate (v1.13.64)
+
+**Root cause (2 issues, closed in one PR):**
+
+1. The `daily-pick.js` AI prompt described the sweater boundary as "10–13°C → sweater + jacket", but
+   `_fillSweaterLayer` in `outfitBuilder.js` returns at `temp >= 13` — no sweater at 13°C. At exactly
+   13°C the AI would recommend a sweater the engine would never add.
+
+2. The original "14–21°C → light JACKET only" line (and the subsequent "13–21°C" corrected form) told
+   Claude to include a jacket for all contexts at 13–21°C. But `_fillJacket` returns at `temp >= 13`
+   in **casual** context (`isFormalCtx = false`). For sport/smart-casual watches (Speedmaster, Hanhart,
+   Laco, most replicas) at 13°C, the engine adds no warmth layer at all — the AI prompt was wrong.
+
+**Fix:** Prompt bands now precisely match the engine:
+- `Morning 10–12°C → sweater + jacket` (both layers; unchanged from engine)
+- `Morning 13–21°C → formal/business watches only: light jacket. Smart-casual/casual/sport: NO layer.`
+- `Morning ≥ 22°C → no extra layer`
+
+The formality distinction mirrors the engine's `isFormalCtx` gate. Codex P2 comment caught the jacket
+gap on code review; fixed in the same commit rather than a follow-up.
+
+Files: `netlify/functions/daily-pick.js`
+
+---
+
+## 2026-06-01 — fix(push): migrate DELETE /push-subscribe from x-api-secret to Bearer JWT (v1.13.63)
+
+**Root cause:** `unsubscribePush()` in `src/services/pushService.js` called `fetch()` directly with
+no `Authorization` header. The server-side DELETE handler required `x-api-secret` matching
+`process.env.OPEN_API_KEY` — a **server-side-only** env var. No browser client can ever supply it,
+so every push unsubscribe attempt returned 401. The push notification bell UI showed "unsubscribed"
+on the client (browser's PushManager unsubscribe succeeded) but left an orphaned row in
+`push_subscriptions`, causing future daily brief cron jobs to continue targeting the stale endpoint.
+
+**Fix:**
+- Server (`netlify/functions/push-subscribe.js`): DELETE path now calls `requireUser(event)` (Bearer
+  JWT gate), matching the POST path added in v1.13.16 and every other browser-callable function.
+- Client (`src/services/pushService.js`): `unsubscribePush()` switched from raw `fetch()` to
+  `authedFetch()` (the import was already present).
+- Tests updated: `tests/pushSubscribe.test.js` tests Bearer JWT on DELETE; `tests/pushService.test.js`
+  comment clarified; `tests/cors.test.js` comment updated.
+
+**Staging/preview note (Codex P2):** With `AUTH_GATE_ENABLED=false` the DELETE is ungated, same as
+before this PR (old behavior: always 401 in browser since `OPEN_API_KEY` is server-only). Production
+is protected by `CONTEXT=production` forcing the gate on regardless. Staging has no real push
+subscriptions.
+
+Files: `netlify/functions/push-subscribe.js`, `src/services/pushService.js`,
+`tests/pushSubscribe.test.js`, `tests/pushService.test.js`, `tests/cors.test.js`
+
+---
 
 ## 2026-05-30 — fix: unify strap-health on one model (pill ↔ StrapHealth tab) (v1.13.62)
 
