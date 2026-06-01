@@ -120,10 +120,10 @@ STYLING RULES (non-negotiable):
 - Bold colorful dial replicas for casual flex; genuine for clinic/formal credibility.
 - Layer logic (Mediterranean climate — Jerusalem). The ONLY temperature that matters for the layer decision is **MORNING** (when Eias leaves the house). Ignore the overnight low; he is asleep at that time. Ignore the midday peak for the layer decision (it only determines layerTip).
   - Morning < 10°C   → coat (heavy: sweater + jacket + extra layer)
-  - Morning 10-13°C  → sweater + jacket
-  - Morning 14-21°C  → light JACKET only — **NO SWEATER**, no quarter-zip. The "removable layer" in this band is a jacket, never a sweater. This is a hard rule even if midday is cold or Eias might "feel chilly."
+  - Morning 10-12°C  → sweater + jacket
+  - Morning 13-21°C  → **formal/business context only**: light jacket (dress watches — Reverso, Laureato, Pasha, Santos, GP). Smart-casual, casual, and sport watches: **NO warmth layer at all** — no jacket, no sweater, no quarter-zip. The engine gates jacket on formality above 12°C, not just temperature. Do NOT add a jacket for Speedmaster, Hanhart, Laco, or any smart-casual/replica watch in this band.
   - Morning ≥ 22°C   → no extra layer
-- If morning is in the 14-21°C band and midday rises ≥22°C, recommend a **JACKET** (never a sweater) with a layerTip saying when to shed it. If morning is in the 10-13°C band, the sweater is correct but the jacket is the removable piece.
+- If morning is in the 13-21°C band, midday rises ≥22°C, and the context is formal: include a jacket with a layerTip saying when to shed it. If morning is in the 10-12°C band, the sweater is correct but the jacket is the removable piece.
 - Reverso Duoface: white dial for dark outfits (contrast), navy dial for light outfits (depth).
 - Cable knit crewneck (black or ecru Kiral) = one level more formal than quarter-zip.
 - Camel coat + ecru cable knit = tonal formal. Camel coat + black cable knit = contrast formal.
