@@ -67,8 +67,8 @@ describe("_cors.js — CORS helper", () => {
 
   it("includes required CORS headers", () => {
     const headers = cors({ headers: { origin: "https://watch-advisor2.netlify.app" } });
-    // x-api-secret: legacy gate on push-subscribe DELETE, ai-audit, github-pat.
-    // Authorization: Bearer JWT for the new auth gate (_auth.js requireUser).
+    // x-api-secret: legacy gate on ai-audit, github-pat (push-subscribe DELETE migrated to Bearer JWT).
+    // Authorization: Bearer JWT for the new auth gate (_auth.js requireUser) including push-subscribe DELETE.
     // DELETE is required so push-subscribe can unsubscribe devices.
     expect(headers["Access-Control-Allow-Headers"]).toBe("Content-Type, x-api-secret, Authorization");
     expect(headers["Access-Control-Allow-Methods"]).toBe("POST, GET, DELETE, OPTIONS");
