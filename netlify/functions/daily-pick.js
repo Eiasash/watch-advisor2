@@ -141,7 +141,7 @@ Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), San
 OUTPUT SCHEMA — return ONLY valid JSON matching this shape:
 {
   "watch": "exact watch name",
-  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|breguet_tradition",
+  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|op_pistachio|breguet_tradition",
   "strap": "specific strap recommendation",
   "shirt": "garment id from the WARDROBE list (the value after 'id:' before ' | ') — or null",
   "sweater": "garment id or null",
@@ -509,7 +509,7 @@ ${variantClause}
 Schema for each outfit:
 {
   "watch": "exact watch name",
-  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|breguet_tradition",
+  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|op_pistachio|breguet_tradition",
   "strap": "specific strap recommendation",
   "shirt": "garment id from the WARDROBE list (the value after 'id:' before ' | ') — or null",
   "sweater": "garment id or null",
