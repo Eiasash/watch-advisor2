@@ -187,7 +187,7 @@ export async function handler(event) {
   try {
     const body = JSON.parse(event.body ?? "{}");
     const userMessage = body.message;
-    if (!userMessage) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "message required" }) };
+    if (!userMessage?.trim()) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "message required" }) };
     if (userMessage.length > 2000) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: "message too long (max 2000 chars)" }) };
 
     if (Array.isArray(body.conversationHistory)) {
@@ -201,8 +201,16 @@ export async function handler(event) {
     if (!url || !key) throw new Error("Missing Supabase credentials");
     const supabase = createClient(url, key);
 
-    // Fetch wardrobe data
-    const [{ data: garments }, { data: history }] = await Promise.all([
+    // Fetch wardrobe data + non-fatal optional config in parallel.
+    // Sequential optional fetches were a latency sink — each ate ~300–500 ms
+    // before the weather fetch and Claude call, pushing the total over the
+    // Netlify 10 s hard limit on slow Claude days (bug #7/#8 in debug bundle).
+    const [
+      { data: garments },
+      { data: history },
+      dnaResult,
+      reportResult,
+    ] = await Promise.all([
       supabase.from("garments")
         .select("id,name,type,category,color,brand,formality,material,weight,seasons,contexts")
         .eq("exclude_from_wardrobe", false)
@@ -211,18 +219,14 @@ export async function handler(event) {
         .select("watch_id,date,payload")
         .order("date", { ascending: false })
         .limit(60),
+      // Optional — wrap each in an async IIFE so a thrown error doesn't reject
+      // the whole Promise.all (plain Supabase errors don't throw but network
+      // errors can; also keeps mock compatibility in tests).
+      (async () => { try { return await supabase.from("app_config").select("value").eq("key", "style_dna").limit(1); } catch { return { data: null }; } })(),
+      (async () => { try { return await supabase.from("app_config").select("value").eq("key", "monthly_report").limit(1); } catch { return { data: null }; } })(),
     ]);
-
-    // Non-fatal optional data
-    let dnaRow = null, reportRow = null;
-    try {
-      const r1 = await supabase.from("app_config").select("value").eq("key", "style_dna").limit(1);
-      dnaRow = r1.data?.[0] ?? null;
-    } catch {}
-    try {
-      const r2 = await supabase.from("app_config").select("value").eq("key", "monthly_report").limit(1);
-      reportRow = r2.data?.[0] ?? null;
-    } catch {}
+    const dnaRow = dnaResult?.data?.[0] ?? null;
+    const reportRow = reportResult?.data?.[0] ?? null;
 
     // Build context string — include IDs so Claude can reference them in tool calls
     const garmentList = (garments ?? []).map(g =>
@@ -245,7 +249,7 @@ export async function handler(event) {
       try {
         const wRes = await fetch(
           "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current=temperature_2m,weathercode&timezone=Asia/Jerusalem",
-          { signal: AbortSignal.timeout(5000) }
+          { signal: AbortSignal.timeout(3000) }
         );
         const wData = await wRes.json();
         const temp = wData?.current?.temperature_2m;
@@ -315,11 +319,24 @@ WHAT YOU CANNOT DO — be honest, never pretend:
 - If asked to set/change a rule, preference, threshold, or setting you have no tool for, say plainly that you can't persist it from chat and it needs an app change. NEVER say you have "noted", "saved", "updated", "set", or "will apply going forward" anything you cannot actually write with a tool.
 Be specific, opinionated, and brief. Use actual garment names and IDs. Don't hedge.`;
 
-    // Build messages array with conversation history
+    // Build messages array with conversation history.
+    // Guard against empty-content entries: Claude API rejects any message with
+    // empty string or whitespace-only content with HTTP 400
+    // "messages.N: user messages must have non-empty content" (debug entry #9).
+    // Also enforce strict user/assistant alternation — the API requires it and
+    // an empty-content removal can leave two consecutive same-role messages.
     const messages = [];
     if (body.conversationHistory?.length) {
       for (const msg of body.conversationHistory.slice(-10)) {
-        messages.push({ role: msg.role, content: msg.content });
+        const c = msg.content;
+        const isEmpty = !c
+          || (typeof c === "string" && !c.trim())
+          || (Array.isArray(c) && c.length === 0);
+        if (isEmpty) continue;
+        // Drop consecutive same-role messages (possible after empty-content removal).
+        const last = messages[messages.length - 1];
+        if (last && last.role === msg.role) continue;
+        messages.push({ role: msg.role, content: c });
       }
     }
 
