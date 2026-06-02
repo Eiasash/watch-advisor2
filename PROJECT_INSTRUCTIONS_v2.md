@@ -1,6 +1,6 @@
 # Watch-Advisor2 Project Instructions
 
-> Last updated: April 18, 2026 | App version: 1.12.33 | 104 garments | Acquisition: Fears Brunswick Champagne in motion
+> Last updated: June 1, 2026 | App version: **1.13.64** | 124 garments | Active model: **claude-sonnet-4-6**
 
 ---
 
@@ -54,6 +54,7 @@ Israel work week: Sun–Thu = work days, Fri–Sat = weekend. Sunday is the firs
 - DDL → `apply_migration` + commit `.sql` to `supabase/migrations/` IMMEDIATELY
 - JSONB values: never double `JSON.parse()` — Supabase auto-parses
 - Model string: `'"model-name"'::jsonb` not bare text
+- **2026-06-01 DB corrections:** cleared dangling Levi's 502 `duplicate_of` (pointed at hard-deleted ghost `g_1773168928671_g0nqb` — sole active keeper, not a dup). Ecru waffle name corrected (Gant…Polo → unbranded camp-collar shirt; subtype/notes already matched).
 
 ### Netlify rules
 - Site ID: `4d21d73c-b37f-4d3a-8954-8347045536dd` (**NOT** `85d12386` = Toranot)
@@ -78,6 +79,8 @@ Israel work week: Sun–Thu = work days, Fri–Sat = weekend. Sunday is the firs
 | **Version display is build-time** | `__BUILD_NUMBER__` injected from `package.json` via `vite.config.js`. Bump version before every push. |
 | **Pending watch filter** (v1.12.31) | `isActiveWatch()` in `src/utils/watchFilters.js` filters `!w.retired && !w.pending`. 19 filter points across 13 files. Never revert. |
 | **Dial color canonical names** | Use `"silver-white"` not `"silver"` — DIAL_COLOR_MAP has no `silver` entry. Tests will fail. |
+| **Push unsubscribe = Bearer JWT** (#246, v1.13.63) | DELETE /push-subscribe was gated on x-api-secret (server-side env var the browser can't supply) → every unsubscribe silently orphaned a push_subscriptions row. Now uses authedFetch(). Never revert to x-api-secret. |
+| **Layer prompt = engine gates** (#247, v1.13.64) | daily-pick.js AI prompt must match engine: sweater 10–12°C, jacket 13–21°C formal/business only. Prompt previously promised layers the engine never builds. |
 
 ---
 
@@ -176,11 +179,12 @@ Rolex GMT Meteorite, Rolex Day-Date (turquoise), Rolex OP (purple/grape), Bregue
 
 ---
 
-## Wardrobe Summary (104 active garments — April 18 2026)
+## Wardrobe Summary (124 active garments — June 1 2026)
 
-- Tailor queue empty (cleared Apr 11). Kiral Navy DB PoW suit highest formality (f9), first worn Apr 17 wedding
+- Tailor queue empty. Kiral Navy DB PoW suit highest formality (f9), first worn Apr 17 wedding
 - Brown Ecco inventory: **two distinct pairs** — S-Lite Hybrid (g_1773168921553_0guwf, daily) + Pebble Grain (g_1773168976494_pycdu, dressier)
 - White OCBD gap: no solid white OCBD in wardrobe; Gant White Striped Oxford is closest
+- 5 garments need in-app photo upload (needs_review queue: Breton tee, sage Nautica camp, ecru waffle, chambray, herringbone). Separate untracked debt: 5 legacy rows lack photos but aren't review-flagged (tan cord jacket, red/navy flannel, camel crewneck, light blue cotton dress shirt, Kiral brown cardigan) — true photoless count is 8.
 
 ---
 
@@ -190,7 +194,7 @@ Rolex GMT Meteorite, Rolex Day-Date (turquoise), Rolex OP (purple/grape), Bregue
 ```
 GET https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
 ```
-Healthy state: garmentCount ≥104, orphanedHistoryCount 0, all health "ok", autoHeal.healthy true.
+> Healthy: garmentCount ≥124, orphanedHistoryCount 0, all health "ok", autoHeal.healthy true.
 
 ### Common failures
 | Symptom | Cause | Fix |
