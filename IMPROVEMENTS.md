@@ -1,6 +1,39 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-06-01 — v1.13.63/v1.13.64 bug fixes (push-subscribe DELETE auth + daily-pick layer prompt)
+Last updated: 2026-06-02 — v1.13.66 runtime bug fixes (empty-content 400, timeouts, stale-SW error #300, WeekPlanner hallucination guard)
+
+## 2026-06-02 — fix: three runtime bugs + WeekPlanner hallucination guard (v1.13.66)
+
+**Root causes (4 issues, closed in one PR #252):**
+
+1. **HTTP 400 "messages.N: user messages must have non-empty content" (P1)** — `wardrobe-chat`'s
+   `conversationHistory` loop pushed messages without checking for empty/whitespace content or
+   adjacent same-role messages. The Claude API rejects arrays with empty-string content or
+   consecutive `user`/`assistant` entries. Fix: added `isEmpty` check (string, array, null) and
+   role-alternation dedup before building the messages array. Also trim-checks `userMessage` itself.
+
+2. **Netlify function timeouts — wardrobe-chat + style-dna (P2)** — Two optional Supabase queries
+   (`style_dna`, `monthly_report`) ran sequentially after the two parallel required ones, consuming
+   ~0.6–1 s before a 5 s weather abort and 8.5 s Claude abort, pushing the total over the 10 s
+   Netlify hard limit on slow Claude days. Fix: parallelised all 4 DB queries in a single
+   `Promise.all` using async IIFEs for the optional pair; reduced weather `AbortSignal.timeout`
+   5000 → 3000 ms.
+
+3. **React error #300 / ErrorBoundary at load (P1)** — Stale SW cache serving pre-PR #203 bundles
+   where `WatchCard` had hooks called after an early `return null`. The hooks-before-return fix was
+   in PR #203 but users with cached bundles saw the old code. Fix: bumped `CACHE_VERSION` 24 → 25
+   to force full SW cache nuke + SW unregister on next visit.
+
+4. **WeekPlanner hallucination — "AI returned garments not in wardrobe"** — `daily-pick.js` had no
+   guard when `garmentsRes.data === null` (Supabase query error). An empty WARDROBE block caused
+   Claude to hallucinate generic names ("light blue shirt") that never matched any garment ID in the
+   resolver. Fix: fail-fast with 500 when `garments === null`; empty array (`[]`) is allowed through
+   for new-user UX.
+
+**Files:** `netlify/functions/wardrobe-chat.js`, `netlify/functions/daily-pick.js`, `index.html`,
+`package.json`
+
+---
 
 ## 2026-06-01 — fix(prompt): sync daily-pick layer band to engine 13°C gate, add formality gate (v1.13.64)
 
