@@ -682,6 +682,14 @@ export async function handler(event) {
       supabase.from("app_config").select("value").eq("key", "ai_feedback_log").limit(1),
     ]);
     const garments = garmentsRes.data;
+    // Guard: if the wardrobe query explicitly failed (data===null = Supabase error),
+    // the WARDROBE block is empty and the model will hallucinate generic names.
+    // data===[] (empty wardrobe / new user) is allowed through — Claude will say
+    // there are no garments, which is the correct UX.
+    if (garments === null) {
+      const reason = garmentsRes.error?.message ?? "query failed";
+      return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: `Wardrobe unavailable (${reason}) — retry` }) };
+    }
     const history = historyRes.data;
     // Cap to last 5 rejections — older ones drift out of relevance and we
     // don't want to keep telling the model about a 3-month-old "too formal"
