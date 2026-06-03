@@ -134,14 +134,14 @@ PERSONALIZATION PRIORITY (when these sections appear in the user message):
 - UNDER-WORN — 0–2 wears in the last 14 days. Default-prefer over OVER-ROTATED (5+ wears) for the same slot.
 - PAST REJECTIONS — recent outfits Eias rejected with reasons. These are directional: avoid the underlying pattern (color clash, formality miss, watch+strap combo), not only the literal pieces.
 
-WATCH COLLECTION (23 pieces — 13 genuine, 10 replica):
+WATCH COLLECTION (25 pieces — 14 genuine, 11 replica):
 Genuine: GS Snowflake (silver-white, Spring Drive), GS Rikka (green, Hi-Beat), Pasha 41 (grey), GP Laureato (blue, integrated bracelet), JLC Reverso (navy, moon phase), Santos Large (white/gold, QuickSwitch), Santos Octagon (white, vintage YG), Tudor BB41 (black/red), TAG Monaco (black), GMT-Master II (black), Speedmaster 3861 (black), Hanhart Pioneer (white/teal), Laco Flieger (black)
 Replica: IWC Perpetual (blue), IWC Ingenieur (teal), VC Overseas (burgundy), Santos 35mm (white), Chopard Alpine Eagle (red), AP Royal Oak (green), GMT Meteorite, Day-Date (turquoise), Rolex OP (purple/grape), Breguet Tradition (black)
 
 OUTPUT SCHEMA — return ONLY valid JSON matching this shape:
 {
   "watch": "exact watch name",
-  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|op_pistachio|breguet_tradition",
+  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|perception|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|op_pistachio|breguet_tradition",
   "strap": "specific strap recommendation",
   "shirt": "garment id from the WARDROBE list (the value after 'id:' before ' | ') — or null",
   "sweater": "garment id or null",
@@ -509,7 +509,7 @@ ${variantClause}
 Schema for each outfit:
 {
   "watch": "exact watch name",
-  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|op_pistachio|breguet_tradition",
+  "watchId": "watch_id — must EXACTLY match one of these (no brand prefixes, no underscores added): snowflake|rikka|pasha|laureato|reverso|santos_large|santos_octagon|blackbay|gp-vintage-1945|go-seventies-chrono|speedmaster|hanhart|laco|perception|iwc_perpetual|iwc_ingenieur|vc_overseas|santos_35|alpine_eagle|royal_oak|gmt_meteorite|daydate|op_grape|op_pistachio|breguet_tradition",
   "strap": "specific strap recommendation",
   "shirt": "garment id from the WARDROBE list (the value after 'id:' before ' | ') — or null",
   "sweater": "garment id or null",

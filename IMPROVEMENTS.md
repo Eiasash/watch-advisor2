@@ -1,6 +1,19 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-06-02 — v1.13.66 runtime bug fixes (empty-content 400, timeouts, stale-SW error #300, WeekPlanner hallucination guard)
+Last updated: 2026-06-03 — v1.13.67 Atelier Wen Perception N°25/50 received in Israel → pending→active (14th genuine)
+
+## 2026-06-03 — feat: Atelier Wen Perception N°25/50 received in hand → activated (v1.13.67)
+
+**Event:** The Atelier Wen × Revolution Perception (N°25/50, silver-white guilloché, on steel hexagonal bracelet + grey FKM rubber) arrived in Israel from Singapore — the pending P1. Warranty card serial 025, caseback N°25/50 — verified against the seed.
+
+**Changes:**
+- `src/data/watchSeed.js` — dropped `pending:true` + `pendingReason` from the `perception` entry, moved it into the active-genuine block, added `receivedDate:"2026-06-03"`. Active genuine 13→14; pending 2→1 (Fears Brunswick only). Header comment corrected (also fixed a long-standing replica miscount in the comment/prompts: 11 replicas, not 10).
+- `netlify/functions/daily-pick.js` — added `perception` to **both** watchId enums (system + user prompts) so the AI can pick it; corrected header flavor count to 25 active (14 genuine + 11 replica).
+- `netlify/functions/push-brief.js` — same flavor-count correction.
+- Tests: `watchSeed.test.js` genuine-active 13→14; `dailyPickPromptWatchEnum.test.js` now passes with perception in the enum (it self-asserts against seed-derived canonical IDs — this was the predicted "forces author to add the new watch" failure).
+- First wear logged to `history`: `wear-2026-06-03-perception` (bracelet, smart-casual).
+
+**Tests:** 3785/3785 pass.
 
 ## 2026-06-02 — fix: three runtime bugs + WeekPlanner hallucination guard (v1.13.66)
 
