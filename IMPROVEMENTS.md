@@ -1,6 +1,11 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-06-03 — v1.13.67 Atelier Wen Perception N°25/50 received in Israel → pending→active (14th genuine)
+Last updated: 2026-06-03 — v1.13.68 Perception grey FKM strap buckle label fix (pin buckle, not deployant)
+
+## 2026-06-03 — fix: Perception grey FKM strap is a pin/tang buckle, not a deployant (v1.13.68)
+
+Eias confirmed from the in-hand photos that the grey FKM rubber strap ships on a **signed Atelier Wen pin (tang) buckle**, not a folding deployant. Corrected the `perception-grey-fkm` strap label in `src/data/watchSeed.js`. Label-only; no logic/count change. 3785 tests unaffected.
+
 
 ## 2026-06-03 — feat: Atelier Wen Perception N°25/50 received in hand → activated (v1.13.67)
 
