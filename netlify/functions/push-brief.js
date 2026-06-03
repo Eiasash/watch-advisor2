@@ -204,7 +204,7 @@ ${weatherSummary}
 
 RECENT WATCHES (last 2 weeks): ${recentWatches || "none"}
 WARDROBE: ${garmentList}
-COLLECTION: 23 watches (13 genuine, 10 replica). Avoid repeating same watch within 3 days.
+COLLECTION: 25 watches (14 genuine, 11 replica). Avoid repeating same watch within 3 days.
 
 Generate a 7-day watch rotation with one-line outfit suggestion per day. Be specific about garment names and watch+strap combos.
 

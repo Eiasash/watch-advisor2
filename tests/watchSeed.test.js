@@ -2,15 +2,16 @@ import { describe, it, expect } from "vitest";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 
 describe("watchSeed data integrity", () => {
-  it("contains exactly 31 watches (13 active genuine + 2 pending + 11 replica + 5 retired)", () => {
+  it("contains exactly 31 watches (14 active genuine + 1 pending + 11 replica + 5 retired)", () => {
     expect(WATCH_COLLECTION).toHaveLength(31);
   });
 
-  it("has 13 active genuine watches (excludes pending/perception)", () => {
-    // `perception` = incoming acquisition not yet in rotation; `pending` = generic flag.
+  it("has 14 active genuine watches (excludes pending)", () => {
+    // `perception` (Atelier Wen N°25/50) received in hand 2026-06-03 → now active.
+    // Fears Brunswick remains the only pending genuine piece.
     // Only "ready to wear" genuine pieces count as active.
     const genuine = WATCH_COLLECTION.filter(w => !w.replica && !w.retired && !w.perception && !w.pending);
-    expect(genuine).toHaveLength(13);
+    expect(genuine).toHaveLength(14);
   });
 
   it("has 11 replica watches", () => {
