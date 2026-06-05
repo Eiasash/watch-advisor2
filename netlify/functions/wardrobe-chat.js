@@ -173,6 +173,47 @@ async function executeTool(supabase, toolName, input) {
   }
 }
 
+/**
+ * Assemble the conversation-history portion of the Claude `messages` array.
+ *
+ * Three jobs, all required by the Anthropic Messages API:
+ *  1. Drop empty/whitespace-only entries (API 400s on empty content).
+ *  2. Enforce strict user/assistant alternation. When two same-role turns end
+ *     up adjacent (e.g. an empty turn between them was removed), MERGE their
+ *     text rather than dropping the newer one — the previous inline code did
+ *     `continue`, silently discarding the most recent context. Non-string
+ *     content (image blocks) falls back to keeping the newer message.
+ *  3. The first message must be a `user` turn — strip any leading assistant
+ *     messages (a resumed thread can start with an assistant reply → 400
+ *     "first message must use user role").
+ *
+ * Exported for unit testing — see tests/wardrobeChatHistory.test.js.
+ */
+export function assembleHistory(conversationHistory) {
+  const messages = [];
+  if (conversationHistory?.length) {
+    for (const msg of conversationHistory.slice(-10)) {
+      const c = msg.content;
+      const isEmpty = !c
+        || (typeof c === "string" && !c.trim())
+        || (Array.isArray(c) && c.length === 0);
+      if (isEmpty) continue;
+      const last = messages[messages.length - 1];
+      if (last && last.role === msg.role) {
+        if (typeof last.content === "string" && typeof c === "string") {
+          last.content = `${last.content}\n${c}`;
+        } else {
+          messages[messages.length - 1] = { role: msg.role, content: c };
+        }
+        continue;
+      }
+      messages.push({ role: msg.role, content: c });
+    }
+  }
+  while (messages.length && messages[0].role !== "user") messages.shift();
+  return messages;
+}
+
 export async function handler(event) {
   const CORS = cors(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: CORS };
@@ -325,20 +366,9 @@ Be specific, opinionated, and brief. Use actual garment names and IDs. Don't hed
     // "messages.N: user messages must have non-empty content" (debug entry #9).
     // Also enforce strict user/assistant alternation — the API requires it and
     // an empty-content removal can leave two consecutive same-role messages.
-    const messages = [];
-    if (body.conversationHistory?.length) {
-      for (const msg of body.conversationHistory.slice(-10)) {
-        const c = msg.content;
-        const isEmpty = !c
-          || (typeof c === "string" && !c.trim())
-          || (Array.isArray(c) && c.length === 0);
-        if (isEmpty) continue;
-        // Drop consecutive same-role messages (possible after empty-content removal).
-        const last = messages[messages.length - 1];
-        if (last && last.role === msg.role) continue;
-        messages.push({ role: msg.role, content: c });
-      }
-    }
+    // Filter empties, enforce alternation (merge same-role rather than drop the
+    // newer turn), and guarantee a leading user message. See assembleHistory().
+    const messages = assembleHistory(body.conversationHistory);
 
     // Build final user message — may include multiple images
     const images = Array.isArray(body.images) ? body.images : (body.image ? [body.image] : []);
