@@ -702,7 +702,14 @@ export async function handler(event) {
       try {
         const wRes = await fetch(
           "https://api.open-meteo.com/v1/forecast?latitude=31.7683&longitude=35.2137&current_weather=true&hourly=temperature_2m&timezone=Asia/Jerusalem&forecast_days=2",
-          { signal: AbortSignal.timeout(5000) }
+          // v1.13.69: 5000→3000 to match wardrobe-chat (#252). This fetch is on
+          // the critical path (awaited before the Claude call), so a slow
+          // Open-Meteo response could push weather+Claude past Netlify's 10s
+          // function limit → 504. #252 fixed this in wardrobe-chat but left
+          // daily-pick — the heavier path — untouched. Weather is optional
+          // (the catch below leaves `weather` null), so a tighter abort only
+          // trades a rare missing-temp for never blowing the budget.
+          { signal: AbortSignal.timeout(3000) }
         );
         const wData = await wRes.json();
         const hourly = wData.hourly;
