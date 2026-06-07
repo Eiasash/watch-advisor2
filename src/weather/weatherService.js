@@ -162,15 +162,15 @@ function weatherCodeToDesc(code) {
  * engine ships a third combo.
  *
  *   morning < 10°C   → coat (heavy: sweater + jacket + extra layer)
- *   morning < 14°C   → sweater + jacket
+ *   morning < 13°C   → sweater + jacket
  *   morning < 22°C   → light jacket only — NO sweater on the Mediterranean
  *                       coast at this temp (Eias-calibrated 2026-05-02)
  *   morning ≥ 22°C   → no extra layer
  *
  * The previous v1.13.7 version only had 3 tiers (coat/sweater/none) with the
  * sweater band at 12–22°C. That contradicted both the engine (which gates
- * sweater at <14°C since the same calibration) and the system prompt's
- * "NO sweater at ≥14°C" rule, so the badge said "Sweater + jacket" at 16°C
+ * sweater at <13°C) and the system prompt's
+ * "NO sweater at ≥13°C" rule, so the badge said "Sweater + jacket" at 16°C
  * morning while the engine refused to add a sweater — the user got conflicting
  * advice on the same screen (the 2026-05-07 incident).
  */

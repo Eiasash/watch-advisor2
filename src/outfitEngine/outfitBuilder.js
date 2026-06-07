@@ -264,15 +264,15 @@ function _pairHarmonyScore(shirt, pants, shoes) {
  */
 function _fillSweaterLayer(outfit, wearable, watchWithStrap, weather, history, outfitFormality, context, rejectState, preferenceWeights, pinnedSlots) {
   // User-calibrated for Mediterranean climate (2026-05-02): sweater not added at
-  // >= 14°C. Prefer `tempMorning` over `tempC` since the engine generates daytime
+  // >= 13°C. Prefer `tempMorning` over `tempC` since the engine generates daytime
   // outfits — the daily mean (`tempC`) gets pulled down by overnight lows that
   // are irrelevant to what gets worn during waking hours.
-  // When weather is missing/unknown, default to 14°C — exactly at the no-sweater
+  // When weather is missing/unknown, default to 13°C — exactly at the no-sweater
   // threshold so the engine does NOT auto-add a sweater on a silent fetch failure.
   const temp = weather?.tempMorning ?? weather?.tempC ?? 13;
   if (temp >= 13) return; // layer rule: no warmth layer at >= 13C
 
-  // 10-14°C = warm transition zone. Sweater is optional — only add if high-scoring.
+  // 10-13°C = warm transition zone. Sweater is optional — only add if high-scoring.
   // Below 10°C = sweater strongly recommended (normal flow).
   const warmTransition = temp >= OUTFIT_TEMP_THRESHOLDS.warmTransition;
   const minSweaterScore = warmTransition ? 4.0 : 0; // higher bar in warm weather
