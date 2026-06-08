@@ -1,6 +1,28 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-06-03 — v1.13.68 Perception grey FKM strap buckle label fix (pin buckle, not deployant)
+Last updated: 2026-06-08 — §A.5 self-improve scan (clean; auto-heal self-tune quiescent on live data)
+
+## 2026-06-08 — §A.5 self-improve scan (read-only; clean)
+
+Health audit + §A.5 self-tune scan against v1.13.70. Repo clean: 3793 tests pass,
+build green, no madge/console/maxAttempts/SCORE_WEIGHTS-inlining findings. RLS
+sanity pass N/A (no schema-adjacent change; isolated project `oaojkanozbfpofbewtfq`).
+
+**Self-tune — NO CHANGE.** The §A.5 scoring auto-tune lives in
+`netlify/functions/auto-heal.js` (daily 05:00 UTC cron → `app_config.scoring_overrides`,
+read at boot via `getOverride()`), **not** in `scoringWeights.js`. All three triggers
+are below threshold on live wear-log data (project `oaojkanozbfpofbewtfq`, 102 history
+rows, 17 distinct watches, 124 active garments):
+- watch-stagnation 20% (< 40% gate) → `rotationFactor` stays at live override **0.45**
+  (auto-tuned 0.40→0.45 on 2026-05-31; the cron is healthy and self-regulating).
+- never-worn 26.6% (< 50% gate, and history depth 102 < 248 → sparse-guard suppresses)
+  → `neverWornRotationPressure` stays **0.50**.
+- no garment worn > 5× in 14d → `repetitionPenalty` stays **-0.28**.
+
+**Doc fix shipped same PR:** `CLAUDE.md` scoring formula corrected — `colorMatch*2`
+→ `colorMatch*2.5` (rebalanced in the Mar-2026 v2 pass) + added the missing
+`contextFormality*0.5` term. (Test-file count 222→223 left for the monthly
+`claude-md-drift-refresh` routine.)
 
 ## 2026-06-03 — fix: Perception grey FKM strap is a pin/tang buckle, not a deployant (v1.13.68)
 

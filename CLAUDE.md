@@ -69,7 +69,7 @@ supabase/                    schema.sql
 - **watchSeed.js is immutable.** Never touch it.
 
 ### Scoring system
-- `scoreGarment = colorMatch*2 + formalityMatch*3 + watchCompat*3 + weatherLayer`
+- `scoreGarment = colorMatch*2.5 + formalityMatch*3 + watchCompat*3 + weatherLayer*1 + contextFormality*0.5` (weights in `src/config/scoringWeights.js`; colorMatch rebalanced 2→2.5 in the Mar-2026 v2 pass)
 - Shoes multiply by `strapShoeScore` (0.0 on mismatch = hard veto)
 - Style-learn multiplier (0.85-1.15); Diversity penalty: -0.12; Reject penalty: -0.3
 
