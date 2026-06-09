@@ -12,7 +12,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.50.0",
+    "@supabase/supabase-js": "2.98.0",
     "idb": "^8.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -24,11 +24,11 @@
     "@netlify/blobs": "^10.7.0",
     "@netlify/plugin-lighthouse": "^6.0.1",
     "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/coverage-v8": "^4.1.8",
     "jsdom": "^28.1.0",
     "sharp": "^0.34.5",
     "vite": "^7.3.2",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.8"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.60.1"
