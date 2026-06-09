@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parseSelfieCheckResponse } from "../src/components/SelfiePanel.jsx";
 
 // ── Test the pure logic extracted from SelfiePanel ──────────────────────────
 
@@ -122,6 +123,27 @@ describe("SelfiePanel — response error handling", () => {
     expect(handleStatus(504)).toContain("timed out (504)");
     expect(handleStatus(500)).toContain("Server error 500");
     expect(handleStatus(403)).toContain("Server error 403");
+  });
+
+  it("parses fenced JSON text responses", async () => {
+    const res = {
+      text: () => Promise.resolve("```json\n{\"impact\":8,\"vision\":\"good\"}\n```"),
+    };
+
+    await expect(parseSelfieCheckResponse(res, "text/plain")).resolves.toEqual({
+      impact: 8,
+      vision: "good",
+    });
+  });
+
+  it("reports malformed text responses without leaking SyntaxError directly", async () => {
+    const res = {
+      text: () => Promise.resolve("<html>timeout</html>"),
+    };
+
+    await expect(parseSelfieCheckResponse(res, "text/html")).rejects.toThrow(
+      "Could not parse selfie check response",
+    );
   });
 });
 

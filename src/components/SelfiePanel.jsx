@@ -17,6 +17,17 @@ const SELFIE_CACHE_KEY = "selfieHistory";
 
 function getTodayISO() { return new Date().toISOString().split("T")[0]; }
 
+export async function parseSelfieCheckResponse(res, contentType = "") {
+  try {
+    if (contentType.includes("json")) return await res.json();
+    const text = await res.text();
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch (err) {
+    const message = err?.message ?? "unknown parse error";
+    throw new Error(`Could not parse selfie check response: ${message}`);
+  }
+}
+
 function resizeImage(file, maxPx = 800, quality = 0.82) {
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -130,9 +141,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
         throw new Error(errMsg);
       }
       // Status 200 but wrong content-type — still try to parse (Netlify may omit header)
-      const data = contentType.includes("json")
-        ? await res.json()
-        : await res.text().then(t => JSON.parse(t.replace(/```json|```/g, "").trim()));
+      const data = await parseSelfieCheckResponse(res, contentType);
       if (data.error) throw new Error(data.error);
       setResult(data);
 
