@@ -5,17 +5,28 @@ description: Auto-update SKILL_watch_advisor2.md with current ground truth from 
 You are updating the SKILL_watch_advisor2.md file to reflect current ground truth.
 Do NOT make any code changes. Only update the skill file.
 
-## STEP 1 — Pull current state from snapshot endpoint
-Call: GET https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
+## STEP 1 — Pull current state (ground truth)
+The snapshot endpoint is **user-JWT-gated since PR #139** — it returns 401 for any
+automation (anon key rejected too). It is NOT down; do not debug it. Two paths:
 
-Extract:
-- garmentCount
-- historyCount  
-- scoringWeights (all values)
-- latestMigration
-- snapshotAt
+**A (default, works everywhere): Supabase MCP** — `execute_sql` on project
+`oaojkanozbfpofbewtfq`:
+```sql
+SELECT
+  (SELECT count(*) FROM garments WHERE exclude_from_wardrobe = false AND type NOT IN ('outfit-photo','watch')) AS active_garments,
+  (SELECT count(*) FROM history) AS history_entries,
+  (SELECT count(*) FROM history h WHERE (h.payload->'garmentIds' IS NULL OR h.payload->'garmentIds' = '[]'::jsonb)
+     AND COALESCE((h.payload->>'legacy')::boolean,false) = false
+     AND COALESCE((h.payload->>'quickLog')::boolean,false) = false) AS orphaned_history,
+  (SELECT value::text FROM app_config WHERE key = 'claude_model') AS claude_model,
+  (SELECT name FROM _migrations ORDER BY name DESC LIMIT 1) AS latest_migration,
+  (SELECT left(value::text,200) FROM app_config WHERE key = 'auto_heal_log') AS auto_heal;
+```
 
-If endpoint is down, proceed with manual checks below.
+**B (browser session only):** GET https://watch-advisor2.netlify.app/.netlify/functions/skill-snapshot
+with Eias's logged-in session JWT as Bearer.
+
+If neither works, proceed with manual checks below.
 
 ## STEP 2 — Manual verification (always run regardless)
 ```bash
