@@ -25,9 +25,10 @@
     "@netlify/plugin-lighthouse": "^6.0.1",
     "@vitejs/plugin-react": "^5.1.4",
     "@vitest/coverage-v8": "^4.1.8",
+    "esbuild": "^0.28.1",
     "jsdom": "^28.1.0",
     "sharp": "^0.34.5",
-    "vite": "^7.3.2",
+    "vite": "^8.0.16",
     "vitest": "^4.1.8"
   },
   "optionalDependencies": {

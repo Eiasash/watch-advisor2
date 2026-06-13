@@ -37,14 +37,16 @@ export default defineConfig(({ mode }) => ({
     // already so this isn't a code-disclosure regression.
     sourcemap: true,
     chunkSizeWarningLimit: 600,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          "vendor-react":   ["react", "react-dom"],
-          "vendor-state":   ["zustand"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-window":  ["react-window"],
-          "vendor-idb":     ["idb"],
+        codeSplitting: {
+          groups: [
+            { name: "vendor-react", test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/ },
+            { name: "vendor-state", test: /[\\/]node_modules[\\/]zustand[\\/]/ },
+            { name: "vendor-supabase", test: /[\\/]node_modules[\\/]@supabase[\\/]supabase-js[\\/]/ },
+            { name: "vendor-window", test: /[\\/]node_modules[\\/]react-window[\\/]/ },
+            { name: "vendor-idb", test: /[\\/]node_modules[\\/]idb[\\/]/ },
+          ],
         },
       },
     },

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 export const SENTINEL = "'sha256-INLINE_SCRIPT_PLACEHOLDER='";
@@ -38,11 +38,17 @@ export function inlineCspHashPlugin({ distDir = "dist" } = {}) {
   return {
     name: "inline-csp-hash",
     apply: "build",
-    closeBundle() {
-      const dir = resolve(process.cwd(), distDir);
+    writeBundle(outputOptions, bundle) {
+      const dir = resolve(process.cwd(), outputOptions.dir || distDir);
       const htmlPath = resolve(dir, "index.html");
       const headersPath = resolve(dir, "_headers");
-      const html = readFileSync(htmlPath, "utf8");
+      const htmlAsset = Object.values(bundle).find((asset) => asset.fileName === "index.html");
+      const html = htmlAsset && "source" in htmlAsset
+        ? String(htmlAsset.source)
+        : readFileSync(htmlPath, "utf8");
+      if (!existsSync(headersPath)) {
+        throw new Error(`inlineCspHash: ${headersPath} was not emitted.`);
+      }
       const headers = readFileSync(headersPath, "utf8");
       const hashes = extractInlineScriptHashes(html);
       if (hashes.length === 0) {
