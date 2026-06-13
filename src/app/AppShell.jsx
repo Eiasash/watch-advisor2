@@ -27,7 +27,6 @@ const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m 
 })));
 const SettingsPanel  = lazy(() => import("../components/SettingsPanel.jsx"));
 const OutfitHistory  = lazy(() => import("../components/OutfitHistory.jsx"));
-const WardrobeChat   = lazy(() => import("../components/WardrobeChat.jsx"));
 const TravelTab      = lazy(() => import("../components/TravelTab.jsx"));
 const StrapLibraryTab = lazy(() => import("../components/StrapLibraryTab.jsx"));
 
@@ -60,13 +59,10 @@ function TabPane({ active, children, tabKey }) {
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 const TABS = [
-  { key:"today",    label:"Today",    icon:"👕" },
-  { key:"plan",     label:"Plan",     icon:"📅" },
-  { key:"wardrobe", label:"Wardrobe", icon:"👔" },
-  { key:"straps",   label:"Straps",   icon:"➰" },
-  { key:"audit",    label:"Audit",    icon:"🔍" },
-  { key:"history",  label:"History",  icon:"📊" },
-  { key:"travel",   label:"Travel",   icon:"✈️" },
+  { key:"today",    label:"Today",    icon:"T" },
+  { key:"closet",   label:"Closet",   icon:"C" },
+  { key:"plan",     label:"Planner",  icon:"P" },
+  { key:"settings", label:"Settings", icon:"G" },
 ];
 
 function AppContent() {
@@ -76,8 +72,10 @@ function AppContent() {
 
   const [tab, setTab] = useState(() => {
     const p = new URLSearchParams(window.location.search).get("tab");
+    const legacy = { wardrobe: "closet", straps: "closet", audit: "settings", history: "settings", travel: "settings" };
+    const requested = legacy[p] || p;
     const valid = TABS.map(t => t.key);
-    return (p && valid.includes(p)) ? p : "today";
+    return (requested && valid.includes(requested)) ? requested : "today";
   });
   const [showSettings, setShowSettings] = useState(false);
   const [settingsScrollTo, setSettingsScrollTo] = useState(null);
@@ -92,7 +90,6 @@ function AppContent() {
     return () => window.removeEventListener("open-settings", handleOpenSettings);
   }, []);
   const [showPalette,  setShowPalette]  = useState(false);
-  const [showChat,     setShowChat]     = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -228,27 +225,28 @@ function AppContent() {
             <WatchDashboard />
           </TabPane>
 
-          <TabPane active={tab === "wardrobe"} tabKey="wardrobe">
+          <TabPane active={tab === "closet"} tabKey="closet">
             <style>{`
               .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+              .wa-closet-stack { display: grid; gap: 16px; }
+              .wa-section-title { font-size: 13px; font-weight: 800; margin: 0 0 8px; color: ${isDark ? "#e2e8f0" : "#111827"}; }
               @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
             `}</style>
             <div className="wa-main-grid">
               <Suspense fallback={null}><ImportPanel /></Suspense>
-              <Suspense fallback={<div style={{ padding: 12, color: "#6b7280" }}>Loading wardrobe…</div>}><WardrobeGrid /></Suspense>
+              <div className="wa-closet-stack">
+                <section>
+                  <h2 className="wa-section-title">Wardrobe</h2>
+                  <Suspense fallback={<div style={{ padding: 12, color: "#6b7280" }}>Loading wardrobe...</div>}><WardrobeGrid /></Suspense>
+                </section>
+                <section>
+                  <h2 className="wa-section-title">Straps</h2>
+                  <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading straps...</div>}>
+                    <StrapLibraryTab />
+                  </Suspense>
+                </section>
+              </div>
             </div>
-          </TabPane>
-
-          <TabPane active={tab === "straps"} tabKey="straps">
-            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading straps…</div>}>
-              <StrapLibraryTab />
-            </Suspense>
-          </TabPane>
-
-          <TabPane active={tab === "travel"} tabKey="travel">
-            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading travel…</div>}>
-              <TravelTab />
-            </Suspense>
           </TabPane>
 
           <TabPane active={tab === "plan"} tabKey="plan">
@@ -259,17 +257,33 @@ function AppContent() {
             </Suspense>
           </TabPane>
 
-          <TabPane active={tab === "history"} tabKey="history">
-            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading…</div>}>
-              <OutfitHistory />
-              <StatsPanel />
-            </Suspense>
-          </TabPane>
-
-          <TabPane active={tab === "audit"} tabKey="audit">
-            <Suspense fallback={<div style={{ padding:20, textAlign:"center", color:"#6b7280" }}>Loading…</div>}>
-              <AuditTab />
-            </Suspense>
+          <TabPane active={tab === "settings"} tabKey="settings">
+            <div style={{ display: "grid", gap: 16 }}>
+              <div style={{
+                border: `1px solid ${border}`,
+                borderRadius: 10,
+                padding: 14,
+                background: isDark ? "#171a21" : "#fff",
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 8 }}>App settings</div>
+                <button onClick={() => setShowSettings(true)} style={{
+                  minHeight: 44,
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "#2563eb",
+                  color: "#fff",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}>Open Settings</button>
+              </div>
+              <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading...</div>}>
+                <OutfitHistory />
+                <StatsPanel />
+                <AuditTab />
+                <TravelTab />
+              </Suspense>
+            </div>
           </TabPane>
           </div>
         </>
@@ -283,43 +297,6 @@ function AppContent() {
       )}
       {showPalette   && <Suspense fallback={null}><CommandPalette onClose={() => setShowPalette(false)} onAction={handlePaletteAction} /></Suspense>}
       <ScrollToTop />
-
-      {/* Chat FAB */}
-      {!showChat && (
-        <button onClick={() => setShowChat(true)} aria-label="Open wardrobe chat" style={{
-          position: "fixed", bottom: 80, right: 16, zIndex: 210,
-          width: 52, height: 52, borderRadius: "50%",
-          background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-          border: "none", boxShadow: "0 4px 16px rgba(59,130,246,0.4)",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 22, color: "#fff",
-        }}>💬</button>
-      )}
-
-      {/* Chat overlay */}
-      {showChat && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9998,
-          background: isDark ? "#0a0c10" : "#f8fafc",
-          display: "flex", flexDirection: "column",
-        }}>
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            padding: "8px 16px", borderBottom: `1px solid ${isDark ? "#2b3140" : "#e5e7eb"}`,
-          }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: isDark ? "#e2e8f0" : "#1f2937" }}>💬 Wardrobe AI</span>
-            <button onClick={() => setShowChat(false)} style={{
-              background: "none", border: "none", color: isDark ? "#9ca3af" : "#6b7280",
-              fontSize: 22, cursor: "pointer", padding: "4px 8px",
-            }}>✕</button>
-          </div>
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading chat...</div>}>
-              <WardrobeChat />
-            </Suspense>
-          </div>
-        </div>
-      )}
 
       <InstallPrompt isDark={isDark} />
     </div>
