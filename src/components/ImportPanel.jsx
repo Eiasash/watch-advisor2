@@ -211,13 +211,14 @@ export default function ImportPanel() {
   const sub = isDark ? "#8b93a7" : "#6b7280";
 
   return (
-    <div style={{ padding:"16px 18px", borderRadius:16, background:bg, border:`1px solid ${border}` }}>
+    <div style={{ padding:"16px 18px", borderRadius:16, minWidth:0, maxWidth:"100%",
+                  overflow:"hidden", boxSizing:"border-box", background:bg, border:`1px solid ${border}` }}>
       <h3 style={{ marginTop:0, marginBottom:12, fontSize:15, fontWeight:700, color:isDark?"#e2e8f0":"#1f2937" }}>
         Import Garments
       </h3>
 
       {/* Import buttons — side by side on mobile */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:8, marginBottom:10 }}>
         {/* Gallery */}
         <label style={{
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",

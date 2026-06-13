@@ -33,6 +33,7 @@ function StrapTile({ strap, isDark, onSelect, selected }) {
       background: card, border: `2px solid ${border}`, borderRadius: 12,
       padding: 10, cursor: "pointer", textAlign: "left",
       display: "flex", flexDirection: "column", gap: 6, minHeight: 88,
+      minWidth: 0, width: "100%", boxSizing: "border-box",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{
@@ -169,7 +170,7 @@ export default function StrapLibraryTab() {
   }, [groups]);
 
   return (
-    <div style={{ padding: "0 0 100px" }}>
+    <div style={{ padding: "0 0 100px", minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
       <div style={{ fontSize: 22, fontWeight: 800, color: text, marginBottom: 4 }}>Straps</div>
       <div style={{ fontSize: 13, color: muted, marginBottom: 16 }}>
         {list.length} straps across the collection — tap any to see compatible watches and sample pairings.
@@ -191,7 +192,8 @@ export default function StrapLibraryTab() {
 
       <div style={{
         display: "grid", gap: 8,
-        gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))",
+        minWidth: 0,
       }}>
         {filtered.map(s => (
           <StrapTile key={s.id} strap={s} isDark={isDark} onSelect={setSelectedId} selected={selectedId === s.id} />

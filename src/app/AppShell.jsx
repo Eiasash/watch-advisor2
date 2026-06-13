@@ -227,10 +227,29 @@ function AppContent() {
 
           <TabPane active={tab === "closet"} tabKey="closet">
             <style>{`
-              .wa-main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+              .wa-main-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+                gap: 16px;
+                align-items: start;
+                min-width: 0;
+                max-width: 100%;
+              }
+              .wa-main-grid > *,
+              .wa-closet-stack,
+              .wa-closet-stack > section {
+                min-width: 0;
+                max-width: 100%;
+              }
               .wa-closet-stack { display: grid; gap: 16px; }
+              .wa-closet-stack > section { overflow: hidden; }
               .wa-section-title { font-size: 13px; font-weight: 800; margin: 0 0 8px; color: ${isDark ? "#e2e8f0" : "#111827"}; }
-              @media (max-width: 700px) { .wa-main-grid { grid-template-columns: 1fr; } }
+              @media (max-width: 700px) {
+                .wa-main-grid {
+                  grid-template-columns: minmax(0, 1fr);
+                  overflow: hidden;
+                }
+              }
             `}</style>
             <div className="wa-main-grid">
               <Suspense fallback={null}><ImportPanel /></Suspense>

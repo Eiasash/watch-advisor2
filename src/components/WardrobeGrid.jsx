@@ -357,7 +357,7 @@ export default function WardrobeGrid() {
   }, [garments]);
   
   const [gridWidth, setGridWidth] = useState(
-    typeof window !== "undefined" ? Math.min(window.innerWidth - 40, 840) : 840
+    typeof window !== "undefined" ? Math.min(Math.max(220, window.innerWidth - 64), 840) : 840
   );
   const gridRef     = useRef(null);
   const containerRef = useRef(null);
@@ -367,7 +367,10 @@ export default function WardrobeGrid() {
   useEffect(() => {
     function onResize() {
       const w = containerRef.current?.offsetWidth ?? window.innerWidth - 40;
-      setGridWidth(Math.max(280, w));
+      const viewport = window.innerWidth || w;
+      const mobileLimit = Math.max(220, viewport - 64);
+      const nextWidth = viewport <= 700 ? Math.min(w, mobileLimit) : w;
+      setGridWidth(Math.max(220, nextWidth));
     }
     onResize();
     window.addEventListener("resize", onResize);
@@ -519,7 +522,8 @@ export default function WardrobeGrid() {
   });
 
   return (
-    <div style={{ padding:"16px 18px", borderRadius:16,
+    <div style={{ padding:"16px 18px", borderRadius:16, minWidth:0, maxWidth:"100%",
+                  overflow:"hidden", boxSizing:"border-box",
                   background:isDark?"#171a21":"#fff", border:`1px solid ${isDark?"#2b3140":"#d1d5db"}` }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
