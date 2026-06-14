@@ -137,6 +137,18 @@ describe("genWeekRotation — on-call dates", () => {
     expect(result[0].ctx).toBe("shift");
     expect(result[1].ctx).toBe("shift");
   });
+
+  it("uses only shift-approved watches on on-call days", () => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const mixed = [
+      { id: "clinic-only", formality: 9, style: "dress", status: "active" },
+      { id: "shift-ready", formality: 7, style: "sport", status: "active", shiftWatch: true },
+      { id: "also-shift", formality: 6, style: "dress-sport", status: "active", shiftWatch: true },
+    ];
+    const result = genWeekRotation(mixed, [], [], [todayIso]);
+    expect(result[0].ctx).toBe("shift");
+    expect(result[0].watch.shiftWatch).toBe(true);
+  });
 });
 
 // ─── genWeekRotation — backup watch ─────────────────────────────────────────

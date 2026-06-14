@@ -7,21 +7,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // ── TABS definition (mirrors AppShell.jsx) ──────────────────────────────────
 
 const TABS = [
-  { key: "today",    label: "Today",    icon: "👕" },
-  { key: "wardrobe", label: "Wardrobe", icon: "👔" },
-  { key: "rotation", label: "Rotation", icon: "⌚" },
-  { key: "stats",    label: "Stats",    icon: "📊" },
-  { key: "history",  label: "History",  icon: "📅" },
-  { key: "gallery",  label: "Gallery",  icon: "🖼️" },
-  { key: "audit",    label: "Audit",    icon: "🔍" },
-  { key: "occasion", label: "Plan",     icon: "✨" },
-  { key: "selfie",   label: "Check",    icon: "📸" },
-  { key: "watchid",  label: "ID",       icon: "🔎" },
+  { key: "today",    label: "Today" },
+  { key: "closet",   label: "Closet" },
+  { key: "plan",     label: "Plan" },
+  { key: "settings", label: "More", ariaLabel: "More tools and settings" },
 ];
 
 describe("AppShell — tab navigation logic", () => {
-  it("has 10 tabs defined", () => {
-    expect(TABS).toHaveLength(10);
+  it("has four primary tabs defined", () => {
+    expect(TABS).toHaveLength(4);
+    expect(TABS.map(t => t.label)).toEqual(["Today", "Closet", "Plan", "More"]);
   });
 
   it("all tab keys are unique", () => {
@@ -29,11 +24,10 @@ describe("AppShell — tab navigation logic", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("all tabs have key, label, and icon", () => {
+  it("all tabs have key and label", () => {
     for (const tab of TABS) {
       expect(tab.key).toBeTruthy();
       expect(tab.label).toBeTruthy();
-      expect(tab.icon).toBeTruthy();
     }
   });
 
@@ -46,9 +40,29 @@ describe("AppShell — tab navigation logic", () => {
 
   it("uses URL tab param when valid", () => {
     const valid = TABS.map(t => t.key);
-    const p = new URLSearchParams("?tab=stats").get("tab");
+    const p = new URLSearchParams("?tab=plan").get("tab");
     const tab = (p && valid.includes(p)) ? p : "today";
-    expect(tab).toBe("stats");
+    expect(tab).toBe("plan");
+  });
+
+  it("routes legacy tabs into the new minimal page graph", () => {
+    const legacy = {
+      wardrobe: "closet",
+      straps: "closet",
+      rotation: "plan",
+      occasion: "plan",
+      planner: "plan",
+      stats: "settings",
+      history: "settings",
+      gallery: "settings",
+      audit: "settings",
+      travel: "settings",
+      selfie: "settings",
+      watchid: "settings",
+    };
+    expect(legacy[new URLSearchParams("?tab=audit").get("tab")]).toBe("settings");
+    expect(legacy[new URLSearchParams("?tab=rotation").get("tab")]).toBe("plan");
+    expect(legacy[new URLSearchParams("?tab=wardrobe").get("tab")]).toBe("closet");
   });
 
   it("falls back to 'today' for invalid tab param", () => {

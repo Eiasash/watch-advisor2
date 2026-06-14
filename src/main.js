@@ -6,7 +6,7 @@ import { pushDebugEntry } from "./stores/debugStore.js";
 
 // Build stamp — survives tree-shaking by writing to window (side-effect).
 // Bump to force Netlify to produce a new bundle hash.
-window.__WA2_BUILD = "20260425-1";
+window.__WA2_BUILD = "20260614-1";
 // Init debug logger before anything else so we capture startup errors
 initDebugLogger();
 
@@ -39,17 +39,107 @@ class ErrorBoundary extends Component {
   }
   render() {
     if (this.state.error) {
+      const reloadApp = () => window.location.reload();
+      const resetAppShell = async () => {
+        try {
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+          }
+          if ("caches" in window) {
+            const names = await caches.keys();
+            await Promise.all(names.map(name => caches.delete(name)));
+          }
+          sessionStorage.removeItem("wa2-sw-reloads");
+          sessionStorage.removeItem("wa2-nuke-reload");
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("[ErrorBoundary] app-shell reset failed", err);
+        } finally {
+          window.location.reload();
+        }
+      };
       return createElement("div", {
-        style: { padding: 32, fontFamily: "system-ui, sans-serif", color: "#dc2626" }
+        role: "alert",
+        style: {
+          minHeight: "100vh",
+          padding: 28,
+          fontFamily: "Inter, system-ui, sans-serif",
+          color: "#fecaca",
+          background: "#0f1117",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+        }
       },
-        createElement("h2", null, "Something went wrong"),
-        createElement("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap" } },
-          this.state.error?.message ?? String(this.state.error)
-        ),
-        createElement("button", {
-          onClick: () => this.setState({ error: null }),
-          style: { marginTop: 16, padding: "8px 16px", cursor: "pointer" }
-        }, "Retry")
+        createElement("div", {
+          style: {
+            width: "100%",
+            maxWidth: 460,
+            border: "1px solid #7f1d1d",
+            borderRadius: 14,
+            padding: 18,
+            background: "#171a21",
+          }
+        },
+          createElement("h2", { style: { margin: "0 0 8px", color: "#fca5a5", fontSize: 22 } }, "Watch Advisor needs a refresh"),
+          createElement("p", { style: { margin: "0 0 14px", color: "#cbd5e1", lineHeight: 1.5, fontSize: 14 } },
+            "The app shell crashed. Your wardrobe data is not touched by these recovery buttons."
+          ),
+          createElement("pre", { style: {
+            margin: "0 0 16px",
+            padding: 10,
+            borderRadius: 10,
+            background: "#0f131a",
+            color: "#fca5a5",
+            fontSize: 12,
+            whiteSpace: "pre-wrap",
+            overflowX: "auto",
+          } },
+            this.state.error?.message ?? String(this.state.error)
+          ),
+          createElement("div", { style: { display: "grid", gap: 8 } },
+            createElement("button", {
+              onClick: () => this.setState({ error: null }),
+              style: {
+                minHeight: 44,
+                padding: "10px 16px",
+                cursor: "pointer",
+                border: "none",
+                borderRadius: 10,
+                background: "#2563eb",
+                color: "#fff",
+                fontWeight: 800,
+              }
+            }, "Retry"),
+            createElement("button", {
+              onClick: reloadApp,
+              style: {
+                minHeight: 44,
+                padding: "10px 16px",
+                cursor: "pointer",
+                border: "1px solid #334155",
+                borderRadius: 10,
+                background: "transparent",
+                color: "#e2e8f0",
+                fontWeight: 700,
+              }
+            }, "Reload app"),
+            createElement("button", {
+              onClick: resetAppShell,
+              style: {
+                minHeight: 44,
+                padding: "10px 16px",
+                cursor: "pointer",
+                border: "1px solid #7f1d1d",
+                borderRadius: 10,
+                background: "#2a0c0c",
+                color: "#fecaca",
+                fontWeight: 700,
+              }
+            }, "Clear app shell cache")
+          )
+        )
       );
     }
     return this.props.children;
@@ -132,4 +222,3 @@ if ("serviceWorker" in navigator) {
     }
   });
 }
-
