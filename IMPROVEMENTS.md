@@ -1,6 +1,21 @@
 # Auto-Generated Improvement Proposals
 Generated: 2026-04-23 (cumulative)
-Last updated: 2026-06-08 — §A.5 self-improve scan (clean; auto-heal self-tune quiescent on live data)
+Last updated: 2026-06-14 — Perception bracelet material correction (titanium, PR #270)
+
+## 2026-06-14 — Perception bracelet material correction (PR #270, v1.13.74)
+
+Eias confirmed in-hand that the Atelier Wen Perception N°25/50 is **full titanium**
+(case + integrated bracelet), not steel. `watchSeed.js` strap label corrected
+`Steel integrated bracelet (hexagonal links)` → `Titanium integrated bracelet (hexagonal links)`,
+scoped to `perception-bracelet` only. `color:"silver"` retained (titanium reads silvery
+for color-matching). Other steel integrated bracelets (Laureato + replica RO/Ingenieur/VC)
+are genuinely steel — untouched. No schema change; 3811/3811 tests pass; verified on the
+live `watchSeed` prod bundle.
+
+**Collection rule updated:** titanium watches are now Snowflake SBGA211 **and** Perception
+N°25/50 (was "Snowflake only"). Today's wear log `wear-2026-06-14-perception` strap label
+also repointed to titanium.
+
 
 ## 2026-06-08 — §A.5 self-improve scan (read-only; clean)
 
