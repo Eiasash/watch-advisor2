@@ -7,7 +7,7 @@
  *   - Push notifications: same as before
  */
 
-const SHELL_CACHE  = "wa2-shell-v15";
+const SHELL_CACHE  = "wa2-shell-v16";
 const IMAGE_CACHE  = "wa2-images-v4";
 const API_CACHE    = "wa2-api-v4";
 const MAX_IMAGES   = 200;

@@ -945,23 +945,12 @@ export function PhotoVerifierPanel() {
         </div>
       )}
 
-      {/* ── Orphaned History Entries ──────────────────────────────────────────── */}
-      <OrphanedHistoryPatch isDark={isDark} />
-
-      {/* ── Sync Angles to Cloud ──────────────────────────────────────────────── */}
-      <SyncAnglesPanel isDark={isDark} />
-
-      {/* ── Collection Value ──────────────────────────────────────────────── */}
-      <CollectionValuePanel isDark={isDark} />
-
-      {/* ── App Health & Debug ────────────────────────────────────────────────── */}
-      <DebugSection isDark={isDark} />
     </div>
   );
 }
 
 /** Collection Value — fetches watch-value endpoint and shows CPW + trends */
-function CollectionValuePanel({ isDark }) {
+export function CollectionValuePanel({ isDark }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -1016,6 +1005,19 @@ function CollectionValuePanel({ isDark }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+export function RepairToolsPanel() {
+  const { mode } = useThemeStore();
+  const isDark = mode === "dark";
+
+  return (
+    <div>
+      <OrphanedHistoryPatch isDark={isDark} />
+      <SyncAnglesPanel isDark={isDark} />
+      <DebugSection isDark={isDark} />
     </div>
   );
 }
