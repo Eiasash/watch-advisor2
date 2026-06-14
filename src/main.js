@@ -6,7 +6,7 @@ import { pushDebugEntry } from "./stores/debugStore.js";
 
 // Build stamp — survives tree-shaking by writing to window (side-effect).
 // Bump to force Netlify to produce a new bundle hash.
-window.__WA2_BUILD = "20260614-1";
+window.__WA2_BUILD = "20260614-2";
 // Init debug logger before anything else so we capture startup errors
 initDebugLogger();
 

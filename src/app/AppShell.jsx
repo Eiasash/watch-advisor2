@@ -22,9 +22,10 @@ const CommandPalette  = lazy(() => import("../components/CommandPalette.jsx"));
 const WeekPlanner       = lazy(() => import("../components/WeekPlanner.jsx"));
 const WatchRotationPanel = lazy(() => import("../components/WatchRotationPanel.jsx"));
 const TradeSimulator     = lazy(() => import("../components/plan/TradeSimulator.jsx"));
-const AuditTab       = lazy(() => import("../components/AuditPanel.jsx").then(m => ({
-  default: () => <><m.default /><m.PhotoVerifierPanel /></>,
-})));
+const AuditPanel         = lazy(() => import("../components/AuditPanel.jsx"));
+const PhotoVerifierPanel = lazy(() => import("../components/AuditPanel.jsx").then(m => ({ default: m.PhotoVerifierPanel })));
+const RepairToolsPanel   = lazy(() => import("../components/AuditPanel.jsx").then(m => ({ default: m.RepairToolsPanel })));
+const CollectionValuePanel = lazy(() => import("../components/AuditPanel.jsx").then(m => ({ default: m.CollectionValuePanel })));
 const SettingsPanel  = lazy(() => import("../components/SettingsPanel.jsx"));
 const OutfitHistory  = lazy(() => import("../components/OutfitHistory.jsx"));
 const TravelTab      = lazy(() => import("../components/TravelTab.jsx"));
@@ -96,6 +97,7 @@ function AppContent() {
   const [planTradeOpen, setPlanTradeOpen] = useState(false);
   const [moreActivityOpen, setMoreActivityOpen] = useState(false);
   const [moreToolsOpen, setMoreToolsOpen] = useState(false);
+  const [moreTool, setMoreTool] = useState(null);
 
   // BulkTag banner in WardrobeGrid fires this event
   useEffect(() => {
@@ -155,6 +157,13 @@ function AppContent() {
   const bg     = isDark ? "#101114" : "#f9fafb";
   const border = isDark ? "#2b3140" : "#d1d5db";
   const text   = isDark ? "#e2e8f0" : "#1f2937";
+  const moreToolLabels = {
+    audit: "Wardrobe audit",
+    photos: "Photo verifier",
+    repair: "Repair and debug",
+    value: "Collection value",
+    travel: "Travel planner",
+  };
 
   return (
     <div style={{ maxWidth:1360, margin:"0 auto", padding:"14px 16px", color:text }}>
@@ -267,6 +276,62 @@ function AppContent() {
             .wa-disclosure-body select {
               min-height:44px;
               min-width:44px;
+            }
+            .wa-tool-grid {
+              display:grid;
+              grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+              gap:10px;
+            }
+            .wa-tool-button,
+            .wa-tool-back {
+              border:1px solid ${border};
+              background:${isDark ? "#10141d" : "#f9fafb"};
+              color:${text};
+              border-radius:10px;
+              cursor:pointer;
+              text-align:left;
+              font:inherit;
+            }
+            .wa-tool-button {
+              min-height:74px;
+              padding:12px;
+            }
+            .wa-tool-button:hover,
+            .wa-tool-button:focus-visible,
+            .wa-tool-back:hover,
+            .wa-tool-back:focus-visible {
+              outline:2px solid #3b82f6;
+              outline-offset:2px;
+              border-color:#3b82f6;
+            }
+            .wa-tool-button strong {
+              display:block;
+              font-size:13px;
+              font-weight:800;
+              margin-bottom:4px;
+            }
+            .wa-tool-button span {
+              display:block;
+              color:${isDark ? "#9ca3af" : "#6b7280"};
+              font-size:12px;
+              font-weight:600;
+              line-height:1.35;
+            }
+            .wa-tool-back {
+              justify-self:start;
+              padding:8px 12px;
+              font-size:12px;
+              font-weight:800;
+            }
+            .wa-tool-workspace {
+              display:grid;
+              gap:12px;
+              min-width:0;
+            }
+            .wa-tool-title {
+              font-size:14px;
+              font-weight:900;
+              color:${text};
             }
           `}</style>
           <div className="wa-tab-bar" role="tablist" aria-label="App sections">
@@ -410,19 +475,55 @@ function AppContent() {
                   </div>
                 )}
               </details>
-              <details className="wa-disclosure" onToggle={e => setMoreToolsOpen(e.currentTarget.open)}>
+              <details className="wa-disclosure" onToggle={e => {
+                const open = e.currentTarget.open;
+                setMoreToolsOpen(open);
+                if (!open) setMoreTool(null);
+              }}>
                 <summary>
                   <span>
                     Tools
-                    <small>Audit, photo verifier, debug, and travel planner</small>
+                    <small>Open one utility at a time</small>
                   </span>
                 </summary>
                 {moreToolsOpen && (
                   <div className="wa-disclosure-body">
-                    <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading tools...</div>}>
-                      <AuditTab />
-                      <TravelTab />
-                    </Suspense>
+                    {!moreTool ? (
+                      <div className="wa-tool-grid" aria-label="More tools launcher">
+                        <button className="wa-tool-button" type="button" onClick={() => setMoreTool("audit")}>
+                          <strong>Wardrobe audit</strong>
+                          <span>AI grade, gaps, declutter, and investment notes</span>
+                        </button>
+                        <button className="wa-tool-button" type="button" onClick={() => setMoreTool("photos")}>
+                          <strong>Photo verifier</strong>
+                          <span>Find duplicate, mismatched, and full-outfit photos</span>
+                        </button>
+                        <button className="wa-tool-button" type="button" onClick={() => setMoreTool("repair")}>
+                          <strong>Repair and debug</strong>
+                          <span>Fix orphaned history, sync angles, and inspect app health</span>
+                        </button>
+                        <button className="wa-tool-button" type="button" onClick={() => setMoreTool("value")}>
+                          <strong>Collection value</strong>
+                          <span>Value, cost-per-wear, and watch collection trends</span>
+                        </button>
+                        <button className="wa-tool-button" type="button" onClick={() => setMoreTool("travel")}>
+                          <strong>Travel planner</strong>
+                          <span>Pack watches and outfits for a trip</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="wa-tool-workspace">
+                        <button className="wa-tool-back" type="button" onClick={() => setMoreTool(null)}>Back to tools</button>
+                        <div className="wa-tool-title">{moreToolLabels[moreTool]}</div>
+                        <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading {moreToolLabels[moreTool]}...</div>}>
+                          {moreTool === "audit" && <AuditPanel />}
+                          {moreTool === "photos" && <PhotoVerifierPanel />}
+                          {moreTool === "repair" && <RepairToolsPanel />}
+                          {moreTool === "value" && <CollectionValuePanel isDark={isDark} />}
+                          {moreTool === "travel" && <TravelTab />}
+                        </Suspense>
+                      </div>
+                    )}
                   </div>
                 )}
               </details>

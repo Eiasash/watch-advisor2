@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 // ── Extract testable logic from AppShell ────────────────────────────────────
 // AppShell is a React component. We test the extracted logic: tab routing,
@@ -12,6 +14,8 @@ const TABS = [
   { key: "plan",     label: "Plan" },
   { key: "settings", label: "More", ariaLabel: "More tools and settings" },
 ];
+
+const APP_SHELL_SRC = readFileSync(resolve(__dirname, "../src/app/AppShell.jsx"), "utf-8");
 
 describe("AppShell — tab navigation logic", () => {
   it("has four primary tabs defined", () => {
@@ -63,6 +67,17 @@ describe("AppShell — tab navigation logic", () => {
     expect(legacy[new URLSearchParams("?tab=audit").get("tab")]).toBe("settings");
     expect(legacy[new URLSearchParams("?tab=rotation").get("tab")]).toBe("plan");
     expect(legacy[new URLSearchParams("?tab=wardrobe").get("tab")]).toBe("closet");
+  });
+
+  it("keeps More tools as a one-tool-at-a-time launcher", () => {
+    expect(APP_SHELL_SRC).toContain("const [moreTool, setMoreTool] = useState(null)");
+    expect(APP_SHELL_SRC).toContain('setMoreTool("audit")');
+    expect(APP_SHELL_SRC).toContain('setMoreTool("photos")');
+    expect(APP_SHELL_SRC).toContain('setMoreTool("repair")');
+    expect(APP_SHELL_SRC).toContain('setMoreTool("value")');
+    expect(APP_SHELL_SRC).toContain('setMoreTool("travel")');
+    expect(APP_SHELL_SRC).not.toContain("const AuditTab");
+    expect(APP_SHELL_SRC).not.toMatch(/<AuditTab\s*\/>\s*<TravelTab\s*\/>/);
   });
 
   it("falls back to 'today' for invalid tab param", () => {
