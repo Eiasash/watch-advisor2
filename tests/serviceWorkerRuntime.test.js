@@ -91,8 +91,8 @@ describe("SW runtime — install + activate", () => {
     handlers.install(installEvent);
     await waitPromise;
 
-    expect(fakeCaches.open).toHaveBeenCalledWith("wa2-shell-v16");
-    const shellCache = cacheStores.get("wa2-shell-v16");
+    expect(fakeCaches.open).toHaveBeenCalledWith("wa2-shell-v17");
+    const shellCache = cacheStores.get("wa2-shell-v17");
     expect(shellCache).toBeDefined();
   });
 
@@ -112,7 +112,7 @@ describe("SW runtime — install + activate", () => {
 
   it("activate handler deletes outdated caches and keeps current ones", async () => {
     const { handlers, fakeCaches, cacheStores, self } = loadSW();
-    cacheStores.set("wa2-shell-v16", new Map());
+    cacheStores.set("wa2-shell-v17", new Map());
     cacheStores.set("wa2-images-v4", new Map());
     cacheStores.set("wa2-api-v4", new Map());
     cacheStores.set("wa2-shell-v9", new Map()); // stale
@@ -122,7 +122,7 @@ describe("SW runtime — install + activate", () => {
     handlers.activate({ waitUntil(p) { waitPromise = p; } });
     await waitPromise;
 
-    expect(cacheStores.has("wa2-shell-v16")).toBe(true);
+    expect(cacheStores.has("wa2-shell-v17")).toBe(true);
     expect(cacheStores.has("wa2-images-v4")).toBe(true);
     expect(cacheStores.has("wa2-api-v4")).toBe(true);
     expect(cacheStores.has("wa2-shell-v9")).toBe(false);
@@ -263,7 +263,7 @@ describe("SW runtime — pass-through cases", () => {
 
     // Network was hit (network-first), and shell cache populated
     expect(fetchMock).toHaveBeenCalled();
-    expect(cacheStores.has("wa2-shell-v16")).toBe(true);
+    expect(cacheStores.has("wa2-shell-v17")).toBe(true);
   });
 
   it("same-origin offline falls back to cached shell", async () => {
@@ -271,7 +271,7 @@ describe("SW runtime — pass-through cases", () => {
     // Pre-populate cache
     const shellCache = new Map();
     shellCache.set("https://watch-advisor2.netlify.app/index.html", new Response("cached", { status: 200 }));
-    cacheStores.set("wa2-shell-v16", shellCache);
+    cacheStores.set("wa2-shell-v17", shellCache);
     fetchMock.mockRejectedValue(new Error("offline"));
 
     const e = fetchEvent("https://watch-advisor2.netlify.app/index.html");
