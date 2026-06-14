@@ -70,9 +70,10 @@ export default function SyncBar() {
         <button
           onClick={handleRetry}
           style={{
-            marginLeft: "auto", padding: "2px 8px", borderRadius: 4,
+            marginLeft: "auto", padding: "8px 10px", borderRadius: 6,
             border: `1px solid ${config.color}40`, background: "transparent",
-            color: config.color, fontSize: 11, cursor: "pointer",
+            color: config.color, fontSize: 12, fontWeight: 700, cursor: "pointer",
+            minHeight: 44, minWidth: 44,
           }}
         >
           Retry

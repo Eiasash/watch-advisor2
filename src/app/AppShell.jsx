@@ -59,10 +59,10 @@ function TabPane({ active, children, tabKey }) {
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 const TABS = [
-  { key:"today",    label:"Today",    icon:"T" },
-  { key:"closet",   label:"Closet",   icon:"C" },
-  { key:"plan",     label:"Planner",  icon:"P" },
-  { key:"settings", label:"Settings", icon:"G" },
+  { key:"today",    label:"Today" },
+  { key:"closet",   label:"Closet" },
+  { key:"plan",     label:"Plan" },
+  { key:"settings", label:"More", ariaLabel:"More tools and settings" },
 ];
 
 function AppContent() {
@@ -72,13 +72,30 @@ function AppContent() {
 
   const [tab, setTab] = useState(() => {
     const p = new URLSearchParams(window.location.search).get("tab");
-    const legacy = { wardrobe: "closet", straps: "closet", audit: "settings", history: "settings", travel: "settings" };
+    const legacy = {
+      wardrobe: "closet",
+      straps: "closet",
+      rotation: "plan",
+      occasion: "plan",
+      planner: "plan",
+      stats: "settings",
+      history: "settings",
+      gallery: "settings",
+      audit: "settings",
+      travel: "settings",
+      selfie: "settings",
+      watchid: "settings",
+    };
     const requested = legacy[p] || p;
     const valid = TABS.map(t => t.key);
     return (requested && valid.includes(requested)) ? requested : "today";
   });
   const [showSettings, setShowSettings] = useState(false);
   const [settingsScrollTo, setSettingsScrollTo] = useState(null);
+  const [planHealthOpen, setPlanHealthOpen] = useState(false);
+  const [planTradeOpen, setPlanTradeOpen] = useState(false);
+  const [moreActivityOpen, setMoreActivityOpen] = useState(false);
+  const [moreToolsOpen, setMoreToolsOpen] = useState(false);
 
   // BulkTag banner in WardrobeGrid fires this event
   useEffect(() => {
@@ -182,8 +199,8 @@ function AppContent() {
                 flex:1 1 0; min-width:0;
                 border-radius:0 !important; border:none !important;
                 border-top:2px solid transparent !important;
-                padding:11px 4px 9px !important; font-size:11px !important; min-height:44px;
-                flex-direction:column; display:flex; align-items:center; justify-content:center; gap:1px;
+                padding:12px 4px 10px !important; font-size:12px !important; min-height:44px;
+                display:flex; align-items:center; justify-content:center;
                 white-space:nowrap;
                 -webkit-tap-highlight-color:transparent;
                 touch-action:manipulation;
@@ -193,8 +210,63 @@ function AppContent() {
                 background:${isDark?"#1d4ed811":"#eff6ff"};
               }
               .wa-bottom-pad { padding-bottom:72px; }
-              .wa-tab-icon { font-size:16px; line-height:1; }
-              .wa-tab-label { font-size:11px; line-height:1.2; }
+              .wa-tab-label { font-size:12px; line-height:1.2; }
+            }
+            .wa-disclosure-stack { display:grid; gap:10px; margin-bottom:16px; }
+            .wa-disclosure {
+              border:1px solid ${border};
+              border-radius:12px;
+              background:${isDark ? "#171a21" : "#fff"};
+              overflow:hidden;
+            }
+            .wa-disclosure summary {
+              min-height:44px;
+              padding:12px 14px;
+              cursor:pointer;
+              list-style:none;
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:12px;
+              color:${text};
+              font-size:13px;
+              font-weight:800;
+            }
+            .wa-disclosure summary::-webkit-details-marker { display:none; }
+            .wa-disclosure summary::after {
+              content:"+";
+              width:24px;
+              height:24px;
+              border-radius:999px;
+              border:1px solid ${border};
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              color:${isDark ? "#9ca3af" : "#6b7280"};
+              font-size:16px;
+              line-height:1;
+              flex:0 0 auto;
+            }
+            .wa-disclosure[open] summary {
+              border-bottom:1px solid ${border};
+            }
+            .wa-disclosure[open] summary::after { content:"-"; }
+            .wa-disclosure small {
+              display:block;
+              margin-top:2px;
+              color:${isDark ? "#9ca3af" : "#6b7280"};
+              font-size:11px;
+              font-weight:600;
+            }
+            .wa-disclosure-body {
+              padding:12px;
+              display:grid;
+              gap:12px;
+            }
+            .wa-disclosure-body button,
+            .wa-disclosure-body select {
+              min-height:44px;
+              min-width:44px;
             }
           `}</style>
           <div className="wa-tab-bar" role="tablist" aria-label="App sections">
@@ -204,6 +276,7 @@ function AppContent() {
                 role="tab"
                 aria-selected={tab === t.key}
                 aria-controls={`wa-tabpanel-${t.key}`}
+                aria-label={t.ariaLabel ?? t.label}
                 id={`wa-tab-${t.key}`}
                 style={{
                   padding:"11px 16px", borderRadius:10, fontSize:13, fontWeight:700,
@@ -212,7 +285,6 @@ function AppContent() {
                   color: tab === t.key ? (isDark ? "#60a5fa" : "#1d4ed8") : isDark ? "#8b93a7" : "#6b7280",
                   cursor:"pointer", whiteSpace:"nowrap", minHeight:44,
                 }}>
-                <span className="wa-tab-icon">{t.icon}</span>
                 <span className="wa-tab-label">{t.label}</span>
               </button>
             ))}
@@ -271,8 +343,34 @@ function AppContent() {
           <TabPane active={tab === "plan"} tabKey="plan">
             <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading planner...</div>}>
               <WeekPlanner />
-              <WatchRotationPanel />
-              <TradeSimulator />
+              <div className="wa-disclosure-stack" aria-label="Planner secondary tools">
+                <details className="wa-disclosure" onToggle={e => setPlanHealthOpen(e.currentTarget.open)}>
+                  <summary>
+                    <span>
+                      Rotation health
+                      <small>Idle days, wear count, and cost per wear</small>
+                    </span>
+                  </summary>
+                  {planHealthOpen && (
+                    <div className="wa-disclosure-body">
+                      <WatchRotationPanel />
+                    </div>
+                  )}
+                </details>
+                <details className="wa-disclosure" onToggle={e => setPlanTradeOpen(e.currentTarget.open)}>
+                  <summary>
+                    <span>
+                      Trade simulator
+                      <small>Collection value and swap decisions</small>
+                    </span>
+                  </summary>
+                  {planTradeOpen && (
+                    <div className="wa-disclosure-body">
+                      <TradeSimulator />
+                    </div>
+                  )}
+                </details>
+              </div>
             </Suspense>
           </TabPane>
 
@@ -296,12 +394,38 @@ function AppContent() {
                   cursor: "pointer",
                 }}>Open Settings</button>
               </div>
-              <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading...</div>}>
-                <OutfitHistory />
-                <StatsPanel />
-                <AuditTab />
-                <TravelTab />
-              </Suspense>
+              <details className="wa-disclosure" onToggle={e => setMoreActivityOpen(e.currentTarget.open)}>
+                <summary>
+                  <span>
+                    Activity
+                    <small>Outfit history and statistics</small>
+                  </span>
+                </summary>
+                {moreActivityOpen && (
+                  <div className="wa-disclosure-body">
+                    <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading activity...</div>}>
+                      <OutfitHistory />
+                      <StatsPanel />
+                    </Suspense>
+                  </div>
+                )}
+              </details>
+              <details className="wa-disclosure" onToggle={e => setMoreToolsOpen(e.currentTarget.open)}>
+                <summary>
+                  <span>
+                    Tools
+                    <small>Audit, photo verifier, debug, and travel planner</small>
+                  </span>
+                </summary>
+                {moreToolsOpen && (
+                  <div className="wa-disclosure-body">
+                    <Suspense fallback={<div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>Loading tools...</div>}>
+                      <AuditTab />
+                      <TravelTab />
+                    </Suspense>
+                  </div>
+                )}
+              </details>
             </div>
           </TabPane>
           </div>
