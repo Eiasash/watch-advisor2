@@ -52,6 +52,7 @@ function TripForm({ onSave, isDark }) {
   const input = {
     background: isDark ? "#0f131a" : "#f9fafb", border: `1px solid ${border}`,
     borderRadius: 8, padding: "8px 10px", color: text, fontSize: 13, width: "100%",
+    minHeight: 44,
     outline: "none", boxSizing: "border-box",
   };
 
