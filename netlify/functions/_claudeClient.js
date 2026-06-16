@@ -34,7 +34,11 @@ export async function getConfiguredModel() {
       model = String(raw);
     }
     _cachedModel = model || DEFAULT_MODEL;
-    return model;
+    // Return the cached value (not the bare `model`): if `model` resolved to a
+    // falsy value (e.g. ""), the cache holds DEFAULT_MODEL while a bare `return
+    // model` would have returned "". Returning _cachedModel keeps the first call
+    // consistent with every subsequent cached call.
+    return _cachedModel;
   } catch {
     return DEFAULT_MODEL;
   }

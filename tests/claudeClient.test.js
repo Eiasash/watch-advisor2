@@ -110,6 +110,33 @@ describe("getConfiguredModel", () => {
     expect(third).toBe("claude-opus-4-6");
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+
+  // Regression: getConfiguredModel must `return _cachedModel`, not the bare local
+  // `model`. When the DB row resolves to a falsy value (empty string), the cache
+  // correctly holds DEFAULT_MODEL but the old `return model` returned "" — a value
+  // that diverges from every subsequent cached call. This pins the fix.
+  it("returns cached DEFAULT_MODEL (not '') when DB value is an empty string", async () => {
+    process.env.SUPABASE_URL = "https://fake.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "fake-key";
+    vi.resetModules();
+    const mod2 = await import("../netlify/functions/_claudeClient.js");
+    mod2._resetModelCache();
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      // value is an empty string → parsed model is "" (falsy)
+      text: () => Promise.resolve(JSON.stringify({ value: '""' })),
+      headers: { get: (h) => h === "content-type" ? "application/vnd.pgrst.object+json" : null },
+    });
+    const first  = await mod2.getConfiguredModel();
+    const second = await mod2.getConfiguredModel();
+    // First call must return the cached fallback, not the raw "" — and must match
+    // the cached value returned on every subsequent call.
+    expect(first).toBe("claude-sonnet-4-6");
+    expect(second).toBe("claude-sonnet-4-6");
+    expect(first).toBe(second);
+  });
 });
 
 describe("callClaude", () => {

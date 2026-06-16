@@ -6,6 +6,7 @@ import React, { useState, useCallback } from "react";
 import { useWatchStore }    from "../stores/watchStore.js";
 import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
+import { authedFetch }      from "../services/authedFetch.js";
 
 const API = "/.netlify/functions/occasion-planner";
 
@@ -36,7 +37,7 @@ export default function OccasionPlanner() {
     if (!occ) return;
     setLoading(true); setError(null); setResult(null);
     try {
-      const res = await fetch(API, {
+      const res = await authedFetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ occasion: occ, garments, watches }),
