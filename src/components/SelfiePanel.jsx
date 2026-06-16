@@ -10,6 +10,7 @@ import { useWardrobeStore } from "../stores/wardrobeStore.js";
 import { useHistoryStore }  from "../stores/historyStore.js";
 import { useThemeStore }    from "../stores/themeStore.js";
 import { getCachedState, setCachedState } from "../services/localCache.js";
+import { authedFetch }      from "../services/authedFetch.js";
 
 const API         = "/.netlify/functions/selfie-check";
 const EXTRACT_API = "/.netlify/functions/extract-outfit";
@@ -113,7 +114,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
     setLoading(true);
     try {
       const activeWatch = watches.find(w => w.id === activeWatchId) ?? null;
-      const res = await fetch(API, {
+      const res = await authedFetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -180,7 +181,7 @@ export default function SelfiePanel({ context = "smart-casual", watchId: propWat
     setExtractToast(null);
     try {
       const activeGarments = garments.filter(g => !g.excludeFromWardrobe && g.type !== "outfit-photo");
-      const res = await fetch(EXTRACT_API, {
+      const res = await authedFetch(EXTRACT_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: photoDataUrl, garments: activeGarments }),

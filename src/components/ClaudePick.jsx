@@ -153,6 +153,11 @@ export default function ClaudePick({ autoFetch = false } = {}) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ why: true, currentPick: compactPick(pick) }),
       });
+      // Guard res.ok before parsing: on a non-2xx (e.g. 500/502 with an HTML or
+      // error-JSON body), res.json() would otherwise parse the error body as a
+      // success shape and surface "No rationale available." instead of a clear
+      // failure. Throw into the catch below for a clear error message.
+      if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       setRationale(data.rationale ?? "No rationale available.");
     } catch {
