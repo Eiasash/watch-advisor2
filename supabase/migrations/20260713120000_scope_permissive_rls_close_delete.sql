@@ -30,3 +30,10 @@ DROP POLICY IF EXISTS allow_all_push ON public.push_subscriptions;
 -- Trigger functions still fire as table owner regardless of EXECUTE grant.
 REVOKE EXECUTE ON FUNCTION public.set_updated_at_user_snapshots() FROM anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon, authenticated;
+
+-- ---- errors: was publicly READABLE via misnamed service_read_errors policy ----
+-- The SELECT policy targeted {public} (qual=true) despite its name, exposing the
+-- error-telemetry log to anyone with the anon key. Nothing in client or server reads
+-- `errors` via supabase; it is insert-only (anon_insert_errors). Restrict SELECT to
+-- service_role so only server/admin can read the log. anon INSERT is unchanged.
+ALTER POLICY service_read_errors ON public.errors TO service_role;
