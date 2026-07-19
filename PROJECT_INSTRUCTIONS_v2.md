@@ -52,7 +52,7 @@ Israel work week: Sun–Thu = work days, Fri–Sat = weekend. Sunday is the firs
 
 ### GitHub auth
 - PAT proxy: `GET https://watch-advisor2.netlify.app/.netlify/functions/github-pat` with `x-api-secret`.
-- **The watch-advisor2 endpoint secret is STALE (returns 401) — confirmed still broken June 3 2026.** Working fallback: the cross-repo Toranot endpoint `GET https://toranot.netlify.app/api/github-pat` with `x-api-secret: shlav-a-mega-1f97f311d307-2026` returns a PAT valid for all of Eias's repos. Scrub the PAT from the remote URL after pushing (`git remote set-url origin https://github.com/...`); revoke at github.com/settings/tokens when done. **Refresh the watch-advisor2 secret so its own endpoint works again** (recurring drag — open since at least June 2).
+- **The watch-advisor2 endpoint secret is STALE (returns 401) — confirmed still broken June 3 2026.** Working fallback: the cross-repo Toranot endpoint `GET https://toranot.netlify.app/api/github-pat` with `x-api-secret: RETIRED_PROXY_SECRET_2026_07_19` returns a PAT valid for all of Eias's repos. Scrub the PAT from the remote URL after pushing (`git remote set-url origin https://github.com/...`); revoke at github.com/settings/tokens when done. **Refresh the watch-advisor2 secret so its own endpoint works again** (recurring drag — open since at least June 2).
 
 ### Supabase — **MCP routing is BROKEN, use PostgREST directly**
 - The plain `Supabase` MCP tool ignores `project_id` and hits **Toranot**. Do **not** rely on it.
