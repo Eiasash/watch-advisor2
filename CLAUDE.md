@@ -43,17 +43,17 @@ Stack: React 18 (createElement, no JSX except .jsx files) + Vite 7 + Zustand 4 +
 ```
 src/                          169 files, ~23,000 LOC
   app/            bootstrap.js (boot sequence), AppShell.jsx (layout + tabs)
-  components/     UI only — no business logic (63 JSX files)
+  components/     UI only — no business logic (67 JSX files)
   engine/         scoring, rotation, day profiles — pure functions
   outfitEngine/   outfitBuilder.js, scoring.js, watchStyles.js — pure
   features/       wardrobe/ watch/ outfits/ weather/
   classifier/     pipeline.js, normalizeType.js, duplicateDetection.js, personFilter.js
   services/       localCache.js, supabaseSync.js, imagePipeline.js, backgroundQueue.js
-  stores/         10 Zustand stores (wardrobe, watch, history, strap, pref, reject, styleLearn, theme, debug, travel)
+  stores/         11 Zustand stores (wardrobe, watch, history, strap, pref, reject, styleLearn, theme, debug, travel, auth)
   data/           watchSeed.js — NEVER REPLACE. Sacred.
   aiStylist/      claudeStylist.js
   workers/        photoWorker.js (USE_WORKER=false currently)
-netlify/functions/           25 serverless functions + 4 helpers, ~3,900 LOC
+netlify/functions/           26 serverless functions + 4 helpers, ~3,900 LOC
 supabase/                    schema.sql
 ```
 
@@ -137,9 +137,9 @@ supabase/                    schema.sql
 | Test LOC | ~29,500 |
 | Tests | ~3175 |
 | Test pass rate | 100% |
-| Netlify functions | 25 (+4 helpers) |
-| Components | 63 JSX |
-| Zustand stores | 10 |
+| Netlify functions | 26 (+4 helpers) |
+| Components | 67 JSX |
+| Zustand stores | 11 |
 | Build output | ~570 kB (167 kB gzip) |
 
 ---
@@ -172,8 +172,8 @@ supabase/                    schema.sql
 | Outfit engine (builder, scoring, confidence) | ~200+ | Strong |
 | Watch rotation (calendar, pressure, week) | ~150+ | Strong |
 | Classifier (pixel, dHash, color, pipeline) | ~100+ | Strong |
-| Stores (all 9) | ~150+ | Strong |
-| Netlify functions (all 25) | ~300+ | Strong |
+| Stores (all 11) | ~150+ | Strong |
+| Netlify functions (all 26) | ~300+ | Strong |
 | Components | ~200+ | Good |
 | Integration tests | ~50+ | Good |
 | Domain logic (stats, styleDNA, trade) | ~80+ | Good |
