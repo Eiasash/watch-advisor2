@@ -141,7 +141,8 @@ describe("wardrobe-chat", () => {
     await handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ message: "list my watches" }) });
     const sys = callClaude.mock.calls[0][1].system;
     expect(sys).toContain("Seventies Chronograph");
-    expect(sys).toContain("Vintage 1945");
+    expect(sys).toContain("Datejust 36"); // Trade #5 (Aug 2026): 116234 salmon in
+    expect(sys).not.toContain("Vintage 1945"); // retired in Trade #5
     expect(sys).not.toContain("Monaco");
   });
 

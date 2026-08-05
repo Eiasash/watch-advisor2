@@ -58,4 +58,5 @@ export const DIAL_COLOR_MAP = {
   "meteorite":    ["black", "grey", "navy", "white", "brown", "charcoal", "olive", "khaki", "tan", "denim", "camel"],
   "champagne":    ["cream", "ecru", "beige", "tan", "camel", "brown", "cognac", "stone", "sand", "navy", "black", "charcoal", "grey", "gray", "white", "olive", "khaki", "denim", "burgundy", "brick", "mustard", "amber"],
   "ivory":        ["navy", "brown", "camel", "tan", "cognac", "beige", "ecru", "cream", "stone", "charcoal", "grey", "gray", "black", "burgundy", "olive", "khaki", "denim", "white", "sand", "dark brown"],
+  "salmon":       ["navy", "grey", "gray", "charcoal", "white", "cream", "ecru", "stone", "taupe", "denim", "olive", "brown", "tan", "camel", "beige", "khaki", "black"],
 };

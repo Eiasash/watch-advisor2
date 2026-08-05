@@ -2,13 +2,14 @@ import { describe, it, expect } from "vitest";
 import { WATCH_COLLECTION } from "../src/data/watchSeed.js";
 
 describe("watchSeed data integrity", () => {
-  it("contains exactly 31 watches (14 active genuine + 1 pending + 11 replica + 5 retired)", () => {
-    expect(WATCH_COLLECTION).toHaveLength(31);
+  it("contains exactly 32 watches (14 active genuine + 1 pending + 11 replica + 6 retired)", () => {
+    expect(WATCH_COLLECTION).toHaveLength(32);
   });
 
   it("has 14 active genuine watches (excludes pending)", () => {
     // `perception` (Atelier Wen N°25/50) received in hand 2026-06-03 → now active.
     // Fears Brunswick remains the only pending genuine piece.
+    // Trade #5 (Aug 5 2026): gp-vintage-1945 retired → datejust (116234 salmon) added; active genuine stays 14.
     // Only "ready to wear" genuine pieces count as active.
     const genuine = WATCH_COLLECTION.filter(w => !w.replica && !w.retired && !w.perception && !w.pending);
     expect(genuine).toHaveLength(14);
@@ -19,9 +20,9 @@ describe("watchSeed data integrity", () => {
     expect(replicas).toHaveLength(11);
   });
 
-  it("has 5 retired watches", () => {
+  it("has 6 retired watches", () => {
     const retired = WATCH_COLLECTION.filter(w => w.retired);
-    expect(retired).toHaveLength(5);
+    expect(retired).toHaveLength(6);
   });
 
   it("all watches have unique IDs", () => {
